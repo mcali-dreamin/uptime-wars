@@ -1,4 +1,4 @@
-# Uptime
+# Uptime Wars
 
 Tech-themed castle defense in the browser. Build compute, let your racks fork
 processes into the lane, and keep your core data center online while the
