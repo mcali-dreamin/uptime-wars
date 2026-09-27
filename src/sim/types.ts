@@ -1,4 +1,5 @@
 import type { ArmorType, Controller } from "./content";
+import type { Terrain } from "./terrain";
 
 export type TeamId = 0 | 1;
 
@@ -28,6 +29,9 @@ interface EntityBase {
 
 export interface Unit extends EntityBase {
   kind: "unit";
+  /** Where a guarding unit returns to when it has nothing to fight. */
+  homeX: number;
+  homeY: number;
 }
 
 export interface Building extends EntityBase {
@@ -80,10 +84,21 @@ export type SimEvent =
   | { type: "wave"; index: number; name: string }
   | { type: "rejected"; command: Command; reason: string };
 
+/**
+ * Derived, immutable, and regenerated from the seed. Excluded from the world
+ * hash: two peers with the same seed always agree on it.
+ */
+export interface Navigation {
+  /** Flow field toward each team's core, indexed by team id. */
+  toCore: [Int32Array, Int32Array];
+}
+
 export interface World {
   tick: number;
   seed: number;
   rngState: number;
+  terrain: Terrain;
+  nav: Navigation;
   nextId: number;
   teams: [Team, Team];
   /** Always kept in ascending id order: iteration order is part of determinism. */

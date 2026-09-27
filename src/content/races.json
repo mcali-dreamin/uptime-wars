@@ -3,7 +3,13 @@
     "name": "Open Source Collective",
     "specialty": "Forks fast. Spawners run 15% quicker.",
     "controller": "human",
-    "buildings": ["server-rack", "gpu-cluster", "firewall", "solar-array"],
+    "core": "core",
+    "buildings": [
+      "server-rack",
+      "gpu-cluster",
+      "firewall",
+      "solar-array"
+    ],
     "modifiers": {
       "spawnIntervalMultiplier": 0.85,
       "costMultiplier": 1,
@@ -12,8 +18,9 @@
   },
   "botnet": {
     "name": "The Botnet",
-    "specialty": "Endless, faceless, and scheduled. Arrives in waves.",
+    "specialty": "Crawls the open web in waves. Hostile to everyone.",
     "controller": "wave-director",
+    "core": "malware-nest",
     "buildings": [],
     "modifiers": {
       "spawnIntervalMultiplier": 1,

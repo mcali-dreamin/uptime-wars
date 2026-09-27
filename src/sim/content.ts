@@ -61,6 +61,8 @@ export interface RaceDef {
   name: string;
   specialty: string;
   controller: Controller;
+  /** Unbuildable building this race starts with; losing it loses the match. */
+  core: string;
   buildings: string[];
   modifiers: {
     spawnIntervalMultiplier: number;
@@ -114,6 +116,10 @@ export function validateContent(content: Content): void {
     }
   }
   for (const [id, race] of Object.entries(content.races)) {
+    const core = content.buildings[race.core];
+    if (!core) errors.push(`race ${id} has unknown core ${race.core}`);
+    else if (core.buildable) errors.push(`race ${id} core ${race.core} must not be buildable`);
+    else if (core.footprint !== 2) errors.push(`race ${id} core ${race.core} must have a 2x2 footprint`);
     for (const buildingId of race.buildings) {
       const building = content.buildings[buildingId];
       if (!building) errors.push(`race ${id} lists unknown building ${buildingId}`);
@@ -127,8 +133,6 @@ export function validateContent(content: Content): void {
       }
     }
   });
-  if (!content.buildings.core) errors.push("content must define a core building");
-
   if (errors.length > 0) {
     throw new Error(`Invalid content:\n- ${errors.join("\n- ")}`);
   }
