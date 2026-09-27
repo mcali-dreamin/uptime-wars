@@ -1,9 +1,10 @@
 # Continuous release + deploy.
 #
 # Every push to main runs the Homeboy release pipeline: it derives the version
-# from conventional commits since the last tag (fix: -> patch, feat: -> minor,
-# BREAKING CHANGE -> major; chore:/ci:/docs:/test: -> no release), runs the
-# quality gates, tags, writes the changelog, and creates the GitHub Release.
+# from conventional commits since the last tag (feat: -> minor, BREAKING
+# CHANGE -> major, fix:/ci:/test:/anything else -> patch; only chore: and
+# docs: skip a release), runs the quality gates, tags, writes the changelog,
+# and creates the GitHub Release.
 #
 # When a release is cut, deploy.yml builds that tag, attaches the zip to the
 # release, and publishes it to Spacefast. No release, no deploy.

@@ -68,8 +68,8 @@ waves are content changes, not code changes. Content is validated on load.
 
 Every push to `main` runs the Homeboy release pipeline
 (`Extra-Chill/homeboy-action` `release.yml@v2`). Conventional commits decide
-the bump: `fix:` patch, `feat:` minor, `BREAKING CHANGE` major; `chore:`,
-`ci:`, `docs:` and `test:` do not release.
+the bump: `feat:` minor, `BREAKING CHANGE` major, anything else (`fix:`,
+`ci:`, `test:`, ...) patch. Only `chore:` and `docs:` skip a release.
 
 When a release is cut, `deploy.yml` builds that tag, attaches
 `uptime-wars-<tag>.zip` to the GitHub Release, and publishes exactly those
