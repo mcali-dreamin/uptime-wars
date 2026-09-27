@@ -79,5 +79,22 @@
       "amount": 4,
       "intervalTicks": 20
     }
+  },
+  "malware-nest": {
+    "name": "Malware Nest",
+    "description": "Where the crawlers come from. Survive what it sends.",
+    "cost": 0,
+    "buildTicks": 0,
+    "hp": 2500,
+    "armor": 3,
+    "armorType": "core",
+    "footprint": 2,
+    "buildable": false,
+    "attack": {
+      "attackType": "exploit",
+      "damage": 10,
+      "range": 150,
+      "cooldownTicks": 24
+    }
   }
 }

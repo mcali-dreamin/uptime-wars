@@ -11,8 +11,10 @@
 //   no Math.hypot, no Math.random, no Date.
 
 import type { Content } from "./content";
-import { HEIGHT, SIDES, TILE, WIDTH, footprintCenter, inZone } from "./map";
+import { BUILD_RADIUS_TILES, TILE, footprintCenter } from "./map";
+import { flowField, hasLineOfSight, isWalkablePoint, moveToward, nextStep } from "./nav";
 import { randomInt } from "./rng";
+import { TILE_OPEN, generateTerrain, tileAt, type Terrain } from "./terrain";
 import type { Building, Command, Entity, TeamId, Unit, World } from "./types";
 
 export const STARTING_COMPUTE = 200;
@@ -21,6 +23,10 @@ export const BASE_INCOME = { amount: 3, intervalTicks: 20 };
 const CONSTRUCTION_START_HP = 0.25;
 /** A unit drops a target that runs this far past its aggro range. */
 const LEASH_MULTIPLIER = 1.5;
+/** Guards never chase further than this from where they spawned. */
+const GUARD_RADIUS = 220;
+/** Guards within this distance of home count as home. */
+const HOME_SLACK = 24;
 
 export interface MatchSetup {
   seed: number;
@@ -34,15 +40,15 @@ interface TickContext {
 }
 
 export function createWorld(content: Content, setup: MatchSetup): World {
+  const terrain = generateTerrain(setup.seed);
   const world: World = {
     tick: 0,
     seed: setup.seed,
     rngState: setup.seed | 0,
+    terrain,
+    nav: { toCore: [new Int32Array(0), new Int32Array(0)] },
     nextId: 1,
-    teams: [
-      makeTeam(content, 0, setup.races[0]),
-      makeTeam(content, 1, setup.races[1]),
-    ],
+    teams: [makeTeam(content, 0, setup.races[0]), makeTeam(content, 1, setup.races[1])],
     entities: [],
     commands: [],
     waves: {
@@ -54,9 +60,12 @@ export function createWorld(content: Content, setup: MatchSetup): World {
     events: [],
   };
 
+  const origins = [terrain.start, terrain.nest] as const;
   for (const team of world.teams) {
-    const { col, row } = SIDES[team.id].core;
-    team.coreId = placeBuilding(world, content, team.id, "core", col, row, true).id;
+    const { col, row } = origins[team.id];
+    const core = placeBuilding(world, content, team.id, content.races[team.raceId]!.core, col, row, true);
+    team.coreId = core.id;
+    world.nav.toCore[team.id] = flowField(terrain, footprintTiles(terrain, core));
   }
 
   return world;
@@ -73,6 +82,16 @@ function makeTeam(content: Content, id: TeamId, raceId: string) {
     incomeTimer: BASE_INCOME.intervalTicks,
     coreId: -1,
   };
+}
+
+function footprintTiles(terrain: Terrain, building: Building): number[] {
+  const tiles: number[] = [];
+  for (let row = building.row; row < building.row + building.footprint; row += 1) {
+    for (let col = building.col; col < building.col + building.footprint; col += 1) {
+      tiles.push(row * terrain.cols + col);
+    }
+  }
+  return tiles;
 }
 
 /**
@@ -115,33 +134,58 @@ export function step(world: World, content: Content): void {
 // --- commands --------------------------------------------------------------
 
 function applyCommands(ctx: TickContext): void {
-  const { world } = ctx;
+  const { world, content } = ctx;
   while (world.commands.length > 0 && world.commands[0]!.tick <= world.tick) {
     const command = world.commands.shift()!;
-    const reason = applyBuild(ctx, command);
-    if (reason) world.events.push({ type: "rejected", command, reason });
+    const reason = canPlace(world, content, command.team, command.building, command.col, command.row);
+    if (reason) {
+      world.events.push({ type: "rejected", command, reason });
+      continue;
+    }
+    const team = world.teams[command.team];
+    team.compute -= buildCost(content, team.raceId, command.building);
+    const building = placeBuilding(world, content, team.id, command.building, command.col, command.row, false);
+    ctx.byId.set(building.id, building);
   }
 }
 
-/** Returns a rejection reason, or null when the build was placed. */
-function applyBuild(ctx: TickContext, command: Command): string | null {
-  const { world, content } = ctx;
-  const team = world.teams[command.team];
+export function buildCost(content: Content, raceId: string, buildingId: string): number {
+  return Math.round(content.buildings[buildingId]!.cost * content.races[raceId]!.modifiers.costMultiplier);
+}
+
+/**
+ * Why a building can't go here, or null when it can. Shared by the sim and
+ * the placement preview so they never disagree.
+ */
+export function canPlace(
+  world: World,
+  content: Content,
+  teamId: TeamId,
+  buildingId: string,
+  col: number,
+  row: number,
+): string | null {
+  const team = world.teams[teamId];
   const race = content.races[team.raceId]!;
-  const def = content.buildings[command.building];
+  const def = content.buildings[buildingId];
+  if (!def || !race.buildings.includes(buildingId)) return "not in this race's roster";
 
-  if (!def || !race.buildings.includes(command.building)) return "not in this race's roster";
-  if (!inZone(SIDES[team.id].buildZone, command.col, command.row, def.footprint)) {
-    return "outside build zone";
+  for (let r = row; r < row + def.footprint; r += 1) {
+    for (let c = col; c < col + def.footprint; c += 1) {
+      if (tileAt(world.terrain, c, r) !== TILE_OPEN) return "terrain is not buildable";
+    }
   }
-  if (isOccupied(world, command.col, command.row, def.footprint)) return "tile occupied";
 
-  const cost = Math.round(def.cost * race.modifiers.costMultiplier);
-  if (team.compute < cost) return "not enough compute";
+  const core = world.entities.find((entity) => entity.id === team.coreId);
+  if (!core) return "no core";
+  const center = footprintCenter(col, row, def.footprint);
+  const dx = center.x - core.x;
+  const dy = center.y - core.y;
+  const reach = BUILD_RADIUS_TILES * TILE;
+  if (dx * dx + dy * dy > reach * reach) return "too far from your core";
 
-  team.compute -= cost;
-  const building = placeBuilding(world, content, team.id, command.building, command.col, command.row, false);
-  ctx.byId.set(building.id, building);
+  if (isOccupied(world, col, row, def.footprint)) return "tile occupied";
+  if (team.compute < buildCost(content, team.raceId, buildingId)) return "not enough compute";
   return null;
 }
 
@@ -243,18 +287,36 @@ function tickConstruction(ctx: TickContext): void {
 
 // --- spawning --------------------------------------------------------------
 
-function spawnUnit(ctx: TickContext, team: TeamId, unitId: string, x: number, y: number): Unit {
+/** Nearest walkable spot to (x, y), searching outward in a fixed pattern. */
+function walkableSpot(terrain: Terrain, x: number, y: number, fallbackX: number, fallbackY: number) {
+  if (isWalkablePoint(terrain, x, y)) return { x, y };
+  for (let ring = 1; ring <= 4; ring += 1) {
+    const d = ring * (TILE / 2);
+    const offsets = [
+      [0, -d], [d, 0], [0, d], [-d, 0], [d, -d], [d, d], [-d, d], [-d, -d],
+    ] as const;
+    for (const [ox, oy] of offsets) {
+      if (isWalkablePoint(terrain, x + ox, y + oy)) return { x: x + ox, y: y + oy };
+    }
+  }
+  return { x: fallbackX, y: fallbackY };
+}
+
+function spawnUnit(ctx: TickContext, team: TeamId, unitId: string, from: Entity, x: number, y: number): Unit {
   const { world, content } = ctx;
   const def = content.units[unitId]!;
   const race = content.races[world.teams[team].raceId]!;
   const hp = Math.round(def.hp * race.modifiers.unitHpMultiplier);
+  const spot = walkableSpot(world.terrain, x, y, from.x, from.y);
   const unit: Unit = {
     kind: "unit",
     id: world.nextId++,
     team,
     defId: unitId,
-    x,
-    y: clamp(y, def.size, HEIGHT - def.size),
+    x: spot.x,
+    y: spot.y,
+    homeX: spot.x,
+    homeY: spot.y,
     hp,
     maxHp: hp,
     armor: def.armor,
@@ -279,11 +341,10 @@ function tickSpawners(ctx: TickContext): void {
     if (!spawn || building.buildRemaining > 0) continue;
     building.spawnTimer -= 1;
     if (building.spawnTimer > 0) continue;
-    const direction = SIDES[building.team].direction;
     for (let i = 0; i < spawn.count; i += 1) {
-      const x = building.x + direction * (building.radius + 10);
-      const y = building.y + randomInt(world, -14, 14);
-      spawnUnit(ctx, building.team, spawn.unit, x, y);
+      const x = building.x + randomInt(world, -20, 20);
+      const y = building.y + building.radius + 10 + randomInt(world, 0, 8);
+      spawnUnit(ctx, building.team, spawn.unit, building, x, y);
     }
     building.spawnTimer = spawnInterval(content, world.teams[building.team].raceId, building.defId);
   }
@@ -291,7 +352,7 @@ function tickSpawners(ctx: TickContext): void {
 
 /**
  * The horde is not special: it is a team whose controller is the wave
- * director instead of a human. Swap the controller and you have PvP.
+ * director instead of a human. Its core is the nest the waves pour out of.
  */
 function tickWaveDirector(ctx: TickContext): void {
   const { world, content } = ctx;
@@ -315,12 +376,13 @@ function tickWaveDirector(ctx: TickContext): void {
     if (next) state.nextWaveTick = world.tick + next.delayTicks;
   }
 
-  const core = ctx.byId.get(team.coreId);
-  if (!core || core.hp <= 0) return;
-  const direction = SIDES[team.id].direction;
+  const nest = ctx.byId.get(team.coreId);
+  if (!nest || nest.hp <= 0) return;
   while (state.pending.length > 0 && state.pending[0]!.tick <= world.tick) {
     const spawn = state.pending.shift()!;
-    spawnUnit(ctx, team.id, spawn.unit, core.x + direction * (core.radius + 12), core.y + randomInt(world, -140, 140));
+    const x = nest.x + randomInt(world, -70, 70);
+    const y = nest.y + randomInt(world, -70, 70);
+    spawnUnit(ctx, team.id, spawn.unit, nest, x, y);
   }
 }
 
@@ -330,6 +392,10 @@ function edgeDistance(a: Entity, b: Entity): number {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   return Math.sqrt(dx * dx + dy * dy) - a.radius - b.radius;
+}
+
+function canSee(ctx: TickContext, from: Entity, to: Entity): boolean {
+  return hasLineOfSight(ctx.world.terrain, from.x, from.y, to.x, to.y);
 }
 
 function nearestEnemy(
@@ -345,6 +411,7 @@ function nearestEnemy(
     const distance = edgeDistance(from, entity);
     // Strict < keeps the lowest id on ties: deterministic.
     if (distance < bestDistance || (best === null && distance <= maxDistance)) {
+      if (from.kind === "unit" && !canSee(ctx, from, entity)) continue;
       best = entity;
       bestDistance = distance;
     }
@@ -395,37 +462,72 @@ function tickBuildingAttacks(ctx: TickContext): void {
   }
 }
 
+function distanceFromHome(unit: Unit): number {
+  const dx = unit.x - unit.homeX;
+  const dy = unit.y - unit.homeY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+/**
+ * Two behaviors for now:
+ * - Guards (human-controlled teams) hold near where they spawned and fight
+ *   anything that comes within reach, then walk home.
+ * - Raiders (the wave director) fight what they meet and otherwise follow the
+ *   flow field to the nearest enemy core.
+ */
 function tickUnits(ctx: TickContext): void {
   const { world, content } = ctx;
+  const { terrain } = world;
   for (const unit of world.entities) {
     if (unit.kind !== "unit" || unit.hp <= 0) continue;
     const def = content.units[unit.defId]!;
+    const guard = world.teams[unit.team].controller === "human";
+    const enemyTeam: TeamId = unit.team === 0 ? 1 : 0;
 
     let target = unit.targetId === null ? undefined : ctx.byId.get(unit.targetId);
-    if (!target || target.hp <= 0 || edgeDistance(unit, target) > def.aggro * LEASH_MULTIPLIER) {
-      target = nearestEnemy(ctx, unit, def.aggro) ?? ctx.byId.get(world.teams[unit.team === 0 ? 1 : 0].coreId);
-    }
-    if (!target || target.hp <= 0) {
-      unit.targetId = null;
-      continue;
-    }
-    unit.targetId = target.id;
+    const keep =
+      target !== undefined &&
+      target.hp > 0 &&
+      edgeDistance(unit, target) <= def.aggro * LEASH_MULTIPLIER &&
+      (!guard || distanceFromHome(unit) <= GUARD_RADIUS) &&
+      canSee(ctx, unit, target);
+    if (!keep) target = nearestEnemy(ctx, unit, def.aggro) ?? undefined;
+    if (guard && target && distanceFromHome(unit) > GUARD_RADIUS) target = undefined;
+    unit.targetId = target?.id ?? null;
 
-    const distance = edgeDistance(unit, target);
-    if (distance <= def.range) {
-      if (unit.attackCooldown <= 0) {
-        dealDamage(ctx, unit, target, def.attackType, def.damage);
-        unit.attackCooldown = def.cooldownTicks;
+    if (target) {
+      const distance = edgeDistance(unit, target);
+      if (distance <= def.range) {
+        if (unit.attackCooldown <= 0) {
+          dealDamage(ctx, unit, target, def.attackType, def.damage);
+          unit.attackCooldown = def.cooldownTicks;
+        }
+      } else {
+        moveToward(terrain, unit, target.x, target.y, Math.min(def.speed, distance - def.range + 0.5));
       }
       continue;
     }
 
-    const dx = target.x - unit.x;
-    const dy = target.y - unit.y;
-    const length = Math.sqrt(dx * dx + dy * dy);
-    const stride = Math.min(def.speed, distance - def.range + 0.5);
-    unit.x = clamp(unit.x + (dx / length) * stride, unit.radius, WIDTH - unit.radius);
-    unit.y = clamp(unit.y + (dy / length) * stride, unit.radius, HEIGHT - unit.radius);
+    if (guard) {
+      if (distanceFromHome(unit) > HOME_SLACK) moveToward(terrain, unit, unit.homeX, unit.homeY, def.speed);
+      continue;
+    }
+
+    // Raider with nothing in sight: attack the enemy core if it's in reach,
+    // otherwise walk the flow field toward it.
+    const core = ctx.byId.get(world.teams[enemyTeam].coreId);
+    if (!core || core.hp <= 0) continue;
+    const distance = edgeDistance(unit, core);
+    if (distance <= def.range) {
+      unit.targetId = core.id;
+      if (unit.attackCooldown <= 0) {
+        dealDamage(ctx, unit, core, def.attackType, def.damage);
+        unit.attackCooldown = def.cooldownTicks;
+      }
+      continue;
+    }
+    const waypoint = canSee(ctx, unit, core) ? core : nextStep(terrain, world.nav.toCore[enemyTeam], unit.x, unit.y);
+    if (waypoint) moveToward(terrain, unit, waypoint.x, waypoint.y, def.speed);
   }
 }
 
@@ -448,8 +550,4 @@ function checkOutcome(ctx: TickContext): void {
   if (allWavesSent && !hordeAlive) {
     world.outcome = { winner: horde.id === 0 ? 1 : 0, reason: "survived", tick: world.tick };
   }
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return value < min ? min : value > max ? max : value;
 }

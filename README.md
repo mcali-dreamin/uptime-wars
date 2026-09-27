@@ -1,9 +1,9 @@
 # Uptime Wars
 
-Tech-themed castle defense in the browser. Build compute, let your racks fork
-processes into the lane, and keep your core data center online while the
-botnet comes in waves. Warcraft III castle-fight mechanics, reskinned for
-compute wars.
+Survival on the open web, in the browser. Every match generates a fresh patch
+of the internet from a seed: dead links, data swamps, data wells, and a
+malware nest somewhere far off-screen. Build around your core, let your racks
+fork defenders, and keep your uptime while the crawlers come in waves.
 
 > Prototype. Balance, art, and most of the design are placeholders.
 
@@ -14,11 +14,14 @@ npm install
 npm run dev
 ```
 
-- `1`-`4` or click: pick a building. Click in your (green) build zone to place it.
-  Shift-click to place several.
-- Right-click / `Esc`: cancel. `Space`: pause. `R`: restart after a match.
+- `1`-`4` or click: pick a building. Click near your core (the ring shows your
+  build radius) to place it. Shift-click to place several.
+- `WASD` / arrows, screen edge, or drag: pan. Wheel: zoom. Click the minimap
+  to jump. `Space` / `H`: back to your core.
+- Right-click / `Esc`: cancel. `P`: pause. `R`: new map after a match.
 
-You win by clearing every wave, or by taking the enemy core offline.
+You win by clearing every wave, or by taking the nest offline.
+Add `?debug` to the URL to expose live state as `window.uptime`.
 
 ## How it's built
 
@@ -26,7 +29,9 @@ You win by clearing every wave, or by taking the enemy core offline.
 src/
   content/   JSON: races, buildings, units, waves, damage table
   sim/       deterministic simulation (no DOM, no clock, no Math.random)
-  render/    PixiJS renderer (reads the world, never writes it)
+    terrain.ts   seeded map generation (noise, pockets sealed, nest placement)
+    nav.ts       flow-field pathfinding, line of sight, wall sliding
+  render/    PixiJS renderer + camera + minimap (reads the world, never writes it)
   main.ts    loop, input, HUD
 tests/       simulation tests (vitest)
 ```
@@ -44,9 +49,17 @@ every machine (`hashWorld` checks this). That is deliberate:
 Determinism rules live at the top of `src/sim/world.ts`. Break them and the
 determinism tests fail.
 
+**The map is a function of the seed.** Terrain and navigation are regenerated
+from the seed on every machine, never sent over the wire, and kept out of the
+state hash. Tests check 40 seeds for a clear start, a reachable far-off nest,
+and room to build.
+
+**Many units, one path search.** Creeps follow a flow field: one Dijkstra pass
+outward from the target core, which every creep then walks downhill. Guards
+hold near where they spawned and fight whatever comes within reach.
+
 **The horde is just a team.** Team 1 is the Botnet race, driven by the wave
-director instead of a human. Swapping the controller is the path to PvP and to
-mixed human/AI teams without a second ruleset.
+director instead of a human.
 
 **Races are data.** A race is a roster of buildings plus modifiers (the Open
 Source Collective's spawners run 15% faster). New races, units, buildings, and
@@ -54,15 +67,17 @@ waves are content changes, not code changes. Content is validated on load.
 
 ## Roadmap
 
-- Heroes: the one unit you control directly, with XP and abilities
-- Security abilities: zero-day (one use, then the enemy is patched against it),
-  RCE (take control), ransomware (lock a building until paid), worm (chain),
-  DDoS (area slow), honeypot, backups
+Direction: survival on a procedurally generated open web.
+
+- [x] Big map, camera, minimap
+- [x] Seeded terrain + flow-field pathfinding
+- [ ] Builder start: land a builder and choose where your core goes
+- [ ] Economy from what you build on data wells, replacing flat income
+- [ ] Wandering creeps, camps, and escalating creep waves
+- [ ] Rally points for spawned defenders
+- Heroes and security abilities (zero-day, RCE, ransomware, worm, DDoS, honeypot)
 - More races: Hyperscaler, Hacker crew, State actor / APT
-- Lane pathing and unit separation
-- Content from WordPress: ability/unit/wave definitions as posts, read at build time
-- Accounts, saves, leaderboards via Spacefast Zero
-- Lockstep co-op and PvP over a small command relay
+- Content from WordPress, saves and leaderboards via Spacefast Zero
 
 ## Releases and deploys
 

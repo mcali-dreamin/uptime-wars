@@ -1,9 +1,20 @@
 export * from "./content";
 export * from "./map";
 export * from "./types";
-export { createWorld, queueCommand, step, isOccupied, STARTING_COMPUTE, BASE_INCOME } from "./world";
+export * from "./terrain";
+export { flowField, nextStep, hasLineOfSight, UNREACHABLE } from "./nav";
+export {
+  createWorld,
+  queueCommand,
+  step,
+  canPlace,
+  buildCost,
+  isOccupied,
+  STARTING_COMPUTE,
+  BASE_INCOME,
+} from "./world";
 export type { MatchSetup } from "./world";
-export { hashWorld } from "./hash";
+export { hashWorld, hashTerrain } from "./hash";
 
 import type { Content } from "./content";
 import type { Command, World } from "./types";

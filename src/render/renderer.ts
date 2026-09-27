@@ -1,11 +1,29 @@
 // Renderer. Reads the world, never writes it. Interpolates between the last
 // two simulation ticks so 20 Hz logic still draws smoothly at display rate.
+//
+// The map is bigger than the screen: a camera pans and zooms over it, a
+// minimap shows the whole thing, and anything outside the view is skipped.
 
 import { Application, Container, Graphics, Text } from "pixi.js";
-import { COLS, HEIGHT, ROWS, SIDES, TILE, WIDTH, type Content, type World } from "../sim";
+import {
+  BUILD_RADIUS_TILES,
+  TILE,
+  TILE_BLOCKED,
+  TILE_SLOW,
+  type Content,
+  type Terrain,
+  type World,
+} from "../sim";
+import { Camera } from "./camera";
 
 const TEAM_COLORS = [0x4ade80, 0xf87171] as const;
 const SHOT_TTL_MS = 120;
+const MINIMAP_WIDTH = 240;
+const MINIMAP_MARGIN = 12;
+const TERRAIN_COLORS: Record<number, number> = {
+  [TILE_BLOCKED]: 0x1c2733,
+  [TILE_SLOW]: 0x0f2530,
+};
 
 interface Shot {
   x1: number;
@@ -25,29 +43,54 @@ export interface Ghost {
 
 export class Renderer {
   readonly app = new Application();
-  readonly stage = new Container();
+  readonly camera = new Camera();
+  private readonly worldLayer = new Container();
+  private readonly terrainLayer = new Graphics();
   private readonly dynamic = new Graphics();
   private readonly overlay = new Graphics();
+  private readonly minimap = new Container();
+  private readonly minimapTerrain = new Graphics();
+  private readonly minimapDynamic = new Graphics();
   private readonly banner = new Text({
     text: "",
-    style: { fill: 0xd6e2f0, fontFamily: "monospace", fontSize: 44, fontWeight: "bold" },
+    style: { fill: 0xd6e2f0, fontFamily: "monospace", fontSize: 40, fontWeight: "bold" },
   });
   private previous = new Map<number, { x: number; y: number }>();
   private shots: Shot[] = [];
   private bannerAge = Infinity;
+  private terrain: Terrain | null = null;
+  private minimapScale = 1;
 
   async init(host: HTMLElement): Promise<void> {
     await this.app.init({ resizeTo: host, background: 0x0b0f14, antialias: true });
     host.appendChild(this.app.canvas);
+    // resizeTo only listens for window resizes; the stage also changes size
+    // when the HUD around it reflows.
+    new ResizeObserver(() => this.app.resize()).observe(host);
 
-    this.stage.addChild(this.drawBackground(), this.dynamic, this.overlay);
-    this.banner.anchor.set(0.5);
-    this.banner.position.set(WIDTH / 2, 80);
-    this.stage.addChild(this.banner);
-    this.app.stage.addChild(this.stage);
+    this.worldLayer.addChild(this.terrainLayer, this.dynamic, this.overlay);
+    this.minimap.addChild(this.minimapTerrain, this.minimapDynamic);
+    this.banner.anchor.set(0.5, 0);
+    this.app.stage.addChild(this.worldLayer, this.minimap, this.banner);
+  }
 
-    this.fit();
-    this.app.renderer.on("resize", () => this.fit());
+  /** Call when a new match starts: redraws terrain and centers on the core. */
+  setWorld(world: World): void {
+    const { terrain } = world;
+    this.terrain = terrain;
+    this.previous.clear();
+    this.shots = [];
+    this.camera.setBounds(terrain.cols * TILE, terrain.rows * TILE);
+    this.drawTerrain(this.terrainLayer, terrain, TILE);
+    this.minimapScale = MINIMAP_WIDTH / (terrain.cols * TILE);
+    this.minimapTerrain.clear();
+    this.minimapTerrain
+      .rect(0, 0, terrain.cols * TILE * this.minimapScale, terrain.rows * TILE * this.minimapScale)
+      .fill({ color: 0x0e141b })
+      .stroke({ width: 1, color: 0x243142 });
+    this.drawTerrain(this.minimapTerrain, terrain, TILE * this.minimapScale);
+    const core = world.entities.find((entity) => entity.id === world.teams[0].coreId);
+    if (core) this.camera.centerOn(core.x, core.y);
   }
 
   /** Call right before stepping so interpolation has the pre-step positions. */
@@ -69,29 +112,34 @@ export class Renderer {
   }
 
   draw(world: World, content: Content, alpha: number, deltaMs: number, ghost: Ghost | null): void {
+    const { width, height } = this.app.screen;
+    this.camera.setViewport(width, height);
+    this.camera.update(deltaMs);
+    this.worldLayer.scale.set(this.camera.zoom);
+    this.worldLayer.position.set(width / 2 - this.camera.x * this.camera.zoom, height / 2 - this.camera.y * this.camera.zoom);
+    const view = this.camera.view(64);
+
     const g = this.dynamic;
     g.clear();
-
     for (const entity of world.entities) {
-      const color = TEAM_COLORS[entity.team];
-      if (entity.kind === "building") {
-        const size = entity.footprint * TILE - 6;
-        const left = entity.x - size / 2;
-        const top = entity.y - size / 2;
-        const building = entity.buildRemaining > 0;
-        g.rect(left, top, size, size).fill({ color: 0x121922 }).stroke({ width: 2, color, alpha: building ? 0.4 : 1 });
-        this.drawGlyph(g, entity.defId, entity.x, entity.y, size, color, building ? 0.35 : 0.9);
-        this.drawHealth(g, left, top - 7, size, entity.hp / entity.maxHp);
-        if (entity.defId === "core" || content.buildings[entity.defId]?.attack) {
-          const range = content.buildings[entity.defId]!.attack!.range + entity.radius;
-          g.circle(entity.x, entity.y, range).stroke({ width: 1, color, alpha: 0.08 });
-        }
-        continue;
-      }
-
-      const prev = this.previous.get(entity.id);
+      const prev = entity.kind === "unit" ? this.previous.get(entity.id) : undefined;
       const x = prev ? prev.x + (entity.x - prev.x) * alpha : entity.x;
       const y = prev ? prev.y + (entity.y - prev.y) * alpha : entity.y;
+      if (x < view.left || x > view.right || y < view.top || y > view.bottom) continue;
+
+      const color = TEAM_COLORS[entity.team];
+      if (entity.kind === "building") {
+        const size = entity.footprint * TILE - 4;
+        const left = x - size / 2;
+        const top = y - size / 2;
+        const building = entity.buildRemaining > 0;
+        g.rect(left, top, size, size).fill({ color: 0x121922 }).stroke({ width: 2, color, alpha: building ? 0.4 : 1 });
+        this.drawGlyph(g, entity.defId, x, y, size, color, building ? 0.35 : 0.9);
+        this.drawHealth(g, left, top - 6, size, entity.hp / entity.maxHp);
+        const attack = content.buildings[entity.defId]?.attack;
+        if (attack) g.circle(x, y, attack.range + entity.radius).stroke({ width: 1, color, alpha: 0.08 });
+        continue;
+      }
       g.circle(x, y, entity.radius).fill({ color, alpha: 0.85 });
       if (entity.hp < entity.maxHp) {
         this.drawHealth(g, x - entity.radius, y - entity.radius - 6, entity.radius * 2, entity.hp / entity.maxHp);
@@ -107,53 +155,90 @@ export class Renderer {
 
     this.overlay.clear();
     if (ghost) {
+      const core = world.entities.find((entity) => entity.id === world.teams[0].coreId);
+      if (core) this.overlay.circle(core.x, core.y, BUILD_RADIUS_TILES * TILE).stroke({ width: 2, color: 0x4ade80, alpha: 0.25 });
       const size = ghost.footprint * TILE;
       this.overlay
         .rect(ghost.col * TILE, ghost.row * TILE, size, size)
-        .fill({ color: ghost.valid ? 0x4ade80 : 0xf87171, alpha: 0.25 });
+        .fill({ color: ghost.valid ? 0x4ade80 : 0xf87171, alpha: 0.3 });
     }
 
+    this.drawMinimap(world, width, height);
+
+    this.banner.position.set(width / 2, 24);
     this.bannerAge += deltaMs;
     this.banner.alpha = world.outcome ? 1 : Math.max(0, 1 - this.bannerAge / 2500);
   }
 
-  /** Convert a pointer position on the canvas to world pixels. */
+  /** Canvas-relative pointer to world pixels. */
   toWorld(clientX: number, clientY: number): { x: number; y: number } {
     const rect = this.app.canvas.getBoundingClientRect();
-    const scale = this.stage.scale.x;
-    return {
-      x: (clientX - rect.left - this.stage.x) / scale,
-      y: (clientY - rect.top - this.stage.y) / scale,
-    };
+    return this.camera.screenToWorld(clientX - rect.left, clientY - rect.top);
   }
 
-  private fit(): void {
-    const { width, height } = this.app.screen;
-    const scale = Math.min(width / WIDTH, height / HEIGHT);
-    this.stage.scale.set(scale);
-    this.stage.position.set((width - WIDTH * scale) / 2, (height - HEIGHT * scale) / 2);
+  /** World point under the pointer if it is over the minimap, else null. */
+  minimapHit(clientX: number, clientY: number): { x: number; y: number } | null {
+    const rect = this.app.canvas.getBoundingClientRect();
+    const lx = clientX - rect.left - this.minimap.x;
+    const ly = clientY - rect.top - this.minimap.y;
+    if (!this.terrain) return null;
+    const w = this.terrain.cols * TILE * this.minimapScale;
+    const h = this.terrain.rows * TILE * this.minimapScale;
+    if (lx < 0 || ly < 0 || lx > w || ly > h) return null;
+    return { x: lx / this.minimapScale, y: ly / this.minimapScale };
   }
 
-  private drawBackground(): Graphics {
-    const g = new Graphics();
-    g.rect(0, 0, WIDTH, HEIGHT).fill({ color: 0x0e141b });
-    for (const [index, side] of SIDES.entries()) {
-      const zone = side.buildZone;
-      g.rect(
-        zone.colMin * TILE,
-        zone.rowMin * TILE,
-        (zone.colMax - zone.colMin + 1) * TILE,
-        (zone.rowMax - zone.rowMin + 1) * TILE,
-      ).fill({ color: TEAM_COLORS[index as 0 | 1], alpha: 0.04 });
+  private drawMinimap(world: World, width: number, height: number): void {
+    if (!this.terrain) return;
+    const s = this.minimapScale;
+    const h = this.terrain.rows * TILE * s;
+    this.minimap.position.set(width - MINIMAP_WIDTH - MINIMAP_MARGIN, height - h - MINIMAP_MARGIN);
+
+    const g = this.minimapDynamic;
+    g.clear();
+    for (const entity of world.entities) {
+      const color = TEAM_COLORS[entity.team];
+      if (entity.kind === "building") {
+        const size = Math.max(3, entity.footprint * TILE * s);
+        g.rect(entity.x * s - size / 2, entity.y * s - size / 2, size, size).fill({ color });
+      } else {
+        g.rect(entity.x * s - 1, entity.y * s - 1, 2, 2).fill({ color });
+      }
     }
-    for (let col = 0; col <= COLS; col += 1) {
-      g.moveTo(col * TILE, 0).lineTo(col * TILE, HEIGHT);
+    const view = this.camera.view(0);
+    g.rect(view.left * s, view.top * s, (view.right - view.left) * s, (view.bottom - view.top) * s).stroke({
+      width: 1,
+      color: 0xd6e2f0,
+      alpha: 0.8,
+    });
+  }
+
+  /** Terrain, run-length merged per row to keep the shape count down. */
+  private drawTerrain(g: Graphics, terrain: Terrain, cell: number): void {
+    if (g === this.terrainLayer) {
+      g.clear();
+      g.rect(0, 0, terrain.cols * cell, terrain.rows * cell).fill({ color: 0x0e141b });
     }
-    for (let row = 0; row <= ROWS; row += 1) {
-      g.moveTo(0, row * TILE).lineTo(WIDTH, row * TILE);
+    for (let row = 0; row < terrain.rows; row += 1) {
+      let col = 0;
+      while (col < terrain.cols) {
+        const tile = terrain.tiles[row * terrain.cols + col]!;
+        let end = col + 1;
+        while (end < terrain.cols && terrain.tiles[row * terrain.cols + end] === tile) end += 1;
+        const color = TERRAIN_COLORS[tile];
+        if (color !== undefined) g.rect(col * cell, row * cell, (end - col) * cell, cell).fill({ color });
+        col = end;
+      }
     }
-    g.stroke({ width: 1, color: 0x1a2430 });
-    return g;
+    for (const node of terrain.resources) {
+      const cx = (node.col + 0.5) * cell;
+      const cy = (node.row + 0.5) * cell;
+      const r = Math.max(1.5, cell * 0.35);
+      g.moveTo(cx, cy - r).lineTo(cx + r, cy).lineTo(cx, cy + r).lineTo(cx - r, cy).closePath().fill({ color: 0x38bdf8 });
+    }
+    if (g === this.terrainLayer) {
+      g.rect(0, 0, terrain.cols * cell, terrain.rows * cell).stroke({ width: 2, color: 0x243142 });
+    }
   }
 
   private drawHealth(g: Graphics, x: number, y: number, width: number, ratio: number): void {
@@ -168,11 +253,15 @@ export class Renderer {
         g.rect(x - s, y - s, s * 2, s * 2).stroke({ width: 3, color, alpha });
         g.circle(x, y, s * 0.5).fill({ color, alpha });
         break;
+      case "malware-nest":
+        g.circle(x, y, s).stroke({ width: 3, color, alpha });
+        g.circle(x, y, s * 0.4).fill({ color, alpha });
+        break;
       case "server-rack":
         for (let i = -1; i <= 1; i += 1) g.rect(x - s, y + i * s * 0.7 - 2, s * 2, 4).fill({ color, alpha });
         break;
       case "gpu-cluster":
-        for (const dx of [-1, 1]) for (const dy of [-1, 1]) g.rect(x + dx * s * 0.5 - 4, y + dy * s * 0.5 - 4, 8, 8).fill({ color, alpha });
+        for (const dx of [-1, 1]) for (const dy of [-1, 1]) g.rect(x + dx * s * 0.5 - 3, y + dy * s * 0.5 - 3, 6, 6).fill({ color, alpha });
         break;
       case "firewall":
         g.moveTo(x - s, y + s).lineTo(x, y - s).lineTo(x + s, y + s).closePath().stroke({ width: 2, color, alpha });
