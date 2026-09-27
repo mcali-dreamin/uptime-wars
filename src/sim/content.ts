@@ -30,6 +30,8 @@ export interface UnitDef {
   bounty: number;
   /** Radius in pixels. */
   size: number;
+  /** How far this unit reveals the fog for its owner, in pixels. */
+  sight?: number;
 }
 
 export interface BuildingAttack {
@@ -50,6 +52,8 @@ export interface BuildingDef {
   /** Tiles per side. */
   footprint: number;
   buildable: boolean;
+  /** How far this building reveals the fog for its owner, in pixels. */
+  sight?: number;
   /** Spawns `count` units every interval, keeping at most `maxAlive` of its own alive. */
   spawn?: { unit: string; intervalTicks: number; count: number; maxAlive: number };
   attack?: BuildingAttack;
@@ -62,8 +66,14 @@ export interface RaceDef {
   name: string;
   specialty: string;
   controller: Controller;
-  /** Unbuildable building this race starts with; losing it loses the match. */
+  /** Unbuildable building this race depends on; losing it loses the match. */
   core: string;
+  /**
+   * Unit the race starts with instead of a core. It walks the map and founds
+   * the core wherever the player chooses. Races without one start with their
+   * core in place.
+   */
+  builder?: string;
   buildings: string[];
   modifiers: {
     spawnIntervalMultiplier: number;
@@ -78,7 +88,10 @@ export interface RaceDef {
  * then; bosses join on a cadence; every creep gets tougher as waves go on.
  */
 export interface WavesDef {
+  /** First wave comes this long after your core goes online... */
   firstWaveTicks: number;
+  /** ...or this long after the match starts, whichever is sooner. */
+  graceTicks: number;
   spawnSpacingTicks: number;
   /** Each wave is shuffled and cut into packs of this many units. */
   packSize: { min: number; max: number };
@@ -132,6 +145,7 @@ export function validateContent(content: Content): void {
     if (!core) errors.push(`race ${id} has unknown core ${race.core}`);
     else if (core.buildable) errors.push(`race ${id} core ${race.core} must not be buildable`);
     else if (core.footprint !== 2) errors.push(`race ${id} core ${race.core} must have a 2x2 footprint`);
+    if (race.builder && !content.units[race.builder]) errors.push(`race ${id} has unknown builder ${race.builder}`);
     for (const buildingId of race.buildings) {
       const building = content.buildings[buildingId];
       if (!building) errors.push(`race ${id} lists unknown building ${buildingId}`);

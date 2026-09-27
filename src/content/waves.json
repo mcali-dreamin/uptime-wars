@@ -54,5 +54,6 @@
     "Supply chain",
     "Botnet surge",
     "Rootkit season"
-  ]
+  ],
+  "graceTicks": 3600
 }

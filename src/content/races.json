@@ -14,7 +14,8 @@
       "spawnIntervalMultiplier": 0.85,
       "costMultiplier": 1,
       "unitHpMultiplier": 1
-    }
+    },
+    "builder": "deploy-agent"
   },
   "botnet": {
     "name": "The Botnet",

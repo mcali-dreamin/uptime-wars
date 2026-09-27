@@ -14,7 +14,8 @@
       "damage": 7,
       "range": 170,
       "cooldownTicks": 24
-    }
+    },
+    "sight": 520
   },
   "server-rack": {
     "name": "Server Rack",
@@ -31,7 +32,8 @@
       "intervalTicks": 160,
       "count": 2,
       "maxAlive": 6
-    }
+    },
+    "sight": 300
   },
   "gpu-cluster": {
     "name": "GPU Cluster",
@@ -48,7 +50,8 @@
       "intervalTicks": 240,
       "count": 1,
       "maxAlive": 4
-    }
+    },
+    "sight": 300
   },
   "firewall": {
     "name": "Firewall",
@@ -65,7 +68,8 @@
       "damage": 14,
       "range": 160,
       "cooldownTicks": 14
-    }
+    },
+    "sight": 360
   },
   "solar-array": {
     "name": "Solar Array",
@@ -80,7 +84,8 @@
     "income": {
       "amount": 4,
       "intervalTicks": 20
-    }
+    },
+    "sight": 260
   },
   "malware-nest": {
     "name": "Malware Nest",

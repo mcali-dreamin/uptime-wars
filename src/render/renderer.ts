@@ -12,9 +12,11 @@ import {
   TILE_SLOW,
   type Content,
   type Terrain,
+  type Unit,
   type World,
 } from "../sim";
 import { Camera } from "./camera";
+import { Fog } from "./fog";
 
 const TEAM_COLORS = [0x4ade80, 0xf87171] as const;
 const SHOT_TTL_MS = 120;
@@ -49,6 +51,8 @@ export class Renderer {
   readonly app = new Application();
   readonly camera = new Camera();
   private readonly worldLayer = new Container();
+  /** `?reveal` in the URL turns fog off, for debugging. */
+  readonly fog = new Fog(!new URLSearchParams(location.search).has("reveal"));
   private readonly terrainLayer = new Graphics();
   private readonly dynamic = new Graphics();
   private readonly overlay = new Graphics();
@@ -72,8 +76,8 @@ export class Renderer {
     // when the HUD around it reflows.
     new ResizeObserver(() => this.app.resize()).observe(host);
 
-    this.worldLayer.addChild(this.terrainLayer, this.dynamic, this.overlay);
-    this.minimap.addChild(this.minimapTerrain, this.minimapDynamic);
+    this.worldLayer.addChild(this.terrainLayer, this.dynamic, this.fog.worldSprite, this.overlay);
+    this.minimap.addChild(this.minimapTerrain, this.fog.minimapSprite, this.minimapDynamic);
     this.banner.anchor.set(0.5, 0);
     this.app.stage.addChild(this.worldLayer, this.minimap, this.banner);
   }
@@ -93,8 +97,22 @@ export class Renderer {
       .fill({ color: 0x0e141b })
       .stroke({ width: 1, color: 0x243142 });
     this.drawTerrain(this.minimapTerrain, terrain, TILE * this.minimapScale);
-    const core = world.entities.find((entity) => entity.id === world.teams[0].coreId);
-    if (core) this.camera.centerOn(core.x, core.y);
+    this.fog.reset(world);
+    this.fog.setMinimapScale(this.minimapScale);
+    const home = this.home(world);
+    if (home) this.camera.centerOn(home.x, home.y);
+  }
+
+  /** Your core, or your builder before the core is founded. */
+  home(world: World) {
+    const team = world.teams[0];
+    return world.entities.find((entity) => entity.id === (team.coreId !== -1 ? team.coreId : team.builderId));
+  }
+
+  /** Whether the local player may see this entity right now. */
+  private shows(world: World, entity: World["entities"][number], x: number, y: number): boolean {
+    if (world.teams[entity.team].controller === "human") return true;
+    return entity.kind === "building" ? this.fog.isExplored(x, y) : this.fog.isVisible(x, y);
   }
 
   /** Call right before stepping so interpolation has the pre-step positions. */
@@ -106,6 +124,7 @@ export class Renderer {
   collectEvents(world: World): void {
     for (const event of world.events) {
       if (event.type === "shot") this.shots.push({ ...event, age: 0 });
+      if (event.type === "founded") this.showBanner("Core online. Build within the ring; waves are on their way.");
       if (event.type === "wave") {
         const boss = event.boss ? " · BOSS" : "";
         this.showBanner(`Wave ${event.wave}: ${event.name} · ${event.units} creeps in ${event.packs} packs${boss}`);
@@ -125,6 +144,7 @@ export class Renderer {
     this.worldLayer.scale.set(this.camera.zoom);
     this.worldLayer.position.set(width / 2 - this.camera.x * this.camera.zoom, height / 2 - this.camera.y * this.camera.zoom);
     const view = this.camera.view(64);
+    this.fog.update(world, content, 0, deltaMs);
 
     const g = this.dynamic;
     g.clear();
@@ -133,6 +153,7 @@ export class Renderer {
       const x = prev ? prev.x + (entity.x - prev.x) * alpha : entity.x;
       const y = prev ? prev.y + (entity.y - prev.y) * alpha : entity.y;
       if (x < view.left || x > view.right || y < view.top || y > view.bottom) continue;
+      if (!this.shows(world, entity, x, y)) continue;
 
       const color = TEAM_COLORS[entity.team];
       if (entity.kind === "building") {
@@ -147,6 +168,10 @@ export class Renderer {
         if (attack) g.circle(x, y, attack.range + entity.radius).stroke({ width: 1, color, alpha: 0.08 });
         continue;
       }
+      if (entity.mode === "builder") {
+        this.drawBuilder(g, entity, x, y);
+        continue;
+      }
       g.circle(x, y, entity.radius).fill({ color, alpha: 0.85 });
       if (entity.hp < entity.maxHp) {
         this.drawHealth(g, x - entity.radius, y - entity.radius - 6, entity.radius * 2, entity.hp / entity.maxHp);
@@ -155,8 +180,9 @@ export class Renderer {
 
     for (const shot of this.shots) {
       const fade = 1 - shot.age / SHOT_TTL_MS;
-      g.moveTo(shot.x1, shot.y1).lineTo(shot.x2, shot.y2).stroke({ width: 1.5, color: TEAM_COLORS[shot.team], alpha: fade });
       shot.age += deltaMs;
+      if (!this.fog.isVisible(shot.x1, shot.y1) && !this.fog.isVisible(shot.x2, shot.y2)) continue;
+      g.moveTo(shot.x1, shot.y1).lineTo(shot.x2, shot.y2).stroke({ width: 1.5, color: TEAM_COLORS[shot.team], alpha: fade });
     }
     this.shots = this.shots.filter((shot) => shot.age < SHOT_TTL_MS);
 
@@ -209,6 +235,7 @@ export class Renderer {
     const g = this.minimapDynamic;
     g.clear();
     for (const entity of world.entities) {
+      if (!this.shows(world, entity, entity.x, entity.y)) continue;
       const color = TEAM_COLORS[entity.team];
       if (entity.kind === "building") {
         const size = Math.max(3, entity.footprint * TILE * s);
@@ -281,6 +308,25 @@ export class Renderer {
       }
     }
     g.fill({ color: 0x2b6f80, alpha: 0.8 });
+  }
+
+  /** The deploy agent: a diamond with a pulse, plus a line to where it's headed. */
+  private drawBuilder(g: Graphics, unit: Unit, x: number, y: number): void {
+    const color = TEAM_COLORS[unit.team];
+    const r = unit.radius + 3;
+    if (unit.moveTo) {
+      g.moveTo(x, y).lineTo(unit.moveTo.x, unit.moveTo.y).stroke({ width: 1.5, color, alpha: 0.35 });
+      if (unit.foundAt) {
+        const size = 2 * TILE;
+        g.rect(unit.foundAt.col * TILE, unit.foundAt.row * TILE, size, size).stroke({ width: 2, color, alpha: 0.7 });
+      } else {
+        g.circle(unit.moveTo.x, unit.moveTo.y, 8).stroke({ width: 2, color, alpha: 0.6 });
+      }
+    }
+    const pulse = 1 + 0.25 * Math.sin(performance.now() / 200);
+    g.circle(x, y, r * 1.6 * pulse).stroke({ width: 1.5, color, alpha: 0.35 });
+    g.moveTo(x, y - r).lineTo(x + r, y).lineTo(x, y + r).lineTo(x - r, y).closePath().fill({ color, alpha: 0.9 });
+    if (unit.hp < unit.maxHp) this.drawHealth(g, x - r, y - r - 7, r * 2, unit.hp / unit.maxHp);
   }
 
   private drawHealth(g: Graphics, x: number, y: number, width: number, ratio: number): void {

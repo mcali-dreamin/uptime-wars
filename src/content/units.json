@@ -12,7 +12,8 @@
     "speed": 3.0,
     "aggro": 180,
     "bounty": 0,
-    "size": 9
+    "size": 9,
+    "sight": 240
   },
   "inference-drone": {
     "name": "Inference Drone",
@@ -27,7 +28,8 @@
     "speed": 2.6,
     "aggro": 220,
     "bounty": 0,
-    "size": 8
+    "size": 8,
+    "sight": 240
   },
   "bot": {
     "name": "Bot",
@@ -88,5 +90,21 @@
     "aggro": 260,
     "bounty": 14,
     "size": 12
+  },
+  "deploy-agent": {
+    "name": "Deploy Agent",
+    "description": "Your builder. Scout the web and choose where your core goes. Can't fight; keep it alive.",
+    "hp": 150,
+    "armor": 1,
+    "armorType": "container",
+    "attackType": "brute",
+    "damage": 0,
+    "range": 0,
+    "cooldownTicks": 20,
+    "speed": 3.6,
+    "aggro": 0,
+    "bounty": 0,
+    "size": 11,
+    "sight": 420
   }
 }
