@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "publish:spacefast": "npm run build && npx -y spacefast publish dist"
+    "publish:spacefast": "npm run build && npx -y spacefast publish dist --space spc_de286293390947f7beb1d37d7205b6e5"
   },
   "dependencies": {
     "pixi.js": "^8.21.0"

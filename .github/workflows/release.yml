@@ -5,8 +5,8 @@
 # BREAKING CHANGE -> major; chore:/ci:/docs:/test: -> no release), runs the
 # quality gates, tags, writes the changelog, and creates the GitHub Release.
 #
-# When a release is cut, the deploy job publishes that exact tag to the
-# production Spacefast space. No release, no deploy.
+# When a release is cut, deploy.yml builds that tag, attaches the zip to the
+# release, and publishes it to Spacefast. No release, no deploy.
 
 name: Release
 
@@ -36,7 +36,7 @@ jobs:
     with:
       dry-run: ${{ inputs.dry-run || false }}
       node-version: '24'
-      # Private game, not an npm package. Deployment is the deploy job below.
+      # A private game, not an npm package. deploy.yml ships it.
       release-skip-publish: true
     secrets: inherit
 
@@ -45,6 +45,5 @@ jobs:
     if: needs.release.outputs.released == 'true'
     uses: ./.github/workflows/deploy.yml
     with:
-      ref: ${{ needs.release.outputs.release-tag }}
-      message: ${{ needs.release.outputs.release-tag }}
+      tag: ${{ needs.release.outputs.release-tag }}
     secrets: inherit

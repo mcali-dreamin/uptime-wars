@@ -1,47 +1,44 @@
-# Build a ref and publish it to the production Spacefast space.
+# Build a release and publish it to the production Spacefast space.
 #
-# Called by release.yml after every release. Also runnable by hand to
-# redeploy a tag (or main) without cutting a new release.
+# Called by release.yml after every Homeboy release. Also runnable by hand to
+# redeploy an existing tag without cutting a new release.
+#
+# The build is attached to the GitHub Release as uptime-wars-<tag>.zip, and
+# the bytes in that zip are exactly what gets published. Spacefast keeps every
+# publish as an immutable version, so rollback is `sf rollback` or promoting an
+# older version in the dashboard.
+#
+# Interim: this calls the Spacefast CLI directly. It moves behind a Homeboy
+# `spacefast` deployment provider once a second Spacefast project needs one.
 
 name: Deploy
 
 on:
   workflow_call:
     inputs:
-      ref:
-        description: 'Git ref (tag, branch, or SHA) to deploy'
+      tag:
+        description: 'Release tag to deploy (e.g. v0.2.0)'
         type: string
         required: true
-      message:
-        description: 'Version note shown in Spacefast history'
-        type: string
-        required: false
-        default: ''
     secrets:
       SPACEFAST_TOKEN:
         required: true
   workflow_dispatch:
     inputs:
-      ref:
-        description: 'Git ref (tag, branch, or SHA) to deploy'
+      tag:
+        description: 'Release tag to deploy (e.g. v0.2.0)'
         type: string
         required: true
-        default: main
-      message:
-        description: 'Version note shown in Spacefast history'
-        type: string
-        required: false
-        default: ''
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: spacefast-production
   cancel-in-progress: false
 
 env:
-  # Space IDs are stable across renames. Not a secret.
+  # Space IDs survive renames. Not a secret.
   SPACEFAST_SPACE: spc_de286293390947f7beb1d37d7205b6e5
   SPACEFAST_CLI_VERSION: 0.4.1
 
@@ -49,13 +46,20 @@ jobs:
   deploy:
     name: Publish to Spacefast
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment:
       name: production
       url: ${{ steps.publish.outputs.url }}
     steps:
+      - name: Validate tag
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::'$TAG' is not a release tag"; exit 1; }
+
       - uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.ref }}
+          ref: refs/tags/${{ inputs.tag }}
           persist-credentials: false
 
       - uses: actions/setup-node@v6
@@ -67,34 +71,52 @@ jobs:
       - run: npm test
       - run: npm run build
 
-      - name: Publish
+      - name: Attach build to the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          zip="uptime-wars-${TAG}.zip"
+          (cd dist && zip -qr "../${zip}" .)
+          gh release upload "$TAG" "$zip" --clobber --repo "$GITHUB_REPOSITORY"
+          echo "ZIP=${zip}" >> "$GITHUB_ENV"
+
+      - name: Publish the release zip
         id: publish
         env:
           SPACEFAST_TOKEN: ${{ secrets.SPACEFAST_TOKEN }}
-          SPACEFAST_PUBLISH_MESSAGE: ${{ inputs.message || inputs.ref }}
+          SPACEFAST_PUBLISH_MESSAGE: ${{ inputs.tag }}
           SPACEFAST_YES: '1'
         run: |
           set -euo pipefail
-          npx -y "spacefast@${SPACEFAST_CLI_VERSION}" publish dist \
+          # Publish from the zip's contents, not the working dist/, so what is
+          # live is byte-for-byte the release asset.
+          rm -rf publish && mkdir publish && unzip -q "$ZIP" -d publish
+          npx -y "spacefast@${SPACEFAST_CLI_VERSION}" publish publish \
             --space "$SPACEFAST_SPACE" \
             --target production \
             --wait \
             --json > publish.json
-          url=$(node -e 'const d=require("./publish.json").data; console.log(d.space.liveUrl)')
-          version=$(node -e 'const d=require("./publish.json").data; console.log(d.version.immutableUrl)')
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-          {
-            echo "### Deployed ${{ inputs.ref }} to Spacefast"
-            echo ""
-            echo "- Live: $url"
-            echo "- This version: $version"
-          } >> "$GITHUB_STEP_SUMMARY"
+          node -e '
+            const d = require("./publish.json").data;
+            const fs = require("fs");
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `url=${d.space.liveUrl}\nversion=${d.version.immutableUrl}\n`);
+          '
 
-      - name: Smoke check
+      - name: Summary
+        env:
+          TAG: ${{ inputs.tag }}
+          URL: ${{ steps.publish.outputs.url }}
+          VERSION_URL: ${{ steps.publish.outputs.version }}
         run: |
-          set -euo pipefail
-          status=$(curl -sS -o /dev/null -w '%{http_code}' "${{ steps.publish.outputs.url }}")
-          echo "Live URL returned $status"
-          if [ "$status" != "200" ]; then
-            echo "::warning::Live URL returned $status. If the space is private, this is expected; set its access to public to serve players."
+          status=$(curl -sS -o /dev/null -w '%{http_code}' "$URL" || true)
+          {
+            echo "### Deployed ${TAG} to Spacefast"
+            echo ""
+            echo "- Live: ${URL} (HTTP ${status})"
+            echo "- This version: ${VERSION_URL}"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$status" = "403" ]; then
+            echo "::notice::Live URL returned 403: the space is private. Set its access to public to serve players."
           fi

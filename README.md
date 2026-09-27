@@ -64,13 +64,21 @@ waves are content changes, not code changes. Content is validated on load.
 - Accounts, saves, leaderboards via Spacefast Zero
 - Lockstep co-op and PvP over a small command relay
 
-## Publish
+## Releases and deploys
 
-```sh
-npm run publish:spacefast
-```
+Every push to `main` runs the Homeboy release pipeline
+(`Extra-Chill/homeboy-action` `release.yml@v2`). Conventional commits decide
+the bump: `fix:` patch, `feat:` minor, `BREAKING CHANGE` major; `chore:`,
+`ci:`, `docs:` and `test:` do not release.
 
-Builds and publishes `dist/` to [Spacefast](https://spacefast.com).
+When a release is cut, `deploy.yml` builds that tag, attaches
+`uptime-wars-<tag>.zip` to the GitHub Release, and publishes exactly those
+bytes to the production [Spacefast](https://spacefast.com) space. To redeploy
+an existing tag, run the **Deploy** workflow by hand with that tag. Rollback is
+promoting an older version in Spacefast.
+
+Needs the `SPACEFAST_TOKEN` repository secret (a Spacefast API key with the
+CI deploy preset).
 
 ## Checks
 
