@@ -1,0 +1,23 @@
+{
+  "name": "uptime",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Tech-themed castle defense. Build compute, auto-spawn processes, keep your core online.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "publish:spacefast": "npm run build && npx -y spacefast publish dist"
+  },
+  "dependencies": {
+    "pixi.js": "^8.21.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  }
+}

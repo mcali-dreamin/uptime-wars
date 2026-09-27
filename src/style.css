@@ -1,0 +1,109 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b0f14;
+  --panel: #121922;
+  --line: #243142;
+  --text: #d6e2f0;
+  --muted: #7b8da3;
+  --accent: #4ade80;
+  --danger: #f87171;
+  font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+#app {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100%;
+}
+
+#hud,
+#build-bar {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  background: var(--panel);
+  border-color: var(--line);
+  border-style: solid;
+  border-width: 0 0 1px;
+}
+
+#build-bar {
+  border-width: 1px 0 0;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+#status {
+  margin-left: auto;
+  font-weight: bold;
+}
+
+#status.won {
+  color: var(--accent);
+}
+
+#status.lost {
+  color: var(--danger);
+}
+
+#stage {
+  position: relative;
+  min-height: 0;
+}
+
+#stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.build-btn {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.45rem 0.75rem;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.build-btn small {
+  display: block;
+  color: var(--muted);
+}
+
+.build-btn.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.build-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

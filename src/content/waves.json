@@ -1,0 +1,72 @@
+{
+  "firstWaveTicks": 600,
+  "spawnSpacingTicks": 8,
+  "waves": [
+    {
+      "name": "Port scan",
+      "delayTicks": 0,
+      "groups": [
+        {
+          "unit": "bot",
+          "count": 8
+        }
+      ]
+    },
+    {
+      "name": "Credential stuffing",
+      "delayTicks": 500,
+      "groups": [
+        {
+          "unit": "bot",
+          "count": 14
+        }
+      ]
+    },
+    {
+      "name": "Worm outbreak",
+      "delayTicks": 500,
+      "groups": [
+        {
+          "unit": "worm",
+          "count": 16
+        },
+        {
+          "unit": "bot",
+          "count": 10
+        }
+      ]
+    },
+    {
+      "name": "DDoS",
+      "delayTicks": 550,
+      "groups": [
+        {
+          "unit": "bot",
+          "count": 28
+        },
+        {
+          "unit": "worm",
+          "count": 16
+        }
+      ]
+    },
+    {
+      "name": "Ransomware",
+      "delayTicks": 650,
+      "groups": [
+        {
+          "unit": "bot",
+          "count": 20
+        },
+        {
+          "unit": "worm",
+          "count": 10
+        },
+        {
+          "unit": "ransomware",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

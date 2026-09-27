@@ -1,0 +1,83 @@
+{
+  "core": {
+    "name": "Core Data Center",
+    "description": "If this goes down, so do you.",
+    "cost": 0,
+    "buildTicks": 0,
+    "hp": 3000,
+    "armor": 5,
+    "armorType": "core",
+    "footprint": 2,
+    "buildable": false,
+    "attack": {
+      "attackType": "exploit",
+      "damage": 7,
+      "range": 170,
+      "cooldownTicks": 24
+    }
+  },
+  "server-rack": {
+    "name": "Server Rack",
+    "description": "Forks a Process into the lane on a timer.",
+    "cost": 60,
+    "buildTicks": 60,
+    "hp": 400,
+    "armor": 2,
+    "armorType": "hardened",
+    "footprint": 1,
+    "buildable": true,
+    "spawn": {
+      "unit": "process",
+      "intervalTicks": 160,
+      "count": 2
+    }
+  },
+  "gpu-cluster": {
+    "name": "GPU Cluster",
+    "description": "Spins up Inference Drones. Expensive, worth it.",
+    "cost": 140,
+    "buildTicks": 100,
+    "hp": 350,
+    "armor": 2,
+    "armorType": "hardened",
+    "footprint": 1,
+    "buildable": true,
+    "spawn": {
+      "unit": "inference-drone",
+      "intervalTicks": 240,
+      "count": 1
+    }
+  },
+  "firewall": {
+    "name": "Firewall",
+    "description": "Static defense. Drops packets, and bots.",
+    "cost": 90,
+    "buildTicks": 80,
+    "hp": 600,
+    "armor": 4,
+    "armorType": "hardened",
+    "footprint": 1,
+    "buildable": true,
+    "attack": {
+      "attackType": "brute",
+      "damage": 14,
+      "range": 160,
+      "cooldownTicks": 14
+    }
+  },
+  "solar-array": {
+    "name": "Solar Array",
+    "description": "Generates extra compute. Green uptime.",
+    "cost": 75,
+    "buildTicks": 80,
+    "hp": 250,
+    "armor": 1,
+    "armorType": "hardened",
+    "footprint": 1,
+    "buildable": true,
+    "income": {
+      "amount": 4,
+      "intervalTicks": 20
+    }
+  }
+}
