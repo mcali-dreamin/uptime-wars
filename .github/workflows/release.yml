@@ -1,0 +1,50 @@
+# Continuous release + deploy.
+#
+# Every push to main runs the Homeboy release pipeline: it derives the version
+# from conventional commits since the last tag (fix: -> patch, feat: -> minor,
+# BREAKING CHANGE -> major; chore:/ci:/docs:/test: -> no release), runs the
+# quality gates, tags, writes the changelog, and creates the GitHub Release.
+#
+# When a release is cut, the deploy job publishes that exact tag to the
+# production Spacefast space. No release, no deploy.
+
+name: Release
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Preview the release without making changes'
+        type: boolean
+        default: false
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    uses: Extra-Chill/homeboy-action/.github/workflows/release.yml@v2
+    with:
+      dry-run: ${{ inputs.dry-run || false }}
+      node-version: '24'
+      # Private game, not an npm package. Deployment is the deploy job below.
+      release-skip-publish: true
+    secrets: inherit
+
+  deploy:
+    needs: release
+    if: needs.release.outputs.released == 'true'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      ref: ${{ needs.release.outputs.release-tag }}
+      message: ${{ needs.release.outputs.release-tag }}
+    secrets: inherit
