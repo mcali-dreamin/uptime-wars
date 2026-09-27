@@ -4,6 +4,8 @@
 const EDGE_PX = 14;
 const PAN_SPEED = 900; // screen pixels per second
 const MAX_ZOOM = 2;
+/** Never zoom out past this: the map should always be bigger than the screen. */
+const MIN_ZOOM = 0.45;
 
 export class Camera {
   /** World point at the center of the screen. */
@@ -31,9 +33,9 @@ export class Camera {
     this.clamp();
   }
 
-  /** Zoomed all the way out, the map just fills the screen. */
+  /** Zoomed all the way out you still see only a slice of the map. */
   minZoom(): number {
-    return Math.max(this.viewWidth / this.mapWidth, this.viewHeight / this.mapHeight);
+    return Math.max(MIN_ZOOM, this.viewWidth / this.mapWidth, this.viewHeight / this.mapHeight);
   }
 
   update(deltaMs: number): void {

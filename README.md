@@ -20,11 +20,13 @@ npm run dev
   to jump. `Space` / `H`: back to your core.
 - Right-click / `Esc`: cancel. `P`: pause. `R`: new map after a match.
 
-Creeps arrive in waves, but nobody tells them where you are. Each wave is cut
-into packs of random size that enter the map out of sight and wander. A pack
-attacks whatever it can see, so trouble can come from any side, or not at all.
-Survive until the timer after the last wave runs out, or take the nest
-offline. Hover anything (buttons, buildings, units, terrain) to see what it does.
+The malware nest sits in the middle of the web and you start out toward the
+edge. Waves never stop: each one is bigger, comes sooner, and unlocks nastier
+creeps (worms, then trojans, then ransomware bosses). Every wave leaves the nest
+as packs of random size that wander outward. Nobody tells them where you are;
+a pack attacks whatever it can see, so trouble comes from any side. Your score
+is **uptime**: how long your core stays online. Taking the nest offline ends
+the run early, in your favor. Hover anything (buttons, buildings, units, terrain) to see what it does.
 Add `?debug` to the URL to expose live state as `window.uptime`.
 
 ## How it's built
@@ -83,7 +85,8 @@ Direction: survival on a procedurally generated open web.
 - [ ] Builder start: land a builder and choose where your core goes
 - [ ] Economy from what you build on data wells, replacing flat income
 - [x] Wandering creep packs that only attack what they see
-- [ ] Creep camps and escalating waves
+- [x] Endless escalating waves from a nest in the middle; uptime score
+- [ ] Elevation: plateaus, cliffs, ramps; high-ground sight and range
 - [ ] Rally points for spawned defenders
 - Heroes and security abilities (zero-day, RCE, ransomware, worm, DDoS, honeypot)
 - More races: Hyperscaler, Hacker crew, State actor / APT

@@ -20,7 +20,7 @@ export function buildingCard(content: Content, raceId: string, buildingId: strin
     const unit = content.units[def.spawn.unit]!;
     const interval = Math.round(def.spawn.intervalTicks * race.modifiers.spawnIntervalMultiplier);
     const bonus = race.modifiers.spawnIntervalMultiplier < 1 ? ` (${race.name} bonus)` : "";
-    lines.push(`Spawns ${def.spawn.count}× ${unit.name} every ${seconds(interval)}${bonus}`);
+    lines.push(`Spawns ${def.spawn.count}× ${unit.name} every ${seconds(interval)}${bonus}, up to ${def.spawn.maxAlive} alive`);
     lines.push(`  ${unit.name}: ${unitSummary(unit)}`);
     lines.push("  Spawned units guard the area around this building.");
   }

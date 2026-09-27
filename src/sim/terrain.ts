@@ -19,11 +19,11 @@ const BLOCK_THRESHOLD = 0.64;
 const SLOW_THRESHOLD = 0.34;
 const START_CLEAR_RADIUS = 5;
 const NEST_CLEAR_RADIUS = 3;
-const RESOURCE_COUNT = 40;
-const ROAM_POINT_COUNT = 24;
-const ROAM_POINT_SPACING = 14;
-/** The nest is at least this fraction of the map width away in a straight line. */
-const NEST_MIN_STRAIGHT_FRACTION = 0.45;
+const RESOURCE_COUNT = 140;
+const ROAM_POINT_COUNT = 64;
+const ROAM_POINT_SPACING = 24;
+/** The start is at least this fraction of the center-to-corner distance from the nest. */
+const START_MIN_FROM_NEST = 0.6;
 
 export interface TilePoint {
   col: number;
@@ -73,48 +73,24 @@ export function generateTerrain(seed: number, cols = MAP_COLS, rows = MAP_ROWS):
     }
   }
 
-  const start = {
-    col: randomInt(rng, 6, Math.floor(cols / 3)),
-    row: randomInt(rng, 6, rows - 8),
-  };
+  // The nest sits in the middle of the web. You start somewhere out toward
+  // the edge, far from it.
+  const nest = { col: Math.floor(cols / 2) - 1, row: Math.floor(rows / 2) - 1 };
+  const start = pickStart(cols, rows, nest, rng);
+  clearDisc(tiles, cols, rows, nest.col + 1, nest.row + 1, NEST_CLEAR_RADIUS);
   clearDisc(tiles, cols, rows, start.col + 1, start.row + 1, START_CLEAR_RADIUS);
 
-  // Everything must be reachable from the start: wall off isolated pockets.
+  // The nest must be reachable on foot; if the noise walled it off, carve a
+  // winding-free corridor from the start to it.
   let dist = bfs(tiles, cols, rows, start);
+  if (dist[nest.row * cols + nest.col]! < 0) {
+    carveCorridor(tiles, cols, rows, start, nest);
+    dist = bfs(tiles, cols, rows, start);
+  }
+  // Everything else must be reachable too: wall off isolated pockets.
   for (let i = 0; i < tiles.length; i += 1) {
     if (tiles[i] !== TILE_BLOCKED && dist[i]! < 0) tiles[i] = TILE_BLOCKED;
   }
-
-  // The nest goes somewhere far away both on foot and as the crow flies, so
-  // it is always off-screen and the creeps have a real journey.
-  let maxDist = 0;
-  for (const d of dist) if (d > maxDist) maxDist = d;
-  const minStraight = cols * NEST_MIN_STRAIGHT_FRACTION;
-  const inside = (col: number, row: number) => col >= 3 && row >= 3 && col <= cols - 5 && row <= rows - 5;
-  const straight = (i: number) => {
-    const dc = (i % cols) - start.col;
-    const dr = Math.floor(i / cols) - start.row;
-    return Math.sqrt(dc * dc + dr * dr);
-  };
-  let candidates: number[] = [];
-  for (let walk = 0.75; walk >= 0.3 && candidates.length === 0; walk -= 0.15) {
-    for (let i = 0; i < dist.length; i += 1) {
-      if (dist[i]! >= maxDist * walk && inside(i % cols, Math.floor(i / cols)) && straight(i) >= minStraight) {
-        candidates.push(i);
-      }
-    }
-  }
-  if (candidates.length === 0) {
-    // Tiny or maze-like maps: take the reachable tile furthest in a straight line.
-    let best = -1;
-    for (let i = 0; i < dist.length; i += 1) {
-      if (dist[i]! >= 0 && inside(i % cols, Math.floor(i / cols)) && (best < 0 || straight(i) > straight(best))) best = i;
-    }
-    candidates = [best];
-  }
-  const nestIndex = candidates[randomInt(rng, 0, candidates.length - 1)]!;
-  const nest = { col: nestIndex % cols, row: Math.floor(nestIndex / cols) };
-  clearDisc(tiles, cols, rows, nest.col + 1, nest.row + 1, NEST_CLEAR_RADIUS);
 
   dist = bfs(tiles, cols, rows, start);
   const resources = scatterResources(tiles, cols, rows, dist, start, nest, rng);
@@ -122,6 +98,37 @@ export function generateTerrain(seed: number, cols = MAP_COLS, rows = MAP_ROWS):
   const roamPoints = scatterRoamPoints(tiles, cols, rows, dist, start, rng);
 
   return { cols, rows, tiles, start, nest, resources, roamPoints };
+}
+
+/** A start tile near the edge: at least START_MIN_FROM_NEST of the half-diagonal away from the nest. */
+function pickStart(cols: number, rows: number, nest: TilePoint, rng: { rngState: number }): TilePoint {
+  const halfDiagonal = Math.sqrt((cols / 2) * (cols / 2) + (rows / 2) * (rows / 2));
+  const min = halfDiagonal * START_MIN_FROM_NEST;
+  for (let attempt = 0; attempt < 1000; attempt += 1) {
+    const point = { col: randomInt(rng, 8, cols - 10), row: randomInt(rng, 8, rows - 10) };
+    const dc = point.col - nest.col;
+    const dr = point.row - nest.row;
+    if (dc * dc + dr * dr >= min * min) return point;
+  }
+  return { col: 8, row: 8 };
+}
+
+/** Straight three-tile-wide corridor between two points (Bresenham-style). */
+function carveCorridor(tiles: Uint8Array, cols: number, rows: number, from: TilePoint, to: TilePoint): void {
+  const steps = Math.max(Math.abs(to.col - from.col), Math.abs(to.row - from.row));
+  for (let i = 0; i <= steps; i += 1) {
+    const col = Math.round(from.col + ((to.col - from.col) * i) / steps);
+    const row = Math.round(from.row + ((to.row - from.row) * i) / steps);
+    for (let dr = -1; dr <= 1; dr += 1) {
+      for (let dc = -1; dc <= 1; dc += 1) {
+        const c = col + dc;
+        const r = row + dr;
+        if (c > 0 && r > 0 && c < cols - 1 && r < rows - 1 && tiles[r * cols + c] === TILE_BLOCKED) {
+          tiles[r * cols + c] = TILE_OPEN;
+        }
+      }
+    }
+  }
 }
 
 /** Spread-out reachable points, anywhere but right on top of the start. */

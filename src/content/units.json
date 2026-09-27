@@ -9,7 +9,7 @@
     "damage": 8,
     "range": 24,
     "cooldownTicks": 16,
-    "speed": 2.2,
+    "speed": 3.0,
     "aggro": 180,
     "bounty": 0,
     "size": 9
@@ -24,7 +24,7 @@
     "damage": 12,
     "range": 150,
     "cooldownTicks": 24,
-    "speed": 1.8,
+    "speed": 2.6,
     "aggro": 220,
     "bounty": 0,
     "size": 8
@@ -39,7 +39,7 @@
     "damage": 9,
     "range": 22,
     "cooldownTicks": 18,
-    "speed": 1.9,
+    "speed": 2.8,
     "aggro": 260,
     "bounty": 6,
     "size": 8
@@ -54,7 +54,7 @@
     "damage": 7,
     "range": 20,
     "cooldownTicks": 10,
-    "speed": 3.4,
+    "speed": 4.4,
     "aggro": 240,
     "bounty": 5,
     "size": 6
@@ -69,9 +69,24 @@
     "damage": 60,
     "range": 30,
     "cooldownTicks": 30,
-    "speed": 1.1,
+    "speed": 1.7,
     "aggro": 320,
     "bounty": 120,
     "size": 18
+  },
+  "trojan": {
+    "name": "Trojan",
+    "description": "Tough, patient, and armored. Shows up once the easy exploits stop working.",
+    "hp": 150,
+    "armor": 3,
+    "armorType": "hardened",
+    "attackType": "exploit",
+    "damage": 16,
+    "range": 26,
+    "cooldownTicks": 20,
+    "speed": 2.5,
+    "aggro": 260,
+    "bounty": 14,
+    "size": 12
   }
 }

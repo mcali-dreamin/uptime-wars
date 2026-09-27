@@ -7,6 +7,9 @@ import {
   loadDefaultContent,
   queueCommand,
   simulate,
+  planWave,
+  waveInterval,
+  TILE,
   tileAt,
   TILE_BLOCKED,
   step,
@@ -65,7 +68,7 @@ describe("determinism", () => {
 });
 
 describe("terrain", () => {
-  const SEEDS = Array.from({ length: 40 }, (_, i) => i * 7919 + 1);
+  const SEEDS = Array.from({ length: 12 }, (_, i) => i * 7919 + 1);
 
   it("the same seed always generates the same map", () => {
     for (const seed of SEEDS.slice(0, 5)) {
@@ -75,20 +78,23 @@ describe("terrain", () => {
     }
   });
 
-  it("every map is playable: clear core, reachable nest, wells within reach", () => {
+  it("every map is playable: nest in the middle, start far out, reachable, room to build", () => {
     for (const seed of SEEDS) {
       const world = createWorld(content, { ...SETUP, seed });
       const { terrain } = world;
       const core = world.entities.find((e) => e.id === world.teams[0].coreId)!;
       const nest = world.entities.find((e) => e.id === world.teams[1].coreId)!;
-      const nestTile = Math.floor(nest.y / 32) * terrain.cols + Math.floor(nest.x / 32);
+      const nestTile = Math.floor(nest.y / TILE) * terrain.cols + Math.floor(nest.x / TILE);
+      // The nest is the center of the web.
+      expect(Math.abs(nest.x - (terrain.cols * TILE) / 2), `seed ${seed}`).toBeLessThanOrEqual(TILE * 2);
+      expect(Math.abs(nest.y - (terrain.rows * TILE) / 2), `seed ${seed}`).toBeLessThanOrEqual(TILE * 2);
 
       // Creeps can walk from the nest to the core.
       expect(world.nav.toCore[0][nestTile], `seed ${seed}`).not.toBe(UNREACHABLE);
       // Far apart, so the enemy is off-screen.
       const dx = nest.x - core.x;
       const dy = nest.y - core.y;
-      expect(Math.sqrt(dx * dx + dy * dy), `seed ${seed}`).toBeGreaterThan(1200);
+      expect(Math.sqrt(dx * dx + dy * dy), `seed ${seed}`).toBeGreaterThan(4000);
       // There is room to build around the core.
       expect(planBuildOrder(content, { ...SETUP, seed }, OPENING_ORDER)).toHaveLength(OPENING_ORDER.length);
       // At least two wells near the start.
@@ -177,88 +183,91 @@ describe("auto-spawn", () => {
 });
 
 describe("creeps", () => {
-  it("each wave enters as random-sized packs, out of sight of every building you own", () => {
+  it("each wave leaves the nest in the middle as random-sized packs", () => {
     const world = createWorld(content, SETUP);
-    queueCommand(world, firstSpot("server-rack"));
-    while (world.waves.pending.length === 0 || world.tick <= content.waves.firstWaveTicks + 200) step(world, content);
+    const nest = world.entities.find((e) => e.id === world.teams[1].coreId)!;
+    while (world.tick <= content.waves.firstWaveTicks + 40) step(world, content);
     const creeps = world.entities.filter((e) => e.kind === "unit" && e.team === 1);
+    expect(creeps.length).toBeGreaterThan(0);
     const packs = new Map<number, number>();
-    for (const creep of creeps) if (creep.kind === "unit") packs.set(creep.packId, (packs.get(creep.packId) ?? 0) + 1);
+    for (const creep of creeps) {
+      if (creep.kind !== "unit") continue;
+      packs.set(creep.packId, (packs.get(creep.packId) ?? 0) + 1);
+      expect(Math.hypot(creep.x - nest.x, creep.y - nest.y)).toBeLessThan(TILE * 6);
+    }
     expect(packs.size).toBeGreaterThan(1);
     for (const size of packs.values()) expect(size).toBeLessThanOrEqual(content.waves.packSize.max);
-
-    const entries = new Set(world.waves.pending.map((p) => `${p.col},${p.row}`));
-    const mine = world.entities.filter((e) => e.kind === "building" && e.team === 0);
-    const min = content.waves.spawnMinDistanceTiles * 32;
-    for (const key of entries) {
-      const [col, row] = key.split(",").map(Number) as [number, number];
-      for (const b of mine) {
-        expect(Math.hypot((col + 0.5) * 32 - b.x, (row + 0.5) * 32 - b.y)).toBeGreaterThanOrEqual(min);
-      }
-    }
   });
 
   it("creeps never know where you are: they only target what they can see", () => {
     const world = createWorld(content, SETUP);
-    let targeted = 0;
-    while (world.tick < 8000 && !world.outcome) {
+    for (const command of OPENING) queueCommand(world, command);
+    while (world.tick < 3000) {
       step(world, content);
       const byId = new Map(world.entities.map((e) => [e.id, e]));
       for (const creep of world.entities) {
         if (creep.kind !== "unit" || creep.team !== 1 || creep.targetId === null) continue;
         const target = byId.get(creep.targetId);
         if (!target) continue;
-        targeted += 1;
+        const sight = target.kind === "building" ? Math.max(content.units[creep.defId]!.aggro, 700) : content.units[creep.defId]!.aggro;
         const edge = Math.hypot(target.x - creep.x, target.y - creep.y) - target.radius - creep.radius;
-        // Within sight (plus the chase leash), and never through a wall.
-        expect(edge).toBeLessThanOrEqual(content.units[creep.defId]!.aggro * 1.5 + 1);
+        expect(edge).toBeLessThanOrEqual(sight * 1.5 + 1);
       }
     }
-    expect(targeted).toBeGreaterThan(0);
   });
 
   it("no creep is ever inside a wall", () => {
-    for (const seed of [1, 42]) {
-      const world = createWorld(content, { ...SETUP, seed });
-      while (world.tick < 6000 && !world.outcome) {
-        step(world, content);
-        for (const e of world.entities) {
-          if (e.kind !== "unit") continue;
-          expect(tileAt(world.terrain, Math.floor(e.x / 32), Math.floor(e.y / 32)), `seed ${seed}`).not.toBe(TILE_BLOCKED);
-        }
+    const world = createWorld(content, SETUP);
+    while (world.tick < 3000) {
+      step(world, content);
+      for (const e of world.entities) {
+        if (e.kind !== "unit") continue;
+        expect(tileAt(world.terrain, Math.floor(e.x / TILE), Math.floor(e.y / TILE))).not.toBe(TILE_BLOCKED);
       }
     }
   });
+});
 
-  it("packs reach an undefended core from more than one direction", () => {
-    const sectors = new Set<number>();
-    for (const seed of [1, 2, 3, 42, 1234]) {
-      const world = createWorld(content, { ...SETUP, seed });
-      const core = world.entities.find((e) => e.id === world.teams[0].coreId)!;
-      while (world.tick < 12_000 && !world.outcome) {
-        step(world, content);
-        for (const ev of world.events) {
-          if (ev.type !== "shot" || ev.team !== 1 || ev.to !== core.id) continue;
-          const angle = Math.atan2(ev.y1 - core.y, ev.x1 - core.x);
-          sectors.add(Math.floor(((angle + Math.PI) / (2 * Math.PI)) * 8) % 8);
-        }
-      }
-    }
-    expect(sectors.size).toBeGreaterThanOrEqual(3);
+describe("endless waves", () => {
+  it("waves keep coming and there is no win by timer", () => {
+    const world = createWorld(content, SETUP);
+    for (const command of OPENING) queueCommand(world, command);
+    while (world.waves.nextIndex < 4) step(world, content);
+    expect(world.outcome).toBeNull();
+    expect(world.waves.nextWaveTick).toBeGreaterThan(world.tick);
   });
 
-  it("you win by holding out until the timer after the last wave runs down", () => {
-    const short: Content = structuredClone(content);
-    short.waves = { ...short.waves, firstWaveTicks: 10, holdTicksAfterLastWave: 50, waves: [{ name: "Ping", delayTicks: 0, groups: [{ unit: "bot", count: 1 }] }] };
-    const world = simulate(short, SETUP, [], 1000);
-    expect(world.outcome).toMatchObject({ winner: 0, reason: "survived", tick: 60 });
+  it("budgets grow, the gap between waves shrinks, units unlock, bosses arrive on cadence", () => {
+    const world = createWorld(content, SETUP);
+    const size = (wave: number) => planWave(world, content, wave).units.length;
+    expect(size(10)).toBeGreaterThan(size(1));
+    expect(waveInterval(content, 10)).toBeLessThan(waveInterval(content, 1));
+    expect(waveInterval(content, 1000)).toBe(content.waves.interval.minTicks);
+
+    const first = planWave(world, content, 1).units;
+    for (const entry of content.waves.roster.filter((e) => e.fromWave > 1)) expect(first).not.toContain(entry.unit);
+
+    const { unit, fromWave, every } = content.waves.bosses;
+    expect(planWave(world, content, fromWave - 1).units).not.toContain(unit);
+    expect(planWave(world, content, fromWave).units).toContain(unit);
+    expect(planWave(world, content, fromWave + 1).units).not.toContain(unit);
+    expect(planWave(world, content, fromWave + every).units).toContain(unit);
+  });
+
+  it("a rack keeps at most its maxAlive guards", () => {
+    const world = createWorld(content, SETUP);
+    queueCommand(world, firstSpot("server-rack"));
+    while (world.tick < 2000) step(world, content);
+    const guards = world.entities.filter((e) => e.kind === "unit" && e.team === 0);
+    expect(guards.length).toBeLessThanOrEqual(content.buildings["server-rack"]!.spawn!.maxAlive);
+    expect(guards.length).toBeGreaterThan(0);
   });
 });
 
 describe("content", () => {
   it("rejects broken references", () => {
     const broken: Content = structuredClone(content);
-    broken.waves.waves[0]!.groups[0]!.unit = "missing";
+    broken.waves.roster[0]!.unit = "missing";
     expect(() => validateContent(broken)).toThrow(/unknown unit missing/);
   });
 

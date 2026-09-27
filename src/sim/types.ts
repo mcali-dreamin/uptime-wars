@@ -39,6 +39,8 @@ export interface Unit extends EntityBase {
   mode: UnitMode;
   /** Pack this roamer wanders with, or -1. */
   packId: number;
+  /** Building that spawned this unit, or -1. Counts toward its maxAlive. */
+  spawnerId: number;
   /** Where a guarding unit returns to when it has nothing to fight. */
   homeX: number;
   homeY: number;
@@ -72,13 +74,12 @@ export interface WaveSpawn {
   tick: number;
   unit: string;
   packId: number;
-  /** Tile the pack enters the map at. */
-  col: number;
-  row: number;
+  /** Wave number (1-based), which sets how tough the creep is. */
+  wave: number;
 }
 
 export interface WaveState {
-  /** Index of the next wave to start. */
+  /** Waves sent so far. The next wave is nextIndex + 1. */
   nextIndex: number;
   nextWaveTick: number;
   /** Units scheduled to enter, sorted by tick. */
@@ -86,13 +87,12 @@ export interface WaveState {
   nextPackId: number;
   /** Pack id -> index of the roam point it is heading for. */
   packs: Record<number, number>;
-  /** Set when the last wave goes out: survive until this tick to win. */
-  holdUntilTick: number | null;
+
 }
 
 export interface Outcome {
   winner: TeamId;
-  reason: "core-destroyed" | "survived";
+  reason: "core-destroyed";
   tick: number;
 }
 
@@ -100,7 +100,7 @@ export interface Outcome {
 export type SimEvent =
   | { type: "shot"; from: number; to: number; x1: number; y1: number; x2: number; y2: number; team: TeamId }
   | { type: "death"; id: number; x: number; y: number; team: TeamId }
-  | { type: "wave"; index: number; name: string; packs: number }
+  | { type: "wave"; wave: number; name: string; packs: number; units: number; boss: boolean }
   | { type: "rejected"; command: Command; reason: string };
 
 /**
@@ -110,8 +110,12 @@ export type SimEvent =
 export interface Navigation {
   /** Flow field toward each team's core, indexed by team id. */
   toCore: [Int32Array, Int32Array];
-  /** Flow field toward each terrain roam point, same order. */
-  toRoam: Int32Array[];
+  /**
+   * Flow field toward each terrain roam point, same order. Filled lazily the
+   * first time a pack heads there: pure function of the terrain, so peers
+   * computing at different times still agree.
+   */
+  toRoam: (Int32Array | null)[];
 }
 
 export interface World {

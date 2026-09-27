@@ -31,6 +31,8 @@ const HOME_SLACK = 24;
 const ROAM_SPEED = 0.6;
 /** A pack member further than this from its leader catches up first. */
 const PACK_SPREAD = 90;
+/** Buildings are big: a roamer spots one from this far, further than a unit. */
+const BUILDING_SIGHT = 700;
 
 export interface MatchSetup {
   seed: number;
@@ -41,6 +43,27 @@ interface TickContext {
   world: World;
   content: Content;
   byId: Map<number, Entity>;
+  /**
+   * Living entities bucketed by GRID_CELL-sized cells, built once per tick
+   * from start-of-tick positions in id order. Target searches only look at
+   * nearby cells instead of every entity on the map.
+   */
+  grid: Map<number, Entity[]>;
+}
+
+const GRID_CELL = 256;
+const GRID_STRIDE = 1 << 16;
+
+function buildGrid(entities: Entity[]): Map<number, Entity[]> {
+  const grid = new Map<number, Entity[]>();
+  for (const entity of entities) {
+    if (entity.hp <= 0) continue;
+    const key = Math.floor(entity.y / GRID_CELL) * GRID_STRIDE + Math.floor(entity.x / GRID_CELL);
+    const cell = grid.get(key);
+    if (cell) cell.push(entity);
+    else grid.set(key, [entity]);
+  }
+  return grid;
 }
 
 export function createWorld(content: Content, setup: MatchSetup): World {
@@ -52,7 +75,7 @@ export function createWorld(content: Content, setup: MatchSetup): World {
     terrain,
     nav: {
       toCore: [new Int32Array(0), new Int32Array(0)],
-      toRoam: terrain.roamPoints.map((point) => flowField(terrain, [point.row * terrain.cols + point.col])),
+      toRoam: terrain.roamPoints.map(() => null),
     },
     nextId: 1,
     teams: [makeTeam(content, 0, setup.races[0]), makeTeam(content, 1, setup.races[1])],
@@ -64,7 +87,6 @@ export function createWorld(content: Content, setup: MatchSetup): World {
       pending: [],
       nextPackId: 1,
       packs: {},
-      holdUntilTick: null,
     },
     outcome: null,
     events: [],
@@ -124,9 +146,11 @@ export function step(world: World, content: Content): void {
     world,
     content,
     byId: new Map(world.entities.map((entity) => [entity.id, entity])),
+    grid: new Map(),
   };
 
   applyCommands(ctx);
+  ctx.grid = buildGrid(world.entities);
   tickCooldowns(ctx);
   tickIncome(ctx);
   tickWaveDirector(ctx);
@@ -320,11 +344,12 @@ function spawnUnit(
   x: number,
   y: number,
   mode: Unit["mode"],
+  hpMultiplier = 1,
 ): Unit {
   const { world, content } = ctx;
   const def = content.units[unitId]!;
   const race = content.races[world.teams[team].raceId]!;
-  const hp = Math.round(def.hp * race.modifiers.unitHpMultiplier);
+  const hp = Math.round(def.hp * race.modifiers.unitHpMultiplier * hpMultiplier);
   const spot = walkableSpot(world.terrain, x, y, def.size, from.x, from.y);
   const unit: Unit = {
     kind: "unit",
@@ -337,6 +362,7 @@ function spawnUnit(
     homeY: spot.y,
     mode,
     packId: -1,
+    spawnerId: -1,
     hp,
     maxHp: hp,
     armor: def.armor,
@@ -356,15 +382,23 @@ function tickSpawners(ctx: TickContext): void {
   const buildings = world.entities.filter(
     (entity): entity is Building => entity.kind === "building" && entity.hp > 0,
   );
+  const alive = new Map<number, number>();
+  for (const entity of world.entities) {
+    if (entity.kind === "unit" && entity.hp > 0 && entity.spawnerId >= 0) {
+      alive.set(entity.spawnerId, (alive.get(entity.spawnerId) ?? 0) + 1);
+    }
+  }
   for (const building of buildings) {
     const spawn = content.buildings[building.defId]!.spawn;
     if (!spawn || building.buildRemaining > 0) continue;
     building.spawnTimer -= 1;
     if (building.spawnTimer > 0) continue;
-    for (let i = 0; i < spawn.count; i += 1) {
+    const room = Math.min(spawn.count, spawn.maxAlive - (alive.get(building.id) ?? 0));
+    for (let i = 0; i < room; i += 1) {
       const x = building.x + randomInt(world, -20, 20);
       const y = building.y + building.radius + 10 + randomInt(world, 0, 8);
-      spawnUnit(ctx, building.team, spawn.unit, building, x, y, "guard");
+      const unit = spawnUnit(ctx, building.team, spawn.unit, building, x, y, "guard");
+      unit.spawnerId = building.id;
     }
     building.spawnTimer = spawnInterval(content, world.teams[building.team].raceId, building.defId);
   }
@@ -372,9 +406,9 @@ function tickSpawners(ctx: TickContext): void {
 
 /**
  * The horde is not special: it is a team whose controller is the wave
- * director instead of a human. Each wave is shuffled, cut into packs of random
- * size, and every pack enters the map at its own spot somewhere out of sight
- * of all your buildings. Nobody tells them where you are.
+ * director instead of a human. Waves never stop. Each is generated from a
+ * growing budget, shuffled, cut into random-sized packs, and released from the
+ * nest in the middle of the web. Nobody tells the packs where you are.
  */
 function tickWaveDirector(ctx: TickContext): void {
   const { world, content } = ctx;
@@ -382,64 +416,88 @@ function tickWaveDirector(ctx: TickContext): void {
   if (!team) return;
   const waves = content.waves;
   const state = world.waves;
+  const nest = ctx.byId.get(team.coreId);
+  if (!nest) return;
 
-  const wave = waves.waves[state.nextIndex];
-  if (wave && world.tick >= state.nextWaveTick) {
-    const units: string[] = [];
-    for (const group of wave.groups) for (let i = 0; i < group.count; i += 1) units.push(group.unit);
-    for (let i = units.length - 1; i > 0; i -= 1) {
-      const j = randomInt(world, 0, i);
-      [units[i], units[j]] = [units[j]!, units[i]!];
-    }
-    const entries = spawnEntries(ctx, team.id, waves.spawnMinDistanceTiles);
+  if (world.tick >= state.nextWaveTick) {
+    const wave = state.nextIndex + 1;
+    const plan = planWave(world, content, wave);
     let at = world.tick;
     let packs = 0;
-    for (let i = 0; i < units.length; ) {
+    for (let i = 0; i < plan.units.length; ) {
       const size = randomInt(world, waves.packSize.min, waves.packSize.max);
-      const entry = entries[randomInt(world, 0, entries.length - 1)]!;
       const packId = state.nextPackId++;
       packs += 1;
-      for (const unit of units.slice(i, i + size)) {
-        state.pending.push({ tick: at, unit, packId, col: entry.col, row: entry.row });
-      }
+      for (const unit of plan.units.slice(i, i + size)) state.pending.push({ tick: at, unit, packId, wave });
       i += size;
       at += waves.spawnSpacingTicks;
     }
-    world.events.push({ type: "wave", index: state.nextIndex, name: wave.name, packs });
-    state.nextIndex += 1;
-    const next = waves.waves[state.nextIndex];
-    if (next) state.nextWaveTick = world.tick + next.delayTicks;
-    else state.holdUntilTick = world.tick + waves.holdTicksAfterLastWave;
+    world.events.push({ type: "wave", wave, name: plan.name, packs, units: plan.units.length, boss: plan.bosses > 0 });
+    state.nextIndex = wave;
+    state.nextWaveTick = world.tick + waveInterval(content, wave);
   }
 
-  const nest = ctx.byId.get(team.coreId);
-  if (!nest) return;
-  while (state.pending.length > 0 && state.pending[0]!.tick <= world.tick) {
+  let alive = 0;
+  for (const entity of world.entities) if (entity.kind === "unit" && entity.team === team.id) alive += 1;
+  while (state.pending.length > 0 && state.pending[0]!.tick <= world.tick && alive < waves.maxAlive) {
     const spawn = state.pending.shift()!;
-    const x = (spawn.col + 0.5) * TILE + randomInt(world, -24, 24);
-    const y = (spawn.row + 0.5) * TILE + randomInt(world, -24, 24);
-    const unit = spawnUnit(ctx, team.id, spawn.unit, nest, x, y, "roam");
+    const x = nest.x + randomInt(world, -60, 60);
+    const y = nest.y + randomInt(world, -60, 60);
+    const hp = 1 + waves.hpGrowthPerWave * (spawn.wave - 1);
+    const unit = spawnUnit(ctx, team.id, spawn.unit, nest, x, y, "roam", hp);
     unit.packId = spawn.packId;
+    alive += 1;
   }
 }
 
+/** Ticks between wave n and wave n + 1. */
+export function waveInterval(content: Content, wave: number): number {
+  const { startTicks, minTicks, shrinkPerWave } = content.waves.interval;
+  return Math.max(minTicks, startTicks - shrinkPerWave * (wave - 1));
+}
+
 /**
- * Where packs may enter: roam points (and the nest) that are far from every
- * building the other teams own, so nothing pops in on screen.
+ * What wave n contains. Bosses first, then the rest of the budget spent on
+ * randomly chosen unlocked units, then shuffled so packs come out mixed.
  */
-function spawnEntries(ctx: TickContext, hordeTeam: TeamId, minTiles: number) {
-  const { world } = ctx;
-  const { terrain } = world;
-  const theirs = world.entities.filter((e) => e.kind === "building" && e.team !== hordeTeam);
-  const min = minTiles * TILE;
-  const clear = (col: number, row: number) =>
-    theirs.every((b) => {
-      const dx = (col + 0.5) * TILE - b.x;
-      const dy = (row + 0.5) * TILE - b.y;
-      return dx * dx + dy * dy >= min * min;
-    });
-  const entries = [terrain.nest, ...terrain.roamPoints].filter((p) => clear(p.col, p.row));
-  return entries.length > 0 ? entries : [terrain.nest];
+export function planWave(world: World, content: Content, wave: number) {
+  const { budget, roster, bosses, names } = content.waves;
+  let points = Math.round(budget.start * Math.pow(budget.growth, wave - 1));
+  const units: string[] = [];
+
+  const bossCount = wave >= bosses.fromWave && (wave - bosses.fromWave) % bosses.every === 0
+    ? 1 + Math.floor((wave - bosses.fromWave) / (bosses.every * 3))
+    : 0;
+  for (let i = 0; i < bossCount; i += 1) units.push(bosses.unit);
+
+  const unlocked = roster.filter((entry) => entry.fromWave <= wave);
+  const totalWeight = unlocked.reduce((sum, entry) => sum + entry.weight, 0);
+  const cheapest = Math.min(...unlocked.map((entry) => entry.cost));
+  while (points >= cheapest) {
+    let roll = randomInt(world, 1, totalWeight);
+    let pick = unlocked[0]!;
+    for (const entry of unlocked) {
+      roll -= entry.weight;
+      if (roll <= 0) {
+        pick = entry;
+        break;
+      }
+    }
+    if (pick.cost > points) {
+      // Can't afford this pick: spend what's left on the cheapest unit.
+      pick = unlocked.find((entry) => entry.cost === cheapest)!;
+    }
+    units.push(pick.unit);
+    points -= pick.cost;
+  }
+
+  for (let i = units.length - 1; i > 0; i -= 1) {
+    const j = randomInt(world, 0, i);
+    [units[i], units[j]] = [units[j]!, units[i]!];
+  }
+  const base = names[(wave - 1) % names.length]!;
+  const cycle = Math.floor((wave - 1) / names.length);
+  return { units, bosses: bossCount, name: cycle === 0 ? base : `${base} ${cycle + 1}` };
 }
 
 // --- combat & movement -----------------------------------------------------
@@ -454,22 +512,41 @@ function canSee(ctx: TickContext, from: Entity, to: Entity): boolean {
   return hasLineOfSight(ctx.world.terrain, from.x, from.y, to.x, to.y);
 }
 
+/** Largest entity radius, so the grid search never misses a big target's edge. */
+const MAX_RADIUS = 48;
+
 function nearestEnemy(
   ctx: TickContext,
   from: Entity,
   maxDistance: number,
   filter: (entity: Entity) => boolean = () => true,
+  buildingDistance = maxDistance,
 ): Entity | null {
+  const reach = Math.max(maxDistance, buildingDistance) + from.radius + MAX_RADIUS;
+  const minCol = Math.floor((from.x - reach) / GRID_CELL);
+  const maxCol = Math.floor((from.x + reach) / GRID_CELL);
+  const minRow = Math.floor((from.y - reach) / GRID_CELL);
+  const maxRow = Math.floor((from.y + reach) / GRID_CELL);
+
   let best: Entity | null = null;
-  let bestDistance = maxDistance;
-  for (const entity of ctx.world.entities) {
-    if (entity.team === from.team || entity.hp <= 0 || !filter(entity)) continue;
-    const distance = edgeDistance(from, entity);
-    // Strict < keeps the lowest id on ties: deterministic.
-    if (distance < bestDistance || (best === null && distance <= maxDistance)) {
-      if (from.kind === "unit" && !canSee(ctx, from, entity)) continue;
-      best = entity;
-      bestDistance = distance;
+  let bestDistance = Infinity;
+  for (let row = minRow; row <= maxRow; row += 1) {
+    for (let col = minCol; col <= maxCol; col += 1) {
+      const cell = ctx.grid.get(row * GRID_STRIDE + col);
+      if (!cell) continue;
+      for (const entity of cell) {
+        if (entity.team === from.team || entity.hp <= 0 || !filter(entity)) continue;
+        const limit = entity.kind === "building" ? buildingDistance : maxDistance;
+        const distance = edgeDistance(from, entity);
+        if (distance > limit) continue;
+        // Closest wins; ties go to the lower id whatever order cells were visited in.
+        const better =
+          best === null || distance < bestDistance || (distance === bestDistance && entity.id < best.id);
+        if (!better) continue;
+        if (from.kind === "unit" && !canSee(ctx, from, entity)) continue;
+        best = entity;
+        bestDistance = distance;
+      }
     }
   }
   return best;
@@ -552,10 +629,12 @@ function tickUnits(ctx: TickContext): void {
     const keep =
       target !== undefined &&
       target.hp > 0 &&
-      edgeDistance(unit, target) <= def.aggro * LEASH_MULTIPLIER &&
+      edgeDistance(unit, target) <= (target.kind === "building" && !guard ? BUILDING_SIGHT : def.aggro) * LEASH_MULTIPLIER &&
       (!guard || distanceFromHome(unit) <= GUARD_RADIUS) &&
       canSee(ctx, unit, target);
-    if (!keep) target = nearestEnemy(ctx, unit, def.aggro) ?? undefined;
+    if (!keep) {
+      target = nearestEnemy(ctx, unit, def.aggro, undefined, guard ? def.aggro : Math.max(def.aggro, BUILDING_SIGHT)) ?? undefined;
+    }
     if (guard && target && distanceFromHome(unit) > GUARD_RADIUS) target = undefined;
     unit.targetId = target?.id ?? null;
 
@@ -584,6 +663,36 @@ function tickUnits(ctx: TickContext): void {
   }
 }
 
+/**
+ * Traffic flows outward from the middle of the web: a roam point's chance of
+ * being picked grows with its distance from the nest. No knowledge of where
+ * anyone lives, just which way the current runs.
+ */
+function pickRoamPoint(world: World): number {
+  const { roamPoints, nest } = world.terrain;
+  const weights = roamPoints.map((point) => {
+    const dc = point.col - nest.col;
+    const dr = point.row - nest.row;
+    return 1 + Math.floor(Math.sqrt(dc * dc + dr * dr));
+  });
+  let roll = randomInt(world, 1, weights.reduce((sum, w) => sum + w, 0));
+  for (let i = 0; i < weights.length; i += 1) {
+    roll -= weights[i]!;
+    if (roll <= 0) return i;
+  }
+  return weights.length - 1;
+}
+
+function roamField(world: World, index: number): Int32Array {
+  let field = world.nav.toRoam[index];
+  if (!field) {
+    const point = world.terrain.roamPoints[index]!;
+    field = flowField(world.terrain, [point.row * world.terrain.cols + point.col]);
+    world.nav.toRoam[index] = field;
+  }
+  return field;
+}
+
 /** Follow the pack: straggle back to the leader, else walk the pack's route. */
 function roam(ctx: TickContext, unit: Unit, leader: Unit | undefined, speed: number): void {
   const { world } = ctx;
@@ -601,12 +710,12 @@ function roam(ctx: TickContext, unit: Unit, leader: Unit | undefined, speed: num
   }
 
   let destination = world.waves.packs[unit.packId];
-  let waypoint = destination === undefined ? null : nextStep(terrain, fields[destination]!, unit.x, unit.y);
+  let waypoint = destination === undefined ? null : nextStep(terrain, roamField(world, destination), unit.x, unit.y);
   if (!waypoint) {
     // Arrived, or new pack: wander somewhere else.
-    destination = randomInt(world, 0, fields.length - 1);
+    destination = pickRoamPoint(world);
     world.waves.packs[unit.packId] = destination;
-    waypoint = nextStep(terrain, fields[destination]!, unit.x, unit.y);
+    waypoint = nextStep(terrain, roamField(world, destination), unit.x, unit.y);
   }
   if (waypoint) moveToward(terrain, unit, waypoint.x, waypoint.y, speed);
 }
@@ -622,13 +731,5 @@ function checkOutcome(ctx: TickContext): void {
       return;
     }
   }
-
-  const horde = world.teams.find((team) => team.controller === "wave-director");
-  if (!horde) return;
-  // Survived: every wave is out and you held on until the timer ran down.
-  // The creeps are still out there; they are the weather, not the siege.
-  const hold = world.waves.holdUntilTick;
-  if (hold !== null && world.tick >= hold) {
-    world.outcome = { winner: horde.id === 0 ? 1 : 0, reason: "survived", tick: world.tick };
-  }
+  // No win by timer: the web never runs out of traffic. Your score is uptime.
 }

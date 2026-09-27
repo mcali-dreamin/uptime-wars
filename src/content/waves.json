@@ -1,92 +1,58 @@
 {
   "firstWaveTicks": 600,
-  "spawnSpacingTicks": 6,
+  "spawnSpacingTicks": 4,
   "packSize": {
     "min": 2,
     "max": 8
   },
-  "spawnMinDistanceTiles": 30,
-  "holdTicksAfterLastWave": 3600,
-  "waves": [
+  "interval": {
+    "startTicks": 1200,
+    "minTicks": 500,
+    "shrinkPerWave": 35
+  },
+  "budget": {
+    "start": 40,
+    "growth": 1.16
+  },
+  "hpGrowthPerWave": 0.05,
+  "maxAlive": 500,
+  "roster": [
     {
-      "name": "Port scan",
-      "delayTicks": 0,
-      "groups": [
-        {
-          "unit": "bot",
-          "count": 28
-        }
-      ]
+      "unit": "bot",
+      "cost": 4,
+      "fromWave": 1,
+      "weight": 6
     },
     {
-      "name": "Credential stuffing",
-      "delayTicks": 1200,
-      "groups": [
-        {
-          "unit": "bot",
-          "count": 42
-        }
-      ]
+      "unit": "worm",
+      "cost": 4,
+      "fromWave": 3,
+      "weight": 4
     },
     {
-      "name": "Worm outbreak",
-      "delayTicks": 1200,
-      "groups": [
-        {
-          "unit": "worm",
-          "count": 42
-        },
-        {
-          "unit": "bot",
-          "count": 28
-        }
-      ]
-    },
-    {
-      "name": "Scraper swarm",
-      "delayTicks": 1200,
-      "groups": [
-        {
-          "unit": "bot",
-          "count": 56
-        },
-        {
-          "unit": "worm",
-          "count": 35
-        }
-      ]
-    },
-    {
-      "name": "DDoS",
-      "delayTicks": 1400,
-      "groups": [
-        {
-          "unit": "bot",
-          "count": 77
-        },
-        {
-          "unit": "worm",
-          "count": 42
-        }
-      ]
-    },
-    {
-      "name": "Ransomware",
-      "delayTicks": 1600,
-      "groups": [
-        {
-          "unit": "bot",
-          "count": 56
-        },
-        {
-          "unit": "worm",
-          "count": 28
-        },
-        {
-          "unit": "ransomware",
-          "count": 2
-        }
-      ]
+      "unit": "trojan",
+      "cost": 14,
+      "fromWave": 6,
+      "weight": 2
     }
+  ],
+  "bosses": {
+    "unit": "ransomware",
+    "fromWave": 8,
+    "every": 4
+  },
+  "names": [
+    "Port scan",
+    "Credential stuffing",
+    "Worm outbreak",
+    "Scraper swarm",
+    "Spam flood",
+    "Trojan campaign",
+    "DDoS",
+    "Ransomware",
+    "Zero-click",
+    "Supply chain",
+    "Botnet surge",
+    "Rootkit season"
   ]
 }

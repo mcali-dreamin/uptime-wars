@@ -50,7 +50,8 @@ export interface BuildingDef {
   /** Tiles per side. */
   footprint: number;
   buildable: boolean;
-  spawn?: { unit: string; intervalTicks: number; count: number };
+  /** Spawns `count` units every interval, keeping at most `maxAlive` of its own alive. */
+  spawn?: { unit: string; intervalTicks: number; count: number; maxAlive: number };
   attack?: BuildingAttack;
   income?: { amount: number; intervalTicks: number };
 }
@@ -71,23 +72,28 @@ export interface RaceDef {
   };
 }
 
-export interface WaveDef {
-  name: string;
-  /** Ticks after the previous wave started. */
-  delayTicks: number;
-  groups: { unit: string; count: number }[];
-}
-
+/**
+ * Endless waves, generated rather than listed. Wave n gets a point budget
+ * that grows every wave and spends it on whatever the roster has unlocked by
+ * then; bosses join on a cadence; every creep gets tougher as waves go on.
+ */
 export interface WavesDef {
   firstWaveTicks: number;
   spawnSpacingTicks: number;
   /** Each wave is shuffled and cut into packs of this many units. */
   packSize: { min: number; max: number };
-  /** Packs enter the map at least this many tiles from any of your buildings. */
-  spawnMinDistanceTiles: number;
-  /** After the last wave goes out, survive this long to win. */
-  holdTicksAfterLastWave: number;
-  waves: WaveDef[];
+  /** Gap between waves: starts at startTicks, shrinks each wave, never below minTicks. */
+  interval: { startTicks: number; minTicks: number; shrinkPerWave: number };
+  /** Points to spend on wave n: start * growth^(n-1). */
+  budget: { start: number; growth: number };
+  /** Creep HP multiplier grows by this much per wave. */
+  hpGrowthPerWave: number;
+  /** Never let more than this many creeps be alive; overflow waits its turn. */
+  maxAlive: number;
+  roster: { unit: string; cost: number; fromWave: number; weight: number }[];
+  /** One more boss every `every` waves from `fromWave` on. */
+  bosses: { unit: string; fromWave: number; every: number };
+  names: string[];
 }
 
 export type DamageTable = Record<AttackType, Record<ArmorType, number>>;
@@ -132,13 +138,12 @@ export function validateContent(content: Content): void {
       else if (!building.buildable) errors.push(`race ${id} lists unbuildable ${buildingId}`);
     }
   }
-  content.waves.waves.forEach((wave, index) => {
-    for (const group of wave.groups) {
-      if (!content.units[group.unit]) {
-        errors.push(`wave ${index} (${wave.name}) uses unknown unit ${group.unit}`);
-      }
-    }
-  });
+  for (const entry of content.waves.roster) {
+    if (!content.units[entry.unit]) errors.push(`wave roster uses unknown unit ${entry.unit}`);
+    if (entry.cost <= 0) errors.push(`wave roster unit ${entry.unit} must cost more than 0`);
+  }
+  if (!content.units[content.waves.bosses.unit]) errors.push(`wave boss is unknown unit ${content.waves.bosses.unit}`);
+  if (!content.waves.roster.some((entry) => entry.fromWave <= 1)) errors.push("wave roster needs a unit from wave 1");
   if (errors.length > 0) {
     throw new Error(`Invalid content:\n- ${errors.join("\n- ")}`);
   }
