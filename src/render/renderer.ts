@@ -137,7 +137,14 @@ export class Renderer {
     this.bannerAge = 0;
   }
 
-  draw(world: World, content: Content, alpha: number, deltaMs: number, ghost: Ghost | null): void {
+  draw(
+    world: World,
+    content: Content,
+    alpha: number,
+    deltaMs: number,
+    ghost: Ghost | null,
+    selectedId: number | null = null,
+  ): void {
     const { width, height } = this.app.screen;
     this.camera.setViewport(width, height);
     this.camera.update(deltaMs);
@@ -187,6 +194,7 @@ export class Renderer {
     this.shots = this.shots.filter((shot) => shot.age < SHOT_TTL_MS);
 
     this.overlay.clear();
+    this.drawSelection(world, content, selectedId);
     if (ghost) {
       const core = world.entities.find((entity) => entity.id === world.teams[0].coreId);
       if (core) this.overlay.circle(core.x, core.y, BUILD_RADIUS_TILES * TILE).stroke({ width: 2, color: 0x4ade80, alpha: 0.25 });
@@ -308,6 +316,33 @@ export class Renderer {
       }
     }
     g.fill({ color: 0x2b6f80, alpha: 0.8 });
+  }
+
+  /**
+   * Outline the selected building and show where its units gather: its own
+   * rally point, else the team's global one (drawn dashed-looking, fainter).
+   */
+  private drawSelection(world: World, content: Content, selectedId: number | null): void {
+    if (selectedId === null) return;
+    const building = world.entities.find((e) => e.id === selectedId);
+    if (!building || building.kind !== "building") return;
+    const g = this.overlay;
+    const color = 0xfacc15;
+    const size = building.footprint * TILE + 6;
+    g.rect(building.x - size / 2, building.y - size / 2, size, size).stroke({ width: 2, color, alpha: 0.9 });
+
+    const team = world.teams[building.team];
+    const isCore = building.id === team.coreId;
+    if (!isCore && !content.buildings[building.defId]!.spawn) return;
+    const own = isCore ? team.rally : building.rally;
+    const rally = own ?? team.rally;
+    if (!rally) return;
+    const alpha = own ? 0.9 : 0.45;
+    g.moveTo(building.x, building.y).lineTo(rally.x, rally.y).stroke({ width: 2, color, alpha: alpha * 0.6 });
+    // A little flag.
+    g.moveTo(rally.x, rally.y).lineTo(rally.x, rally.y - 26).stroke({ width: 2, color, alpha });
+    g.moveTo(rally.x, rally.y - 26).lineTo(rally.x + 16, rally.y - 20).lineTo(rally.x, rally.y - 14).closePath().fill({ color, alpha });
+    g.circle(rally.x, rally.y, 40).stroke({ width: 1, color, alpha: alpha * 0.4 });
   }
 
   /** The deploy agent: a diamond with a pulse, plus a line to where it's headed. */

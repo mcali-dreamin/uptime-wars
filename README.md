@@ -18,6 +18,10 @@ npm run dev
   scout through the fog; press `C` (or the button) and click to choose where
   your core goes. The agent walks there and becomes the core. Lose the agent
   first and it's over.
+- Click one of your buildings to select it. Right-click sets where its units
+  gather; right-click with the **core** selected sets a global rally point for
+  every spawner that doesn't have its own. Units fight whatever gets in their
+  way there, then guard the spot.
 - `1`-`4` or click: pick a building. Click near your core (the ring shows your
   build radius) to place it. Shift-click to place several.
 - `WASD` / arrows, drag, or the very edge of the window: pan (`E` toggles edge
@@ -96,7 +100,7 @@ Direction: survival on a procedurally generated open web.
 - [x] Wandering creep packs that only attack what they see
 - [x] Endless escalating waves from a nest in the middle; uptime score
 - [ ] Elevation: plateaus, cliffs, ramps; high-ground sight and range
-- [ ] Rally points for spawned defenders
+- [x] Rally points: per spawner, with a global default on the core
 - Heroes and security abilities (zero-day, RCE, ransomware, worm, DDoS, honeypot)
 - More races: Hyperscaler, Hacker crew, State actor / APT
 - Content from WordPress, saves and leaderboards via Spacefast Zero
