@@ -15,7 +15,7 @@ import { BUILD_RADIUS_TILES, TILE, footprintCenter } from "./map";
 import { bodyFits, flowField, hasClearPath, hasLineOfSight, moveToward, nextStep } from "./nav";
 import { randomInt } from "./rng";
 import { TILE_BLOCKED, TILE_OPEN, generateTerrain, tileAt, type Terrain } from "./terrain";
-import type { Building, Command, Entity, TeamId, Unit, World } from "./types";
+import type { Building, Command, Entity, Point, RallyCommand, TeamId, Unit, World } from "./types";
 
 export const STARTING_COMPUTE = 200;
 export const BASE_INCOME = { amount: 3, intervalTicks: 20 };
@@ -27,6 +27,8 @@ const LEASH_MULTIPLIER = 1.5;
 const GUARD_RADIUS = 220;
 /** Guards within this distance of home count as home. */
 const HOME_SLACK = 24;
+/** Units gathering at a rally point spread over this many pixels either way. */
+const RALLY_SPREAD = 40;
 /** Roamers amble rather than march. */
 const ROAM_SPEED = 0.6;
 /** A pack member further than this from its leader catches up first. */
@@ -77,6 +79,7 @@ export function createWorld(content: Content, setup: MatchSetup): World {
     terrain,
     nav: {
       builderOrder: [null, null],
+      rally: new Map(),
       toRoam: terrain.roamPoints.map(() => null),
     },
     nextId: 1,
@@ -133,6 +136,7 @@ function makeTeam(content: Content, id: TeamId, raceId: string) {
     incomeTimer: BASE_INCOME.intervalTicks,
     coreId: -1,
     builderId: -1,
+    rally: null,
   };
 }
 
@@ -199,6 +203,8 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
     return null;
   }
 
+  if (command.type === "rally") return applyRally(ctx, command);
+
   const builder = ctx.byId.get(world.teams[command.team].builderId);
   if (!builder || builder.kind !== "unit" || builder.hp <= 0) return "no builder";
   if (command.type === "found") {
@@ -219,6 +225,43 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
     Math.floor(builder.moveTo.y / TILE) * cols + Math.floor(builder.moveTo.x / TILE),
   ]);
   return null;
+}
+
+function applyRally(ctx: TickContext, command: RallyCommand): string | null {
+  const { world, content } = ctx;
+  const team = world.teams[command.team];
+  const building = ctx.byId.get(command.buildingId);
+  if (!building || building.kind !== "building" || building.team !== command.team || building.hp <= 0) {
+    return "not your building";
+  }
+  const global = building.id === team.coreId;
+  if (!global && !content.buildings[building.defId]!.spawn) return "doesn't spawn units";
+  if (tileAt(world.terrain, Math.floor(command.x / TILE), Math.floor(command.y / TILE)) === TILE_BLOCKED) {
+    return "can't rally there";
+  }
+  const point = { x: command.x, y: command.y };
+  if (global) team.rally = point;
+  else building.rally = point;
+
+  // Send the units already out there, not just new ones.
+  for (const unit of world.entities) {
+    if (unit.kind !== "unit" || unit.team !== team.id || unit.mode !== "guard" || unit.spawnerId < 0) continue;
+    const spawner = ctx.byId.get(unit.spawnerId);
+    if (spawner?.kind !== "building") continue;
+    const affected = global ? spawner.rally === null : spawner.id === building.id;
+    if (affected) sendHome(world, unit, point);
+  }
+  return null;
+}
+
+/** Give a guard a new home near `point`, spread out a little so they don't stack. */
+function sendHome(world: World, unit: Unit, point: Point): void {
+  unit.homeX = point.x + randomInt(world, -RALLY_SPREAD, RALLY_SPREAD);
+  unit.homeY = point.y + randomInt(world, -RALLY_SPREAD, RALLY_SPREAD);
+  if (!bodyFits(world.terrain, unit.homeX, unit.homeY, unit.radius)) {
+    unit.homeX = point.x;
+    unit.homeY = point.y;
+  }
 }
 
 /** Why a core can't be founded on this 2x2 footprint, or null when it can. */
@@ -317,6 +360,7 @@ function placeBuilding(
     attackCooldown: 0,
     targetId: null,
     buildRemaining: instant ? 0 : def.buildTicks,
+    rally: null,
     spawnTimer: 0,
     incomeTimer: def.income?.intervalTicks ?? 0,
   };
@@ -453,6 +497,8 @@ function tickSpawners(ctx: TickContext): void {
       const y = building.y + building.radius + 10 + randomInt(world, 0, 8);
       const unit = spawnUnit(ctx, building.team, spawn.unit, building, x, y, "guard");
       unit.spawnerId = building.id;
+      const rally = building.rally ?? world.teams[building.team].rally;
+      if (rally) sendHome(world, unit, rally);
     }
     building.spawnTimer = spawnInterval(content, world.teams[building.team].raceId, building.defId);
   }
@@ -649,6 +695,24 @@ function tickBuildingAttacks(ctx: TickContext): void {
   }
 }
 
+/** Straight home when the way is clear, else follow the route to home's tile. */
+function walkHome(world: World, unit: Unit, speed: number): void {
+  const { terrain } = world;
+  if (hasClearPath(terrain, unit.x, unit.y, unit.homeX, unit.homeY, unit.radius)) {
+    moveToward(terrain, unit, unit.homeX, unit.homeY, speed);
+    return;
+  }
+  const goal = Math.floor(unit.homeY / TILE) * terrain.cols + Math.floor(unit.homeX / TILE);
+  let field = world.nav.rally.get(goal);
+  if (!field) {
+    field = flowField(terrain, [goal]);
+    world.nav.rally.set(goal, field);
+  }
+  const waypoint = nextStep(terrain, field, unit.x, unit.y);
+  if (waypoint) moveToward(terrain, unit, waypoint.x, waypoint.y, speed);
+  else moveToward(terrain, unit, unit.homeX, unit.homeY, speed);
+}
+
 function distanceFromHome(unit: Unit): number {
   const dx = unit.x - unit.homeX;
   const dy = unit.y - unit.homeY;
@@ -684,16 +748,21 @@ function tickUnits(ctx: TickContext): void {
     const guard = unit.mode === "guard";
 
     let target = unit.targetId === null ? undefined : ctx.byId.get(unit.targetId);
+    // Guards defend the ground around home, and fight anything that gets in
+    // their face on the way there (attack-move), but won't chase a target
+    // away from home past their own sight.
+    const guardCanHold = (t: Entity) =>
+      !guard || Math.hypot(t.x - unit.homeX, t.y - unit.homeY) <= GUARD_RADIUS || edgeDistance(unit, t) <= def.aggro;
     const keep =
       target !== undefined &&
       target.hp > 0 &&
       edgeDistance(unit, target) <= (target.kind === "building" && !guard ? BUILDING_SIGHT : def.aggro) * LEASH_MULTIPLIER &&
-      (!guard || distanceFromHome(unit) <= GUARD_RADIUS) &&
+      guardCanHold(target) &&
       canSee(ctx, unit, target);
     if (!keep) {
       target = nearestEnemy(ctx, unit, def.aggro, undefined, guard ? def.aggro : Math.max(def.aggro, BUILDING_SIGHT)) ?? undefined;
     }
-    if (guard && target && distanceFromHome(unit) > GUARD_RADIUS) target = undefined;
+    if (target && !guardCanHold(target)) target = undefined;
     unit.targetId = target?.id ?? null;
 
     if (target) {
@@ -713,7 +782,7 @@ function tickUnits(ctx: TickContext): void {
     }
 
     if (guard) {
-      if (distanceFromHome(unit) > HOME_SLACK) moveToward(terrain, unit, unit.homeX, unit.homeY, def.speed);
+      if (distanceFromHome(unit) > HOME_SLACK) walkHome(world, unit, def.speed);
       continue;
     }
 

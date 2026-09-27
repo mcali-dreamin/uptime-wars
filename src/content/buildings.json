@@ -19,7 +19,7 @@
   },
   "server-rack": {
     "name": "Server Rack",
-    "description": "Forks Processes on a timer. They guard the area around the rack.",
+    "description": "Forks Processes on a timer. They guard the rack, or gather at its rally point.",
     "cost": 60,
     "buildTicks": 60,
     "hp": 400,
@@ -37,7 +37,7 @@
   },
   "gpu-cluster": {
     "name": "GPU Cluster",
-    "description": "Spins up ranged Inference Drones that guard nearby. Expensive, hits hard.",
+    "description": "Spins up ranged Inference Drones. Expensive, hits hard. They gather at its rally point.",
     "cost": 140,
     "buildTicks": 100,
     "hp": 350,

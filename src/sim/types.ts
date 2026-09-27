@@ -3,10 +3,17 @@ import type { Terrain } from "./terrain";
 
 export type TeamId = 0 | 1;
 
+export interface Point {
+  x: number;
+  y: number;
+}
+
 export interface Team {
   id: TeamId;
   /** The builder unit before the core is founded, else -1. */
   builderId: number;
+  /** Global rally point for every spawner without its own, set from the core. */
+  rally: Point | null;
   raceId: string;
   controller: Controller;
   compute: number;
@@ -58,6 +65,8 @@ export interface Building extends EntityBase {
   footprint: number;
   /** Ticks of construction left. 0 means operational. */
   buildRemaining: number;
+  /** This spawner's own rally point; overrides the team's global one. */
+  rally: Point | null;
   spawnTimer: number;
   incomeTimer: number;
 }
@@ -91,7 +100,20 @@ export interface FoundCommand {
   row: number;
 }
 
-export type Command = BuildCommand | MoveCommand | FoundCommand;
+/**
+ * Set where a spawner's units gather. Targeting the core sets the team's
+ * global rally point instead, used by every spawner without its own.
+ */
+export interface RallyCommand {
+  type: "rally";
+  tick: number;
+  team: TeamId;
+  buildingId: number;
+  x: number;
+  y: number;
+}
+
+export type Command = BuildCommand | MoveCommand | FoundCommand | RallyCommand;
 
 export interface WaveSpawn {
   tick: number;
@@ -134,6 +156,8 @@ export type SimEvent =
 export interface Navigation {
   /** Flow field toward each team's current builder order, by team id. */
   builderOrder: [Int32Array | null, Int32Array | null];
+  /** Flow fields toward rally points, by goal tile. Filled on demand. */
+  rally: Map<number, Int32Array>;
   /**
    * Flow field toward each terrain roam point, same order. Filled lazily the
    * first time a pack heads there: pure function of the terrain, so peers

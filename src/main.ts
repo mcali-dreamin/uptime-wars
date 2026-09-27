@@ -32,6 +32,8 @@ const renderer = new Renderer();
 let world: World = newMatch();
 /** A building id to place, FOUND, or nothing. */
 let selected: string | null = null;
+/** One of your buildings, selected by clicking it: right-click sets its rally point. */
+let selectedBuildingId: number | null = null;
 /** Which build bar is showing, so it can switch when the core comes online. */
 let barPhase: "deploy" | "build" = "deploy";
 let ghost: Ghost | null = null;
@@ -87,7 +89,32 @@ function refreshCard(): void {
     });
     return;
   }
-  showCard(building ? buildingCard(content, raceId, building) : hoverCard);
+  if (building) return showCard(buildingCard(content, raceId, building));
+  showCard(hoverCard ?? selectedCard());
+}
+
+function selectedBuilding() {
+  if (selectedBuildingId === null) return undefined;
+  const entity = world.entities.find((e) => e.id === selectedBuildingId);
+  return entity?.kind === "building" && entity.hp > 0 ? entity : undefined;
+}
+
+/** Does right-clicking with this building selected set a rally point? */
+function rallies(building: NonNullable<ReturnType<typeof selectedBuilding>>): boolean {
+  return building.id === world.teams[HUMAN].coreId || content.buildings[building.defId]!.spawn !== undefined;
+}
+
+function selectedCard(): InfoCard | null {
+  const building = selectedBuilding();
+  if (!building) return null;
+  const card = buildingCard(content, world.teams[HUMAN].raceId, building.defId);
+  const isCore = building.id === world.teams[HUMAN].coreId;
+  const hint = isCore
+    ? "Selected · right-click: set the global rally point for every spawner without its own"
+    : rallies(building)
+      ? "Selected · right-click: set where this building's units gather (overrides the global rally)"
+      : "Selected";
+  return { ...card, lines: [...card.lines, hint] };
 }
 
 function builder() {
@@ -107,6 +134,7 @@ function cardAt(clientX: number, clientY: number): InfoCard | null {
     if (entity.kind === "building") {
       const half = (entity.footprint * TILE) / 2;
       if (Math.abs(point.x - entity.x) <= half && Math.abs(point.y - entity.y) <= half) {
+        if (entity.id === selectedBuildingId) return selectedCard();
         const card = buildingCard(content, world.teams[entity.team].raceId, entity.defId);
         const owner = world.teams[entity.team].controller === "human" ? "Yours" : "Hostile";
         const status = entity.buildRemaining > 0 ? `building, ${Math.ceil(entity.buildRemaining / TICK_RATE)}s left` : "online";
@@ -157,7 +185,11 @@ renderer.app.ticker.add((ticker) => {
     if (steps === MAX_STEPS_PER_FRAME) accumulator = 0;
     if (world.outcome) announceOutcome();
   }
-  renderer.draw(world, content, paused ? 1 : accumulator / STEP_MS, ticker.deltaMS, ghost);
+  if (selectedBuildingId !== null && !selectedBuilding()) {
+    selectedBuildingId = null;
+    refreshCard();
+  }
+  renderer.draw(world, content, paused ? 1 : accumulator / STEP_MS, ticker.deltaMS, ghost, selectedBuildingId);
   updateHud();
 });
 
@@ -168,9 +200,17 @@ let drag: { x: number; y: number; moved: boolean; minimap: boolean } | null = nu
 
 canvas.addEventListener("pointerdown", (event) => {
   if (event.button === 2) {
-    // Right-click cancels a placement; with nothing selected it moves the deploy agent.
+    // Right-click cancels a placement, sets a rally point for a selected
+    // building, and otherwise moves the deploy agent.
     if (selected) return select(null);
-    if (builder() && !renderer.minimapHit(event.clientX, event.clientY)) {
+    const rallyFrom = selectedBuilding();
+    const onMinimap = renderer.minimapHit(event.clientX, event.clientY);
+    if (rallyFrom && rallies(rallyFrom)) {
+      const point = onMinimap ?? renderer.toWorld(event.clientX, event.clientY);
+      queueCommand(world, { type: "rally", tick: world.tick + INPUT_DELAY_TICKS, team: HUMAN, buildingId: rallyFrom.id, x: point.x, y: point.y });
+      return;
+    }
+    if (builder() && !onMinimap) {
       const point = renderer.toWorld(event.clientX, event.clientY);
       queueCommand(world, { type: "move", tick: world.tick + INPUT_DELAY_TICKS, team: HUMAN, x: point.x, y: point.y });
     }
@@ -211,9 +251,13 @@ canvas.addEventListener("pointermove", (event) => {
 });
 
 canvas.addEventListener("pointerup", (event) => {
-  const wasClick = drag && !drag.moved && event.button === 0;
+  const wasClick = drag && !drag.moved && !drag.minimap && event.button === 0;
   drag = null;
-  if (!wasClick || !selected) return;
+  if (!wasClick) return;
+  if (!selected) {
+    selectBuildingAt(event.clientX, event.clientY);
+    return;
+  }
   const target = ghostAt(event.clientX, event.clientY);
   if (!target?.valid) return;
   if (selected === FOUND) {
@@ -286,7 +330,10 @@ window.addEventListener("keydown", (event) => {
     event.preventDefault();
     return;
   }
-  if (key === "escape") return select(null);
+  if (key === "escape") {
+    selectedBuildingId = null;
+    return select(null);
+  }
   if (key === "e") {
     renderer.camera.edgeScrollEnabled = !renderer.camera.edgeScrollEnabled;
     localStorage.setItem("uptime:edge-scroll", renderer.camera.edgeScrollEnabled ? "on" : "off");
@@ -342,6 +389,21 @@ function ghostAt(clientX: number, clientY: number): Ghost | null {
   return { col, row, footprint: def.footprint, valid, range: def.attack?.range ?? 0 };
 }
 
+/** Select your own building under the pointer, or clear the selection. */
+function selectBuildingAt(clientX: number, clientY: number): void {
+  const point = renderer.toWorld(clientX, clientY);
+  const hit = world.entities.find(
+    (e) =>
+      e.kind === "building" &&
+      e.team === HUMAN &&
+      Math.abs(point.x - e.x) <= (e.footprint * TILE) / 2 &&
+      Math.abs(point.y - e.y) <= (e.footprint * TILE) / 2,
+  );
+  selectedBuildingId = hit?.id ?? null;
+  hoverCard = cardAt(clientX, clientY);
+  refreshCard();
+}
+
 function select(buildingId: string | null): void {
   selected = buildingId;
   ghost = null;
@@ -353,6 +415,7 @@ function select(buildingId: string | null): void {
 
 function restart(): void {
   world = newMatch();
+  selectedBuildingId = null;
   select(null);
   buildBar();
   renderer.setWorld(world);
@@ -417,7 +480,7 @@ function buildBar(): void {
   const help = document.createElement("div");
   help.className = "stat help";
   help.innerHTML =
-    '<span class="label">Controls</span><span>WASD / drag / window edge: pan · E: edge scroll on/off · wheel: zoom · Space: home · P: pause</span>';
+    '<span class="label">Controls</span><span>Click a building to select · right-click: rally point (core = global) · WASD / drag / window edge: pan · E: edge scroll · Space: home · P: pause</span>';
   hud.buildBar.append(help);
 }
 

@@ -330,6 +330,85 @@ describe("builder start", () => {
   });
 });
 
+describe("rally points", () => {
+  /** A walkable point roughly `tiles` away from the core, found deterministically. */
+  function openPointNear(world: ReturnType<typeof createWorld>, tiles: number) {
+    const core = world.entities.find((e) => e.id === world.teams[0].coreId)!;
+    for (let r = tiles; r < tiles + 10; r += 1) {
+      for (const [dx, dy] of [[r, 0], [-r, 0], [0, r], [0, -r], [r, r], [-r, -r]] as const) {
+        const x = core.x + dx * TILE;
+        const y = core.y + dy * TILE;
+        if (tileAt(world.terrain, Math.floor(x / TILE), Math.floor(y / TILE)) === 0) return { x, y };
+      }
+    }
+    throw new Error("no open point");
+  }
+
+  function worldWithRack() {
+    const world = createWorld(content, SETUP);
+    queueCommand(world, firstSpot("server-rack"));
+    while (!world.entities.some((e) => e.kind === "unit" && e.team === 0)) step(world, content);
+    const rack = world.entities.find((e) => e.kind === "building" && e.defId === "server-rack")!;
+    return { world, rack, coreId: world.teams[0].coreId };
+  }
+
+  const guards = (world: ReturnType<typeof createWorld>) =>
+    world.entities.filter((e): e is Extract<typeof e, { kind: "unit" }> => e.kind === "unit" && e.team === 0);
+
+  it("a spawner's rally point sends its existing units and new ones there", () => {
+    const { world, rack } = worldWithRack();
+    const point = openPointNear(world, 8);
+    queueCommand(world, { type: "rally", tick: world.tick, team: 0, buildingId: rack.id, x: point.x, y: point.y });
+    const until = world.tick + 900;
+    while (world.tick < until) step(world, content);
+    const units = guards(world);
+    expect(units.length).toBeGreaterThan(2);
+    for (const unit of units) {
+      expect(Math.hypot(unit.homeX - point.x, unit.homeY - point.y)).toBeLessThanOrEqual(60);
+      expect(Math.hypot(unit.x - point.x, unit.y - point.y)).toBeLessThan(120);
+    }
+  });
+
+  it("the core sets a global rally; a spawner's own rally overrides it", () => {
+    const { world, rack, coreId } = worldWithRack();
+    const globalPoint = openPointNear(world, 6);
+    const ownPoint = openPointNear(world, 12);
+    queueCommand(world, { type: "rally", tick: world.tick, team: 0, buildingId: coreId, x: globalPoint.x, y: globalPoint.y });
+    step(world, content);
+    expect(world.teams[0].rally).toEqual(globalPoint);
+    for (const unit of guards(world)) expect(Math.hypot(unit.homeX - globalPoint.x, unit.homeY - globalPoint.y)).toBeLessThanOrEqual(60);
+
+    queueCommand(world, { type: "rally", tick: world.tick, team: 0, buildingId: rack.id, x: ownPoint.x, y: ownPoint.y });
+    step(world, content);
+    for (const unit of guards(world)) expect(Math.hypot(unit.homeX - ownPoint.x, unit.homeY - ownPoint.y)).toBeLessThanOrEqual(60);
+
+    // Moving the global rally no longer affects a spawner that has its own.
+    queueCommand(world, { type: "rally", tick: world.tick, team: 0, buildingId: coreId, x: globalPoint.x + TILE, y: globalPoint.y });
+    step(world, content);
+    for (const unit of guards(world)) expect(Math.hypot(unit.homeX - ownPoint.x, unit.homeY - ownPoint.y)).toBeLessThanOrEqual(60);
+  });
+
+  it("rejects rallies on non-spawners, enemy buildings, and walls", () => {
+    const world = createWorld(content, SETUP);
+    const wall = planBuildOrder(content, SETUP, [[0, "firewall"]])[0]!;
+    queueCommand(world, wall);
+    step(world, content);
+    const firewall = world.entities.find((e) => e.kind === "building" && e.defId === "firewall")!;
+    const open = openPointNear(world, 5);
+    const reasons: string[] = [];
+    for (const command of [
+      { buildingId: firewall.id, x: open.x, y: open.y },
+      { buildingId: world.teams[1].coreId, x: open.x, y: open.y },
+      { buildingId: world.teams[0].coreId, x: 1, y: 1 },
+    ]) {
+      queueCommand(world, { type: "rally", tick: world.tick, team: 0, ...command });
+      step(world, content);
+      for (const e of world.events) if (e.type === "rejected") reasons.push(e.reason);
+    }
+    expect(reasons).toEqual(["doesn't spawn units", "not your building", "can't rally there"]);
+  });
+});
+
 describe("content", () => {
   it("rejects broken references", () => {
     const broken: Content = structuredClone(content);
