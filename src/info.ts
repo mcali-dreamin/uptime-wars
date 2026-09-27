@@ -19,9 +19,10 @@ export function buildingCard(content: Content, raceId: string, buildingId: strin
   if (def.spawn) {
     const unit = content.units[def.spawn.unit]!;
     const interval = Math.round(def.spawn.intervalTicks * race.modifiers.spawnIntervalMultiplier);
-    const bonus = race.modifiers.spawnIntervalMultiplier < 1 ? ` (${race.name} bonus)` : "";
+    const m = race.modifiers.spawnIntervalMultiplier;
+    const bonus = m < 1 ? ` (${race.name}: ${Math.round((1 - m) * 100)}% faster)` : m > 1 ? ` (${race.name}: ${Math.round((m - 1) * 100)}% slower)` : "";
     lines.push(`Spawns ${def.spawn.count}× ${unit.name} every ${seconds(interval)}${bonus}, up to ${def.spawn.maxAlive} alive`);
-    lines.push(`  ${unit.name}: ${unitSummary(unit)}`);
+    lines.push(`  ${unit.name}: ${unitSummary(unit, race.modifiers.unitHpMultiplier)}`);
     lines.push("  Units guard this building, or gather at its rally point (select it, then right-click).");
   }
   if (def.attack) {
@@ -43,10 +44,10 @@ export function unitCard(content: Content, unitId: string, hp: number): InfoCard
   return { title: unit.name, subtitle: unit.description, lines: [unitSummary(unit), `${Math.ceil(hp)} / ${unit.hp} HP`] };
 }
 
-function unitSummary(unit: Content["units"][string]): string {
+function unitSummary(unit: Content["units"][string], hpMultiplier = 1): string {
   const dps = (unit.damage / (unit.cooldownTicks / TICK_RATE)).toFixed(1);
   const reach = unit.range > 60 ? `ranged (${unit.range})` : "melee";
-  return `${unit.hp} HP, ${reach}, ${unit.damage} ${unit.attackType} dmg (${dps}/s)`;
+  return `${Math.round(unit.hp * hpMultiplier)} HP, ${reach}, ${unit.damage} ${unit.attackType} dmg (${dps}/s)`;
 }
 
 export function terrainCard(tile: number): InfoCard | null {

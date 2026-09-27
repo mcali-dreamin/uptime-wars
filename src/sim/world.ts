@@ -132,7 +132,7 @@ function makeTeam(content: Content, id: TeamId, raceId: string) {
     id,
     raceId,
     controller: race.controller,
-    compute: STARTING_COMPUTE,
+    compute: STARTING_COMPUTE + race.modifiers.startingComputeBonus,
     incomeTimer: BASE_INCOME.intervalTicks,
     coreId: -1,
     builderId: -1,

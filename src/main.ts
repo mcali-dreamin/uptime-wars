@@ -22,13 +22,18 @@ const INPUT_DELAY_TICKS = 2;
 const MAX_STEPS_PER_FRAME = 5;
 const DRAG_THRESHOLD_PX = 5;
 const HUMAN: TeamId = 0;
-const SETUP = { races: ["open-source", "botnet"] as [string, string] };
+const HORDE_RACE = "botnet";
 
 /** Selection value meaning "choose where the core goes". */
 const FOUND = "__found";
 
 const content = loadDefaultContent();
 const renderer = new Renderer();
+/** Races a person can play, in content order. */
+const PLAYABLE = Object.entries(content.races).filter(([, race]) => race.controller === "human").map(([id]) => id);
+let raceId = PLAYABLE.includes(localStorage.getItem("uptime:race") ?? "") ? localStorage.getItem("uptime:race")! : PLAYABLE[0]!;
+/** True while the race picker is up: the match doesn't run and the map ignores input. */
+let picking = true;
 let world: World = newMatch();
 /** A building id to place, FOUND, or nothing. */
 let selected: string | null = null;
@@ -155,7 +160,36 @@ function cardAt(clientX: number, clientY: number): InfoCard | null {
 
 function newMatch(): World {
   const seed = (Math.random() * 2 ** 31) | 0;
-  return createWorld(content, { seed, races: SETUP.races });
+  return createWorld(content, { seed, races: [raceId, HORDE_RACE] });
+}
+
+// --- race picker -----------------------------------------------------------
+
+const picker = $("race-picker");
+
+function showPicker(): void {
+  picking = true;
+  const cards = $("race-cards");
+  cards.replaceChildren(
+    ...PLAYABLE.map((id, index) => {
+      const race = content.races[id]!;
+      const card = document.createElement("button");
+      card.className = `race-card${id === raceId ? " last" : ""}`;
+      const roster = race.buildings.map((b) => `<li>${content.buildings[b]!.name}: ${content.buildings[b]!.description}</li>`).join("");
+      card.innerHTML = `<strong>${index + 1}. ${race.name}</strong><em>${race.specialty}</em><ul>${roster}</ul>`;
+      card.addEventListener("click", () => pickRace(id));
+      return card;
+    }),
+  );
+  picker.hidden = false;
+}
+
+function pickRace(id: string): void {
+  raceId = id;
+  localStorage.setItem("uptime:race", id);
+  picker.hidden = true;
+  picking = false;
+  restart();
 }
 
 // `?debug` exposes live state for automated browser checks and the console.
@@ -171,8 +205,10 @@ await renderer.init($("stage"));
 renderer.camera.edgeScrollEnabled = localStorage.getItem("uptime:edge-scroll") !== "off";
 renderer.setWorld(world);
 
+showPicker();
+
 renderer.app.ticker.add((ticker) => {
-  if (!paused && !world.outcome) {
+  if (!paused && !picking && !world.outcome) {
     accumulator += ticker.deltaMS;
     let steps = 0;
     while (accumulator >= STEP_MS && steps < MAX_STEPS_PER_FRAME) {
@@ -199,6 +235,7 @@ const canvas = renderer.app.canvas;
 let drag: { x: number; y: number; moved: boolean; minimap: boolean } | null = null;
 
 canvas.addEventListener("pointerdown", (event) => {
+  if (picking) return;
   if (event.button === 2) {
     // Right-click cancels a placement, sets a rally point for a selected
     // building, and otherwise moves the deploy agent.
@@ -324,6 +361,11 @@ function updatePanKeys(): void {
 
 window.addEventListener("keydown", (event) => {
   const key = event.key.toLowerCase();
+  if (picking) {
+    const id = PLAYABLE[Number(key) - 1];
+    if (id) pickRace(id);
+    return;
+  }
   if (PAN_KEYS[key]) {
     held.add(key);
     updatePanKeys();
@@ -350,7 +392,7 @@ window.addEventListener("keydown", (event) => {
     if (home) renderer.camera.centerOn(home.x, home.y);
     return;
   }
-  if (key === "r" && world.outcome) return restart();
+  if (key === "r" && world.outcome) return showPicker();
   if (barPhase === "deploy") {
     if (key === "c" && builder()) select(FOUND);
     return;
@@ -519,7 +561,7 @@ function announceOutcome(): void {
     : world.teams[HUMAN].coreId === -1
       ? `OUTAGE - your deploy agent was lost before the core came online.`
       : `OUTAGE - uptime ${uptime}, reached wave ${world.waves.nextIndex}.`;
-  hud.status.textContent = `${summary} Press R for a new web. [${hashWorld(world)}]`;
+  hud.status.textContent = `${summary} Press R to pick a race for a new web. [${hashWorld(world)}]`;
   hud.status.className = won ? "won" : "lost";
   renderer.showBanner(won ? "NEST OFFLINE" : `OUTAGE · uptime ${uptime}`);
 }

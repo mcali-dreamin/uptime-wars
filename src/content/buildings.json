@@ -103,5 +103,57 @@
       "range": 150,
       "cooldownTicks": 24
     }
+  },
+  "hyperscale-rack": {
+    "name": "Hyperscale Rack",
+    "description": "Provisions Load Balancers: slow to spin up, very hard to kill. They gather at its rally point.",
+    "cost": 90,
+    "buildTicks": 80,
+    "hp": 650,
+    "armor": 3,
+    "armorType": "hardened",
+    "footprint": 1,
+    "buildable": true,
+    "sight": 300,
+    "spawn": {
+      "unit": "load-balancer",
+      "intervalTicks": 180,
+      "count": 1,
+      "maxAlive": 4
+    }
+  },
+  "cdn-edge": {
+    "name": "CDN Edge",
+    "description": "Long-range tower. Lighter hits, but it reaches creeps far before they reach you.",
+    "cost": 110,
+    "buildTicks": 90,
+    "hp": 500,
+    "armor": 3,
+    "armorType": "hardened",
+    "footprint": 1,
+    "buildable": true,
+    "sight": 420,
+    "attack": {
+      "attackType": "exploit",
+      "damage": 9,
+      "range": 260,
+      "cooldownTicks": 12
+    }
+  },
+  "power-plant": {
+    "name": "Power Plant",
+    "description": "Serious generation for serious infrastructure. Expensive, pays back fast.",
+    "cost": 160,
+    "buildTicks": 120,
+    "hp": 450,
+    "armor": 2,
+    "armorType": "hardened",
+    "footprint": 1,
+    "buildable": true,
+    "sight": 240,
+    "income": {
+      "amount": 10,
+      "intervalTicks": 20
+    }
   }
 }

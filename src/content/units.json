@@ -106,5 +106,21 @@
     "bounty": 0,
     "size": 11,
     "sight": 420
+  },
+  "load-balancer": {
+    "name": "Load Balancer",
+    "description": "Heavy, patient, and very hard to knock over. Soaks traffic so the towers can work.",
+    "hp": 220,
+    "armor": 3,
+    "armorType": "hardened",
+    "attackType": "brute",
+    "damage": 14,
+    "range": 26,
+    "cooldownTicks": 22,
+    "speed": 2.4,
+    "aggro": 200,
+    "bounty": 0,
+    "size": 13,
+    "sight": 240
   }
 }
