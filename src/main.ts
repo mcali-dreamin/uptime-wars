@@ -115,6 +115,7 @@ if (new URLSearchParams(location.search).has("debug")) {
 // HUD first: the stage's size depends on the build bar's height.
 buildBar();
 await renderer.init($("stage"));
+renderer.camera.edgeScrollEnabled = localStorage.getItem("uptime:edge-scroll") !== "off";
 renderer.setWorld(world);
 
 renderer.app.ticker.add((ticker) => {
@@ -154,9 +155,6 @@ canvas.addEventListener("pointerdown", (event) => {
 });
 
 canvas.addEventListener("pointermove", (event) => {
-  const rect = canvas.getBoundingClientRect();
-  renderer.camera.setEdgeFromPointer(drag ? null : event.clientX - rect.left, drag ? null : event.clientY - rect.top);
-
   if (drag) {
     if (drag.minimap) {
       const point = renderer.minimapHit(event.clientX, event.clientY);
@@ -196,8 +194,16 @@ canvas.addEventListener("pointerup", (event) => {
   if (!event.shiftKey) select(null);
 });
 
+// Edge scroll tracks the pointer over the whole window, like WC3: only the
+// outermost few pixels of the screen count, even over the HUD, so moving
+// onto a toolbar button never pans. Paused while dragging.
+window.addEventListener("pointermove", (event) => {
+  if (drag) return renderer.camera.setEdgeFromWindowPointer(null, null);
+  renderer.camera.setEdgeFromWindowPointer(event.clientX, event.clientY, window.innerWidth, window.innerHeight);
+});
+document.documentElement.addEventListener("pointerleave", () => renderer.camera.setEdgeFromWindowPointer(null, null));
+
 canvas.addEventListener("pointerleave", () => {
-  renderer.camera.setEdgeFromPointer(null, null);
   hoverCard = null;
   refreshCard();
 });
@@ -243,6 +249,12 @@ window.addEventListener("keydown", (event) => {
     return;
   }
   if (key === "escape") return select(null);
+  if (key === "e") {
+    renderer.camera.edgeScrollEnabled = !renderer.camera.edgeScrollEnabled;
+    localStorage.setItem("uptime:edge-scroll", renderer.camera.edgeScrollEnabled ? "on" : "off");
+    renderer.showBanner(`Edge scroll ${renderer.camera.edgeScrollEnabled ? "on" : "off"} (E)`);
+    return;
+  }
   if (key === "p") {
     paused = !paused;
     return;
@@ -329,7 +341,7 @@ function buildBar(): void {
   const help = document.createElement("div");
   help.className = "stat help";
   help.innerHTML =
-    '<span class="label">Controls</span><span>WASD / edge / drag: pan · wheel: zoom · Space: home · P: pause</span>';
+    '<span class="label">Controls</span><span>WASD / drag / window edge: pan · E: edge scroll on/off · wheel: zoom · Space: home · P: pause</span>';
   hud.buildBar.append(help);
 }
 

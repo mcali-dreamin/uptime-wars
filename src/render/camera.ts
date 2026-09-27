@@ -1,8 +1,14 @@
 // A 2D camera over a map bigger than the screen. Render-side only: the
 // simulation never knows where anyone is looking.
 
-const EDGE_PX = 14;
 const PAN_SPEED = 900; // screen pixels per second
+/** Edge scroll only in a thin band at the very edge of the browser window. */
+const EDGE_PX = 6;
+/** Hold at the edge this long before scrolling starts... */
+const EDGE_DELAY_MS = 250;
+/** ...then ramp from a crawl to full speed over this long. */
+const EDGE_RAMP_MS = 600;
+const EDGE_MIN_SPEED = 0.25;
 const MAX_ZOOM = 2;
 /** Never zoom out past this: the map should always be bigger than the screen. */
 const MIN_ZOOM = 0.45;
@@ -19,6 +25,9 @@ export class Camera {
   /** Held pan keys and edge-scroll direction, each -1..1. */
   readonly keys = { x: 0, y: 0 };
   edge = { x: 0, y: 0 };
+  edgeScrollEnabled = true;
+  /** How long the pointer has been resting in the current edge direction. */
+  private edgeHeldMs = 0;
 
   setBounds(width: number, height: number): void {
     this.mapWidth = width;
@@ -39,10 +48,19 @@ export class Camera {
   }
 
   update(deltaMs: number): void {
-    const dx = this.keys.x || this.edge.x;
-    const dy = this.keys.y || this.edge.y;
+    const keyed = this.keys.x !== 0 || this.keys.y !== 0;
+    const edging = !keyed && this.edgeScrollEnabled && (this.edge.x !== 0 || this.edge.y !== 0);
+    this.edgeHeldMs = edging ? this.edgeHeldMs + deltaMs : 0;
+    let speed = 1;
+    if (edging) {
+      if (this.edgeHeldMs < EDGE_DELAY_MS) return;
+      const ramp = Math.min(1, (this.edgeHeldMs - EDGE_DELAY_MS) / EDGE_RAMP_MS);
+      speed = EDGE_MIN_SPEED + (1 - EDGE_MIN_SPEED) * ramp;
+    }
+    const dx = keyed ? this.keys.x : edging ? this.edge.x : 0;
+    const dy = keyed ? this.keys.y : edging ? this.edge.y : 0;
     if (dx === 0 && dy === 0) return;
-    const distance = (PAN_SPEED * deltaMs) / 1000 / this.zoom;
+    const distance = (PAN_SPEED * speed * deltaMs) / 1000 / this.zoom;
     this.x += dx * distance;
     this.y += dy * distance;
     this.clamp();
@@ -70,16 +88,21 @@ export class Camera {
     this.clamp();
   }
 
-  /** Edge-scroll from a pointer position; call with null when the pointer leaves. */
-  setEdgeFromPointer(sx: number | null, sy: number | null): void {
-    if (sx === null || sy === null) {
-      this.edge = { x: 0, y: 0 };
-      return;
-    }
-    this.edge = {
-      x: sx < EDGE_PX ? -1 : sx > this.viewWidth - EDGE_PX ? 1 : 0,
-      y: sy < EDGE_PX ? -1 : sy > this.viewHeight - EDGE_PX ? 1 : 0,
-    };
+  /**
+   * Edge-scroll from the pointer's position in the *browser window*, not the
+   * canvas: the canvas's bottom edge sits right above the build bar, and
+   * reaching for a button must never pan the map. Call with null to stop.
+   */
+  setEdgeFromWindowPointer(clientX: number | null, clientY: number | null, windowWidth = 0, windowHeight = 0): void {
+    const next =
+      clientX === null || clientY === null
+        ? { x: 0, y: 0 }
+        : {
+            x: clientX < EDGE_PX ? -1 : clientX > windowWidth - EDGE_PX ? 1 : 0,
+            y: clientY < EDGE_PX ? -1 : clientY > windowHeight - EDGE_PX ? 1 : 0,
+          };
+    if (next.x !== this.edge.x || next.y !== this.edge.y) this.edgeHeldMs = 0;
+    this.edge = next;
   }
 
   screenToWorld(sx: number, sy: number): { x: number; y: number } {
