@@ -33,6 +33,7 @@ let accumulator = 0;
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const hud = {
+  uptime: $("uptime"),
   compute: $("compute"),
   core: $("core"),
   wave: $("wave"),
@@ -337,11 +338,9 @@ function updateHud(): void {
   const core = world.entities.find((entity) => entity.id === team.coreId);
   hud.compute.textContent = String(team.compute);
   hud.core.textContent = core ? `${Math.max(0, Math.ceil(core.hp))} / ${core.maxHp}` : "offline";
-  hud.wave.textContent = `${world.waves.nextIndex} / ${content.waves.waves.length}`;
-  const hold = world.waves.holdUntilTick;
-  const remaining = (hold ?? world.waves.nextWaveTick) - world.tick;
-  const seconds = Math.max(0, Math.ceil(remaining / TICK_RATE));
-  hud.nextWave.textContent = hold === null ? `${seconds}s` : `survive ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+  hud.uptime.textContent = clock((world.outcome?.tick ?? world.tick) / TICK_RATE);
+  hud.wave.textContent = String(world.waves.nextIndex);
+  hud.nextWave.textContent = `${Math.max(0, Math.ceil((world.waves.nextWaveTick - world.tick) / TICK_RATE))}s`;
   if (paused && !world.outcome) hud.status.textContent = "PAUSED (P)";
   else if (!world.outcome) hud.status.textContent = "";
 
@@ -350,11 +349,19 @@ function updateHud(): void {
   }
 }
 
+function clock(totalSeconds: number): string {
+  const s = Math.floor(totalSeconds);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
 function announceOutcome(): void {
   const outcome = world.outcome!;
   const won = outcome.winner === HUMAN;
-  const reason = outcome.reason === "survived" ? "You outlasted every wave." : won ? "Nest destroyed." : "Your core went down.";
-  hud.status.textContent = `${won ? "UPTIME HELD" : "OUTAGE"} - ${reason} Press R for a new web. [${hashWorld(world)}]`;
+  const uptime = clock(outcome.tick / TICK_RATE);
+  const summary = won
+    ? `NEST OFFLINE - you took down the botnet at ${uptime}.`
+    : `OUTAGE - uptime ${uptime}, reached wave ${world.waves.nextIndex}.`;
+  hud.status.textContent = `${summary} Press R for a new web. [${hashWorld(world)}]`;
   hud.status.className = won ? "won" : "lost";
-  renderer.showBanner(won ? "UPTIME HELD" : "OUTAGE");
+  renderer.showBanner(won ? "NEST OFFLINE" : `OUTAGE · uptime ${uptime}`);
 }

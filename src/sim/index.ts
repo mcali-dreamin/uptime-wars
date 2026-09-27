@@ -10,6 +10,8 @@ export {
   canPlace,
   buildCost,
   isOccupied,
+  planWave,
+  waveInterval,
   STARTING_COMPUTE,
   BASE_INCOME,
 } from "./world";

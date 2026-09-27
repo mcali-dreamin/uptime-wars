@@ -106,7 +106,10 @@ export class Renderer {
   collectEvents(world: World): void {
     for (const event of world.events) {
       if (event.type === "shot") this.shots.push({ ...event, age: 0 });
-      if (event.type === "wave") this.showBanner(`Wave ${event.index + 1}: ${event.name} (${event.packs} packs loose on the web)`);
+      if (event.type === "wave") {
+        const boss = event.boss ? " · BOSS" : "";
+        this.showBanner(`Wave ${event.wave}: ${event.name} · ${event.units} creeps in ${event.packs} packs${boss}`);
+      }
     }
   }
 

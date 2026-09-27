@@ -29,7 +29,8 @@
     "spawn": {
       "unit": "process",
       "intervalTicks": 160,
-      "count": 2
+      "count": 2,
+      "maxAlive": 6
     }
   },
   "gpu-cluster": {
@@ -45,7 +46,8 @@
     "spawn": {
       "unit": "inference-drone",
       "intervalTicks": 240,
-      "count": 1
+      "count": 1,
+      "maxAlive": 4
     }
   },
   "firewall": {
