@@ -389,6 +389,18 @@ export class Renderer {
       case "firewall":
         g.moveTo(x - s, y + s).lineTo(x, y - s).lineTo(x + s, y + s).closePath().stroke({ width: 2, color, alpha });
         break;
+      case "hyperscale-rack":
+        g.rect(x - s, y - s, s * 2, s * 2).stroke({ width: 2, color, alpha });
+        for (let i = -1; i <= 1; i += 1) g.rect(x - s * 0.7, y + i * s * 0.6 - 1.5, s * 1.4, 3).fill({ color, alpha });
+        break;
+      case "cdn-edge":
+        g.circle(x, y, s * 0.35).fill({ color, alpha });
+        g.circle(x, y, s * 0.9).stroke({ width: 1.5, color, alpha });
+        g.moveTo(x - s, y).lineTo(x + s, y).moveTo(x, y - s).lineTo(x, y + s).stroke({ width: 1.5, color, alpha });
+        break;
+      case "power-plant":
+        g.moveTo(x + s * 0.2, y - s).lineTo(x - s * 0.5, y + s * 0.1).lineTo(x, y + s * 0.1).lineTo(x - s * 0.2, y + s).lineTo(x + s * 0.5, y - s * 0.1).lineTo(x, y - s * 0.1).closePath().fill({ color, alpha });
+        break;
       case "solar-array":
         g.circle(x, y, s * 0.8).stroke({ width: 2, color, alpha });
         break;

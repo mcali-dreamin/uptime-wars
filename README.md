@@ -14,6 +14,10 @@ npm install
 npm run dev
 ```
 
+- Pick a race first. **Open Source Collective** is cheap and fast: it forks
+  swarms and its spawners run 15% quicker. **Hyperscaler** has deep pockets and
+  heavy iron: +150 starting compute, 30% tougher units, slower spawners, and its
+  own roster (Load Balancer tanks, long-range CDN Edge towers, Power Plants).
 - You start with a **deploy agent**, not a base. Right-click to move it and
   scout through the fog; press `C` (or the button) and click to choose where
   your core goes. The agent walks there and becomes the core. Lose the agent
@@ -102,7 +106,8 @@ Direction: survival on a procedurally generated open web.
 - [ ] Elevation: plateaus, cliffs, ramps; high-ground sight and range
 - [x] Rally points: per spawner, with a global default on the core
 - Heroes and security abilities (zero-day, RCE, ransomware, worm, DDoS, honeypot)
-- More races: Hyperscaler, Hacker crew, State actor / APT
+- [x] Race selection: Open Source Collective, Hyperscaler
+- More races: Hacker crew, State actor / APT
 - Content from WordPress, saves and leaderboards via Spacefast Zero
 
 ## Releases and deploys

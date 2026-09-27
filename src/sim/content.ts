@@ -79,6 +79,8 @@ export interface RaceDef {
     spawnIntervalMultiplier: number;
     costMultiplier: number;
     unitHpMultiplier: number;
+    /** Extra compute at the start of the match. */
+    startingComputeBonus: number;
   };
 }
 
