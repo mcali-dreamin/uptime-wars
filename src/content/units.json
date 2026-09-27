@@ -40,7 +40,7 @@
     "range": 22,
     "cooldownTicks": 18,
     "speed": 1.9,
-    "aggro": 170,
+    "aggro": 260,
     "bounty": 6,
     "size": 8
   },
@@ -55,7 +55,7 @@
     "range": 20,
     "cooldownTicks": 10,
     "speed": 3.4,
-    "aggro": 150,
+    "aggro": 240,
     "bounty": 5,
     "size": 6
   },
@@ -70,7 +70,7 @@
     "range": 30,
     "cooldownTicks": 30,
     "speed": 1.1,
-    "aggro": 200,
+    "aggro": 320,
     "bounty": 120,
     "size": 18
   }

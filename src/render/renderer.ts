@@ -20,10 +20,12 @@ const TEAM_COLORS = [0x4ade80, 0xf87171] as const;
 const SHOT_TTL_MS = 120;
 const MINIMAP_WIDTH = 240;
 const MINIMAP_MARGIN = 12;
+// Walls must read as walls: bright, outlined, and far from the floor color.
 const TERRAIN_COLORS: Record<number, number> = {
-  [TILE_BLOCKED]: 0x1c2733,
-  [TILE_SLOW]: 0x0f2530,
+  [TILE_BLOCKED]: 0x3b4a5c,
+  [TILE_SLOW]: 0x123845,
 };
+const WALL_EDGE = 0x7d8fa3;
 
 interface Shot {
   x1: number;
@@ -39,6 +41,8 @@ export interface Ghost {
   row: number;
   footprint: number;
   valid: boolean;
+  /** Attack range to preview, in pixels, if the building shoots. */
+  range: number;
 }
 
 export class Renderer {
@@ -102,7 +106,7 @@ export class Renderer {
   collectEvents(world: World): void {
     for (const event of world.events) {
       if (event.type === "shot") this.shots.push({ ...event, age: 0 });
-      if (event.type === "wave") this.showBanner(`Wave ${event.index + 1}: ${event.name}`);
+      if (event.type === "wave") this.showBanner(`Wave ${event.index + 1}: ${event.name} (${event.packs} packs loose on the web)`);
     }
   }
 
@@ -161,6 +165,11 @@ export class Renderer {
       this.overlay
         .rect(ghost.col * TILE, ghost.row * TILE, size, size)
         .fill({ color: ghost.valid ? 0x4ade80 : 0xf87171, alpha: 0.3 });
+      if (ghost.range > 0) {
+        this.overlay
+          .circle(ghost.col * TILE + size / 2, ghost.row * TILE + size / 2, ghost.range + size / 2)
+          .stroke({ width: 1.5, color: 0xfacc15, alpha: 0.6 });
+      }
     }
 
     this.drawMinimap(world, width, height);
@@ -230,6 +239,7 @@ export class Renderer {
         col = end;
       }
     }
+    if (g === this.terrainLayer) this.drawTerrainDetail(g, terrain, cell);
     for (const node of terrain.resources) {
       const cx = (node.col + 0.5) * cell;
       const cy = (node.row + 0.5) * cell;
@@ -239,6 +249,35 @@ export class Renderer {
     if (g === this.terrainLayer) {
       g.rect(0, 0, terrain.cols * cell, terrain.rows * cell).stroke({ width: 2, color: 0x243142 });
     }
+  }
+
+  /** Outline walls where they meet walkable ground; stipple swamps. */
+  private drawTerrainDetail(g: Graphics, terrain: Terrain, cell: number): void {
+    const at = (c: number, r: number) =>
+      c < 0 || r < 0 || c >= terrain.cols || r >= terrain.rows ? TILE_BLOCKED : terrain.tiles[r * terrain.cols + c]!;
+    for (let row = 0; row < terrain.rows; row += 1) {
+      for (let col = 0; col < terrain.cols; col += 1) {
+        const tile = at(col, row);
+        const x = col * cell;
+        const y = row * cell;
+        if (tile === TILE_BLOCKED) {
+          if (at(col, row - 1) !== TILE_BLOCKED) g.moveTo(x, y).lineTo(x + cell, y);
+          if (at(col, row + 1) !== TILE_BLOCKED) g.moveTo(x, y + cell).lineTo(x + cell, y + cell);
+          if (at(col - 1, row) !== TILE_BLOCKED) g.moveTo(x, y).lineTo(x, y + cell);
+          if (at(col + 1, row) !== TILE_BLOCKED) g.moveTo(x + cell, y).lineTo(x + cell, y + cell);
+        }
+      }
+    }
+    g.stroke({ width: 2, color: WALL_EDGE, alpha: 0.9 });
+    for (let row = 0; row < terrain.rows; row += 1) {
+      for (let col = 0; col < terrain.cols; col += 1) {
+        if (at(col, row) !== TILE_SLOW) continue;
+        const x = col * cell;
+        const y = row * cell;
+        g.circle(x + cell * 0.3, y + cell * 0.35, 1.5).circle(x + cell * 0.7, y + cell * 0.7, 1.5);
+      }
+    }
+    g.fill({ color: 0x2b6f80, alpha: 0.8 });
   }
 
   private drawHealth(g: Graphics, x: number, y: number, width: number, ratio: number): void {

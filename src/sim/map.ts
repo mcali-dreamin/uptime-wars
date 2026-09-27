@@ -3,8 +3,8 @@
 
 export const TICK_RATE = 20;
 export const TILE = 32;
-export const MAP_COLS = 96;
-export const MAP_ROWS = 64;
+export const MAP_COLS = 176;
+export const MAP_ROWS = 100;
 /** How far from your core (in tiles, center to center) you may build. */
 export const BUILD_RADIUS_TILES = 9;
 

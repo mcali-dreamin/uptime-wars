@@ -81,6 +81,12 @@ export interface WaveDef {
 export interface WavesDef {
   firstWaveTicks: number;
   spawnSpacingTicks: number;
+  /** Each wave is shuffled and cut into packs of this many units. */
+  packSize: { min: number; max: number };
+  /** Packs enter the map at least this many tiles from any of your buildings. */
+  spawnMinDistanceTiles: number;
+  /** After the last wave goes out, survive this long to win. */
+  holdTicksAfterLastWave: number;
   waves: WaveDef[];
 }
 

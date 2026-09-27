@@ -1,7 +1,7 @@
 {
   "core": {
     "name": "Core Data Center",
-    "description": "If this goes down, so do you.",
+    "description": "Your base. Shoots nearby creeps. If it goes down, so do you.",
     "cost": 0,
     "buildTicks": 0,
     "hp": 3000,
@@ -18,7 +18,7 @@
   },
   "server-rack": {
     "name": "Server Rack",
-    "description": "Forks a Process into the lane on a timer.",
+    "description": "Forks Processes on a timer. They guard the area around the rack.",
     "cost": 60,
     "buildTicks": 60,
     "hp": 400,
@@ -34,7 +34,7 @@
   },
   "gpu-cluster": {
     "name": "GPU Cluster",
-    "description": "Spins up Inference Drones. Expensive, worth it.",
+    "description": "Spins up ranged Inference Drones that guard nearby. Expensive, hits hard.",
     "cost": 140,
     "buildTicks": 100,
     "hp": 350,
@@ -50,7 +50,7 @@
   },
   "firewall": {
     "name": "Firewall",
-    "description": "Static defense. Drops packets, and bots.",
+    "description": "Defensive tower. Shoots any creep in range.",
     "cost": 90,
     "buildTicks": 80,
     "hp": 600,
@@ -67,7 +67,7 @@
   },
   "solar-array": {
     "name": "Solar Array",
-    "description": "Generates extra compute. Green uptime.",
+    "description": "Generates extra compute over time.",
     "cost": 75,
     "buildTicks": 80,
     "hp": 250,

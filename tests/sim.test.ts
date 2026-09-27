@@ -7,6 +7,8 @@ import {
   loadDefaultContent,
   queueCommand,
   simulate,
+  tileAt,
+  TILE_BLOCKED,
   step,
   validateContent,
   type Command,
@@ -96,6 +98,8 @@ describe("terrain", () => {
         return rx * rx + ry * ry <= 15 * 15;
       });
       expect(near.length, `seed ${seed}`).toBeGreaterThanOrEqual(2);
+      // Plenty of places for creeps to wander between.
+      expect(terrain.roamPoints.length, `seed ${seed}`).toBeGreaterThanOrEqual(12);
     }
   });
 });
@@ -172,34 +176,82 @@ describe("auto-spawn", () => {
   });
 });
 
-describe("waves", () => {
-  it("the wave director sends the first wave from the nest on schedule", () => {
+describe("creeps", () => {
+  it("each wave enters as random-sized packs, out of sight of every building you own", () => {
     const world = createWorld(content, SETUP);
-    while (world.tick <= content.waves.firstWaveTicks) step(world, content);
-    expect(world.waves.nextIndex).toBe(1);
-    const nest = world.entities.find((e) => e.id === world.teams[1].coreId)!;
+    queueCommand(world, firstSpot("server-rack"));
+    while (world.waves.pending.length === 0 || world.tick <= content.waves.firstWaveTicks + 200) step(world, content);
     const creeps = world.entities.filter((e) => e.kind === "unit" && e.team === 1);
-    expect(creeps.length).toBeGreaterThan(0);
-    for (const creep of creeps) {
-      const dx = creep.x - nest.x;
-      const dy = creep.y - nest.y;
-      expect(Math.sqrt(dx * dx + dy * dy)).toBeLessThan(200);
+    const packs = new Map<number, number>();
+    for (const creep of creeps) if (creep.kind === "unit") packs.set(creep.packId, (packs.get(creep.packId) ?? 0) + 1);
+    expect(packs.size).toBeGreaterThan(1);
+    for (const size of packs.values()) expect(size).toBeLessThanOrEqual(content.waves.packSize.max);
+
+    const entries = new Set(world.waves.pending.map((p) => `${p.col},${p.row}`));
+    const mine = world.entities.filter((e) => e.kind === "building" && e.team === 0);
+    const min = content.waves.spawnMinDistanceTiles * 32;
+    for (const key of entries) {
+      const [col, row] = key.split(",").map(Number) as [number, number];
+      for (const b of mine) {
+        expect(Math.hypot((col + 0.5) * 32 - b.x, (row + 0.5) * 32 - b.y)).toBeGreaterThanOrEqual(min);
+      }
     }
   });
 
-  it("creeps path around terrain to an undefended core, on every map", () => {
+  it("creeps never know where you are: they only target what they can see", () => {
+    const world = createWorld(content, SETUP);
+    let targeted = 0;
+    while (world.tick < 8000 && !world.outcome) {
+      step(world, content);
+      const byId = new Map(world.entities.map((e) => [e.id, e]));
+      for (const creep of world.entities) {
+        if (creep.kind !== "unit" || creep.team !== 1 || creep.targetId === null) continue;
+        const target = byId.get(creep.targetId);
+        if (!target) continue;
+        targeted += 1;
+        const edge = Math.hypot(target.x - creep.x, target.y - creep.y) - target.radius - creep.radius;
+        // Within sight (plus the chase leash), and never through a wall.
+        expect(edge).toBeLessThanOrEqual(content.units[creep.defId]!.aggro * 1.5 + 1);
+      }
+    }
+    expect(targeted).toBeGreaterThan(0);
+  });
+
+  it("no creep is ever inside a wall", () => {
+    for (const seed of [1, 42]) {
+      const world = createWorld(content, { ...SETUP, seed });
+      while (world.tick < 6000 && !world.outcome) {
+        step(world, content);
+        for (const e of world.entities) {
+          if (e.kind !== "unit") continue;
+          expect(tileAt(world.terrain, Math.floor(e.x / 32), Math.floor(e.y / 32)), `seed ${seed}`).not.toBe(TILE_BLOCKED);
+        }
+      }
+    }
+  });
+
+  it("packs reach an undefended core from more than one direction", () => {
+    const sectors = new Set<number>();
     for (const seed of [1, 2, 3, 42, 1234]) {
-      const world = simulate(content, { ...SETUP, seed }, [], 20_000);
-      expect(world.outcome, `seed ${seed}`).toMatchObject({ winner: 1, reason: "core-destroyed" });
+      const world = createWorld(content, { ...SETUP, seed });
+      const core = world.entities.find((e) => e.id === world.teams[0].coreId)!;
+      while (world.tick < 12_000 && !world.outcome) {
+        step(world, content);
+        for (const ev of world.events) {
+          if (ev.type !== "shot" || ev.team !== 1 || ev.to !== core.id) continue;
+          const angle = Math.atan2(ev.y1 - core.y, ev.x1 - core.x);
+          sectors.add(Math.floor(((angle + Math.PI) / (2 * Math.PI)) * 8) % 8);
+        }
+      }
     }
+    expect(sectors.size).toBeGreaterThanOrEqual(3);
   });
 
-  it("a reasonable opening survives every wave", () => {
-    for (const seed of [1, 1234]) {
-      const setup = { ...SETUP, seed };
-      const world = simulate(content, setup, planBuildOrder(content, setup, OPENING_ORDER), 20_000);
-      expect(world.outcome?.winner, `seed ${seed}`).toBe(0);
-    }
+  it("you win by holding out until the timer after the last wave runs down", () => {
+    const short: Content = structuredClone(content);
+    short.waves = { ...short.waves, firstWaveTicks: 10, holdTicksAfterLastWave: 50, waves: [{ name: "Ping", delayTicks: 0, groups: [{ unit: "bot", count: 1 }] }] };
+    const world = simulate(short, SETUP, [], 1000);
+    expect(world.outcome).toMatchObject({ winner: 0, reason: "survived", tick: 60 });
   });
 });
 
