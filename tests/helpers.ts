@@ -5,7 +5,7 @@ import {
   createWorld,
   footprintCenter,
   tileAt,
-  type Command,
+  type BuildCommand,
   type Content,
   type MatchSetup,
 } from "../src/sim";
@@ -20,7 +20,7 @@ export function planBuildOrder(
   setup: MatchSetup,
   order: [tick: number, building: string][],
   forwardTiles = 4,
-): Command[] {
+): BuildCommand[] {
   const world = createWorld(content, setup);
   const { terrain } = world;
   const core = world.entities.find((e) => e.id === world.teams[0].coreId)!;

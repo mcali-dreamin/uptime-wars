@@ -8,6 +8,7 @@ export {
   queueCommand,
   step,
   canPlace,
+  canFound,
   buildCost,
   isOccupied,
   planWave,

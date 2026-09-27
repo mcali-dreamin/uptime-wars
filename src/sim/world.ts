@@ -14,7 +14,7 @@ import type { Content } from "./content";
 import { BUILD_RADIUS_TILES, TILE, footprintCenter } from "./map";
 import { bodyFits, flowField, hasClearPath, hasLineOfSight, moveToward, nextStep } from "./nav";
 import { randomInt } from "./rng";
-import { TILE_OPEN, generateTerrain, tileAt, type Terrain } from "./terrain";
+import { TILE_BLOCKED, TILE_OPEN, generateTerrain, tileAt, type Terrain } from "./terrain";
 import type { Building, Command, Entity, TeamId, Unit, World } from "./types";
 
 export const STARTING_COMPUTE = 200;
@@ -37,6 +37,8 @@ const BUILDING_SIGHT = 700;
 export interface MatchSetup {
   seed: number;
   races: [string, string];
+  /** Skip the builder phase: found every core at its start tile. */
+  startWithCore?: boolean;
 }
 
 interface TickContext {
@@ -74,7 +76,7 @@ export function createWorld(content: Content, setup: MatchSetup): World {
     rngState: setup.seed | 0,
     terrain,
     nav: {
-      toCore: [new Int32Array(0), new Int32Array(0)],
+      builderOrder: [null, null],
       toRoam: terrain.roamPoints.map(() => null),
     },
     nextId: 1,
@@ -83,7 +85,7 @@ export function createWorld(content: Content, setup: MatchSetup): World {
     commands: [],
     waves: {
       nextIndex: 0,
-      nextWaveTick: content.waves.firstWaveTicks,
+      nextWaveTick: content.waves.graceTicks,
       pending: [],
       nextPackId: 1,
       packs: {},
@@ -95,12 +97,29 @@ export function createWorld(content: Content, setup: MatchSetup): World {
   const origins = [terrain.start, terrain.nest] as const;
   for (const team of world.teams) {
     const { col, row } = origins[team.id];
-    const core = placeBuilding(world, content, team.id, content.races[team.raceId]!.core, col, row, true);
-    team.coreId = core.id;
-    world.nav.toCore[team.id] = flowField(terrain, footprintTiles(terrain, core));
+    const race = content.races[team.raceId]!;
+    if (race.builder && !setup.startWithCore) {
+      const at = footprintCenter(col, row, 2);
+      const ctx: TickContext = { world, content, byId: new Map(), grid: new Map() };
+      const builder = spawnUnit(ctx, team.id, race.builder, { x: at.x, y: at.y } as Entity, at.x, at.y, "builder");
+      team.builderId = builder.id;
+    } else {
+      foundCore(world, content, team.id, col, row);
+    }
   }
 
   return world;
+}
+
+/** Put a team's core on the map. Starts the wave clock if it was a player's. */
+function foundCore(world: World, content: Content, teamId: TeamId, col: number, row: number): Building {
+  const team = world.teams[teamId];
+  const core = placeBuilding(world, content, teamId, content.races[team.raceId]!.core, col, row, true);
+  team.coreId = core.id;
+  if (team.controller === "human") {
+    world.waves.nextWaveTick = Math.min(world.waves.nextWaveTick, world.tick + content.waves.firstWaveTicks);
+  }
+  return core;
 }
 
 function makeTeam(content: Content, id: TeamId, raceId: string) {
@@ -113,17 +132,8 @@ function makeTeam(content: Content, id: TeamId, raceId: string) {
     compute: STARTING_COMPUTE,
     incomeTimer: BASE_INCOME.intervalTicks,
     coreId: -1,
+    builderId: -1,
   };
-}
-
-function footprintTiles(terrain: Terrain, building: Building): number[] {
-  const tiles: number[] = [];
-  for (let row = building.row; row < building.row + building.footprint; row += 1) {
-    for (let col = building.col; col < building.col + building.footprint; col += 1) {
-      tiles.push(row * terrain.cols + col);
-    }
-  }
-  return tiles;
 }
 
 /**
@@ -171,16 +181,58 @@ function applyCommands(ctx: TickContext): void {
   const { world, content } = ctx;
   while (world.commands.length > 0 && world.commands[0]!.tick <= world.tick) {
     const command = world.commands.shift()!;
+    const reason = applyCommand(ctx, command);
+    if (reason) world.events.push({ type: "rejected", command, reason });
+  }
+}
+
+/** Returns a rejection reason, or null when the command was applied. */
+function applyCommand(ctx: TickContext, command: Command): string | null {
+  const { world, content } = ctx;
+  if (command.type === "build") {
     const reason = canPlace(world, content, command.team, command.building, command.col, command.row);
-    if (reason) {
-      world.events.push({ type: "rejected", command, reason });
-      continue;
-    }
+    if (reason) return reason;
     const team = world.teams[command.team];
     team.compute -= buildCost(content, team.raceId, command.building);
     const building = placeBuilding(world, content, team.id, command.building, command.col, command.row, false);
     ctx.byId.set(building.id, building);
+    return null;
   }
+
+  const builder = ctx.byId.get(world.teams[command.team].builderId);
+  if (!builder || builder.kind !== "unit" || builder.hp <= 0) return "no builder";
+  if (command.type === "found") {
+    const reason = canFound(world, content, command.team, command.col, command.row);
+    if (reason) return reason;
+    const at = footprintCenter(command.col, command.row, 2);
+    builder.moveTo = at;
+    builder.foundAt = { col: command.col, row: command.row };
+  } else {
+    if (tileAt(world.terrain, Math.floor(command.x / TILE), Math.floor(command.y / TILE)) === TILE_BLOCKED) {
+      return "can't walk there";
+    }
+    builder.moveTo = { x: command.x, y: command.y };
+    builder.foundAt = null;
+  }
+  const { cols } = world.terrain;
+  world.nav.builderOrder[command.team] = flowField(world.terrain, [
+    Math.floor(builder.moveTo.y / TILE) * cols + Math.floor(builder.moveTo.x / TILE),
+  ]);
+  return null;
+}
+
+/** Why a core can't be founded on this 2x2 footprint, or null when it can. */
+export function canFound(world: World, content: Content, teamId: TeamId, col: number, row: number): string | null {
+  const team = world.teams[teamId];
+  if (team.coreId !== -1) return "core already online";
+  const def = content.buildings[content.races[team.raceId]!.core]!;
+  for (let r = row; r < row + def.footprint; r += 1) {
+    for (let c = col; c < col + def.footprint; c += 1) {
+      if (tileAt(world.terrain, c, r) !== TILE_OPEN) return "terrain is not buildable";
+    }
+  }
+  if (isOccupied(world, col, row, def.footprint)) return "tile occupied";
+  return null;
 }
 
 export function buildCost(content: Content, raceId: string, buildingId: string): number {
@@ -363,6 +415,8 @@ function spawnUnit(
     mode,
     packId: -1,
     spawnerId: -1,
+    moveTo: null,
+    foundAt: null,
     hp,
     maxHp: hp,
     armor: def.armor,
@@ -623,6 +677,10 @@ function tickUnits(ctx: TickContext): void {
   for (const unit of world.entities) {
     if (unit.kind !== "unit" || unit.hp <= 0) continue;
     const def = content.units[unit.defId]!;
+    if (unit.mode === "builder") {
+      tickBuilder(ctx, unit, def.speed);
+      continue;
+    }
     const guard = unit.mode === "guard";
 
     let target = unit.targetId === null ? undefined : ctx.byId.get(unit.targetId);
@@ -720,13 +778,53 @@ function roam(ctx: TickContext, unit: Unit, leader: Unit | undefined, speed: num
   if (waypoint) moveToward(terrain, unit, waypoint.x, waypoint.y, speed);
 }
 
+/** Walk to the order; on arrival at a founding site, become the core. */
+function tickBuilder(ctx: TickContext, unit: Unit, speed: number): void {
+  const { world, content } = ctx;
+  const { terrain } = world;
+  const goal = unit.moveTo;
+  if (!goal) return;
+  const dx = goal.x - unit.x;
+  const dy = goal.y - unit.y;
+  const arrived = dx * dx + dy * dy <= (unit.foundAt ? TILE * 1.5 : 6) ** 2;
+  if (arrived) {
+    unit.moveTo = null;
+    world.nav.builderOrder[unit.team] = null;
+    const site = unit.foundAt;
+    unit.foundAt = null;
+    if (!site) return;
+    const reason = canFound(world, content, unit.team, site.col, site.row);
+    if (reason) {
+      world.events.push({ type: "rejected", command: { type: "found", tick: world.tick, team: unit.team, ...site }, reason });
+      return;
+    }
+    const core = foundCore(world, content, unit.team, site.col, site.row);
+    ctx.byId.set(core.id, core);
+    // The agent deploys into the core.
+    unit.hp = 0;
+    world.teams[unit.team].builderId = -1;
+    world.events.push({ type: "founded", x: core.x, y: core.y });
+    return;
+  }
+  const field = world.nav.builderOrder[unit.team];
+  const waypoint = hasClearPath(terrain, unit.x, unit.y, goal.x, goal.y, unit.radius)
+    ? goal
+    : field
+      ? nextStep(terrain, field, unit.x, unit.y)
+      : null;
+  if (waypoint) moveToward(terrain, unit, waypoint.x, waypoint.y, speed);
+}
+
 // --- outcome ---------------------------------------------------------------
 
 function checkOutcome(ctx: TickContext): void {
   const { world, content } = ctx;
   for (const team of world.teams) {
     const core = ctx.byId.get(team.coreId);
-    if (!core || core.hp <= 0) {
+    const builder = ctx.byId.get(team.builderId);
+    // Before founding, the team lives as long as its builder does.
+    const alive = team.coreId === -1 ? builder !== undefined && builder.hp > 0 : core !== undefined && core.hp > 0;
+    if (!alive) {
       world.outcome = { winner: team.id === 0 ? 1 : 0, reason: "core-destroyed", tick: world.tick };
       return;
     }

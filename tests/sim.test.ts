@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   UNREACHABLE,
+  flowField,
+  canFound,
   createWorld,
   hashTerrain,
   hashWorld,
@@ -14,13 +16,14 @@ import {
   TILE_BLOCKED,
   step,
   validateContent,
-  type Command,
+  type BuildCommand,
   type Content,
 } from "../src/sim";
 import { planBuildOrder } from "./helpers";
 
 const content = loadDefaultContent();
-const SETUP = { seed: 1234, races: ["open-source", "botnet"] as [string, string] };
+// Most tests skip the builder phase; the "builder start" block covers it.
+const SETUP = { seed: 1234, races: ["open-source", "botnet"] as [string, string], startWithCore: true };
 
 const OPENING_ORDER: [number, string][] = [
   [1, "server-rack"],
@@ -33,7 +36,7 @@ const OPENING_ORDER: [number, string][] = [
 ];
 const OPENING = planBuildOrder(content, SETUP, OPENING_ORDER);
 
-function firstSpot(building: string, tick = 0): Command {
+function firstSpot(building: string, tick = 0): BuildCommand {
   return planBuildOrder(content, SETUP, [[tick, building]])[0]!;
 }
 
@@ -90,7 +93,8 @@ describe("terrain", () => {
       expect(Math.abs(nest.y - (terrain.rows * TILE) / 2), `seed ${seed}`).toBeLessThanOrEqual(TILE * 2);
 
       // Creeps can walk from the nest to the core.
-      expect(world.nav.toCore[0][nestTile], `seed ${seed}`).not.toBe(UNREACHABLE);
+      const toCore = flowField(terrain, [Math.floor(core.y / TILE) * terrain.cols + Math.floor(core.x / TILE)]);
+      expect(toCore[nestTile], `seed ${seed}`).not.toBe(UNREACHABLE);
       // Far apart, so the enemy is off-screen.
       const dx = nest.x - core.x;
       const dy = nest.y - core.y;
@@ -261,6 +265,68 @@ describe("endless waves", () => {
     const guards = world.entities.filter((e) => e.kind === "unit" && e.team === 0);
     expect(guards.length).toBeLessThanOrEqual(content.buildings["server-rack"]!.spawn!.maxAlive);
     expect(guards.length).toBeGreaterThan(0);
+  });
+});
+
+describe("builder start", () => {
+  const BUILDER_SETUP = { seed: 1234, races: ["open-source", "botnet"] as [string, string] };
+
+  it("you start with a deploy agent and no core, and the clock is on grace time", () => {
+    const world = createWorld(content, BUILDER_SETUP);
+    expect(world.teams[0].coreId).toBe(-1);
+    const builder = world.entities.find((e) => e.id === world.teams[0].builderId);
+    expect(builder).toMatchObject({ kind: "unit", mode: "builder", defId: "deploy-agent" });
+    expect(world.waves.nextWaveTick).toBe(content.waves.graceTicks);
+    // The nest still has its core.
+    expect(world.teams[1].coreId).not.toBe(-1);
+  });
+
+  it("the builder walks to the chosen site, becomes the core, and starts the wave clock", () => {
+    const world = createWorld(content, BUILDER_SETUP);
+    const { start } = world.terrain;
+    // Pick a valid site a few tiles away from where the builder stands.
+    let site: { col: number; row: number } | null = null;
+    for (let r = 4; r <= 10 && !site; r += 1) {
+      for (const [dc, dr] of [[r, 0], [-r, 0], [0, r], [0, -r]] as const) {
+        if (canFound(world, content, 0, start.col + dc, start.row + dr) === null) {
+          site = { col: start.col + dc, row: start.row + dr };
+          break;
+        }
+      }
+    }
+    expect(site).not.toBeNull();
+    queueCommand(world, { type: "found", tick: 0, team: 0, ...site! });
+    while (world.teams[0].coreId === -1 && world.tick < 2000) step(world, content);
+
+    const core = world.entities.find((e) => e.id === world.teams[0].coreId)!;
+    expect(core).toMatchObject({ kind: "building", defId: "core", col: site!.col, row: site!.row });
+    expect(world.teams[0].builderId).toBe(-1);
+    expect(world.entities.some((e) => e.kind === "unit" && e.mode === "builder")).toBe(false);
+    expect(world.waves.nextWaveTick).toBe(Math.min(content.waves.graceTicks, world.tick - 1 + content.waves.firstWaveTicks));
+  });
+
+  it("rejects founding on blocked terrain, and nothing can be built before the core", () => {
+    const world = createWorld(content, BUILDER_SETUP);
+    queueCommand(world, { type: "found", tick: 0, team: 0, col: 0, row: 0 });
+    queueCommand(world, { type: "build", tick: 0, team: 0, building: "server-rack", col: world.terrain.start.col, row: world.terrain.start.row });
+    step(world, content);
+    const reasons = world.events.flatMap((e) => (e.type === "rejected" ? [e.reason] : []));
+    // Same tick and team: applied in the order they were queued.
+    expect(reasons).toEqual(["terrain is not buildable", "no core"]);
+  });
+
+  it("losing the builder before founding loses the match", () => {
+    const world = createWorld(content, BUILDER_SETUP);
+    const builder = world.entities.find((e) => e.id === world.teams[0].builderId)!;
+    builder.hp = 0;
+    step(world, content);
+    expect(world.outcome).toMatchObject({ winner: 1 });
+  });
+
+  it("the first wave arrives at the end of grace time even if you never found", () => {
+    const world = createWorld(content, BUILDER_SETUP);
+    while (world.tick <= content.waves.graceTicks) step(world, content);
+    expect(world.waves.nextIndex).toBe(1);
   });
 });
 

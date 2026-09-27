@@ -14,11 +14,19 @@ npm install
 npm run dev
 ```
 
+- You start with a **deploy agent**, not a base. Right-click to move it and
+  scout through the fog; press `C` (or the button) and click to choose where
+  your core goes. The agent walks there and becomes the core. Lose the agent
+  first and it's over.
 - `1`-`4` or click: pick a building. Click near your core (the ring shows your
   build radius) to place it. Shift-click to place several.
-- `WASD` / arrows, screen edge, or drag: pan. Wheel: zoom. Click the minimap
-  to jump. `Space` / `H`: back to your core.
+- `WASD` / arrows, drag, or the very edge of the window: pan (`E` toggles edge
+  scroll). Wheel: zoom. Click the minimap to jump. `Space` / `H`: back home.
 - Right-click / `Esc`: cancel. `P`: pause. `R`: new map after a match.
+
+The map starts black. You see what your agent, units, and buildings can see;
+places you've been stay dimmed, with enemy buildings as you last saw them.
+`?reveal` in the URL turns the fog off.
 
 The malware nest sits in the middle of the web and you start out toward the
 edge. Waves never stop: each one is bigger, comes sooner, and unlocks nastier
@@ -82,7 +90,8 @@ Direction: survival on a procedurally generated open web.
 
 - [x] Big map, camera, minimap
 - [x] Seeded terrain + flow-field pathfinding
-- [ ] Builder start: land a builder and choose where your core goes
+- [x] Builder start: scout with a deploy agent and choose where your core goes
+- [x] Fog of war
 - [ ] Economy from what you build on data wells, replacing flat income
 - [x] Wandering creep packs that only attack what they see
 - [x] Endless escalating waves from a nest in the middle; uptime score

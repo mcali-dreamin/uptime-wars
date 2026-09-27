@@ -4,6 +4,7 @@ import {
   TICK_RATE,
   TILE,
   buildCost,
+  canFound,
   canPlace,
   createWorld,
   hashWorld,
@@ -23,10 +24,16 @@ const DRAG_THRESHOLD_PX = 5;
 const HUMAN: TeamId = 0;
 const SETUP = { races: ["open-source", "botnet"] as [string, string] };
 
+/** Selection value meaning "choose where the core goes". */
+const FOUND = "__found";
+
 const content = loadDefaultContent();
 const renderer = new Renderer();
 let world: World = newMatch();
+/** A building id to place, FOUND, or nothing. */
 let selected: string | null = null;
+/** Which build bar is showing, so it can switch when the core comes online. */
+let barPhase: "deploy" | "build" = "deploy";
 let ghost: Ghost | null = null;
 let paused = false;
 let accumulator = 0;
@@ -72,13 +79,31 @@ function showCard(card: InfoCard | null): void {
 function refreshCard(): void {
   const raceId = world.teams[HUMAN].raceId;
   const building = hoverButton ?? selected;
+  if (building === FOUND) {
+    const card = buildingCard(content, raceId, content.races[raceId]!.core);
+    showCard({
+      ...card,
+      subtitle: "Choose where your core goes. Your deploy agent walks there and becomes it. Waves start soon after.",
+    });
+    return;
+  }
   showCard(building ? buildingCard(content, raceId, building) : hoverCard);
+}
+
+function builder() {
+  const id = world.teams[HUMAN].builderId;
+  return id === -1 ? undefined : world.entities.find((entity) => entity.id === id);
 }
 
 /** What's under the pointer on the map: an entity, else interesting terrain. */
 function cardAt(clientX: number, clientY: number): InfoCard | null {
   const point = renderer.toWorld(clientX, clientY);
+  if (!renderer.fog.isExplored(point.x, point.y)) {
+    return { title: "Unexplored", subtitle: "Nobody has been out here yet.", lines: ["Send your deploy agent, or build closer, to see what's out there."] };
+  }
   for (const entity of world.entities) {
+    const hostile = world.teams[entity.team].controller !== "human";
+    if (hostile && (entity.kind === "unit" ? !renderer.fog.isVisible(entity.x, entity.y) : false)) continue;
     if (entity.kind === "building") {
       const half = (entity.footprint * TILE) / 2;
       if (Math.abs(point.x - entity.x) <= half && Math.abs(point.y - entity.y) <= half) {
@@ -92,7 +117,7 @@ function cardAt(clientX: number, clientY: number): InfoCard | null {
       const dy = point.y - entity.y;
       if (dx * dx + dy * dy <= (entity.radius + 4) ** 2) {
         const card = unitCard(content, entity.defId, entity.hp);
-        const owner = entity.mode === "guard" ? "Yours, guarding" : "Creep, wandering";
+        const owner = entity.mode === "builder" ? "Yours, deploy agent" : entity.mode === "guard" ? "Yours, guarding" : "Creep, wandering";
         return { ...card, subtitle: `${owner}. ${card.subtitle}` };
       }
     }
@@ -142,7 +167,15 @@ const canvas = renderer.app.canvas;
 let drag: { x: number; y: number; moved: boolean; minimap: boolean } | null = null;
 
 canvas.addEventListener("pointerdown", (event) => {
-  if (event.button === 2) return select(null);
+  if (event.button === 2) {
+    // Right-click cancels a placement; with nothing selected it moves the deploy agent.
+    if (selected) return select(null);
+    if (builder() && !renderer.minimapHit(event.clientX, event.clientY)) {
+      const point = renderer.toWorld(event.clientX, event.clientY);
+      queueCommand(world, { type: "move", tick: world.tick + INPUT_DELAY_TICKS, team: HUMAN, x: point.x, y: point.y });
+    }
+    return;
+  }
   if (event.button !== 0 && event.button !== 1) return;
   const onMinimap = renderer.minimapHit(event.clientX, event.clientY);
   if (onMinimap) {
@@ -183,6 +216,11 @@ canvas.addEventListener("pointerup", (event) => {
   if (!wasClick || !selected) return;
   const target = ghostAt(event.clientX, event.clientY);
   if (!target?.valid) return;
+  if (selected === FOUND) {
+    queueCommand(world, { type: "found", tick: world.tick + INPUT_DELAY_TICKS, team: HUMAN, col: target.col, row: target.row });
+    select(null);
+    return;
+  }
   queueCommand(world, {
     type: "build",
     tick: world.tick + INPUT_DELAY_TICKS,
@@ -261,11 +299,15 @@ window.addEventListener("keydown", (event) => {
   }
   if (key === " " || key === "h") {
     event.preventDefault();
-    const core = world.entities.find((entity) => entity.id === world.teams[HUMAN].coreId);
-    if (core) renderer.camera.centerOn(core.x, core.y);
+    const home = renderer.home(world);
+    if (home) renderer.camera.centerOn(home.x, home.y);
     return;
   }
   if (key === "r" && world.outcome) return restart();
+  if (barPhase === "deploy") {
+    if (key === "c" && builder()) select(FOUND);
+    return;
+  }
   const roster = content.races[world.teams[HUMAN].raceId]!.buildings;
   const index = Number(key) - 1;
   if (index >= 0 && index < roster.length) select(roster[index]!);
@@ -284,8 +326,16 @@ window.addEventListener("blur", () => {
 
 function ghostAt(clientX: number, clientY: number): Ghost | null {
   if (!selected) return null;
-  const def = content.buildings[selected]!;
   const point = renderer.toWorld(clientX, clientY);
+  if (selected === FOUND) {
+    const def = content.buildings[content.races[world.teams[HUMAN].raceId]!.core]!;
+    // Center the 2x2 footprint on the pointer.
+    const col = Math.round(point.x / TILE) - 1;
+    const row = Math.round(point.y / TILE) - 1;
+    const valid = canFound(world, content, HUMAN, col, row) === null && renderer.fog.isExplored(point.x, point.y);
+    return { col, row, footprint: def.footprint, valid, range: def.attack?.range ?? 0 };
+  }
+  const def = content.buildings[selected]!;
   const col = Math.floor(point.x / TILE);
   const row = Math.floor(point.y / TILE);
   const valid = canPlace(world, content, HUMAN, selected, col, row) === null;
@@ -303,6 +353,8 @@ function select(buildingId: string | null): void {
 
 function restart(): void {
   world = newMatch();
+  select(null);
+  buildBar();
   renderer.setWorld(world);
   accumulator = 0;
   hud.status.textContent = "";
@@ -314,11 +366,35 @@ function restart(): void {
 
 function buildBar(): void {
   const race = content.races[world.teams[HUMAN].raceId]!;
+  barPhase = world.teams[HUMAN].coreId === -1 ? "deploy" : "build";
   hud.buildBar.innerHTML = "";
   const label = document.createElement("div");
   label.className = "stat";
   label.innerHTML = `<span class="label">${race.name}</span><span>${race.specialty}</span>`;
   hud.buildBar.append(label);
+
+  if (barPhase === "deploy") {
+    const button = document.createElement("button");
+    button.className = "build-btn";
+    button.dataset.building = FOUND;
+    button.innerHTML = `C. Deploy core here<small>free · your agent walks there</small>`;
+    button.addEventListener("click", () => select(selected === FOUND ? null : FOUND));
+    button.addEventListener("pointerenter", () => {
+      hoverButton = FOUND;
+      refreshCard();
+    });
+    button.addEventListener("pointerleave", () => {
+      hoverButton = null;
+      refreshCard();
+    });
+    hud.buildBar.append(button);
+    const help = document.createElement("div");
+    help.className = "stat help";
+    help.innerHTML =
+      '<span class="label">Deploy</span><span>Right-click: move your agent and scout · C: choose where your core goes · Space: find your agent</span>';
+    hud.buildBar.append(help);
+    return;
+  }
 
   race.buildings.forEach((id, index) => {
     const def = content.buildings[id]!;
@@ -347,9 +423,13 @@ function buildBar(): void {
 
 function updateHud(): void {
   const team = world.teams[HUMAN];
+  if ((team.coreId === -1) !== (barPhase === "deploy")) {
+    select(null);
+    buildBar();
+  }
   const core = world.entities.find((entity) => entity.id === team.coreId);
   hud.compute.textContent = String(team.compute);
-  hud.core.textContent = core ? `${Math.max(0, Math.ceil(core.hp))} / ${core.maxHp}` : "offline";
+  hud.core.textContent = core ? `${Math.max(0, Math.ceil(core.hp))} / ${core.maxHp}` : team.builderId !== -1 ? "not deployed" : "offline";
   hud.uptime.textContent = clock((world.outcome?.tick ?? world.tick) / TICK_RATE);
   hud.wave.textContent = String(world.waves.nextIndex);
   hud.nextWave.textContent = `${Math.max(0, Math.ceil((world.waves.nextWaveTick - world.tick) / TICK_RATE))}s`;
@@ -357,7 +437,8 @@ function updateHud(): void {
   else if (!world.outcome) hud.status.textContent = "";
 
   for (const button of hud.buildBar.querySelectorAll<HTMLButtonElement>(".build-btn")) {
-    button.disabled = team.compute < buildCost(content, team.raceId, button.dataset.building!);
+    const id = button.dataset.building!;
+    button.disabled = id !== FOUND && team.compute < buildCost(content, team.raceId, id);
   }
 }
 
@@ -372,7 +453,9 @@ function announceOutcome(): void {
   const uptime = clock(outcome.tick / TICK_RATE);
   const summary = won
     ? `NEST OFFLINE - you took down the botnet at ${uptime}.`
-    : `OUTAGE - uptime ${uptime}, reached wave ${world.waves.nextIndex}.`;
+    : world.teams[HUMAN].coreId === -1
+      ? `OUTAGE - your deploy agent was lost before the core came online.`
+      : `OUTAGE - uptime ${uptime}, reached wave ${world.waves.nextIndex}.`;
   hud.status.textContent = `${summary} Press R for a new web. [${hashWorld(world)}]`;
   hud.status.className = won ? "won" : "lost";
   renderer.showBanner(won ? "NEST OFFLINE" : `OUTAGE · uptime ${uptime}`);

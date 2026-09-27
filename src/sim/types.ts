@@ -5,6 +5,8 @@ export type TeamId = 0 | 1;
 
 export interface Team {
   id: TeamId;
+  /** The builder unit before the core is founded, else -1. */
+  builderId: number;
   raceId: string;
   controller: Controller;
   compute: number;
@@ -32,7 +34,7 @@ interface EntityBase {
  * - roam:  wanders the map with its pack and attacks whatever it sees. Creeps
  *   never know where you are; they find you by running into you.
  */
-export type UnitMode = "guard" | "roam";
+export type UnitMode = "guard" | "roam" | "builder";
 
 export interface Unit extends EntityBase {
   kind: "unit";
@@ -41,6 +43,9 @@ export interface Unit extends EntityBase {
   packId: number;
   /** Building that spawned this unit, or -1. Counts toward its maxAlive. */
   spawnerId: number;
+  /** Builder orders: where it is walking, and the core footprint to found on arrival. */
+  moveTo: { x: number; y: number } | null;
+  foundAt: { col: number; row: number } | null;
   /** Where a guarding unit returns to when it has nothing to fight. */
   homeX: number;
   homeY: number;
@@ -68,7 +73,25 @@ export interface BuildCommand {
   row: number;
 }
 
-export type Command = BuildCommand;
+/** Walk the builder to a point. */
+export interface MoveCommand {
+  type: "move";
+  tick: number;
+  team: TeamId;
+  x: number;
+  y: number;
+}
+
+/** Walk the builder to a 2x2 footprint and found the core there. */
+export interface FoundCommand {
+  type: "found";
+  tick: number;
+  team: TeamId;
+  col: number;
+  row: number;
+}
+
+export type Command = BuildCommand | MoveCommand | FoundCommand;
 
 export interface WaveSpawn {
   tick: number;
@@ -101,6 +124,7 @@ export type SimEvent =
   | { type: "shot"; from: number; to: number; x1: number; y1: number; x2: number; y2: number; team: TeamId }
   | { type: "death"; id: number; x: number; y: number; team: TeamId }
   | { type: "wave"; wave: number; name: string; packs: number; units: number; boss: boolean }
+  | { type: "founded"; x: number; y: number }
   | { type: "rejected"; command: Command; reason: string };
 
 /**
@@ -108,8 +132,8 @@ export type SimEvent =
  * hash: two peers with the same seed always agree on it.
  */
 export interface Navigation {
-  /** Flow field toward each team's core, indexed by team id. */
-  toCore: [Int32Array, Int32Array];
+  /** Flow field toward each team's current builder order, by team id. */
+  builderOrder: [Int32Array | null, Int32Array | null];
   /**
    * Flow field toward each terrain roam point, same order. Filled lazily the
    * first time a pack heads there: pure function of the terrain, so peers
