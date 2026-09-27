@@ -3,7 +3,7 @@
 Survival on the open web, in the browser. Every match generates a fresh patch
 of the internet from a seed: dead links, data swamps, data wells, and a
 malware nest somewhere far off-screen. Build around your core, let your racks
-fork defenders, and keep your uptime while the crawlers come in waves.
+fork defenders, and keep your uptime while packs of crawlers wander the web.
 
 > Prototype. Balance, art, and most of the design are placeholders.
 
@@ -20,7 +20,11 @@ npm run dev
   to jump. `Space` / `H`: back to your core.
 - Right-click / `Esc`: cancel. `P`: pause. `R`: new map after a match.
 
-You win by clearing every wave, or by taking the nest offline.
+Creeps arrive in waves, but nobody tells them where you are. Each wave is cut
+into packs of random size that enter the map out of sight and wander. A pack
+attacks whatever it can see, so trouble can come from any side, or not at all.
+Survive until the timer after the last wave runs out, or take the nest
+offline. Hover anything (buttons, buildings, units, terrain) to see what it does.
 Add `?debug` to the URL to expose live state as `window.uptime`.
 
 ## How it's built
@@ -54,9 +58,14 @@ from the seed on every machine, never sent over the wire, and kept out of the
 state hash. Tests check 40 seeds for a clear start, a reachable far-off nest,
 and room to build.
 
-**Many units, one path search.** Creeps follow a flow field: one Dijkstra pass
-outward from the target core, which every creep then walks downhill. Guards
-hold near where they spawned and fight whatever comes within reach.
+**Many units, few path searches.** Movement follows flow fields: one Dijkstra
+pass outward from a destination that every unit heading there walks downhill.
+Each map has ~24 roam points with a field each; a pack picks one, walks it,
+and picks another. Guards hold near where they spawned and fight whatever
+comes within reach.
+
+**No hidden knowledge.** Creeps never read the player's position. A test fails
+if any creep ever targets something beyond its sight.
 
 **The horde is just a team.** Team 1 is the Botnet race, driven by the wave
 director instead of a human.
@@ -73,7 +82,8 @@ Direction: survival on a procedurally generated open web.
 - [x] Seeded terrain + flow-field pathfinding
 - [ ] Builder start: land a builder and choose where your core goes
 - [ ] Economy from what you build on data wells, replacing flat income
-- [ ] Wandering creeps, camps, and escalating creep waves
+- [x] Wandering creep packs that only attack what they see
+- [ ] Creep camps and escalating waves
 - [ ] Rally points for spawned defenders
 - Heroes and security abilities (zero-day, RCE, ransomware, worm, DDoS, honeypot)
 - More races: Hyperscaler, Hacker crew, State actor / APT

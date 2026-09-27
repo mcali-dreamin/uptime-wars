@@ -1,6 +1,12 @@
 {
   "firstWaveTicks": 600,
-  "spawnSpacingTicks": 8,
+  "spawnSpacingTicks": 6,
+  "packSize": {
+    "min": 2,
+    "max": 8
+  },
+  "spawnMinDistanceTiles": 30,
+  "holdTicksAfterLastWave": 3600,
   "waves": [
     {
       "name": "Port scan",
@@ -8,63 +14,77 @@
       "groups": [
         {
           "unit": "bot",
-          "count": 8
+          "count": 28
         }
       ]
     },
     {
       "name": "Credential stuffing",
-      "delayTicks": 500,
+      "delayTicks": 1200,
       "groups": [
         {
           "unit": "bot",
-          "count": 14
+          "count": 42
         }
       ]
     },
     {
       "name": "Worm outbreak",
-      "delayTicks": 500,
+      "delayTicks": 1200,
       "groups": [
         {
           "unit": "worm",
-          "count": 16
+          "count": 42
         },
         {
           "unit": "bot",
-          "count": 10
+          "count": 28
+        }
+      ]
+    },
+    {
+      "name": "Scraper swarm",
+      "delayTicks": 1200,
+      "groups": [
+        {
+          "unit": "bot",
+          "count": 56
+        },
+        {
+          "unit": "worm",
+          "count": 35
         }
       ]
     },
     {
       "name": "DDoS",
-      "delayTicks": 550,
+      "delayTicks": 1400,
       "groups": [
         {
           "unit": "bot",
-          "count": 28
+          "count": 77
         },
         {
           "unit": "worm",
-          "count": 16
+          "count": 42
         }
       ]
     },
     {
       "name": "Ransomware",
-      "delayTicks": 650,
+      "delayTicks": 1600,
       "groups": [
         {
           "unit": "bot",
-          "count": 20
+          "count": 56
         },
         {
           "unit": "worm",
-          "count": 10
+          "count": 28
         },
         {
           "unit": "ransomware",
-          "count": 1
+          "count": 2
         }
       ]
     }

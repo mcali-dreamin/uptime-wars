@@ -90,6 +90,22 @@ export function isWalkablePoint(terrain: Terrain, x: number, y: number): boolean
   return isWalkableTile(terrain, Math.floor(x / TILE), Math.floor(y / TILE));
 }
 
+/**
+ * True when a body of radius `r` fits at (x, y): its center and four edge
+ * points are all on walkable tiles. The edges use 80% of the radius so the
+ * largest units still fit through one-tile corridors.
+ */
+export function bodyFits(terrain: Terrain, x: number, y: number, r: number): boolean {
+  const e = r * 0.8;
+  return (
+    isWalkablePoint(terrain, x, y) &&
+    isWalkablePoint(terrain, x + e, y) &&
+    isWalkablePoint(terrain, x - e, y) &&
+    isWalkablePoint(terrain, x, y + e) &&
+    isWalkablePoint(terrain, x, y - e)
+  );
+}
+
 export function isSlowPoint(terrain: Terrain, x: number, y: number): boolean {
   return tileAt(terrain, Math.floor(x / TILE), Math.floor(y / TILE)) === TILE_SLOW;
 }
@@ -110,12 +126,31 @@ export function hasLineOfSight(terrain: Terrain, x1: number, y1: number, x2: num
 }
 
 /**
- * Move a point toward (tx, ty) by up to `stride`, sliding along walls rather
+ * True when a body of radius `r` can walk the straight segment without
+ * touching a wall: the center line and both edge lines are clear. Seeing a
+ * target is not the same as being able to walk straight at it.
+ */
+export function hasClearPath(terrain: Terrain, x1: number, y1: number, x2: number, y2: number, r: number): boolean {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  if (length === 0) return true;
+  const ox = (-dy / length) * r * 0.8;
+  const oy = (dx / length) * r * 0.8;
+  return (
+    hasLineOfSight(terrain, x1, y1, x2, y2) &&
+    hasLineOfSight(terrain, x1 + ox, y1 + oy, x2 + ox, y2 + oy) &&
+    hasLineOfSight(terrain, x1 - ox, y1 - oy, x2 - ox, y2 - oy)
+  );
+}
+
+/**
+ * Move a body toward (tx, ty) by up to `stride`, sliding along walls rather
  * than stopping dead. Slow terrain halves the stride. Mutates `mover`.
  */
 export function moveToward(
   terrain: Terrain,
-  mover: { x: number; y: number },
+  mover: { x: number; y: number; radius: number },
   tx: number,
   ty: number,
   stride: number,
@@ -127,12 +162,18 @@ export function moveToward(
   const step = Math.min(length, isSlowPoint(terrain, mover.x, mover.y) ? stride / 2 : stride);
   const nx = mover.x + (dx / length) * step;
   const ny = mover.y + (dy / length) * step;
-  if (isWalkablePoint(terrain, nx, ny)) {
+  const r = mover.radius;
+  if (bodyFits(terrain, nx, ny, r)) {
     mover.x = nx;
     mover.y = ny;
-  } else if (isWalkablePoint(terrain, nx, mover.y)) {
+  } else if (bodyFits(terrain, nx, mover.y, r)) {
     mover.x = nx;
-  } else if (isWalkablePoint(terrain, mover.x, ny)) {
+  } else if (bodyFits(terrain, mover.x, ny, r)) {
+    mover.y = ny;
+  } else if (!bodyFits(terrain, mover.x, mover.y, r) && isWalkablePoint(terrain, nx, ny)) {
+    // Already wedged against a wall (spawned tight): let the center through
+    // so the body can work itself free instead of freezing.
+    mover.x = nx;
     mover.y = ny;
   }
 }

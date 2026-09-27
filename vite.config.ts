@@ -6,5 +6,7 @@ export default defineConfig({
   },
   test: {
     include: ["tests/**/*.test.ts"],
+    // Several tests simulate whole matches on the full-size map.
+    testTimeout: 120_000,
   },
 });

@@ -1,3 +1,4 @@
+import { buildingCard, terrainCard, unitCard, type InfoCard } from "./info";
 import { Renderer, type Ghost } from "./render/renderer";
 import {
   TICK_RATE,
@@ -9,6 +10,7 @@ import {
   loadDefaultContent,
   queueCommand,
   step,
+  tileAt,
   type TeamId,
   type World,
 } from "./sim";
@@ -37,7 +39,65 @@ const hud = {
   nextWave: $("next-wave"),
   status: $("status"),
   buildBar: $("build-bar"),
+  info: $("info"),
+  infoTitle: $("info-title"),
+  infoSubtitle: $("info-subtitle"),
+  infoLines: $("info-lines"),
 };
+
+// --- info panel ------------------------------------------------------------
+
+let hoverButton: string | null = null;
+let hoverCard: InfoCard | null = null;
+
+function showCard(card: InfoCard | null): void {
+  if (!card) {
+    hud.info.hidden = true;
+    return;
+  }
+  hud.info.hidden = false;
+  hud.infoTitle.textContent = card.title;
+  hud.infoSubtitle.textContent = card.subtitle;
+  hud.infoLines.replaceChildren(
+    ...card.lines.map((line) => {
+      const li = document.createElement("li");
+      li.textContent = line;
+      return li;
+    }),
+  );
+}
+
+/** Priority: hovered build button, then the building being placed, then what's under the cursor. */
+function refreshCard(): void {
+  const raceId = world.teams[HUMAN].raceId;
+  const building = hoverButton ?? selected;
+  showCard(building ? buildingCard(content, raceId, building) : hoverCard);
+}
+
+/** What's under the pointer on the map: an entity, else interesting terrain. */
+function cardAt(clientX: number, clientY: number): InfoCard | null {
+  const point = renderer.toWorld(clientX, clientY);
+  for (const entity of world.entities) {
+    if (entity.kind === "building") {
+      const half = (entity.footprint * TILE) / 2;
+      if (Math.abs(point.x - entity.x) <= half && Math.abs(point.y - entity.y) <= half) {
+        const card = buildingCard(content, world.teams[entity.team].raceId, entity.defId);
+        const owner = world.teams[entity.team].controller === "human" ? "Yours" : "Hostile";
+        const status = entity.buildRemaining > 0 ? `building, ${Math.ceil(entity.buildRemaining / TICK_RATE)}s left` : "online";
+        return { ...card, subtitle: `${owner} · ${status} · ${Math.ceil(entity.hp)} / ${entity.maxHp} HP. ${card.subtitle}` };
+      }
+    } else {
+      const dx = point.x - entity.x;
+      const dy = point.y - entity.y;
+      if (dx * dx + dy * dy <= (entity.radius + 4) ** 2) {
+        const card = unitCard(content, entity.defId, entity.hp);
+        const owner = entity.mode === "guard" ? "Yours, guarding" : "Creep, wandering";
+        return { ...card, subtitle: `${owner}. ${card.subtitle}` };
+      }
+    }
+  }
+  return terrainCard(tileAt(world.terrain, Math.floor(point.x / TILE), Math.floor(point.y / TILE)));
+}
 
 function newMatch(): World {
   const seed = (Math.random() * 2 ** 31) | 0;
@@ -112,7 +172,10 @@ canvas.addEventListener("pointermove", (event) => {
       return;
     }
   }
-  ghost = selected && !renderer.minimapHit(event.clientX, event.clientY) ? ghostAt(event.clientX, event.clientY) : null;
+  const overMinimap = renderer.minimapHit(event.clientX, event.clientY) !== null;
+  ghost = selected && !overMinimap ? ghostAt(event.clientX, event.clientY) : null;
+  hoverCard = overMinimap ? null : cardAt(event.clientX, event.clientY);
+  refreshCard();
 });
 
 canvas.addEventListener("pointerup", (event) => {
@@ -132,7 +195,11 @@ canvas.addEventListener("pointerup", (event) => {
   if (!event.shiftKey) select(null);
 });
 
-canvas.addEventListener("pointerleave", () => renderer.camera.setEdgeFromPointer(null, null));
+canvas.addEventListener("pointerleave", () => {
+  renderer.camera.setEdgeFromPointer(null, null);
+  hoverCard = null;
+  refreshCard();
+});
 canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 canvas.addEventListener(
   "wheel",
@@ -209,12 +276,13 @@ function ghostAt(clientX: number, clientY: number): Ghost | null {
   const col = Math.floor(point.x / TILE);
   const row = Math.floor(point.y / TILE);
   const valid = canPlace(world, content, HUMAN, selected, col, row) === null;
-  return { col, row, footprint: def.footprint, valid };
+  return { col, row, footprint: def.footprint, valid, range: def.attack?.range ?? 0 };
 }
 
 function select(buildingId: string | null): void {
   selected = buildingId;
   ghost = null;
+  refreshCard();
   for (const button of hud.buildBar.querySelectorAll<HTMLButtonElement>(".build-btn")) {
     button.classList.toggle("selected", button.dataset.building === buildingId);
   }
@@ -244,9 +312,16 @@ function buildBar(): void {
     const button = document.createElement("button");
     button.className = "build-btn";
     button.dataset.building = id;
-    button.title = def.description;
     button.innerHTML = `${index + 1}. ${def.name}<small>${buildCost(content, world.teams[HUMAN].raceId, id)} compute</small>`;
     button.addEventListener("click", () => select(selected === id ? null : id));
+    button.addEventListener("pointerenter", () => {
+      hoverButton = id;
+      refreshCard();
+    });
+    button.addEventListener("pointerleave", () => {
+      hoverButton = null;
+      refreshCard();
+    });
     hud.buildBar.append(button);
   });
 
@@ -263,9 +338,10 @@ function updateHud(): void {
   hud.compute.textContent = String(team.compute);
   hud.core.textContent = core ? `${Math.max(0, Math.ceil(core.hp))} / ${core.maxHp}` : "offline";
   hud.wave.textContent = `${world.waves.nextIndex} / ${content.waves.waves.length}`;
-  const remaining = world.waves.nextWaveTick - world.tick;
-  hud.nextWave.textContent =
-    world.waves.nextIndex >= content.waves.waves.length ? "final" : `${Math.max(0, Math.ceil(remaining / TICK_RATE))}s`;
+  const hold = world.waves.holdUntilTick;
+  const remaining = (hold ?? world.waves.nextWaveTick) - world.tick;
+  const seconds = Math.max(0, Math.ceil(remaining / TICK_RATE));
+  hud.nextWave.textContent = hold === null ? `${seconds}s` : `survive ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
   if (paused && !world.outcome) hud.status.textContent = "PAUSED (P)";
   else if (!world.outcome) hud.status.textContent = "";
 
@@ -277,7 +353,7 @@ function updateHud(): void {
 function announceOutcome(): void {
   const outcome = world.outcome!;
   const won = outcome.winner === HUMAN;
-  const reason = outcome.reason === "survived" ? "All waves cleared." : won ? "Nest destroyed." : "Your core went down.";
+  const reason = outcome.reason === "survived" ? "You outlasted every wave." : won ? "Nest destroyed." : "Your core went down.";
   hud.status.textContent = `${won ? "UPTIME HELD" : "OUTAGE"} - ${reason} Press R for a new web. [${hashWorld(world)}]`;
   hud.status.className = won ? "won" : "lost";
   renderer.showBanner(won ? "UPTIME HELD" : "OUTAGE");
