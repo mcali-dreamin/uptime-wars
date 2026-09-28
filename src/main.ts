@@ -16,6 +16,7 @@ import {
 import { Session } from "./game/session";
 import { BuildBar, FOUND_BUTTON } from "./ui/build-bar";
 import { $ } from "./ui/dom";
+import { Guide } from "./ui/guide";
 import { Hud } from "./ui/hud";
 import { InfoPanel } from "./ui/info-panel";
 import { RacePicker } from "./ui/race-picker";
@@ -39,7 +40,9 @@ const bar = new BuildBar(session, {
     info.hoverButton = button;
     info.refresh(selection);
   },
+  guide: () => guide.toggle(),
 });
+const guide = new Guide(session);
 const picker = new RacePicker(session, startMatch);
 
 let selection: Selection = NOTHING;
@@ -88,7 +91,6 @@ function select(next: Selection): void {
 function refreshPointer(): void {
   const fog = renderer.fog;
   placement = pointer ? placementAt(session, content, selection, pointer, (p) => fog.isExplored(p.x, p.y)) : null;
-  info.hoverAt(pointer, selection, fog);
   info.refresh(selection);
   const canvas = renderer.app.canvas;
   canvas.style.cursor = !pointer
@@ -112,7 +114,7 @@ function order(point: Point): void {
 // --- game input ------------------------------------------------------------
 
 const gameInput: GameInput = {
-  blocked: () => picker.open,
+  blocked: () => picker.open || guide.open,
 
   click(point, shift) {
     if (placement) {
@@ -143,6 +145,8 @@ const gameInput: GameInput = {
 
   key(key) {
     if (picker.key(key)) return true;
+    if (guide.key(key)) return true;
+    if (key === "g") return guide.show(), true;
     if (key === "escape") return select(NOTHING), true;
     if (key === "p") return (paused = !paused), true;
     if (key === "r" && session.world.outcome) return picker.show(), true;
@@ -184,7 +188,7 @@ picker.show();
 
 renderer.app.ticker.add((ticker) => {
   const { world } = session;
-  if (!paused && !picker.open && !world.outcome) {
+  if (!paused && !picker.open && !guide.open && !world.outcome) {
     accumulator += ticker.deltaMS;
     let steps = 0;
     while (accumulator >= STEP_MS && steps < MAX_STEPS_PER_FRAME) {
