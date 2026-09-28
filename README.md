@@ -36,6 +36,11 @@ npm run dev
   scroll). Wheel or `+`/`-`: zoom. Click the minimap to jump. `Space` / `H`: back home.
 - Right-click / `Esc`: cancel. `P`: pause. `R`: new map after a match.
 
+**3D (experimental):** add `?3d` to the URL for a Three.js view of the same
+game, with plateaus as real steps and a WC3-style angled camera. Everything
+else (controls, UI, the simulation) is shared; Three.js only loads when asked
+for.
+
 The map starts black. You see what your agent, units, and buildings can see;
 places you've been stay dimmed, with enemy buildings as you last saw them.
 `?reveal` in the URL turns the fog off.

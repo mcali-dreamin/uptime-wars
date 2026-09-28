@@ -27,6 +27,8 @@ export class Fog {
   private image: ImageData | null = null;
   private texture: Texture | null = null;
   private sinceUpdate = Infinity;
+  /** Bumped whenever visibility changes, so other views know to refresh. */
+  version = 0;
   readonly worldSprite = new Sprite();
   readonly minimapSprite = new Sprite();
 
@@ -78,7 +80,14 @@ export class Fog {
       data[i * 4 + 3] = this.visible[i] ? 0 : this.explored[i] ? EXPLORED_ALPHA : 255;
     }
     this.context.putImageData(this.image, 0, 0);
+    this.version += 1;
     this.texture?.source.update();
+  }
+
+  /** Per-tile state for other views: 2 visible, 1 explored, 0 unexplored. */
+  stateAt(index: number): 0 | 1 | 2 {
+    if (!this.enabled) return 2;
+    return this.visible[index] ? 2 : this.explored[index] ? 1 : 0;
   }
 
   isVisible(x: number, y: number): boolean {
