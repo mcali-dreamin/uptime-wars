@@ -1,7 +1,7 @@
 // Human-readable descriptions, derived from content so they never drift from
 // the numbers the simulation actually uses.
 
-import { TICK_RATE, TILE_BLOCKED, TILE_OPEN, TILE_RESOURCE, TILE_SLOW, type Content } from "./sim";
+import { TICK_RATE, TILE_BLOCKED, TILE_OPEN, TILE_RESOURCE, TILE_SLOW, type Content } from "../sim";
 
 export interface InfoCard {
   title: string;
@@ -45,9 +45,11 @@ export function unitCard(content: Content, unitId: string, hp: number): InfoCard
 }
 
 function unitSummary(unit: Content["units"][string], hpMultiplier = 1): string {
+  const hp = Math.round(unit.hp * hpMultiplier);
+  if (unit.damage <= 0) return `${hp} HP, can't attack`;
   const dps = (unit.damage / (unit.cooldownTicks / TICK_RATE)).toFixed(1);
   const reach = unit.range > 60 ? `ranged (${unit.range})` : "melee";
-  return `${Math.round(unit.hp * hpMultiplier)} HP, ${reach}, ${unit.damage} ${unit.attackType} dmg (${dps}/s)`;
+  return `${hp} HP, ${reach}, ${unit.damage} ${unit.attackType} dmg (${dps}/s)`;
 }
 
 export function terrainCard(tile: number): InfoCard | null {

@@ -18,10 +18,11 @@ npm run dev
   swarms and its spawners run 15% quicker. **Hyperscaler** has deep pockets and
   heavy iron: +150 starting compute, 30% tougher units, slower spawners, and its
   own roster (Load Balancer tanks, long-range CDN Edge towers, Power Plants).
-- You start with a **deploy agent**, not a base. Right-click to move it and
-  scout through the fog; press `C` (or the button) and click to choose where
-  your core goes. The agent walks there and becomes the core. Lose the agent
-  first and it's over.
+- You start with a **deploy agent**, already selected. Click (or right-click)
+  the ground to walk it and scout through the fog. Press `C` (or the button) and
+  click to choose where your core goes; the agent walks there and becomes the
+  core. Lose the agent first and it's over. The hint line over the map always
+  says what a click will do.
 - Click one of your buildings to select it. Right-click sets where its units
   gather; right-click with the **core** selected sets a global rally point for
   every spawner that doesn't have its own. Units fight whatever gets in their
@@ -29,7 +30,7 @@ npm run dev
 - `1`-`4` or click: pick a building. Click near your core (the ring shows your
   build radius) to place it. Shift-click to place several.
 - `WASD` / arrows, drag, or the very edge of the window: pan (`E` toggles edge
-  scroll). Wheel: zoom. Click the minimap to jump. `Space` / `H`: back home.
+  scroll). Wheel or `+`/`-`: zoom. Click the minimap to jump. `Space` / `H`: back home.
 - Right-click / `Esc`: cancel. `P`: pause. `R`: new map after a match.
 
 The map starts black. You see what your agent, units, and buildings can see;
@@ -51,10 +52,21 @@ Add `?debug` to the URL to expose live state as `window.uptime`.
 src/
   content/   JSON: races, buildings, units, waves, damage table
   sim/       deterministic simulation (no DOM, no clock, no Math.random)
-    terrain.ts   seeded map generation (noise, pockets sealed, nest placement)
-    nav.ts       flow-field pathfinding, line of sight, wall sliding
-  render/    PixiJS renderer + camera + minimap (reads the world, never writes it)
-  main.ts    loop, input, HUD
+    world.ts       createWorld, step() (the order systems run in), outcome
+    commands.ts    player commands: build, move, found, rally
+    placement.ts   "can I build here" rules, shared with the UI preview
+    entities.ts    creating buildings, units, cores
+    units.ts       unit behaviour: guard, roam, builder
+    movement.ts    walkTo: straight when clear, else a cached flow field
+    combat.ts      targeting (spatial grid) and damage
+    spawners.ts / economy.ts / waves.ts
+    terrain.ts / nav.ts   seeded map generation, flow fields, line of sight
+  game/      the player's side: Session (match + issuing commands) and
+             Selection (what a click means for what you have selected)
+  ui/        HUD, build bar, info panel, race picker
+  render/    PixiJS renderer, camera, fog (reads the world, never writes it)
+  input.ts   pointer + keys; camera controls, hands the rest to the game
+  main.ts    wiring and the frame loop
 tests/       simulation tests (vitest)
 ```
 
