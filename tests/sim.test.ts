@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   UNREACHABLE,
+  TILE_CLIFF,
+  TILE_RAMP,
+  canSee,
+  type Entity,
   flowField,
   canFound,
   createWorld,
@@ -24,6 +28,8 @@ import {
   type Content,
 } from "../src/sim";
 import { planBuildOrder } from "./helpers";
+import { makeContext } from "../src/sim/context";
+import { dealDamage } from "../src/sim/combat";
 
 const content = loadDefaultContent();
 // Most tests skip the builder phase; the "builder start" block covers it.
@@ -572,6 +578,81 @@ describe("upgrades", () => {
     const speed = 1 + content.upgrades.autoscaling!.perLevel;
     const expected = Math.round((content.buildings["server-rack"]!.spawn!.intervalTicks * raceMul) / speed);
     expect(rack.kind === "building" && rack.spawnTimer).toBe(expected);
+  });
+});
+
+describe("elevation", () => {
+  const walkable = (tile: number) => tile !== TILE_BLOCKED && tile !== TILE_CLIFF;
+
+  it("height only changes through ramps, and every walkable tile is reachable", () => {
+    for (const seed of [1, 2, 3, 42, 1234, 77]) {
+      const { terrain } = createWorld(content, { ...SETUP, seed });
+      const { cols, tiles, heights } = terrain;
+      let cliffs = 0;
+      let ramps = 0;
+      for (let i = 0; i < tiles.length; i++) {
+        if (tiles[i] === TILE_CLIFF) cliffs++;
+        if (tiles[i] === TILE_RAMP) ramps++;
+        for (const n of [i + 1, i + cols]) {
+          if (n >= tiles.length || (n === i + 1 && (i + 1) % cols === 0)) continue;
+          if (!walkable(tiles[i]!) || !walkable(tiles[n]!)) continue;
+          if (tiles[i] === TILE_RAMP || tiles[n] === TILE_RAMP) continue;
+          expect(heights[i], `seed ${seed} tile ${i}`).toBe(heights[n]);
+        }
+      }
+      expect(cliffs, `seed ${seed}`).toBeGreaterThan(100);
+      expect(ramps, `seed ${seed}`).toBeGreaterThan(10);
+      const field = flowField(terrain, [terrain.start.row * cols + terrain.start.col]);
+      for (let i = 0; i < tiles.length; i++) {
+        if (walkable(tiles[i]!)) expect(field[i], `seed ${seed} tile ${i} unreachable`).not.toBe(UNREACHABLE);
+      }
+    }
+  });
+
+  /** A low tile directly below a cliff, and the high tile behind it. */
+  function cliffPair(world: ReturnType<typeof createWorld>) {
+    const { cols, rows, tiles, heights } = world.terrain;
+    for (let row = 2; row < rows - 2; row++) {
+      for (let col = 2; col < cols - 6; col++) {
+        const low = row * cols + col;
+        // low | cliff | high | high ... far enough apart to test sight range
+        const cliff = low + 1;
+        const high = low + 4;
+        if (tiles[low] !== 0 || tiles[cliff] !== TILE_CLIFF || tiles[high] !== 0) continue;
+        if (heights[high]! <= heights[low]! || heights[low + 2] !== heights[high] || tiles[low + 2] === TILE_BLOCKED) continue;
+        return { low: { x: (col + 0.5) * TILE, y: (row + 0.5) * TILE }, high: { x: (col + 4.5) * TILE, y: (row + 0.5) * TILE } };
+      }
+    }
+    throw new Error("no cliff pair");
+  }
+
+  function unitAt(world: ReturnType<typeof createWorld>, team: 0 | 1, at: { x: number; y: number }) {
+    return { kind: "unit", id: 900 + team, team, x: at.x, y: at.y, radius: 8, armor: 0, armorType: "container", hp: 1000, maxHp: 1000 } as unknown as Entity;
+  }
+
+  it("low ground can't see up a cliff; high ground can see down", () => {
+    const world = createWorld(content, SETUP);
+    const { low, high } = cliffPair(world);
+    const ctx = makeContext(world, content);
+    const below = unitAt(world, 1, low);
+    const above = unitAt(world, 0, high);
+    expect(canSee(ctx, below, above)).toBe(false);
+    expect(canSee(ctx, above, below)).toBe(true);
+  });
+
+  it("attacking downhill hits harder", () => {
+    const world = createWorld(content, SETUP);
+    const { low, high } = cliffPair(world);
+    const ctx = makeContext(world, content);
+    const below = unitAt(world, 1, low);
+    const above = unitAt(world, 0, high);
+    const level = unitAt(world, 1, { x: high.x + TILE, y: high.y });
+    dealDamage(ctx, above, below, "brute", 40);
+    dealDamage(ctx, above, level, "brute", 40);
+    const downhill = 1000 - below.hp;
+    const flat = 1000 - level.hp;
+    expect(downhill).toBe(Math.round(40 * content.damage.brute.container * 1.25));
+    expect(flat).toBe(Math.round(40 * content.damage.brute.container));
   });
 });
 
