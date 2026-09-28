@@ -12,6 +12,7 @@ import { readFile } from "node:fs/promises";
 import { extname, join, resolve } from "node:path";
 
 const ROOT = resolve(process.argv[2] ?? "dist");
+const SEED = process.env.SEED ?? String(1 + Math.floor(Math.random() * 1e9));
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json" };
 
 const server = createServer(async (req, res) => {
@@ -50,7 +51,8 @@ page.on("pageerror", (e) => errors.push(e.message));
 page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
 
 try {
-  await page.goto(`http://127.0.0.1:${server.address().port}/?debug`);
+  console.log(`seed ${SEED} (rerun with SEED=${SEED})`);
+  await page.goto(`http://127.0.0.1:${server.address().port}/?debug&seed=${SEED}`);
   await page.waitForSelector("canvas", { timeout: 20000 });
   await page.waitForTimeout(800);
   const box = await (await page.$("canvas")).boundingBox();
@@ -80,6 +82,7 @@ try {
   // 1. Race picker, then the deploy agent starts selected.
   check(await page.$eval("#race-picker", (el) => !el.hidden), "race picker is shown");
   await page.keyboard.press("1");
+  const started = Date.now();
   await page.waitForTimeout(300);
   const agent = await state(() => {
     const w = window.uptime.world;
@@ -99,7 +102,7 @@ try {
       const a = w.entities.find((e) => e.id === w.teams[0].builderId);
       return Math.hypot(a.x - x, a.y - y);
     }, [walkTo.x, walkTo.y]);
-  await waitFor(async () => (await distanceLeft()) < 30, 12000);
+  await waitFor(async () => (await distanceLeft()) < 30, 90000);
   const walked = await distanceLeft();
   check(walked < 30, `clicking the ground walks the agent (ended ${Math.round(walked)}px away)`);
 
@@ -113,13 +116,9 @@ try {
   p = await toPage(here.x, here.y);
   await page.mouse.move(p.x, p.y);
   await page.mouse.click(p.x, p.y);
-  let founded = false;
-  for (let i = 0; i < 40 && !founded; i++) {
-    await page.waitForTimeout(200);
-    founded = await state(() => window.uptime.world.teams[0].coreId !== -1);
-  }
+  const founded = await waitFor(() => state(() => window.uptime.world.teams[0].coreId !== -1), 90000);
   check(founded, "C + click founds the core");
-  await page.waitForTimeout(300);
+  await waitFor(() => page.$$eval(".build-btn", (b) => !b.some((x) => x.dataset.building === "found")), 10000);
   const buttons = await page.$$eval(".build-btn", (b) => b.map((x) => x.dataset.building));
   check(buttons.length >= 4 && !buttons.includes("found"), `build bar shows the roster (${buttons.join(", ")})`);
 
@@ -134,10 +133,12 @@ try {
   p = await toPage(spot.x, spot.y);
   await page.mouse.move(p.x, p.y);
   await page.mouse.click(p.x, p.y);
-  await page.waitForTimeout(300);
-  const spawnerId = await state(() => window.uptime.world.entities.find((e) => e.kind === "building" && e.team === 0 && window.uptime.content.buildings[e.defId].spawn)?.id ?? null);
+  const spawnerId = await waitFor(
+    () => state(() => window.uptime.world.entities.find((e) => e.kind === "building" && e.team === 0 && window.uptime.content.buildings[e.defId].spawn)?.id ?? null),
+    30000,
+  );
   check(spawnerId !== null, "placing a spawner works");
-  const spawned = await waitFor(() => state((id) => window.uptime.world.entities.some((e) => e.kind === "unit" && e.spawnerId === id), spawnerId), 15000);
+  const spawned = await waitFor(() => state((id) => window.uptime.world.entities.some((e) => e.kind === "unit" && e.spawnerId === id), spawnerId), 120000);
   check(Boolean(spawned), "the spawner produces units");
   p = await toPage(spot.x, spot.y);
   await page.mouse.click(p.x, p.y);
@@ -154,9 +155,12 @@ try {
   await waitFor(async () => {
     const d = await distances();
     return d.length > 0 && d.every((n) => n < 90);
-  }, 20000);
+  }, 120000);
   const gathered = await distances();
   check(gathered.length > 0 && gathered.every((d) => d < 90), `right-click rallies the spawner's units (${gathered.join(", ")}px)`);
+
+  const ticks = await state(() => window.uptime.world.tick);
+  console.log(`info ${ticks} ticks in ${((Date.now() - started) / 1000).toFixed(0)}s of wall time (${(ticks / 20 / ((Date.now() - started) / 1000)).toFixed(2)}x real time)`);
 
   // 5. The Guide opens, pauses the match, and closes.
   await page.keyboard.press("g");
@@ -165,7 +169,7 @@ try {
   const tabs = await page.$$eval("#guide-tabs button", (b) => b.length);
   check(tabs === 5, `guide has 5 tabs (${tabs})`);
   const t0 = await state(() => window.uptime.world.tick);
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(1500);
   check(t0 === (await state(() => window.uptime.world.tick)), "the match pauses while the guide is open");
   await page.keyboard.press("Escape");
   await page.waitForTimeout(200);

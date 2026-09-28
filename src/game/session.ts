@@ -80,7 +80,9 @@ export class Session {
   }
 
   private newWorld(): World {
-    const seed = (Math.random() * 2 ** 31) | 0;
+    // `?seed=N` replays a specific map (tests, bug reports); otherwise random.
+    const fixed = Number(new URLSearchParams(location.search).get("seed"));
+    const seed = Number.isInteger(fixed) && fixed !== 0 ? fixed : (Math.random() * 2 ** 31) | 0;
     return createWorld(this.content, { seed, races: [this.raceId, HORDE_RACE] });
   }
 }
