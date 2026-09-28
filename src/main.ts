@@ -200,7 +200,13 @@ function startMatch(raceId: string): void {
 
 // HUD first: the stage's size depends on the build bar's height.
 bar.update(barMode(), null);
-await renderer.init($("stage"));
+// `?3d` swaps in the Three.js world view (loaded only when asked for).
+const use3d = new URLSearchParams(location.search).has("3d");
+await renderer.init($("stage"), { transparent: use3d });
+if (use3d) {
+  const { World3D } = await import("./render/three/world3d");
+  renderer.attach(new World3D($("stage")));
+}
 bindInput(renderer, gameInput);
 renderer.setWorld(session.world);
 picker.show();

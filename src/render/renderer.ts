@@ -15,16 +15,17 @@ import {
   type World,
 } from "../sim";
 import { Camera } from "./camera";
+import type { Point } from "../sim";
 import { Fog } from "./fog";
 import { drawTerrainBase, drawTerrainDetail, drawWells } from "./terrain-art";
 
-const TEAM_COLORS = [0x4ade80, 0xf87171] as const;
-const SHOT_TTL_MS = 120;
-const PING_MS = 600;
+export const TEAM_COLORS = [0x4ade80, 0xf87171] as const;
+export const SHOT_TTL_MS = 120;
+export const PING_MS = 600;
 const MINIMAP_WIDTH = 240;
 const MINIMAP_MARGIN = 12;
 
-interface Shot {
+export interface Shot {
   x1: number;
   y1: number;
   x2: number;
@@ -42,8 +43,43 @@ export interface Ghost {
   range: number;
 }
 
+/** Everything a world view needs to draw one frame. Render-only. */
+export interface Frame {
+  world: World;
+  content: Content;
+  alpha: number;
+  deltaMs: number;
+  ghost: Ghost | null;
+  selectedId: number | null;
+  width: number;
+  height: number;
+  camera: Camera;
+  fog: Fog;
+  shots: readonly Readonly<Shot>[];
+  pings: readonly Readonly<{ x: number; y: number; age: number }>[];
+  /** Interpolated position of an entity this frame. */
+  position(entity: World["entities"][number]): Point;
+  /** Whether the local player may see this entity right now. */
+  shows(entity: World["entities"][number], x: number, y: number): boolean;
+}
+
+/**
+ * An alternative view of the world (the Three.js one). When attached, the
+ * Pixi renderer stops drawing the world itself and keeps only the minimap,
+ * banner, and fog bookkeeping.
+ */
+export interface WorldView {
+  setWorld(world: World): void;
+  draw(frame: Frame): void;
+  /** Canvas-local pixels to a world point, or null if nothing is there. */
+  pick(x: number, y: number): Point | null;
+  /** The world rectangle the view covers, for the minimap. */
+  viewRect(): { left: number; right: number; top: number; bottom: number } | null;
+}
+
 export class Renderer {
   readonly app = new Application();
+  private view3d: WorldView | null = null;
   readonly camera = new Camera();
   private readonly worldLayer = new Container();
   /** `?reveal` in the URL turns fog off, for debugging. */
@@ -66,8 +102,13 @@ export class Renderer {
   private terrain: Terrain | null = null;
   private minimapScale = 1;
 
-  async init(host: HTMLElement): Promise<void> {
-    await this.app.init({ resizeTo: host, background: 0x0b0f14, antialias: true });
+  async init(host: HTMLElement, options: { transparent?: boolean } = {}): Promise<void> {
+    await this.app.init({
+      resizeTo: host,
+      background: 0x0b0f14,
+      backgroundAlpha: options.transparent ? 0 : 1,
+      antialias: true,
+    });
     host.appendChild(this.app.canvas);
     // resizeTo only listens for window resizes; the stage also changes size
     // when the HUD around it reflows.
@@ -79,6 +120,12 @@ export class Renderer {
     this.app.stage.addChild(this.worldLayer, this.minimap, this.banner);
   }
 
+  /** Hand world drawing to another view (3D). The Pixi world layer goes quiet. */
+  attach(view: WorldView): void {
+    this.view3d = view;
+    this.worldLayer.visible = false;
+  }
+
   /** Call when a new match starts: redraws terrain and centers on the core. */
   setWorld(world: World): void {
     const { terrain } = world;
@@ -87,7 +134,8 @@ export class Renderer {
     this.shots = [];
     this.pings = [];
     this.camera.setBounds(terrain.cols * TILE, terrain.rows * TILE);
-    this.drawTerrain(this.terrainLayer, terrain, TILE);
+    if (!this.view3d) this.drawTerrain(this.terrainLayer, terrain, TILE);
+    this.view3d?.setWorld(world);
     this.minimapScale = MINIMAP_WIDTH / (terrain.cols * TILE);
     this.minimapTerrain.clear();
     this.minimapTerrain
@@ -156,6 +204,35 @@ export class Renderer {
     const view = this.camera.view(64);
     this.fog.update(world, content, 0, deltaMs);
 
+    if (this.view3d) {
+      this.view3d.draw({
+        world,
+        content,
+        alpha,
+        deltaMs,
+        ghost,
+        selectedId,
+        width,
+        height,
+        camera: this.camera,
+        fog: this.fog,
+        shots: this.shots,
+        pings: this.pings,
+        position: (entity) => {
+          const prev = entity.kind === "unit" ? this.previous.get(entity.id) : undefined;
+          return prev ? { x: prev.x + (entity.x - prev.x) * alpha, y: prev.y + (entity.y - prev.y) * alpha } : entity;
+        },
+        shows: (entity, x, y) => this.shows(world, entity, x, y),
+      });
+      for (const shot of this.shots) shot.age += deltaMs;
+      this.shots = this.shots.filter((shot) => shot.age < SHOT_TTL_MS);
+      for (const ping of this.pings) ping.age += deltaMs;
+      this.pings = this.pings.filter((ping) => ping.age < PING_MS);
+      this.drawMinimap(world, width, height);
+      this.drawBanner(world, width, deltaMs);
+      return;
+    }
+
     const g = this.dynamic;
     g.clear();
     for (const entity of world.entities) {
@@ -222,7 +299,10 @@ export class Renderer {
     }
 
     this.drawMinimap(world, width, height);
+    this.drawBanner(world, width, deltaMs);
+  }
 
+  private drawBanner(world: World, width: number, deltaMs: number): void {
     this.banner.position.set(width / 2, 24);
     this.bannerAge += deltaMs;
     this.banner.alpha = world.outcome ? 1 : Math.max(0, 1 - this.bannerAge / 2500);
@@ -231,7 +311,9 @@ export class Renderer {
   /** Canvas-relative pointer to world pixels. */
   toWorld(clientX: number, clientY: number): { x: number; y: number } {
     const rect = this.app.canvas.getBoundingClientRect();
-    return this.camera.screenToWorld(clientX - rect.left, clientY - rect.top);
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    return this.view3d?.pick(x, y) ?? this.camera.screenToWorld(x, y);
   }
 
   /** World point under the pointer if it is over the minimap, else null. */
@@ -264,7 +346,7 @@ export class Renderer {
         g.rect(entity.x * s - 1, entity.y * s - 1, 2, 2).fill({ color });
       }
     }
-    const view = this.camera.view(0);
+    const view = this.view3d?.viewRect() ?? this.camera.view(0);
     g.rect(view.left * s, view.top * s, (view.right - view.left) * s, (view.bottom - view.top) * s).stroke({
       width: 1,
       color: 0xd6e2f0,
