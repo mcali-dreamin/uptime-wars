@@ -80,8 +80,9 @@ every machine (`hashWorld` checks this). That is deliberate:
 - **Replay verification.** A server can re-run a submitted command log and
   confirm a result before it touches a leaderboard.
 
-Determinism rules live at the top of `src/sim/world.ts`. Break them and the
-determinism tests fail.
+Determinism rules live at the top of `src/sim/world.ts` and are enforced by
+`tests/determinism-rules.test.ts`: no `Math.random`, no clock, and no
+engine-approximated math (`Math.pow`, trig, `**`) anywhere in `src/sim`.
 
 **The map is a function of the seed.** Terrain and navigation are regenerated
 from the seed on every machine, never sent over the wire, and kept out of the
@@ -142,6 +143,10 @@ CI deploy preset).
 
 ```sh
 npm run typecheck
-npm test
+npm test          # simulation tests + determinism rules for src/sim
 npm run build
+npm run e2e       # browser smoke test against dist/ (needs: npx playwright install chromium)
 ```
+
+CI runs all four on every pull request, and the deploy workflow runs them
+again before publishing.

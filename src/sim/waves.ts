@@ -64,7 +64,11 @@ export function waveInterval(content: Content, wave: number): number {
  */
 export function planWave(world: World, content: Content, wave: number) {
   const { budget, roster, bosses, names } = content.waves;
-  let points = Math.round(budget.start * Math.pow(budget.growth, wave - 1));
+  // Repeated multiplication, not Math.pow: the spec lets pow be approximate,
+  // and two browsers disagreeing on a wave size would desync a match.
+  let scale = 1;
+  for (let i = 1; i < wave; i += 1) scale *= budget.growth;
+  let points = Math.round(budget.start * scale);
   const units: string[] = [];
 
   const bossCount = wave >= bosses.fromWave && (wave - bosses.fromWave) % bosses.every === 0

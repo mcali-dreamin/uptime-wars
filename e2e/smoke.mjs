@@ -1,0 +1,189 @@
+// Browser smoke test of the built game (dist/). Plays the opening with real
+// clicks and keys and fails on any console error or broken step.
+//
+//   npm run build && npm run e2e
+//
+// Uses the ?debug hook (window.uptime) only to find where to click and to
+// check results, never to drive the game.
+
+import { chromium } from "playwright";
+import { createServer } from "node:http";
+import { readFile } from "node:fs/promises";
+import { extname, join, resolve } from "node:path";
+
+const ROOT = resolve(process.argv[2] ?? "dist");
+const SEED = process.env.SEED ?? String(1 + Math.floor(Math.random() * 1e9));
+const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json" };
+
+const server = createServer(async (req, res) => {
+  const path = new URL(req.url, "http://x").pathname;
+  const file = join(ROOT, path === "/" ? "index.html" : path);
+  try {
+    const body = await readFile(file);
+    res.writeHead(200, { "content-type": TYPES[extname(file)] ?? "application/octet-stream" });
+    res.end(body);
+  } catch {
+    res.writeHead(404).end();
+  }
+}).listen(0);
+
+const failures = [];
+/** Poll `fn` until it returns truthy or `ms` pass; returns the last value. */
+const waitFor = async (fn, ms) => {
+  const until = Date.now() + ms;
+  let value;
+  do {
+    value = await fn();
+    if (value) return value;
+    await new Promise((r) => setTimeout(r, 200));
+  } while (Date.now() < until);
+  return value;
+};
+const check = (ok, message) => {
+  console.log(`${ok ? "ok  " : "FAIL"} ${message}`);
+  if (!ok) failures.push(message);
+};
+
+const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader"] });
+const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+const errors = [];
+page.on("pageerror", (e) => errors.push(e.message));
+page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+
+try {
+  console.log(`seed ${SEED} (rerun with SEED=${SEED})`);
+  await page.goto(`http://127.0.0.1:${server.address().port}/?debug&seed=${SEED}`);
+  await page.waitForSelector("canvas", { timeout: 20000 });
+  await page.waitForTimeout(800);
+  const box = await (await page.$("canvas")).boundingBox();
+  const state = (fn, arg) => page.evaluate(fn, arg);
+  /** World point -> page point, through the live camera. */
+  const toPage = async (x, y) => {
+    const p = await state(([x, y]) => {
+      const { renderer } = window.uptime;
+      const c = renderer.camera;
+      return { x: (x - c.x) * c.zoom + renderer.app.screen.width / 2, y: (y - c.y) * c.zoom + renderer.app.screen.height / 2 };
+    }, [x, y]);
+    return { x: box.x + p.x, y: box.y + p.y };
+  };
+  /** An open tile `min`..`max` tiles from (x, y), searched in a fixed pattern. */
+  const openNear = (x, y, min, max) =>
+    state(([x, y, min, max]) => {
+      const { world, TILE } = window.uptime;
+      const t = world.terrain;
+      for (let r = min; r <= max; r++)
+        for (const [dx, dy] of [[r, 0], [-r, 0], [0, r], [0, -r], [r, r], [-r, -r], [r, -r], [-r, r]]) {
+          const px = x + dx * TILE, py = y + dy * TILE;
+          if (t.tiles[Math.floor(py / TILE) * t.cols + Math.floor(px / TILE)] === 0) return { x: px, y: py };
+        }
+      return null;
+    }, [x, y, min, max]);
+
+  // 1. Race picker, then the deploy agent starts selected.
+  check(await page.$eval("#race-picker", (el) => !el.hidden), "race picker is shown");
+  await page.keyboard.press("1");
+  const started = Date.now();
+  await page.waitForTimeout(300);
+  const agent = await state(() => {
+    const w = window.uptime.world;
+    const a = w.entities.find((e) => e.id === w.teams[0].builderId);
+    return { id: a.id, x: a.x, y: a.y, selected: window.uptime.selection.kind === "entity" && window.uptime.selection.id === a.id };
+  });
+  check(agent.selected, "deploy agent starts selected");
+  check((await page.textContent("#hint")).length > 0, "hint line is shown while deploying");
+
+  // 2. Click the ground: the agent walks there.
+  const walkTo = await openNear(agent.x, agent.y, 4, 8);
+  let p = await toPage(walkTo.x, walkTo.y);
+  await page.mouse.click(p.x, p.y);
+  const distanceLeft = () =>
+    state(([x, y]) => {
+      const w = window.uptime.world;
+      const a = w.entities.find((e) => e.id === w.teams[0].builderId);
+      return Math.hypot(a.x - x, a.y - y);
+    }, [walkTo.x, walkTo.y]);
+  await waitFor(async () => (await distanceLeft()) < 30, 90000);
+  const walked = await distanceLeft();
+  check(walked < 30, `clicking the ground walks the agent (ended ${Math.round(walked)}px away)`);
+
+  // 3. C, then click: the agent founds the core and the build bar switches.
+  const here = await state(() => {
+    const w = window.uptime.world;
+    const a = w.entities.find((e) => e.id === w.teams[0].builderId);
+    return { x: a.x, y: a.y };
+  });
+  await page.keyboard.press("c");
+  p = await toPage(here.x, here.y);
+  await page.mouse.move(p.x, p.y);
+  await page.mouse.click(p.x, p.y);
+  const founded = await waitFor(() => state(() => window.uptime.world.teams[0].coreId !== -1), 90000);
+  check(founded, "C + click founds the core");
+  await waitFor(() => page.$$eval(".build-btn", (b) => !b.some((x) => x.dataset.building === "found")), 10000);
+  const buttons = await page.$$eval(".build-btn", (b) => b.map((x) => x.dataset.building));
+  check(buttons.length >= 4 && !buttons.includes("found"), `build bar shows the roster (${buttons.join(", ")})`);
+
+  // 4. Build a spawner, select it, right-click a rally point: its units go there.
+  const core = await state(() => {
+    const w = window.uptime.world;
+    const c = w.entities.find((e) => e.id === w.teams[0].coreId);
+    return { x: c.x, y: c.y };
+  });
+  const spot = await openNear(core.x, core.y, 2, 5);
+  await page.keyboard.press("1");
+  p = await toPage(spot.x, spot.y);
+  await page.mouse.move(p.x, p.y);
+  await page.mouse.click(p.x, p.y);
+  const spawnerId = await waitFor(
+    () => state(() => window.uptime.world.entities.find((e) => e.kind === "building" && e.team === 0 && window.uptime.content.buildings[e.defId].spawn)?.id ?? null),
+    30000,
+  );
+  check(spawnerId !== null, "placing a spawner works");
+  const spawned = await waitFor(() => state((id) => window.uptime.world.entities.some((e) => e.kind === "unit" && e.spawnerId === id), spawnerId), 120000);
+  check(Boolean(spawned), "the spawner produces units");
+  p = await toPage(spot.x, spot.y);
+  await page.mouse.click(p.x, p.y);
+  await page.waitForTimeout(200);
+  check(await state((id) => window.uptime.selection.kind === "entity" && window.uptime.selection.id === id, spawnerId), "clicking a building selects it");
+  const rally = await openNear(spot.x, spot.y, 5, 10);
+  p = await toPage(rally.x, rally.y);
+  await page.mouse.click(p.x, p.y, { button: "right" });
+  const distances = () =>
+    state(([id, x, y]) => {
+      const units = window.uptime.world.entities.filter((e) => e.kind === "unit" && e.spawnerId === id);
+      return units.map((u) => Math.round(Math.hypot(u.x - x, u.y - y)));
+    }, [spawnerId, rally.x, rally.y]);
+  await waitFor(async () => {
+    const d = await distances();
+    return d.length > 0 && d.every((n) => n < 90);
+  }, 120000);
+  const gathered = await distances();
+  check(gathered.length > 0 && gathered.every((d) => d < 90), `right-click rallies the spawner's units (${gathered.join(", ")}px)`);
+
+  const ticks = await state(() => window.uptime.world.tick);
+  console.log(`info ${ticks} ticks in ${((Date.now() - started) / 1000).toFixed(0)}s of wall time (${(ticks / 20 / ((Date.now() - started) / 1000)).toFixed(2)}x real time)`);
+
+  // 5. The Guide opens, pauses the match, and closes.
+  await page.keyboard.press("g");
+  await page.waitForTimeout(200);
+  check(await page.$eval("#guide", (el) => !el.hidden), "G opens the guide");
+  const tabs = await page.$$eval("#guide-tabs button", (b) => b.length);
+  check(tabs === 5, `guide has 5 tabs (${tabs})`);
+  const t0 = await state(() => window.uptime.world.tick);
+  await page.waitForTimeout(1500);
+  check(t0 === (await state(() => window.uptime.world.tick)), "the match pauses while the guide is open");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(200);
+  check(await page.$eval("#guide", (el) => el.hidden), "Esc closes the guide");
+} catch (error) {
+  check(false, `smoke test crashed: ${error.message}`);
+} finally {
+  check(errors.length === 0, `no console errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
+  await browser.close();
+  server.close();
+}
+
+if (failures.length > 0) {
+  console.log(`\n${failures.length} check(s) failed`);
+  process.exit(1);
+}
+console.log("\nsmoke test passed");
