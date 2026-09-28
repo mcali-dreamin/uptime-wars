@@ -37,6 +37,11 @@ The map starts black. You see what your agent, units, and buildings can see;
 places you've been stay dimmed, with enemy buildings as you last saw them.
 `?reveal` in the URL turns the fog off.
 
+**Users** are why you're online. They arrive while your core is up and grow
+toward your capacity (the core serves 40; each Web App adds 60). Every user
+pays compute each second, and every hit your buildings take drives some away.
+Numbers live in `src/content/economy.json`.
+
 The malware nest sits in the middle of the web and you start out toward the
 edge. Waves never stop: each one is bigger, comes sooner, and unlocks nastier
 creeps (worms, then trojans, then ransomware bosses). Every wave leaves the nest
@@ -113,7 +118,8 @@ Direction: survival on a procedurally generated open web.
 - [x] Seeded terrain + flow-field pathfinding
 - [x] Builder start: scout with a deploy agent and choose where your core goes
 - [x] Fog of war
-- [ ] Economy from what you build on data wells, replacing flat income
+- [x] Users: capacity, revenue, and churn from damage
+- [ ] Data wells feed the economy
 - [x] Wandering creep packs that only attack what they see
 - [x] Endless escalating waves from a nest in the middle; uptime score
 - [ ] Elevation: plateaus, cliffs, ramps; high-ground sight and range

@@ -8,7 +8,8 @@
       "server-rack",
       "gpu-cluster",
       "firewall",
-      "solar-array"
+      "solar-array",
+      "web-app"
     ],
     "modifiers": {
       "spawnIntervalMultiplier": 0.85,
@@ -28,7 +29,8 @@
       "hyperscale-rack",
       "gpu-cluster",
       "cdn-edge",
-      "power-plant"
+      "power-plant",
+      "web-app"
     ],
     "modifiers": {
       "spawnIntervalMultiplier": 1.15,

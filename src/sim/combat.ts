@@ -2,6 +2,7 @@
 
 import { GRID_CELL, GRID_STRIDE, type TickContext } from "./context";
 import type { Content } from "./content";
+import { loseUsers } from "./economy";
 import { hasLineOfSight } from "./nav";
 import type { Entity } from "./types";
 
@@ -67,6 +68,7 @@ export function dealDamage(
   const damage = Math.max(1, Math.round(baseDamage * multiplier) - target.armor);
   const wasAlive = target.hp > 0;
   target.hp -= damage;
+  if (target.kind === "building") loseUsers(ctx, world.teams[target.team], damage);
   world.events.push({
     type: "shot",
     from: attacker.id,

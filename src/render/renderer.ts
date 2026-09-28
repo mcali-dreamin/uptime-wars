@@ -420,6 +420,11 @@ export class Renderer {
       case "power-plant":
         g.moveTo(x + s * 0.2, y - s).lineTo(x - s * 0.5, y + s * 0.1).lineTo(x, y + s * 0.1).lineTo(x - s * 0.2, y + s).lineTo(x + s * 0.5, y - s * 0.1).lineTo(x, y - s * 0.1).closePath().fill({ color, alpha });
         break;
+      case "web-app":
+        g.rect(x - s, y - s * 0.75, s * 2, s * 1.5).stroke({ width: 2, color, alpha });
+        g.moveTo(x - s, y - s * 0.35).lineTo(x + s, y - s * 0.35).stroke({ width: 1.5, color, alpha });
+        g.circle(x - s * 0.7, y - s * 0.55, 1.5).fill({ color, alpha });
+        break;
       case "solar-array":
         g.circle(x, y, s * 0.8).stroke({ width: 2, color, alpha });
         break;

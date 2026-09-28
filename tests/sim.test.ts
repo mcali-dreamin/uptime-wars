@@ -441,6 +441,73 @@ describe("races", () => {
   });
 });
 
+describe("users", () => {
+  const BUILDER_SETUP = { seed: 1234, races: ["open-source", "botnet"] as [string, string] };
+  const econ = content.economy;
+  const coreCap = content.buildings.core!.userCapacity!;
+
+  it("there are no users before the core is online", () => {
+    const world = createWorld(content, BUILDER_SETUP);
+    for (let i = 0; i < 200; i++) step(world, content);
+    expect(world.teams[0].users).toBe(0);
+  });
+
+  it("users grow toward capacity and never past it", () => {
+    const world = createWorld(content, SETUP);
+    expect(world.teams[0].users).toBe(econ.startingUsers);
+    let last = world.teams[0].users;
+    for (let s = 0; s < 120; s++) {
+      for (let i = 0; i < 20; i++) step(world, content);
+      expect(world.teams[0].users).toBeGreaterThanOrEqual(last);
+      expect(world.teams[0].users).toBeLessThanOrEqual(coreCap);
+      last = world.teams[0].users;
+    }
+    expect(world.teams[0].users).toBe(coreCap);
+  });
+
+  it("users pay revenue on top of base income", () => {
+    const withUsers = createWorld(content, SETUP);
+    const without = createWorld(content, SETUP);
+    without.teams[0].users = 0;
+    const freeze: typeof content = structuredClone(content);
+    freeze.economy = { ...econ, growthPerSecond: 0, minArrivalsPerSecond: 0 };
+    for (let i = 0; i < 400; i++) {
+      step(withUsers, freeze);
+      step(without, freeze);
+    }
+    // 20 seconds of econ.startingUsers users.
+    const expected = Math.floor(20 * econ.startingUsers * econ.revenuePerUserPerSecond);
+    expect(withUsers.teams[0].compute - without.teams[0].compute).toBe(expected);
+  });
+
+  it("a Web App raises capacity", () => {
+    const world = createWorld(content, SETUP);
+    world.teams[0].compute = 1000;
+    queueCommand(world, planBuildOrder(content, SETUP, [[0, "web-app"]])[0]!);
+    for (let i = 0; i < 20 * 150; i++) step(world, content);
+    expect(world.teams[0].users).toBe(coreCap + content.buildings["web-app"]!.userCapacity!);
+  });
+
+  it("damage to your buildings drives users away", () => {
+    // No growth, so any change is churn.
+    const frozen: typeof content = structuredClone(content);
+    frozen.economy = { ...econ, growthPerSecond: 0, minArrivalsPerSecond: 0 };
+    const world = createWorld(frozen, SETUP);
+    world.teams[0].users = 40;
+    // Let the first wave out, then put one creep right next to the core.
+    while (!world.entities.some((e) => e.kind === "unit" && e.team === 1)) step(world, frozen);
+    const core = world.entities.find((e) => e.id === world.teams[0].coreId)!;
+    const creep = world.entities.find((e) => e.kind === "unit" && e.team === 1)!;
+    creep.x = core.x + core.radius + creep.radius + 4;
+    creep.y = core.y;
+    const hpBefore = core.hp;
+    for (let i = 0; i < 200; i++) step(world, frozen);
+    const damage = hpBefore - core.hp;
+    expect(damage).toBeGreaterThan(0);
+    expect(40 - world.teams[0].users).toBe(Math.floor(damage / econ.damagePerUserLost));
+  });
+});
+
 describe("content", () => {
   it("rejects broken references", () => {
     const broken: Content = structuredClone(content);

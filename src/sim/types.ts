@@ -19,6 +19,12 @@ export interface Team {
   compute: number;
   incomeTimer: number;
   coreId: number;
+  /** Users currently served. Integer. */
+  users: number;
+  peakUsers: number;
+  /** Fractions carried between seconds so nothing is lost to rounding. */
+  revenueCarry: number;
+  churnCarry: number;
 }
 
 interface EntityBase {

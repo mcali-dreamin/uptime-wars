@@ -22,7 +22,8 @@ const CONTROLS: [string, string][] = [
   ["Rally", "With a spawner selected, right-click the ground to send its units there. With the core selected, right-click sets the rally for every spawner that doesn't have its own."],
   ["Camera", "WASD / arrows, drag, or the window edge to pan. Wheel or +/- to zoom. Click the minimap to jump. Space: back home."],
   ["Other", "Esc: deselect · P: pause · E: edge scroll on/off · G: this guide · R: new match after an outage"],
-  ["Goal", "Waves never stop. Your score is uptime: how long your core stays online."],
+  ["Users", "Users arrive while your core is up and grow toward your capacity (core + Web Apps). Every user pays compute each second. Damage to any of your buildings drives users away."],
+  ["Goal", "Waves never stop. Your score is uptime: how long your core stays online. Peak users is your bragging right."],
 ];
 
 export class Guide {

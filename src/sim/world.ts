@@ -16,7 +16,7 @@ import { tickBuildingAttacks } from "./combat";
 import { applyCommands } from "./commands";
 import { buildGrid, makeContext, type TickContext } from "./context";
 import type { Content } from "./content";
-import { tickConstruction, tickCooldowns, tickIncome } from "./economy";
+import { tickConstruction, tickCooldowns, tickIncome, tickUsers } from "./economy";
 import { foundCore, spawnUnit } from "./entities";
 import { footprintCenter } from "./map";
 import { tickSpawners } from "./spawners";
@@ -83,6 +83,10 @@ function makeTeam(content: Content, id: TeamId, raceId: string) {
     coreId: -1,
     builderId: -1,
     rally: null,
+    users: 0,
+    peakUsers: 0,
+    revenueCarry: 0,
+    churnCarry: 0,
   };
 }
 
@@ -95,6 +99,7 @@ export function step(world: World, content: Content): void {
   ctx.grid = buildGrid(world.entities);
   tickCooldowns(ctx);
   tickIncome(ctx);
+  tickUsers(ctx);
   tickWaveDirector(ctx);
   tickSpawners(ctx);
   tickBuildingAttacks(ctx);
