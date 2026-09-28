@@ -119,6 +119,8 @@ export function foundCore(world: World, content: Content, teamId: TeamId, col: n
   const core = placeBuilding(world, content, teamId, content.races[team.raceId]!.core, col, row, true);
   team.coreId = core.id;
   if (team.controller === "human") {
+    team.users = content.economy.startingUsers;
+    team.peakUsers = team.users;
     world.waves.nextWaveTick = Math.min(world.waves.nextWaveTick, world.tick + content.waves.firstWaveTicks);
   }
   return core;

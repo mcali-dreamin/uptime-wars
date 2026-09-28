@@ -1,0 +1,7 @@
+{
+  "startingUsers": 5,
+  "growthPerSecond": 0.04,
+  "minArrivalsPerSecond": 1,
+  "revenuePerUserPerSecond": 0.08,
+  "damagePerUserLost": 12
+}

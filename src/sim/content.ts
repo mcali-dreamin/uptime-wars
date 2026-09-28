@@ -7,6 +7,7 @@ import buildingsJson from "../content/buildings.json";
 import racesJson from "../content/races.json";
 import wavesJson from "../content/waves.json";
 import damageJson from "../content/damage.json";
+import economyJson from "../content/economy.json";
 
 export type AttackType = "brute" | "exploit" | "social";
 export type ArmorType = "container" | "legacy" | "hardened" | "core";
@@ -58,6 +59,8 @@ export interface BuildingDef {
   spawn?: { unit: string; intervalTicks: number; count: number; maxAlive: number };
   attack?: BuildingAttack;
   income?: { amount: number; intervalTicks: number };
+  /** Users this building can serve. Your total capacity caps your user count. */
+  userCapacity?: number;
 }
 
 export type Controller = "human" | "wave-director";
@@ -111,6 +114,23 @@ export interface WavesDef {
   names: string[];
 }
 
+/**
+ * Users: why you're online. They arrive while your core is up, grow toward
+ * your capacity, pay revenue every second, and leave when your buildings
+ * take damage.
+ */
+export interface EconomyDef {
+  startingUsers: number;
+  /** Each second, this fraction of the gap to capacity arrives... */
+  growthPerSecond: number;
+  /** ...but at least this many, while there's room. */
+  minArrivalsPerSecond: number;
+  /** Compute per user per second. */
+  revenuePerUserPerSecond: number;
+  /** One user leaves for every this much damage your buildings take. */
+  damagePerUserLost: number;
+}
+
 export type DamageTable = Record<AttackType, Record<ArmorType, number>>;
 
 export interface Content {
@@ -119,6 +139,7 @@ export interface Content {
   races: Record<string, RaceDef>;
   waves: WavesDef;
   damage: DamageTable;
+  economy: EconomyDef;
 }
 
 export function loadDefaultContent(): Content {
@@ -128,6 +149,7 @@ export function loadDefaultContent(): Content {
     races: racesJson as Record<string, RaceDef>,
     waves: wavesJson as WavesDef,
     damage: damageJson as DamageTable,
+    economy: economyJson as EconomyDef,
   };
   validateContent(content);
   return content;

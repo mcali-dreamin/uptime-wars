@@ -1,6 +1,6 @@
 // Top bar numbers, the status line, and the hint line over the map.
 
-import { TICK_RATE, hashWorld } from "../sim";
+import { TICK_RATE, hashWorld, userCapacity } from "../sim";
 import { groundOrderLabel, leftClickOrders, type Selection } from "../game/selection";
 import { HUMAN, type Session } from "../game/session";
 import { $ } from "./dom";
@@ -13,6 +13,7 @@ export function clock(totalSeconds: number): string {
 export class Hud {
   private readonly uptime = $("uptime");
   private readonly compute = $("compute");
+  private readonly users = $("users");
   private readonly core = $("core");
   private readonly wave = $("wave");
   private readonly nextWave = $("next-wave");
@@ -26,6 +27,7 @@ export class Hud {
     const team = this.session.team;
     const core = this.session.core();
     this.compute.textContent = String(team.compute);
+    this.users.textContent = team.coreId === -1 ? "0" : `${team.users} / ${userCapacity(world, this.session.content, team)}`;
     this.core.textContent = core
       ? `${Math.max(0, Math.ceil(core.hp))} / ${core.maxHp}`
       : this.session.builder()
@@ -61,7 +63,7 @@ export class Hud {
       ? `NEST OFFLINE - you took down the botnet at ${uptime}.`
       : this.session.deploying
         ? "OUTAGE - your deploy agent was lost before the core came online."
-        : `OUTAGE - uptime ${uptime}, reached wave ${world.waves.nextIndex}.`;
+        : `OUTAGE - uptime ${uptime}, wave ${world.waves.nextIndex}, peak ${this.session.team.peakUsers} users.`;
     this.status.textContent = `${summary} Press R to pick a race for a new web. [${hashWorld(world)}]`;
     this.status.className = won ? "won" : "lost";
     return won ? "NEST OFFLINE" : `OUTAGE · uptime ${uptime}`;

@@ -15,7 +15,8 @@
       "range": 170,
       "cooldownTicks": 24
     },
-    "sight": 520
+    "sight": 520,
+    "userCapacity": 40
   },
   "server-rack": {
     "name": "Server Rack",
@@ -155,5 +156,18 @@
       "amount": 10,
       "intervalTicks": 20
     }
+  },
+  "web-app": {
+    "name": "Web App",
+    "description": "Serves users. More capacity, more revenue, and more to lose when it gets hit.",
+    "cost": 80,
+    "buildTicks": 80,
+    "hp": 300,
+    "armor": 1,
+    "armorType": "hardened",
+    "footprint": 1,
+    "buildable": true,
+    "sight": 280,
+    "userCapacity": 60
   }
 }
