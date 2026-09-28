@@ -1,14 +1,14 @@
 {
   "core": {
     "name": "Core Data Center",
-    "description": "Your base. Shoots nearby creeps. If it goes down, so do you.",
-    "cost": 0,
-    "buildTicks": 0,
+    "description": "Your base. Serves users, shoots creeps, extends your network. You only go down when every core is down.",
+    "cost": 300,
+    "buildTicks": 300,
     "hp": 3000,
     "armor": 5,
     "armorType": "core",
     "footprint": 2,
-    "buildable": false,
+    "buildable": true,
     "attack": {
       "attackType": "exploit",
       "damage": 7,
@@ -16,7 +16,8 @@
       "cooldownTicks": 24
     },
     "sight": 520,
-    "userCapacity": 40
+    "userCapacity": 40,
+    "buildRadius": 7
   },
   "server-rack": {
     "name": "Server Rack",
@@ -169,5 +170,31 @@
     "buildable": true,
     "sight": 280,
     "userCapacity": 60
+  },
+  "mesh-node": {
+    "name": "Mesh Node",
+    "description": "Extends your network a little. Cheap and fragile; build lots.",
+    "cost": 40,
+    "buildTicks": 40,
+    "hp": 150,
+    "armor": 0,
+    "armorType": "container",
+    "footprint": 1,
+    "buildable": true,
+    "sight": 260,
+    "buildRadius": 4
+  },
+  "edge-pop": {
+    "name": "Edge PoP",
+    "description": "Extends your network a long way. Armored, and priced like it.",
+    "cost": 90,
+    "buildTicks": 80,
+    "hp": 500,
+    "armor": 3,
+    "armorType": "hardened",
+    "footprint": 1,
+    "buildable": true,
+    "sight": 360,
+    "buildRadius": 7
   }
 }

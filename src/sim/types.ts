@@ -165,6 +165,7 @@ export type SimEvent =
   | { type: "death"; id: number; x: number; y: number; team: TeamId }
   | { type: "wave"; wave: number; name: string; packs: number; units: number; boss: boolean }
   | { type: "founded"; x: number; y: number }
+  | { type: "failover"; team: TeamId; x: number; y: number }
   | { type: "researched"; team: TeamId; upgrade: string; level: number }
   | { type: "rejected"; command: Command; reason: string };
 

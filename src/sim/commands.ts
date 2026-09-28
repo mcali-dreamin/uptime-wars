@@ -4,7 +4,7 @@
 import type { TickContext } from "./context";
 import { placeBuilding, sendHome } from "./entities";
 import { TILE, footprintCenter } from "./map";
-import { buildCost, canFound, canPlace } from "./placement";
+import { buildCost, canFound, canPlace, isCore } from "./placement";
 import { canResearch, nextLevel } from "./upgrades";
 import { isWalkableTile } from "./terrain";
 import type { Command, RallyCommand, World } from "./types";
@@ -83,7 +83,7 @@ function applyRally(ctx: TickContext, command: RallyCommand): string | null {
   if (!building || building.kind !== "building" || building.team !== command.team || building.hp <= 0) {
     return "not your building";
   }
-  const global = building.id === team.coreId;
+  const global = isCore(content, team, building);
   if (!global && !content.buildings[building.defId]!.spawn) return "doesn't spawn units";
   if (!walkable(world, command.x, command.y)) return "can't rally there";
   const point = { x: command.x, y: command.y };

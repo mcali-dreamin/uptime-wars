@@ -6,7 +6,8 @@
 
 import { Application, Container, Graphics, Text } from "pixi.js";
 import {
-  BUILD_RADIUS_TILES,
+  networkProviders,
+  isCore,
   TILE,
   type Content,
   type Terrain,
@@ -204,8 +205,11 @@ export class Renderer {
     }
     this.pings = this.pings.filter((ping) => ping.age < PING_MS);
     if (ghost) {
-      const core = world.entities.find((entity) => entity.id === world.teams[0].coreId);
-      if (core) this.overlay.circle(core.x, core.y, BUILD_RADIUS_TILES * TILE).stroke({ width: 2, color: 0x4ade80, alpha: 0.25 });
+      // Your network: every finished core, node, or PoP and its build radius.
+      for (const provider of networkProviders(world, content, 0)) {
+        const reach = content.buildings[provider.defId]!.buildRadius! * TILE;
+        this.overlay.circle(provider.x, provider.y, reach).stroke({ width: 2, color: 0x4ade80, alpha: 0.25 });
+      }
       const size = ghost.footprint * TILE;
       this.overlay
         .rect(ghost.col * TILE, ghost.row * TILE, size, size)
@@ -296,9 +300,9 @@ export class Renderer {
     g.rect(building.x - size / 2, building.y - size / 2, size, size).stroke({ width: 2, color, alpha: 0.9 });
 
     const team = world.teams[building.team];
-    const isCore = building.id === team.coreId;
-    if (!isCore && !content.buildings[building.defId]!.spawn) return;
-    const own = isCore ? team.rally : building.rally;
+    const core = isCore(content, team, building);
+    if (!core && !content.buildings[building.defId]!.spawn) return;
+    const own = core ? team.rally : building.rally;
     const rally = own ?? team.rally;
     if (!rally) return;
     const alpha = own ? 0.9 : 0.45;
@@ -352,6 +356,17 @@ export class Renderer {
         break;
       case "firewall":
         g.moveTo(x - s, y + s).lineTo(x, y - s).lineTo(x + s, y + s).closePath().stroke({ width: 2, color, alpha });
+        break;
+      case "mesh-node":
+        g.circle(x, y, s * 0.35).fill({ color, alpha });
+        for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+          g.moveTo(x, y).lineTo(x + dx * s, y + dy * s).stroke({ width: 1.5, color, alpha });
+          g.circle(x + dx * s, y + dy * s, 2).fill({ color, alpha });
+        }
+        break;
+      case "edge-pop":
+        g.moveTo(x, y - s).lineTo(x + s, y).lineTo(x, y + s).lineTo(x - s, y).closePath().stroke({ width: 2, color, alpha });
+        g.circle(x, y, s * 0.4).stroke({ width: 1.5, color, alpha });
         break;
       case "hyperscale-rack":
         g.rect(x - s, y - s, s * 2, s * 2).stroke({ width: 2, color, alpha });

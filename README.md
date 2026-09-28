@@ -45,6 +45,12 @@ backbone). Cliffs separate them and ramps are the only way between. From below
 you can't see up a cliff unless you're at its foot, and attacking downhill
 deals 25% more damage. Hold a ramp and you hold the plateau.
 
+**Network and redundancy.** You can build anywhere inside your network:
+within reach of a core (7 tiles) or a network building. Open Source builds
+cheap, fragile Mesh Nodes (reach 4); Hyperscaler builds armored Edge PoPs
+(reach 7). Cores are buildable too (300 compute). If your main core falls, the
+next takes over, and you only go down when every core is down.
+
 **Users** are why you're online. They arrive while your core is up and grow
 toward your capacity (the core serves 40; each Web App adds 60). Every user
 pays compute each second, and every hit your buildings take drives some away.
@@ -133,6 +139,7 @@ Direction: survival on a procedurally generated open web.
 - [x] Elevation: plateaus, cliffs, ramps; high-ground sight and damage
 - [x] Rally points: per spawner, with a global default on the core
 - [x] Upgrades researched at the core
+- [x] Network expansion (per race) and redundant cores
 - Heroes and security abilities (zero-day, RCE, ransomware, worm, DDoS, honeypot)
 - [x] Race selection: Open Source Collective, Hyperscaler
 - More races: Hacker crew, State actor / APT

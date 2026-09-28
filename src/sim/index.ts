@@ -7,7 +7,7 @@ export { canSee, heightOf } from "./combat";
 export { createWorld, step } from "./world";
 export type { MatchSetup } from "./world";
 export { queueCommand } from "./commands";
-export { canPlace, canFound, buildCost, isOccupied } from "./placement";
+export { canPlace, canFound, buildCost, isOccupied, isCore, inNetwork, networkProviders } from "./placement";
 export { planWave, waveInterval } from "./waves";
 export { STARTING_COMPUTE, BASE_INCOME } from "./tuning";
 export { userCapacity } from "./economy";
