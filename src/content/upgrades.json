@@ -1,0 +1,56 @@
+{
+  "hardened-containers": {
+    "name": "Hardened Containers",
+    "description": "Your units spawn tougher.",
+    "stat": "unitHp",
+    "perLevel": 0.15,
+    "maxLevel": 3,
+    "cost": 100,
+    "researchTicks": 400
+  },
+  "exploit-kits": {
+    "name": "Exploit Kits",
+    "description": "Your units hit harder.",
+    "stat": "unitDamage",
+    "perLevel": 0.15,
+    "maxLevel": 3,
+    "cost": 110,
+    "researchTicks": 400
+  },
+  "anycast": {
+    "name": "Anycast",
+    "description": "Towers (and the core) reach further.",
+    "stat": "towerRange",
+    "perLevel": 0.12,
+    "maxLevel": 2,
+    "cost": 120,
+    "researchTicks": 500
+  },
+  "autoscaling": {
+    "name": "Autoscaling",
+    "description": "Spawners work faster.",
+    "stat": "spawnSpeed",
+    "perLevel": 0.12,
+    "maxLevel": 2,
+    "cost": 130,
+    "researchTicks": 500
+  },
+  "edge-caching": {
+    "name": "Edge Caching",
+    "description": "Every building serves more users.",
+    "stat": "userCapacity",
+    "perLevel": 0.2,
+    "maxLevel": 2,
+    "cost": 120,
+    "researchTicks": 500
+  },
+  "premium-tier": {
+    "name": "Premium Tier",
+    "description": "Every user pays more.",
+    "stat": "revenue",
+    "perLevel": 0.2,
+    "maxLevel": 2,
+    "cost": 150,
+    "researchTicks": 600
+  }
+}

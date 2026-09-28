@@ -159,15 +159,26 @@ try {
   const gathered = await distances();
   check(gathered.length > 0 && gathered.every((d) => d < 90), `right-click rallies the spawner's units (${gathered.join(", ")}px)`);
 
+  // 5. Select the core: the bar shows research; researching an upgrade starts it.
+  await page.keyboard.press("Escape");
+  await state(() => { window.uptime.world.teams[0].compute += 500; });
+  p = await toPage(core.x, core.y);
+  await page.mouse.click(p.x, p.y);
+  const upgrades = await waitFor(() => page.$$eval(".upgrade-btn", (b) => b.length), 10000);
+  check(upgrades >= 6, `selecting the core shows research (${upgrades} upgrades)`);
+  await page.click(".upgrade-btn:not([disabled])");
+  const researching = await waitFor(() => state(() => window.uptime.world.teams[0].research?.upgrade ?? null), 30000);
+  check(Boolean(researching), `clicking an upgrade starts research (${researching})`);
+
   const ticks = await state(() => window.uptime.world.tick);
   console.log(`info ${ticks} ticks in ${((Date.now() - started) / 1000).toFixed(0)}s of wall time (${(ticks / 20 / ((Date.now() - started) / 1000)).toFixed(2)}x real time)`);
 
-  // 5. The Guide opens, pauses the match, and closes.
+  // 6. The Guide opens, pauses the match, and closes.
   await page.keyboard.press("g");
   await page.waitForTimeout(200);
   check(await page.$eval("#guide", (el) => !el.hidden), "G opens the guide");
   const tabs = await page.$$eval("#guide-tabs button", (b) => b.length);
-  check(tabs === 5, `guide has 5 tabs (${tabs})`);
+  check(tabs === 6, `guide has 6 tabs (${tabs})`);
   const t0 = await state(() => window.uptime.world.tick);
   await page.waitForTimeout(1500);
   check(t0 === (await state(() => window.uptime.world.tick)), "the match pauses while the guide is open");

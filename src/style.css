@@ -337,3 +337,18 @@ body {
   padding-left: 1.1rem;
   font-size: 0.85rem;
 }
+
+.upgrade-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.upgrade-btn.researching::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: calc(var(--progress, 0) * 100%);
+  background: var(--accent);
+}

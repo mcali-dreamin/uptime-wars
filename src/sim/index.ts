@@ -10,6 +10,7 @@ export { canPlace, canFound, buildCost, isOccupied } from "./placement";
 export { planWave, waveInterval } from "./waves";
 export { STARTING_COMPUTE, BASE_INCOME } from "./tuning";
 export { userCapacity } from "./economy";
+export { canResearch, levelOf, multiplier, nextLevel } from "./upgrades";
 export { hashWorld, hashTerrain } from "./hash";
 
 import type { Content } from "./content";

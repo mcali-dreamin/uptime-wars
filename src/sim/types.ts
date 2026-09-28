@@ -25,6 +25,10 @@ export interface Team {
   /** Fractions carried between seconds so nothing is lost to rounding. */
   revenueCarry: number;
   churnCarry: number;
+  /** Researched level per upgrade id (absent = 0). */
+  upgrades: Record<string, number>;
+  /** What the core is researching right now, if anything. */
+  research: { upgrade: string; remaining: number } | null;
 }
 
 interface EntityBase {
@@ -119,7 +123,15 @@ export interface RallyCommand {
   y: number;
 }
 
-export type Command = BuildCommand | MoveCommand | FoundCommand | RallyCommand;
+/** Start researching the next level of an upgrade at the core. */
+export interface ResearchCommand {
+  type: "research";
+  tick: number;
+  team: TeamId;
+  upgrade: string;
+}
+
+export type Command = BuildCommand | MoveCommand | FoundCommand | RallyCommand | ResearchCommand;
 
 export interface WaveSpawn {
   tick: number;
@@ -153,6 +165,7 @@ export type SimEvent =
   | { type: "death"; id: number; x: number; y: number; team: TeamId }
   | { type: "wave"; wave: number; name: string; packs: number; units: number; boss: boolean }
   | { type: "founded"; x: number; y: number }
+  | { type: "researched"; team: TeamId; upgrade: string; level: number }
   | { type: "rejected"; command: Command; reason: string };
 
 /**

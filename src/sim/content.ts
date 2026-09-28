@@ -8,6 +8,7 @@ import racesJson from "../content/races.json";
 import wavesJson from "../content/waves.json";
 import damageJson from "../content/damage.json";
 import economyJson from "../content/economy.json";
+import upgradesJson from "../content/upgrades.json";
 
 export type AttackType = "brute" | "exploit" | "social";
 export type ArmorType = "container" | "legacy" | "hardened" | "core";
@@ -131,6 +132,22 @@ export interface EconomyDef {
   damagePerUserLost: number;
 }
 
+export type UpgradeStat = "unitHp" | "unitDamage" | "towerRange" | "spawnSpeed" | "userCapacity" | "revenue";
+
+/**
+ * Researched at the core, one at a time. Level n costs cost * n and takes
+ * researchTicks * n; each level adds perLevel to the stat's multiplier.
+ */
+export interface UpgradeDef {
+  name: string;
+  description: string;
+  stat: UpgradeStat;
+  perLevel: number;
+  maxLevel: number;
+  cost: number;
+  researchTicks: number;
+}
+
 export type DamageTable = Record<AttackType, Record<ArmorType, number>>;
 
 export interface Content {
@@ -140,6 +157,7 @@ export interface Content {
   waves: WavesDef;
   damage: DamageTable;
   economy: EconomyDef;
+  upgrades: Record<string, UpgradeDef>;
 }
 
 export function loadDefaultContent(): Content {
@@ -150,6 +168,7 @@ export function loadDefaultContent(): Content {
     waves: wavesJson as WavesDef,
     damage: damageJson as DamageTable,
     economy: economyJson as EconomyDef,
+    upgrades: upgradesJson as Record<string, UpgradeDef>,
   };
   validateContent(content);
   return content;
@@ -179,6 +198,9 @@ export function validateContent(content: Content): void {
   for (const entry of content.waves.roster) {
     if (!content.units[entry.unit]) errors.push(`wave roster uses unknown unit ${entry.unit}`);
     if (entry.cost <= 0) errors.push(`wave roster unit ${entry.unit} must cost more than 0`);
+  }
+  for (const [id, upgrade] of Object.entries(content.upgrades)) {
+    if (upgrade.maxLevel < 1 || upgrade.cost <= 0 || upgrade.researchTicks <= 0) errors.push(`upgrade ${id} needs maxLevel, cost, and researchTicks > 0`);
   }
   if (!content.units[content.waves.bosses.unit]) errors.push(`wave boss is unknown unit ${content.waves.bosses.unit}`);
   if (!content.waves.roster.some((entry) => entry.fromWave <= 1)) errors.push("wave roster needs a unit from wave 1");

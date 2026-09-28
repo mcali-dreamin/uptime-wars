@@ -10,6 +10,10 @@ import {
   queueCommand,
   simulate,
   planWave,
+  levelOf,
+  multiplier,
+  nextLevel,
+  userCapacity,
   waveInterval,
   TILE,
   tileAt,
@@ -505,6 +509,69 @@ describe("users", () => {
     const damage = hpBefore - core.hp;
     expect(damage).toBeGreaterThan(0);
     expect(40 - world.teams[0].users).toBe(Math.floor(damage / econ.damagePerUserLost));
+  });
+});
+
+describe("upgrades", () => {
+  const research = (world: ReturnType<typeof createWorld>, upgrade: string) => {
+    queueCommand(world, { type: "research", tick: world.tick, team: 0, upgrade });
+    step(world, content);
+    return world.events.flatMap((e) => (e.type === "rejected" ? [e.reason] : []));
+  };
+
+  it("research costs compute, takes time, then raises the level", () => {
+    const world = createWorld(content, SETUP);
+    world.teams[0].compute = 1000;
+    const def = content.upgrades["exploit-kits"]!;
+    expect(research(world, "exploit-kits")).toEqual([]);
+    expect(world.teams[0].research).toMatchObject({ upgrade: "exploit-kits" });
+    expect(levelOf(world.teams[0], "exploit-kits")).toBe(0);
+    let done = false;
+    for (let i = 0; i < def.researchTicks + 5 && !done; i++) {
+      step(world, content);
+      done = world.events.some((e) => e.type === "researched");
+    }
+    expect(done).toBe(true);
+    expect(levelOf(world.teams[0], "exploit-kits")).toBe(1);
+    expect(world.teams[0].research).toBeNull();
+    expect(multiplier(content, world.teams[0], "unitDamage")).toBeCloseTo(1 + def.perLevel);
+  });
+
+  it("level n costs cost * n", () => {
+    const world = createWorld(content, SETUP);
+    world.teams[0].upgrades["anycast"] = 1;
+    expect(nextLevel(content, world.teams[0], "anycast")).toMatchObject({ level: 2, cost: content.upgrades.anycast!.cost * 2 });
+  });
+
+  it("one research at a time, no buying past max, and it must be affordable", () => {
+    const world = createWorld(content, SETUP);
+    world.teams[0].compute = 5000;
+    expect(research(world, "anycast")).toEqual([]);
+    expect(research(world, "autoscaling")).toEqual(["already researching"]);
+    world.teams[0].research = null;
+    world.teams[0].upgrades["anycast"] = content.upgrades.anycast!.maxLevel;
+    expect(research(world, "anycast")).toEqual(["fully researched"]);
+    world.teams[0].compute = 0;
+    expect(research(world, "premium-tier")).toEqual(["not enough compute"]);
+  });
+
+  it("upgrades change unit HP, spawn speed, and user capacity", () => {
+    const world = createWorld(content, SETUP);
+    const team = world.teams[0];
+    const capBefore = userCapacity(world, content, team);
+    team.upgrades = { "hardened-containers": 2, "autoscaling": 1, "edge-caching": 1 };
+    queueCommand(world, firstSpot("server-rack"));
+    while (!world.entities.some((e) => e.kind === "unit" && e.team === 0)) step(world, content);
+    const unit = world.entities.find((e) => e.kind === "unit" && e.team === 0)!;
+    const base = content.units.process!.hp * content.races["open-source"]!.modifiers.unitHpMultiplier;
+    expect(unit.maxHp).toBe(Math.round(base * (1 + 2 * content.upgrades["hardened-containers"]!.perLevel)));
+    expect(userCapacity(world, content, team)).toBe(Math.floor(capBefore * (1 + content.upgrades["edge-caching"]!.perLevel)));
+    // The rack just spawned, so its timer was reset to the upgraded interval.
+    const rack = world.entities.find((e) => e.kind === "building" && e.defId === "server-rack")!;
+    const raceMul = content.races["open-source"]!.modifiers.spawnIntervalMultiplier;
+    const speed = 1 + content.upgrades.autoscaling!.perLevel;
+    const expected = Math.round((content.buildings["server-rack"]!.spawn!.intervalTicks * raceMul) / speed);
+    expect(rack.kind === "building" && rack.spawnTimer).toBe(expected);
   });
 });
 

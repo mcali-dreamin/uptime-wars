@@ -2,9 +2,11 @@
 // the build button you're hovering, what you're placing, or what you have
 // selected. Nothing else pops up. The full story lives in the Guide.
 
+import { TICK_RATE } from "../sim";
 import { selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
-import { buildingCard, unitCard, type InfoCard } from "./cards";
+import { upgradeOf } from "./build-bar";
+import { buildingCard, unitCard, upgradeCard, type InfoCard } from "./cards";
 import { $ } from "./dom";
 
 export class InfoPanel {
@@ -22,6 +24,8 @@ export class InfoPanel {
     const placing = selection.kind === "place" ? selection.building : selection.kind === "found" ? "found" : null;
     const building = this.hoverButton ?? placing;
     if (building === "found") return this.show({ title: "Deploy core", lines: ["Your agent walks there and becomes it"] });
+    const upgrade = upgradeOf(this.hoverButton);
+    if (upgrade) return this.show(upgradeCard(content, this.session.team, upgrade));
     if (building) return this.show(buildingCard(content, raceId, building));
 
     const entity = selectedEntity(this.session, selection);
@@ -29,7 +33,12 @@ export class InfoPanel {
     if (entity.kind === "building") {
       const card = buildingCard(content, raceId, entity.defId);
       const hp = `${Math.ceil(entity.hp)} / ${entity.maxHp} HP`;
-      return this.show({ title: card.title, lines: [card.lines[0]!, entity.buildRemaining > 0 ? `building · ${hp}` : hp] });
+      const lines = [card.lines[0]!, entity.buildRemaining > 0 ? `building · ${hp}` : hp];
+      const research = this.session.team.research;
+      if (entity.id === this.session.team.coreId && research) {
+        lines.push(`Researching ${content.upgrades[research.upgrade]!.name} · ${Math.ceil(research.remaining / TICK_RATE)}s`);
+      }
+      return this.show({ title: card.title, lines });
     }
     this.show(unitCard(content, entity.defId, entity.hp, entity.maxHp));
   }
