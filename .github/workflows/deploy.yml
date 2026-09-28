@@ -70,6 +70,10 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - name: Browser smoke test
+        run: |
+          npx playwright install --with-deps chromium
+          npm run e2e
 
       - name: Attach build to the GitHub Release
         env:
