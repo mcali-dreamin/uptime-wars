@@ -103,7 +103,8 @@ export class Guide {
         return [...new Set(ids)].map((id) => {
           const detail = unitDetail(content, id);
           const from = content.waves.roster.find((r) => r.unit === id)?.fromWave ?? content.waves.bosses.fromWave;
-          return entry({ ...detail, stats: [...detail.stats, `First seen: wave ${from}`] });
+          const bounty = content.units[id]!.bounty;
+          return entry({ ...detail, stats: [...detail.stats, `Bounty: ${bounty} compute per kill`, `First seen: wave ${from}`] });
         });
       }
       case "terrain":
