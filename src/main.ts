@@ -14,7 +14,7 @@ import {
   type Selection,
 } from "./game/selection";
 import { Session } from "./game/session";
-import { BuildBar, FOUND_BUTTON } from "./ui/build-bar";
+import { BuildBar, FOUND_BUTTON, type BarMode } from "./ui/build-bar";
 import { $ } from "./ui/dom";
 import { Guide } from "./ui/guide";
 import { Hud } from "./ui/hud";
@@ -40,6 +40,7 @@ const bar = new BuildBar(session, {
     info.hoverButton = button;
     info.refresh(selection);
   },
+  research: (upgrade) => research(upgrade),
   guide: () => guide.toggle(),
 });
 const guide = new Guide(session);
@@ -76,6 +77,19 @@ if (new URLSearchParams(location.search).has("debug")) {
 function fallback(): Selection {
   const builder = session.builder();
   return builder ? { kind: "entity", id: builder.id } : NOTHING;
+}
+
+/** The core is selected: the command card shows research. */
+function coreSelected(): boolean {
+  return selection.kind === "entity" && selection.id === session.team.coreId;
+}
+
+function barMode(): BarMode {
+  return session.deploying ? "deploy" : coreSelected() ? "research" : "build";
+}
+
+function research(upgrade: string): void {
+  session.issue({ type: "research", upgrade });
 }
 
 function buttonFor(s: Selection): string | null {
@@ -160,6 +174,11 @@ const gameInput: GameInput = {
       if (key === "c" && session.builder()) return select({ kind: "found" }), true;
       return false;
     }
+    if (coreSelected()) {
+      const upgrade = Object.keys(content.upgrades)[Number(key) - 1];
+      if (upgrade) return research(upgrade), true;
+      return false;
+    }
     const building = session.race.buildings[Number(key) - 1];
     if (building) return select({ kind: "place", building }), true;
     return false;
@@ -180,7 +199,7 @@ function startMatch(raceId: string): void {
 }
 
 // HUD first: the stage's size depends on the build bar's height.
-bar.update(null);
+bar.update(barMode(), null);
 await renderer.init($("stage"));
 bindInput(renderer, gameInput);
 renderer.setWorld(session.world);
@@ -195,6 +214,11 @@ renderer.app.ticker.add((ticker) => {
       renderer.capturePrevious(world);
       step(world, content);
       renderer.collectEvents(world);
+      for (const event of world.events) {
+        if (event.type === "researched" && event.team === session.team.id) {
+          renderer.showBanner(`${content.upgrades[event.upgrade]!.name} ${event.level}`);
+        }
+      }
       accumulator -= STEP_MS;
       steps += 1;
     }
@@ -209,7 +233,7 @@ renderer.app.ticker.add((ticker) => {
   if (selection.kind === "entity" && !selectedEntity(session, selection)) select(fallback());
   if (selection.kind === "found" && !session.deploying) select(NOTHING);
 
-  bar.update(buttonFor(selection));
+  bar.update(barMode(), buttonFor(selection));
   const selectedId = selection.kind === "entity" ? selection.id : null;
   renderer.draw(world, content, paused ? 1 : accumulator / STEP_MS, ticker.deltaMS, placement, selectedId);
   hud.update(selection, paused);

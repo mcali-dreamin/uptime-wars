@@ -4,6 +4,7 @@ import { GRID_CELL, GRID_STRIDE, type TickContext } from "./context";
 import type { Content } from "./content";
 import { loseUsers } from "./economy";
 import { hasLineOfSight } from "./nav";
+import { multiplier } from "./upgrades";
 import type { Entity } from "./types";
 
 export function edgeDistance(a: Entity, b: Entity): number {
@@ -93,7 +94,8 @@ export function tickBuildingAttacks(ctx: TickContext): void {
     if (building.kind !== "building" || building.hp <= 0 || building.buildRemaining > 0) continue;
     const attack = content.buildings[building.defId]!.attack;
     if (!attack || building.attackCooldown > 0) continue;
-    const target = nearestEnemy(ctx, building, attack.range, (entity) => entity.kind === "unit");
+    const range = attack.range * multiplier(content, world.teams[building.team], "towerRange");
+    const target = nearestEnemy(ctx, building, range, (entity) => entity.kind === "unit");
     if (!target) continue;
     dealDamage(ctx, building, target, attack.attackType, attack.damage);
     building.attackCooldown = attack.cooldownTicks;

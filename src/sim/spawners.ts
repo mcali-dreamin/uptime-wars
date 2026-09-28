@@ -31,6 +31,6 @@ export function tickSpawners(ctx: TickContext): void {
       const rally = building.rally ?? world.teams[building.team].rally;
       if (rally) sendHome(world, unit, rally);
     }
-    building.spawnTimer = spawnInterval(content, world.teams[building.team].raceId, building.defId);
+    building.spawnTimer = spawnInterval(content, world.teams[building.team], building.defId);
   }
 }

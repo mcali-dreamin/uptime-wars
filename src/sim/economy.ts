@@ -3,6 +3,7 @@
 import type { TickContext } from "./context";
 import { TICK_RATE } from "./map";
 import type { Team, World } from "./types";
+import { multiplier } from "./upgrades";
 import { BASE_INCOME, CONSTRUCTION_START_HP } from "./tuning";
 
 export function tickCooldowns(ctx: TickContext): void {
@@ -49,7 +50,7 @@ export function userCapacity(world: World, content: TickContext["content"], team
     if (entity.kind !== "building" || entity.team !== team.id || entity.hp <= 0 || entity.buildRemaining > 0) continue;
     capacity += content.buildings[entity.defId]!.userCapacity ?? 0;
   }
-  return capacity;
+  return Math.floor(capacity * multiplier(content, team, "userCapacity"));
 }
 
 /**
@@ -73,7 +74,7 @@ export function tickUsers(ctx: TickContext): void {
     }
     team.peakUsers = Math.max(team.peakUsers, team.users);
 
-    team.revenueCarry += team.users * economy.revenuePerUserPerSecond;
+    team.revenueCarry += team.users * economy.revenuePerUserPerSecond * multiplier(content, team, "revenue");
     const revenue = Math.floor(team.revenueCarry);
     team.compute += revenue;
     team.revenueCarry -= revenue;

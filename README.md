@@ -27,7 +27,10 @@ npm run dev
   gather; right-click with the **core** selected sets a global rally point for
   every spawner that doesn't have its own. Units fight whatever gets in their
   way there, then guard the spot.
-- `1`-`4` or click: pick a building. Click near your core (the ring shows your
+- Select your **core** to research upgrades (one at a time): Hardened
+  Containers, Exploit Kits, Anycast, Autoscaling, Edge Caching, Premium Tier.
+  Tuning lives in `src/content/upgrades.json`.
+- `1`-`5` or click: pick a building. Click near your core (the ring shows your
   build radius) to place it. Shift-click to place several.
 - `WASD` / arrows, drag, or the very edge of the window: pan (`E` toggles edge
   scroll). Wheel or `+`/`-`: zoom. Click the minimap to jump. `Space` / `H`: back home.
@@ -124,6 +127,7 @@ Direction: survival on a procedurally generated open web.
 - [x] Endless escalating waves from a nest in the middle; uptime score
 - [ ] Elevation: plateaus, cliffs, ramps; high-ground sight and range
 - [x] Rally points: per spawner, with a global default on the core
+- [x] Upgrades researched at the core
 - Heroes and security abilities (zero-day, RCE, ransomware, worm, DDoS, honeypot)
 - [x] Race selection: Open Source Collective, Hyperscaler
 - More races: Hacker crew, State actor / APT

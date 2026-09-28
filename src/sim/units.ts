@@ -16,6 +16,7 @@ import { goalField, distance, walkTo } from "./movement";
 import { hasClearPath, moveToward, nextStep } from "./nav";
 import { canFound } from "./placement";
 import { randomInt } from "./rng";
+import { multiplier } from "./upgrades";
 import {
   BUILDING_SIGHT,
   FOUND_REACH,
@@ -89,7 +90,8 @@ function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
   const gap = edgeDistance(unit, target);
   if (gap <= def.range) {
     if (unit.attackCooldown <= 0) {
-      dealDamage(ctx, unit, target, def.attackType, def.damage);
+      const damage = def.damage * multiplier(ctx.content, world.teams[unit.team], "unitDamage");
+      dealDamage(ctx, unit, target, def.attackType, damage);
       unit.attackCooldown = def.cooldownTicks;
     }
     return true;

@@ -4,7 +4,7 @@
 // Two sizes: a compact card for the on-screen panel (a name and a line or
 // two of numbers) and full detail for the Guide.
 
-import { TICK_RATE, type Content } from "../sim";
+import { TICK_RATE, levelOf, nextLevel, type Content, type Team } from "../sim";
 
 export interface InfoCard {
   title: string;
@@ -90,3 +90,31 @@ export const TERRAIN_GUIDE: GuideEntry[] = [
   { title: "Data swamp", description: "Dark teal, dotted.", stats: ["Units move at half speed", "Can't build"] },
   { title: "Data well", description: "Blue diamond.", stats: ["Open data. The economy hooks in soon"] },
 ];
+
+const STAT_TEXT: Record<string, string> = {
+  unitHp: "unit HP",
+  unitDamage: "unit damage",
+  towerRange: "tower range",
+  spawnSpeed: "spawn speed",
+  userCapacity: "user capacity",
+  revenue: "revenue per user",
+};
+
+export function upgradeCard(content: Content, team: Team, upgrade: string): InfoCard {
+  const def = content.upgrades[upgrade]!;
+  const level = levelOf(team, upgrade);
+  const effect = `+${Math.round(def.perLevel * 100)}% ${STAT_TEXT[def.stat]} per level`;
+  if (level >= def.maxLevel) return { title: def.name, lines: [effect, "Fully researched"] };
+  const next = nextLevel(content, team, upgrade);
+  return { title: `${def.name} ${next.level}`, lines: [effect, `${next.cost} compute · ${seconds(next.ticks)}`] };
+}
+
+export function upgradeDetail(content: Content, upgrade: string): GuideEntry {
+  const def = content.upgrades[upgrade]!;
+  const costs = Array.from({ length: def.maxLevel }, (_, i) => `${def.cost * (i + 1)}`).join(" / ");
+  return {
+    title: def.name,
+    description: def.description,
+    stats: [`+${Math.round(def.perLevel * 100)}% ${STAT_TEXT[def.stat]} per level, ${def.maxLevel} levels`, `Costs ${costs} compute`],
+  };
+}

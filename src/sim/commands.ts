@@ -5,6 +5,7 @@ import type { TickContext } from "./context";
 import { placeBuilding, sendHome } from "./entities";
 import { TILE, footprintCenter } from "./map";
 import { buildCost, canFound, canPlace } from "./placement";
+import { canResearch, nextLevel } from "./upgrades";
 import { TILE_BLOCKED, tileAt } from "./terrain";
 import type { Command, RallyCommand, World } from "./types";
 
@@ -47,6 +48,15 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
     }
     case "rally":
       return applyRally(ctx, command);
+    case "research": {
+      const team = world.teams[command.team];
+      const reason = canResearch(content, team, command.upgrade);
+      if (reason) return reason;
+      const next = nextLevel(content, team, command.upgrade);
+      team.compute -= next.cost;
+      team.research = { upgrade: command.upgrade, remaining: next.ticks };
+      return null;
+    }
     case "found":
     case "move": {
       const builder = ctx.byId.get(world.teams[command.team].builderId);

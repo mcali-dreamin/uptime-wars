@@ -24,6 +24,7 @@ import { generateTerrain } from "./terrain";
 import { BASE_INCOME, STARTING_COMPUTE } from "./tuning";
 import type { TeamId, World } from "./types";
 import { tickUnits } from "./units";
+import { tickResearch } from "./upgrades";
 import { tickWaveDirector } from "./waves";
 
 export interface MatchSetup {
@@ -87,6 +88,8 @@ function makeTeam(content: Content, id: TeamId, raceId: string) {
     peakUsers: 0,
     revenueCarry: 0,
     churnCarry: 0,
+    upgrades: {},
+    research: null,
   };
 }
 
@@ -100,6 +103,7 @@ export function step(world: World, content: Content): void {
   tickCooldowns(ctx);
   tickIncome(ctx);
   tickUsers(ctx);
+  tickResearch(ctx);
   tickWaveDirector(ctx);
   tickSpawners(ctx);
   tickBuildingAttacks(ctx);

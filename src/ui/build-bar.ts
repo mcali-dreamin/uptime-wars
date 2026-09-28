@@ -1,55 +1,84 @@
-// The bottom bar. In the deploy phase it offers "deploy core here"; once the
-// core is online it shows the race's buildings.
+// The bottom bar, a command card in the WC3 sense: what it shows depends on
+// the phase and on what you have selected.
+//
+// - deploy:   "Deploy core"
+// - build:    the race's buildings
+// - research: the core is selected, so its upgrades
 
 import { affordable } from "../game/selection";
 import type { Session } from "../game/session";
-import { buildCost } from "../sim";
+import { buildCost, canResearch, levelOf, nextLevel } from "../sim";
 import { $ } from "./dom";
 
 export const FOUND_BUTTON = "found";
+const UPGRADE_PREFIX = "upgrade:";
+
+export type BarMode = "deploy" | "build" | "research";
 
 export interface BuildBarEvents {
   choose(button: string): void;
+  research(upgrade: string): void;
   hover(button: string | null): void;
   guide(): void;
 }
 
+export const upgradeButton = (id: string) => UPGRADE_PREFIX + id;
+export const upgradeOf = (button: string | null) =>
+  button?.startsWith(UPGRADE_PREFIX) ? button.slice(UPGRADE_PREFIX.length) : null;
+
 export class BuildBar {
   private readonly root = $("build-bar");
-  private phase: "deploy" | "build" | null = null;
+  private mode: BarMode | null = null;
 
   constructor(
     private readonly session: Session,
     private readonly events: BuildBarEvents,
   ) {}
 
-  /** Rebuild when the phase changes; refresh disabled/selected state every frame. */
-  update(selected: string | null): void {
-    const phase = this.session.deploying ? "deploy" : "build";
-    if (phase !== this.phase) this.render(phase);
+  /** Rebuild when the mode changes; refresh state every frame. */
+  update(mode: BarMode, selected: string | null): void {
+    if (mode !== this.mode) this.render(mode);
+    const { content, team } = this.session;
     for (const button of this.root.querySelectorAll<HTMLButtonElement>(".build-btn")) {
       const id = button.dataset.building!;
+      const upgrade = upgradeOf(id);
+      if (upgrade) {
+        const researching = team.research?.upgrade === upgrade;
+        button.disabled = !researching && canResearch(content, team, upgrade) !== null;
+        button.classList.toggle("researching", researching);
+        const detail = button.querySelector("small")!;
+        detail.textContent = this.upgradeDetail(upgrade);
+        const progress = researching ? 1 - team.research!.remaining / nextLevel(content, team, upgrade).ticks : 0;
+        button.style.setProperty("--progress", String(progress));
+        continue;
+      }
       button.disabled = id !== FOUND_BUTTON && !affordable(this.session, id);
       button.classList.toggle("selected", id === selected);
     }
   }
 
-  /** Forget the current phase so the next update re-renders (new match). */
+  /** Forget the current mode so the next update re-renders (new match). */
   reset(): void {
-    this.phase = null;
+    this.mode = null;
   }
 
-  private render(phase: "deploy" | "build"): void {
-    this.phase = phase;
+  private render(mode: BarMode): void {
+    this.mode = mode;
     const { race, content } = this.session;
-    this.root.replaceChildren(label(race.name));
-    if (phase === "deploy") {
+    this.root.replaceChildren(label(mode === "research" ? "Core · research" : race.name));
+    if (mode === "deploy") {
       this.root.append(this.button(FOUND_BUTTON, "Deploy core", "C"));
-    } else {
+    } else if (mode === "build") {
       race.buildings.forEach((id, index) => {
         const cost = buildCost(content, this.session.team.raceId, id);
         this.root.append(this.button(id, content.buildings[id]!.name, `${index + 1} · ${cost}`));
       });
+    } else {
+      for (const id of Object.keys(content.upgrades)) {
+        const button = this.button(upgradeButton(id), content.upgrades[id]!.name, this.upgradeDetail(id));
+        button.classList.add("upgrade-btn");
+        this.root.append(button);
+      }
     }
     const guide = document.createElement("button");
     guide.className = "guide-btn";
@@ -58,12 +87,26 @@ export class BuildBar {
     this.root.append(guide);
   }
 
-  private button(id: string, label: string, detail: string): HTMLButtonElement {
+  private upgradeDetail(upgrade: string): string {
+    const { content, team } = this.session;
+    const def = content.upgrades[upgrade]!;
+    const level = levelOf(team, upgrade);
+    const index = Object.keys(content.upgrades).indexOf(upgrade) + 1;
+    if (level >= def.maxLevel) return `${index} · max`;
+    if (team.research?.upgrade === upgrade) return `${index} · researching`;
+    return `${index} · Lv ${level}/${def.maxLevel} · ${nextLevel(content, team, upgrade).cost}`;
+  }
+
+  private button(id: string, text: string, detail: string): HTMLButtonElement {
     const button = document.createElement("button");
     button.className = "build-btn";
     button.dataset.building = id;
-    button.innerHTML = `${label}<small>${detail}</small>`;
-    button.addEventListener("click", () => this.events.choose(id));
+    const name = document.createTextNode(text);
+    const small = document.createElement("small");
+    small.textContent = detail;
+    button.append(name, small);
+    const upgrade = upgradeOf(id);
+    button.addEventListener("click", () => (upgrade ? this.events.research(upgrade) : this.events.choose(id)));
     button.addEventListener("pointerenter", () => this.events.hover(id));
     button.addEventListener("pointerleave", () => this.events.hover(null));
     return button;

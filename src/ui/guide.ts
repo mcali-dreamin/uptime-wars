@@ -2,14 +2,15 @@
 // the build bar or with G; pauses the match while open.
 
 import type { Session } from "../game/session";
-import { TERRAIN_GUIDE, buildingDetail, unitDetail, type GuideEntry } from "./cards";
+import { TERRAIN_GUIDE, buildingDetail, unitDetail, upgradeDetail, type GuideEntry } from "./cards";
 import { $ } from "./dom";
 
-type Tab = "controls" | "buildings" | "creeps" | "terrain" | "races";
+type Tab = "controls" | "buildings" | "upgrades" | "creeps" | "terrain" | "races";
 
 const TABS: [Tab, string][] = [
   ["controls", "Controls"],
   ["buildings", "Buildings"],
+  ["upgrades", "Upgrades"],
   ["creeps", "Creeps"],
   ["terrain", "Terrain"],
   ["races", "Races"],
@@ -19,6 +20,7 @@ const CONTROLS: [string, string][] = [
   ["Start", "Your deploy agent starts selected. Click the ground to walk it, then press C and click to deploy your core."],
   ["Build", "1–4 or click a button, then click inside the ring around your core. Shift-click to place several."],
   ["Select", "Click one of your buildings or units."],
+  ["Research", "Select your core: the bar shows upgrades. Click one (or press its number) to research it. One at a time."],
   ["Rally", "With a spawner selected, right-click the ground to send its units there. With the core selected, right-click sets the rally for every spawner that doesn't have its own."],
   ["Camera", "WASD / arrows, drag, or the window edge to pan. Wheel or +/- to zoom. Click the minimap to jump. Space: back home."],
   ["Other", "Esc: deselect · P: pause · E: edge scroll on/off · G: this guide · R: new match after an outage"],
@@ -94,6 +96,8 @@ export class Guide {
         const race = content.races[raceId]!;
         return [race.core, ...race.buildings].map((id) => entry(buildingDetail(content, raceId, id)));
       }
+      case "upgrades":
+        return Object.keys(content.upgrades).map((id) => entry(upgradeDetail(content, id)));
       case "creeps": {
         const ids = [...content.waves.roster.map((r) => r.unit), content.waves.bosses.unit];
         return [...new Set(ids)].map((id) => {

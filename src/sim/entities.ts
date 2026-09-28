@@ -7,7 +7,8 @@ import { bodyFits } from "./nav";
 import { randomInt } from "./rng";
 import type { Terrain } from "./terrain";
 import { CONSTRUCTION_START_HP, RALLY_SPREAD } from "./tuning";
-import type { Building, Point, TeamId, Unit, World } from "./types";
+import type { Building, Point, Team, TeamId, Unit, World } from "./types";
+import { multiplier } from "./upgrades";
 
 export function placeBuilding(
   world: World,
@@ -43,16 +44,16 @@ export function placeBuilding(
     spawnTimer: 0,
     incomeTimer: def.income?.intervalTicks ?? 0,
   };
-  building.spawnTimer = spawnInterval(content, world.teams[team]?.raceId, defId);
+  building.spawnTimer = spawnInterval(content, world.teams[team], defId);
   world.entities.push(building);
   return building;
 }
 
-export function spawnInterval(content: Content, raceId: string | undefined, defId: string): number {
+export function spawnInterval(content: Content, team: Team | undefined, defId: string): number {
   const spawn = content.buildings[defId]?.spawn;
   if (!spawn) return 0;
-  const multiplier = raceId ? content.races[raceId]!.modifiers.spawnIntervalMultiplier : 1;
-  return Math.max(1, Math.round(spawn.intervalTicks * multiplier));
+  const race = team ? content.races[team.raceId]!.modifiers.spawnIntervalMultiplier : 1;
+  return Math.max(1, Math.round((spawn.intervalTicks * race) / multiplier(content, team, "spawnSpeed")));
 }
 
 /** Nearest spot where a body of radius r fits, searching outward in a fixed pattern. */
@@ -84,7 +85,8 @@ export function spawnUnit(
   const { world, content } = ctx;
   const def = content.units[unitId]!;
   const race = content.races[world.teams[team].raceId]!;
-  const hp = Math.round(def.hp * race.modifiers.unitHpMultiplier * hpMultiplier);
+  const upgraded = multiplier(content, world.teams[team], "unitHp");
+  const hp = Math.round(def.hp * race.modifiers.unitHpMultiplier * hpMultiplier * upgraded);
   const spot = walkableSpot(world.terrain, x, y, def.size, from);
   const unit: Unit = {
     kind: "unit",
