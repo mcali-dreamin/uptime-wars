@@ -1,7 +1,7 @@
 {
   "open-source": {
     "name": "Open Source Collective",
-    "specialty": "Cheap and fast. Forks swarms; spawners run 15% quicker.",
+    "specialty": "Cheap swarms. Spawns 15% faster.",
     "controller": "human",
     "core": "core",
     "buildings": [
@@ -20,7 +20,7 @@
   },
   "hyperscaler": {
     "name": "Hyperscaler",
-    "specialty": "Deep pockets, heavy iron. +150 starting compute, units have 30% more HP, spawners run 15% slower.",
+    "specialty": "Rich and tough. +150 compute, units 30% tougher, spawns 15% slower.",
     "controller": "human",
     "core": "core",
     "builder": "deploy-agent",

@@ -43,15 +43,13 @@ export class Hud {
 
   /** One line telling the player what they can do right now. */
   private hintFor(selection: Selection): string {
-    if (selection.kind === "found") return "Click open ground to deploy your core there · right-click or Esc to cancel";
-    if (selection.kind === "place") return "Click inside the ring to build · Shift-click to build several · right-click or Esc to cancel";
-    const order = groundOrderLabel(this.session, selection);
-    if (order && leftClickOrders(this.session, selection)) {
-      return "Click the ground to walk your deploy agent · press C to choose where your core goes";
+    if (selection.kind === "found") return "Click to deploy your core";
+    if (selection.kind === "place") return "Click inside the ring to build";
+    if (!this.session.deploying) return "";
+    if (groundOrderLabel(this.session, selection) && leftClickOrders(this.session, selection)) {
+      return "Click to walk · C to deploy your core";
     }
-    if (order) return `Right-click the ground: ${order.toLowerCase()} · Esc to deselect`;
-    if (this.session.deploying) return "Click your deploy agent (the green diamond) to select it · Space to find it";
-    return "";
+    return "Click your agent to select it";
   }
 
   announce(): string {

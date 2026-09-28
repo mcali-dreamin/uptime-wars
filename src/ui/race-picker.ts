@@ -20,10 +20,7 @@ export class RacePicker {
         const race = content.races[id]!;
         const card = document.createElement("button");
         card.className = `race-card${id === raceId ? " last" : ""}`;
-        const roster = race.buildings
-          .map((b) => `<li>${content.buildings[b]!.name}: ${content.buildings[b]!.description}</li>`)
-          .join("");
-        card.innerHTML = `<strong>${index + 1}. ${race.name}</strong><em>${race.specialty}</em><ul>${roster}</ul>`;
+        card.innerHTML = `<strong>${index + 1}. ${race.name}</strong><em>${race.specialty}</em>`;
         card.addEventListener("click", () => this.pick(id));
         return card;
       }),

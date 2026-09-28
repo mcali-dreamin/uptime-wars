@@ -62,7 +62,7 @@ export class Renderer {
   private readonly minimapDynamic = new Graphics();
   private readonly banner = new Text({
     text: "",
-    style: { fill: 0xd6e2f0, fontFamily: "monospace", fontSize: 40, fontWeight: "bold" },
+    style: { fill: 0xd6e2f0, fontFamily: "monospace", fontSize: 26, fontWeight: "bold" },
   });
   private previous = new Map<number, { x: number; y: number }>();
   private shots: Shot[] = [];
@@ -128,10 +128,10 @@ export class Renderer {
   collectEvents(world: World): void {
     for (const event of world.events) {
       if (event.type === "shot") this.shots.push({ ...event, age: 0 });
-      if (event.type === "founded") this.showBanner("Core online. Build within the ring; waves are on their way.");
+      if (event.type === "founded") this.showBanner("Core online");
       if (event.type === "wave") {
         const boss = event.boss ? " · BOSS" : "";
-        this.showBanner(`Wave ${event.wave}: ${event.name} · ${event.units} creeps in ${event.packs} packs${boss}`);
+        this.showBanner(`Wave ${event.wave} · ${event.name}${boss}`);
       }
     }
   }

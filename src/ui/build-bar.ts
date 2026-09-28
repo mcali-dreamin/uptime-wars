@@ -11,6 +11,7 @@ export const FOUND_BUTTON = "found";
 export interface BuildBarEvents {
   choose(button: string): void;
   hover(button: string | null): void;
+  guide(): void;
 }
 
 export class BuildBar {
@@ -41,19 +42,20 @@ export class BuildBar {
   private render(phase: "deploy" | "build"): void {
     this.phase = phase;
     const { race, content } = this.session;
-    this.root.replaceChildren(stat(race.name, race.specialty));
+    this.root.replaceChildren(label(race.name));
     if (phase === "deploy") {
-      this.root.append(this.button(FOUND_BUTTON, "C. Deploy core here", "free · your agent walks there"));
-      this.root.append(stat("Deploy", "Click your agent, then click the ground to walk · C: choose where your core goes · Space: find your agent", "help"));
-      return;
+      this.root.append(this.button(FOUND_BUTTON, "Deploy core", "C"));
+    } else {
+      race.buildings.forEach((id, index) => {
+        const cost = buildCost(content, this.session.team.raceId, id);
+        this.root.append(this.button(id, content.buildings[id]!.name, `${index + 1} · ${cost}`));
+      });
     }
-    race.buildings.forEach((id, index) => {
-      const cost = buildCost(content, this.session.team.raceId, id);
-      this.root.append(this.button(id, `${index + 1}. ${content.buildings[id]!.name}`, `${cost} compute`));
-    });
-    this.root.append(
-      stat("Controls", "Click to select · right-click: rally (core = global) · WASD / drag / edge: pan · wheel or +/-: zoom · Space: home · P: pause", "help"),
-    );
+    const guide = document.createElement("button");
+    guide.className = "guide-btn";
+    guide.textContent = "Guide (G)";
+    guide.addEventListener("click", () => this.events.guide());
+    this.root.append(guide);
   }
 
   private button(id: string, label: string, detail: string): HTMLButtonElement {
@@ -68,14 +70,9 @@ export class BuildBar {
   }
 }
 
-function stat(label: string, value: string, extra = ""): HTMLElement {
-  const el = document.createElement("div");
-  el.className = `stat ${extra}`.trim();
-  const l = document.createElement("span");
-  l.className = "label";
-  l.textContent = label;
-  const v = document.createElement("span");
-  v.textContent = value;
-  el.append(l, v);
+function label(text: string): HTMLElement {
+  const el = document.createElement("span");
+  el.className = "race-name";
+  el.textContent = text;
   return el;
 }
