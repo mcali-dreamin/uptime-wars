@@ -9,7 +9,9 @@
       "gpu-cluster",
       "firewall",
       "solar-array",
-      "web-app"
+      "web-app",
+      "mesh-node",
+      "core"
     ],
     "modifiers": {
       "spawnIntervalMultiplier": 0.85,
@@ -30,7 +32,9 @@
       "gpu-cluster",
       "cdn-edge",
       "power-plant",
-      "web-app"
+      "web-app",
+      "edge-pop",
+      "core"
     ],
     "modifiers": {
       "spawnIntervalMultiplier": 1.15,

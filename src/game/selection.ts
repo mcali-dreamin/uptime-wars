@@ -2,7 +2,7 @@
 // it. Every "what does clicking here do?" question is answered in this file,
 // so the input code, the cursor, the hint line, and the info panel agree.
 
-import { TILE, buildCost, canFound, canPlace, type Content, type Entity, type Point } from "../sim";
+import { TILE, buildCost, canFound, canPlace, isCore, type Content, type Entity, type Point } from "../sim";
 import { HUMAN, type Order, type Session } from "./session";
 
 export type Selection =
@@ -21,7 +21,7 @@ export function groundOrderLabel(session: Session, selection: Selection): string
   const entity = selectedEntity(session, selection);
   if (!entity) return null;
   if (entity.kind === "unit") return entity.mode === "builder" ? "Walk here" : null;
-  if (entity.id === session.team.coreId) return "Set global rally";
+  if (isCore(session.content, session.team, entity)) return "Set global rally";
   return session.content.buildings[entity.defId]!.spawn ? "Set rally" : null;
 }
 

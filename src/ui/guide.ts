@@ -18,7 +18,9 @@ const TABS: [Tab, string][] = [
 
 const CONTROLS: [string, string][] = [
   ["Start", "Your deploy agent starts selected. Click the ground to walk it, then press C and click to deploy your core."],
-  ["Build", "1–4 or click a button, then click inside the ring around your core. Shift-click to place several."],
+  ["Build", "Number keys or click a button, then click inside your network (the green rings). Shift-click to place several."],
+  ["Network", "Cores, Mesh Nodes (Open Source) and Edge PoPs (Hyperscaler) each extend where you can build. Build outward to reach ramps and wells."],
+  ["Redundancy", "Build more cores inside your network. If your main core falls the next takes over; you only go down when every core is down."],
   ["Select", "Click one of your buildings or units."],
   ["Research", "Select your core: the bar shows upgrades. Click one (or press its number) to research it. One at a time."],
   ["Rally", "With a spawner selected, right-click the ground to send its units there. With the core selected, right-click sets the rally for every spawner that doesn't have its own."],

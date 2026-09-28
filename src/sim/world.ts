@@ -19,6 +19,7 @@ import type { Content } from "./content";
 import { tickConstruction, tickCooldowns, tickIncome, tickUsers } from "./economy";
 import { foundCore, spawnUnit } from "./entities";
 import { footprintCenter } from "./map";
+import { isCore } from "./placement";
 import { tickSpawners } from "./spawners";
 import { generateTerrain } from "./terrain";
 import { BASE_INCOME, STARTING_COMPUTE } from "./tuning";
@@ -116,13 +117,30 @@ export function step(world: World, content: Content): void {
   world.tick += 1;
 }
 
+/**
+ * Redundancy: when your primary core falls, the next one (lowest id) takes
+ * over. You only go down when every core is down.
+ */
 function checkOutcome(ctx: TickContext): void {
-  const { world } = ctx;
+  const { world, content } = ctx;
   for (const team of world.teams) {
-    const core = ctx.byId.get(team.coreId);
-    const builder = ctx.byId.get(team.builderId);
-    // Before founding, the team lives as long as its builder does.
-    const alive = team.coreId === -1 ? builder !== undefined && builder.hp > 0 : core !== undefined && core.hp > 0;
+    let alive: boolean;
+    if (team.coreId === -1) {
+      // Before founding, the team lives as long as its builder does.
+      const builder = ctx.byId.get(team.builderId);
+      alive = builder !== undefined && builder.hp > 0;
+    } else {
+      const primary = ctx.byId.get(team.coreId);
+      if (!primary || primary.hp <= 0) {
+        const next = world.entities.find((e) => e.hp > 0 && isCore(content, team, e));
+        if (next) {
+          team.coreId = next.id;
+          world.events.push({ type: "failover", team: team.id, x: next.x, y: next.y });
+        }
+      }
+      const core = ctx.byId.get(team.coreId);
+      alive = core !== undefined && core.hp > 0;
+    }
     if (!alive) {
       world.outcome = { winner: team.id === 0 ? 1 : 0, reason: "core-destroyed", tick: world.tick };
       return;

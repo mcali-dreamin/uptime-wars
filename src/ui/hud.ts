@@ -1,6 +1,6 @@
 // Top bar numbers, the status line, and the hint line over the map.
 
-import { TICK_RATE, hashWorld, userCapacity } from "../sim";
+import { TICK_RATE, hashWorld, isCore, userCapacity } from "../sim";
 import { groundOrderLabel, leftClickOrders, type Selection } from "../game/selection";
 import { HUMAN, type Session } from "../game/session";
 import { $ } from "./dom";
@@ -28,8 +28,9 @@ export class Hud {
     const core = this.session.core();
     this.compute.textContent = String(team.compute);
     this.users.textContent = team.coreId === -1 ? "0" : `${team.users} / ${userCapacity(world, this.session.content, team)}`;
+    const cores = world.entities.filter((e) => e.hp > 0 && isCore(this.session.content, team, e)).length;
     this.core.textContent = core
-      ? `${Math.max(0, Math.ceil(core.hp))} / ${core.maxHp}`
+      ? `${Math.max(0, Math.ceil(core.hp))} / ${core.maxHp}${cores > 1 ? ` · ${cores} up` : ""}`
       : this.session.builder()
         ? "not deployed"
         : "offline";

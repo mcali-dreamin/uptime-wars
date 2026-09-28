@@ -1,5 +1,4 @@
 import {
-  BUILD_RADIUS_TILES,
   TILE,
   TILE_OPEN,
   createWorld,
@@ -35,7 +34,7 @@ export function planBuildOrder(
   for (let r = core.row; r < core.row + 2; r += 1) for (let c = core.col; c < core.col + 2; c += 1) taken.add(r * terrain.cols + c);
 
   const candidates: { col: number; row: number; score: number }[] = [];
-  const reach = BUILD_RADIUS_TILES * TILE;
+  const reach = content.buildings[content.races[setup.races[0]]!.core]!.buildRadius! * TILE;
   for (let row = 0; row < terrain.rows; row += 1) {
     for (let col = 0; col < terrain.cols; col += 1) {
       if (tileAt(terrain, col, row) !== TILE_OPEN) continue;

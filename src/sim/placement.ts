@@ -2,9 +2,9 @@
 // they never disagree.
 
 import type { Content } from "./content";
-import { BUILD_RADIUS_TILES, TILE, footprintCenter } from "./map";
+import { TILE, footprintCenter } from "./map";
 import { TILE_OPEN, tileAt } from "./terrain";
-import type { TeamId, World } from "./types";
+import type { Building, Entity, Team, TeamId, World } from "./types";
 
 export function buildCost(content: Content, raceId: string, buildingId: string): number {
   return Math.round(content.buildings[buildingId]!.cost * content.races[raceId]!.modifiers.costMultiplier);
@@ -46,13 +46,9 @@ export function canPlace(
   if (!def || !race.buildings.includes(buildingId)) return "not in this race's roster";
   if (!footprintIsOpen(world, col, row, def.footprint)) return "terrain is not buildable";
 
-  const core = world.entities.find((entity) => entity.id === team.coreId);
-  if (!core) return "no core";
+  if (team.coreId === -1) return "no core";
   const center = footprintCenter(col, row, def.footprint);
-  const dx = center.x - core.x;
-  const dy = center.y - core.y;
-  const reach = BUILD_RADIUS_TILES * TILE;
-  if (dx * dx + dy * dy > reach * reach) return "too far from your core";
+  if (!inNetwork(world, content, teamId, center.x, center.y)) return "outside your network";
 
   if (isOccupied(world, col, row, def.footprint)) return "tile occupied";
   if (team.compute < buildCost(content, team.raceId, buildingId)) return "not enough compute";
@@ -67,4 +63,31 @@ export function canFound(world: World, content: Content, teamId: TeamId, col: nu
   if (!footprintIsOpen(world, col, row, def.footprint)) return "terrain is not buildable";
   if (isOccupied(world, col, row, def.footprint)) return "tile occupied";
   return null;
+}
+
+/** Is this one of the team's cores (the building its race depends on)? */
+export function isCore(content: Content, team: Team, entity: Entity | undefined): boolean {
+  return entity?.kind === "building" && entity.team === team.id && entity.defId === content.races[team.raceId]!.core;
+}
+
+/** Your finished buildings that extend where you may build. */
+export function networkProviders(world: World, content: Content, teamId: TeamId): Building[] {
+  return world.entities.filter(
+    (entity): entity is Building =>
+      entity.kind === "building" &&
+      entity.team === teamId &&
+      entity.hp > 0 &&
+      entity.buildRemaining === 0 &&
+      (content.buildings[entity.defId]!.buildRadius ?? 0) > 0,
+  );
+}
+
+/** Whether a point is inside any of the team's build radii. */
+export function inNetwork(world: World, content: Content, teamId: TeamId, x: number, y: number): boolean {
+  return networkProviders(world, content, teamId).some((provider) => {
+    const reach = content.buildings[provider.defId]!.buildRadius! * TILE;
+    const dx = x - provider.x;
+    const dy = y - provider.y;
+    return dx * dx + dy * dy <= reach * reach;
+  });
 }

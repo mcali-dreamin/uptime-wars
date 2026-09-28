@@ -26,6 +26,7 @@ export function buildingCard(content: Content, raceId: string, buildingId: strin
   if (def.attack) does.push(`tower · ${def.attack.damage} dmg · range ${def.attack.range}`);
   if (def.income) does.push(`+${def.income.amount} compute / ${seconds(def.income.intervalTicks)}`);
   if (def.userCapacity) does.push(`+${def.userCapacity} users`);
+  if (def.buildRadius) does.push(`network ${def.buildRadius}`);
   const lines = [does.join(" · ") || `${def.hp} HP`];
   if (def.buildable) lines.push(`${Math.round(def.cost * race.modifiers.costMultiplier)} compute`);
   return { title: def.name, lines };
@@ -64,6 +65,7 @@ export function buildingDetail(content: Content, raceId: string, buildingId: str
     const perSecond = def.userCapacity * content.economy.revenuePerUserPerSecond;
     stats.push(`Serves up to ${def.userCapacity} users (up to +${+perSecond.toFixed(1)} compute/s when full)`);
   }
+  if (def.buildRadius) stats.push(`Extends your network: you can build within ${def.buildRadius} tiles of it`);
   stats.push(`${def.hp} HP, ${def.armor} armor (${def.armorType})`);
   if (def.buildable) {
     stats.push(`Costs ${Math.round(def.cost * race.modifiers.costMultiplier)} compute, builds in ${seconds(def.buildTicks)}`);

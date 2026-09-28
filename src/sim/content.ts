@@ -62,6 +62,8 @@ export interface BuildingDef {
   income?: { amount: number; intervalTicks: number };
   /** Users this building can serve. Your total capacity caps your user count. */
   userCapacity?: number;
+  /** Tiles around this building (once finished) where you may build. */
+  buildRadius?: number;
 }
 
 export type Controller = "human" | "wave-director";
@@ -186,8 +188,8 @@ export function validateContent(content: Content): void {
   for (const [id, race] of Object.entries(content.races)) {
     const core = content.buildings[race.core];
     if (!core) errors.push(`race ${id} has unknown core ${race.core}`);
-    else if (core.buildable) errors.push(`race ${id} core ${race.core} must not be buildable`);
     else if (core.footprint !== 2) errors.push(`race ${id} core ${race.core} must have a 2x2 footprint`);
+    else if (race.controller === "human" && !core.buildRadius) errors.push(`race ${id} core ${race.core} needs a buildRadius`);
     if (race.builder && !content.units[race.builder]) errors.push(`race ${id} has unknown builder ${race.builder}`);
     for (const buildingId of race.buildings) {
       const building = content.buildings[buildingId];

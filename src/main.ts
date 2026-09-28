@@ -20,7 +20,7 @@ import { Guide } from "./ui/guide";
 import { Hud } from "./ui/hud";
 import { InfoPanel } from "./ui/info-panel";
 import { RacePicker } from "./ui/race-picker";
-import { TICK_RATE, TILE, loadDefaultContent, step, type Point } from "./sim";
+import { TICK_RATE, TILE, isCore, loadDefaultContent, step, type Point } from "./sim";
 
 const STEP_MS = 1000 / TICK_RATE;
 const MAX_STEPS_PER_FRAME = 5;
@@ -81,7 +81,7 @@ function fallback(): Selection {
 
 /** The core is selected: the command card shows research. */
 function coreSelected(): boolean {
-  return selection.kind === "entity" && selection.id === session.team.coreId;
+  return selection.kind === "entity" && isCore(content, session.team, session.entity(selection.id));
 }
 
 function barMode(): BarMode {
@@ -215,6 +215,7 @@ renderer.app.ticker.add((ticker) => {
       step(world, content);
       renderer.collectEvents(world);
       for (const event of world.events) {
+        if (event.type === "failover" && event.team === session.team.id) renderer.showBanner("Core lost · failover");
         if (event.type === "researched" && event.team === session.team.id) {
           renderer.showBanner(`${content.upgrades[event.upgrade]!.name} ${event.level}`);
         }

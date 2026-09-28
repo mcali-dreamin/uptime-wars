@@ -17,6 +17,8 @@ import {
   simulate,
   planWave,
   levelOf,
+  canPlace,
+  isOccupied,
   multiplier,
   nextLevel,
   userCapacity,
@@ -149,7 +151,7 @@ describe("building", () => {
     };
     blocked = { col: 0, row: terrain.start.row };
     expect(reject("server-rack", blocked.col, blocked.row)).toBe("terrain is not buildable");
-    expect(reject("server-rack", far.col, far.row)).toMatch(/terrain is not buildable|too far from your core/);
+    expect(reject("server-rack", far.col, far.row)).toMatch(/terrain is not buildable|outside your network/);
     expect(reject("server-rack", spot.col, spot.row)).toBeNull();
     expect(reject("firewall", spot.col, spot.row)).toBe("tile occupied");
     world.teams[0].compute = 0;
@@ -160,7 +162,7 @@ describe("building", () => {
   it("rejects buildings outside the race roster", () => {
     const world = createWorld(content, SETUP);
     const spot = firstSpot("server-rack");
-    queueCommand(world, { ...spot, building: "core" });
+    queueCommand(world, { ...spot, building: "malware-nest" });
     step(world, content);
     expect(world.events).toContainEqual(expect.objectContaining({ type: "rejected", reason: "not in this race's roster" }));
   });
@@ -695,6 +697,121 @@ describe("elevation", () => {
   });
 });
 
+describe("network and redundancy", () => {
+  const coreRadius = content.buildings.core!.buildRadius! * TILE;
+
+  /** An open tile at a given distance (in tiles) from a point, in a fixed search order. */
+  function openAt(world: ReturnType<typeof createWorld>, from: { x: number; y: number }, min: number, max: number) {
+    const { terrain } = world;
+    for (let r = min; r <= max; r++) {
+      for (const [dc, dr] of [[r, 0], [-r, 0], [0, r], [0, -r], [r, r], [-r, -r], [r, -r], [-r, r]] as const) {
+        const col = Math.floor(from.x / TILE) + dc;
+        const row = Math.floor(from.y / TILE) + dr;
+        if (tileAt(terrain, col, row) === 0 && !isOccupied(world, col, row, 1)) return { col, row };
+      }
+    }
+    return null;
+  }
+
+  it("each race extends its network differently", () => {
+    const os = content.buildings[content.races["open-source"]!.buildings.find((b) => b === "mesh-node")!]!;
+    const hyper = content.buildings[content.races.hyperscaler!.buildings.find((b) => b === "edge-pop")!]!;
+    expect(os.buildRadius).toBeLessThan(hyper.buildRadius!);
+    expect(os.cost).toBeLessThan(hyper.cost);
+  });
+
+  it("a finished mesh node lets you build beyond the core's radius; unfinished or destroyed, it doesn't", () => {
+    const world = createWorld(content, SETUP);
+    world.teams[0].compute = 5000;
+    const core = world.entities.find((e) => e.id === world.teams[0].coreId)!;
+    // A node near the edge of the core's reach.
+    const node = openAt(world, core, 5, 6)!;
+    queueCommand(world, { type: "build", tick: world.tick, team: 0, building: "mesh-node", col: node.col, row: node.row });
+    step(world, content);
+    const mesh = world.entities.find((e) => e.kind === "building" && e.defId === "mesh-node")!;
+    // Somewhere the mesh node reaches but the core doesn't.
+    let beyond: { col: number; row: number } | null = null;
+    for (let r = 1; r <= 4 && !beyond; r++) {
+      for (const [dc, dr] of [[r, 0], [-r, 0], [0, r], [0, -r]] as const) {
+        const col = node.col + dc;
+        const row = node.row + dr;
+        const cx = (col + 0.5) * TILE;
+        const cy = (row + 0.5) * TILE;
+        if (tileAt(world.terrain, col, row) !== 0 || Math.hypot(cx - core.x, cy - core.y) <= coreRadius) continue;
+        beyond = { col, row };
+        break;
+      }
+    }
+    expect(beyond).not.toBeNull();
+    const reason = () => canPlace(world, content, 0, "firewall", beyond!.col, beyond!.row);
+    expect(reason()).toBe("outside your network"); // still under construction
+    while (mesh.kind === "building" && mesh.buildRemaining > 0) step(world, content);
+    expect(reason()).toBeNull();
+    mesh.hp = 0;
+    step(world, content);
+    expect(reason()).toBe("outside your network");
+  });
+
+  it("you can build more cores; losing the main one fails over, and you only lose when every core is down", () => {
+    const world = createWorld(content, SETUP);
+    world.teams[0].compute = 5000;
+    const first = world.entities.find((e) => e.id === world.teams[0].coreId)!;
+    // A free 2x2 spot inside the network.
+    let site: { col: number; row: number } | null = null;
+    for (let r = 3; r <= 6 && !site; r++) {
+      for (const [dc, dr] of [[r, 0], [-r, 0], [0, r], [0, -r]] as const) {
+        const col = Math.floor(first.x / TILE) + dc;
+        const row = Math.floor(first.y / TILE) + dr;
+        if (canPlace(world, content, 0, "core", col, row) === null) {
+          site = { col, row };
+          break;
+        }
+      }
+    }
+    expect(site).not.toBeNull();
+    queueCommand(world, { type: "build", tick: world.tick, team: 0, building: "core", ...site! });
+    step(world, content);
+    const second = world.entities.find((e) => e.kind === "building" && e.defId === "core" && e.id !== first.id)!;
+    while (second.kind === "building" && second.buildRemaining > 0) step(world, content);
+
+    first.hp = 0;
+    step(world, content);
+    expect(world.outcome).toBeNull();
+    expect(world.teams[0].coreId).toBe(second.id);
+    expect(world.events).toContainEqual(expect.objectContaining({ type: "failover", team: 0 }));
+
+    second.hp = 0;
+    step(world, content);
+    expect(world.outcome).toMatchObject({ winner: 1 });
+  });
+
+  it("research continues at another core after failover", () => {
+    const world = createWorld(content, SETUP);
+    world.teams[0].compute = 5000;
+    const first = world.entities.find((e) => e.id === world.teams[0].coreId)!;
+    let site: { col: number; row: number } | null = null;
+    for (let r = 3; r <= 6 && !site; r++) {
+      for (const [dc, dr] of [[r, 0], [-r, 0], [0, r], [0, -r]] as const) {
+        const col = Math.floor(first.x / TILE) + dc;
+        const row = Math.floor(first.y / TILE) + dr;
+        if (canPlace(world, content, 0, "core", col, row) === null) {
+          site = { col, row };
+          break;
+        }
+      }
+    }
+    queueCommand(world, { type: "build", tick: world.tick, team: 0, building: "core", ...site! });
+    step(world, content);
+    const second = world.entities.find((e) => e.kind === "building" && e.defId === "core" && e.id !== first.id)!;
+    while (second.kind === "building" && second.buildRemaining > 0) step(world, content);
+    queueCommand(world, { type: "research", tick: world.tick, team: 0, upgrade: "anycast" });
+    step(world, content);
+    first.hp = 0;
+    for (let i = 0; i < content.upgrades.anycast!.researchTicks + 5; i++) step(world, content);
+    expect(levelOf(world.teams[0], "anycast")).toBe(1);
+  });
+});
+
 describe("content", () => {
   it("rejects broken references", () => {
     const broken: Content = structuredClone(content);
@@ -702,9 +819,9 @@ describe("content", () => {
     expect(() => validateContent(broken)).toThrow(/unknown unit missing/);
   });
 
-  it("requires every race to have an unbuildable 2x2 core", () => {
+  it("requires every race to have a 2x2 core", () => {
     const broken: Content = structuredClone(content);
     broken.races.botnet!.core = "server-rack";
-    expect(() => validateContent(broken)).toThrow(/must not be buildable/);
+    expect(() => validateContent(broken)).toThrow(/2x2 footprint/);
   });
 });
