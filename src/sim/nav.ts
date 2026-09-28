@@ -127,8 +127,8 @@ export function hasLineOfSight(terrain: Terrain, x1: number, y1: number, x2: num
 
 /**
  * True when a body of radius `r` can walk the straight segment without
- * touching a wall: the center line and both edge lines are clear. Seeing a
- * target is not the same as being able to walk straight at it.
+ * touching a wall or cliff: the center line and both edge lines are clear.
+ * Seeing a target is not the same as being able to walk straight at it.
  */
 export function hasClearPath(terrain: Terrain, x1: number, y1: number, x2: number, y2: number, r: number): boolean {
   const dx = x2 - x1;
@@ -138,10 +138,26 @@ export function hasClearPath(terrain: Terrain, x1: number, y1: number, x2: numbe
   const ox = (-dy / length) * r * 0.8;
   const oy = (dx / length) * r * 0.8;
   return (
-    hasLineOfSight(terrain, x1, y1, x2, y2) &&
-    hasLineOfSight(terrain, x1 + ox, y1 + oy, x2 + ox, y2 + oy) &&
-    hasLineOfSight(terrain, x1 - ox, y1 - oy, x2 - ox, y2 - oy)
+    walkableLine(terrain, x1, y1, x2, y2) &&
+    walkableLine(terrain, x1 + ox, y1 + oy, x2 + ox, y2 + oy) &&
+    walkableLine(terrain, x1 - ox, y1 - oy, x2 - ox, y2 - oy)
   );
+}
+
+/**
+ * True when every quarter-tile sample on the segment is walkable. Unlike
+ * hasLineOfSight, cliffs count: you can see across a cliff, not walk it.
+ */
+function walkableLine(terrain: Terrain, x1: number, y1: number, x2: number, y2: number): boolean {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  const samples = Math.ceil(length / (TILE / 4));
+  for (let i = 1; i < samples; i += 1) {
+    const t = i / samples;
+    if (!isWalkableTile(terrain, Math.floor((x1 + dx * t) / TILE), Math.floor((y1 + dy * t) / TILE))) return false;
+  }
+  return true;
 }
 
 /**

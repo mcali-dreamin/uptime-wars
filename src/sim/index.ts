@@ -2,7 +2,7 @@ export * from "./content";
 export * from "./map";
 export * from "./types";
 export * from "./terrain";
-export { flowField, nextStep, hasLineOfSight, UNREACHABLE } from "./nav";
+export { flowField, nextStep, hasClearPath, hasLineOfSight, UNREACHABLE } from "./nav";
 export { canSee, heightOf } from "./combat";
 export { createWorld, step } from "./world";
 export type { MatchSetup } from "./world";

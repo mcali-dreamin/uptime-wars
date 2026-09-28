@@ -4,6 +4,8 @@ import {
   TILE_CLIFF,
   TILE_RAMP,
   canSee,
+  hasLineOfSight,
+  hasClearPath,
   type Entity,
   flowField,
   canFound,
@@ -629,6 +631,43 @@ describe("elevation", () => {
   function unitAt(world: ReturnType<typeof createWorld>, team: 0 | 1, at: { x: number; y: number }) {
     return { kind: "unit", id: 900 + team, team, x: at.x, y: at.y, radius: 8, armor: 0, armorType: "container", hp: 1000, maxHp: 1000 } as unknown as Entity;
   }
+
+  it("units walk around cliffs instead of into them", () => {
+    // A cliff between here and there is not a straight path, even though
+    // you can see across it.
+    const world = createWorld(content, SETUP);
+    const { low, high } = cliffPair(world);
+    expect(hasLineOfSight(world.terrain, low.x, low.y, high.x, high.y)).toBe(true);
+    expect(hasClearPath(world.terrain, low.x, low.y, high.x, high.y, 8)).toBe(false);
+  });
+
+  it("guards reach a rally point on another level", () => {
+    const world = createWorld(content, SETUP);
+    const core = world.entities.find((e) => e.id === world.teams[0].coreId)!;
+    const { terrain } = world;
+    const coreHeight = terrain.heights[Math.floor(core.y / TILE) * terrain.cols + Math.floor(core.x / TILE)];
+    // The nearest open tile on a different level from the core.
+    let target: { x: number; y: number } | null = null;
+    for (let r = 3; r < 40 && !target; r++) {
+      for (const [dc, dr] of [[r, 0], [-r, 0], [0, r], [0, -r], [r, r], [-r, -r], [r, -r], [-r, r]] as const) {
+        const col = Math.floor(core.x / TILE) + dc;
+        const row = Math.floor(core.y / TILE) + dr;
+        const i = row * terrain.cols + col;
+        if (terrain.tiles[i] === 0 && terrain.heights[i] !== coreHeight) {
+          target = { x: (col + 0.5) * TILE, y: (row + 0.5) * TILE };
+          break;
+        }
+      }
+    }
+    expect(target).not.toBeNull();
+    queueCommand(world, firstSpot("server-rack"));
+    while (!world.entities.some((e) => e.kind === "unit" && e.team === 0)) step(world, content);
+    queueCommand(world, { type: "rally", tick: world.tick, team: 0, buildingId: world.teams[0].coreId, x: target!.x, y: target!.y });
+    for (let i = 0; i < 20 * 90; i++) step(world, content);
+    const guards = world.entities.filter((e) => e.kind === "unit" && e.team === 0);
+    expect(guards.length).toBeGreaterThan(0);
+    for (const g of guards) expect(Math.hypot(g.x - target!.x, g.y - target!.y)).toBeLessThan(90);
+  });
 
   it("low ground can't see up a cliff; high ground can see down", () => {
     const world = createWorld(content, SETUP);
