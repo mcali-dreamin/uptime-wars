@@ -3,7 +3,10 @@
 import { GRID_CELL, GRID_STRIDE, type TickContext } from "./context";
 import type { Content } from "./content";
 import { loseUsers } from "./economy";
+import { TILE } from "./map";
 import { hasLineOfSight } from "./nav";
+import { heightAtTile } from "./terrain";
+import { HIGH_GROUND_DAMAGE, LOW_GROUND_SIGHT } from "./tuning";
 import { multiplier } from "./upgrades";
 import type { Entity } from "./types";
 
@@ -13,8 +16,23 @@ export function edgeDistance(a: Entity, b: Entity): number {
   return Math.sqrt(dx * dx + dy * dy) - a.radius - b.radius;
 }
 
+/** Height level under an entity. */
+export function heightOf(ctx: TickContext, entity: Entity): number {
+  return heightAtTile(ctx.world.terrain, Math.floor(entity.x / TILE), Math.floor(entity.y / TILE));
+}
+
+/**
+ * Line of sight, plus the high-ground rule: from lower ground you can't see
+ * up a cliff unless you're right at its foot.
+ */
 export function canSee(ctx: TickContext, from: Entity, to: Entity): boolean {
+  if (heightOf(ctx, to) > heightOf(ctx, from) && edgeDistance(from, to) > LOW_GROUND_SIGHT) return false;
   return hasLineOfSight(ctx.world.terrain, from.x, from.y, to.x, to.y);
+}
+
+/** Towers ignore walls (they're tall) but still can't see up cliffs. */
+function towerCanSee(ctx: TickContext, from: Entity, to: Entity): boolean {
+  return !(heightOf(ctx, to) > heightOf(ctx, from) && edgeDistance(from, to) > LOW_GROUND_SIGHT);
 }
 
 /** Largest entity radius, so the grid search never misses a big target's edge. */
@@ -48,7 +66,7 @@ export function nearestEnemy(
         const better =
           best === null || distance < bestDistance || (distance === bestDistance && entity.id < best.id);
         if (!better) continue;
-        if (from.kind === "unit" && !canSee(ctx, from, entity)) continue;
+        if (from.kind === "unit" ? !canSee(ctx, from, entity) : !towerCanSee(ctx, from, entity)) continue;
         best = entity;
         bestDistance = distance;
       }
@@ -66,7 +84,8 @@ export function dealDamage(
 ): void {
   const { world, content } = ctx;
   const multiplier = content.damage[attackType][target.armorType];
-  const damage = Math.max(1, Math.round(baseDamage * multiplier) - target.armor);
+  const downhill = heightOf(ctx, attacker) > heightOf(ctx, target) ? HIGH_GROUND_DAMAGE : 1;
+  const damage = Math.max(1, Math.round(baseDamage * multiplier * downhill) - target.armor);
   const wasAlive = target.hp > 0;
   target.hp -= damage;
   if (target.kind === "building") loseUsers(ctx, world.teams[target.team], damage);

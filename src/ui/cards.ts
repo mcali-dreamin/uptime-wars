@@ -89,6 +89,9 @@ export const TERRAIN_GUIDE: GuideEntry[] = [
   { title: "Dead link", description: "Light grey with a bright edge.", stats: ["Impassable", "Can't build", "Blocks line of sight"] },
   { title: "Data swamp", description: "Dark teal, dotted.", stats: ["Units move at half speed", "Can't build"] },
   { title: "Data well", description: "Blue diamond.", stats: ["Open data. The economy hooks in soon"] },
+  { title: "Height", description: "Three levels: deep web (darkest), surface web, backbone (lightest).", stats: ["Units below can't see up a cliff unless they're right at its foot", "Attacking downhill deals 25% more damage", "Towers follow the same rules"] },
+  { title: "Cliff", description: "Near-black band with a bright lip on the drop side.", stats: ["Impassable", "Can't build", "You can see and shoot across it"] },
+  { title: "Ramp", description: "Striped gap in a cliff.", stats: ["The only way up or down", "Hold the ramp, hold the plateau"] },
 ];
 
 const STAT_TEXT: Record<string, string> = {

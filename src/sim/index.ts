@@ -3,6 +3,7 @@ export * from "./map";
 export * from "./types";
 export * from "./terrain";
 export { flowField, nextStep, hasLineOfSight, UNREACHABLE } from "./nav";
+export { canSee, heightOf } from "./combat";
 export { createWorld, step } from "./world";
 export type { MatchSetup } from "./world";
 export { queueCommand } from "./commands";

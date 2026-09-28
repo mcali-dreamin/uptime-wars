@@ -1,0 +1,118 @@
+// How the map looks. Three height levels read as three floor shades (the
+// higher, the lighter); cliffs are dark with a bright lip on the drop side;
+// ramps are striped; dead links are light slabs with a bright outline;
+// swamps are stippled teal; data wells are blue diamonds.
+
+import type { Graphics } from "pixi.js";
+import { TILE_BLOCKED, TILE_CLIFF, TILE_RAMP, TILE_SLOW, type Terrain } from "../sim";
+
+const FLOOR = [0x0a0f14, 0x17222d, 0x253545] as const;
+const SWAMP = [0x0f2530, 0x14303b, 0x1a3a46] as const;
+const DEAD_LINK = 0x3b4a5c;
+const DEAD_LINK_EDGE = 0x7d8fa3;
+const CLIFF = 0x070a0e;
+const CLIFF_LIP = 0x9fb3c8;
+const RAMP_STRIPE = 0x2f4254;
+const WELL = 0x38bdf8;
+
+export function tileColor(tile: number, height: number): number {
+  switch (tile) {
+    case TILE_BLOCKED:
+      return DEAD_LINK;
+    case TILE_CLIFF:
+      return CLIFF;
+    case TILE_SLOW:
+      return SWAMP[height]!;
+    default:
+      return FLOOR[height]!;
+  }
+}
+
+/**
+ * Fill every tile, run-length merged per row by color so a 320x180 map is a
+ * few thousand rects, not fifty thousand.
+ */
+export function drawTerrainBase(g: Graphics, terrain: Terrain, cell: number): void {
+  const { cols, rows, tiles, heights } = terrain;
+  for (let row = 0; row < rows; row += 1) {
+    let col = 0;
+    while (col < cols) {
+      const i = row * cols + col;
+      const color = tileColor(tiles[i]!, heights[i]!);
+      let end = col + 1;
+      while (end < cols && tileColor(tiles[row * cols + end]!, heights[row * cols + end]!) === color) end += 1;
+      g.rect(col * cell, row * cell, (end - col) * cell, cell).fill({ color });
+      col = end;
+    }
+  }
+}
+
+/** Edges, stripes, stipple, and wells. Only worth drawing at full size. */
+export function drawTerrainDetail(g: Graphics, terrain: Terrain, cell: number): void {
+  const { cols, rows, tiles, heights } = terrain;
+  const at = (c: number, r: number) => (c < 0 || r < 0 || c >= cols || r >= rows ? TILE_BLOCKED : tiles[r * cols + c]!);
+  const h = (c: number, r: number) => (c < 0 || r < 0 || c >= cols || r >= rows ? 0 : heights[r * cols + c]!);
+  const sides = [
+    [0, -1, 0, 0, 1, 0],
+    [0, 1, 0, 1, 1, 1],
+    [-1, 0, 0, 0, 0, 1],
+    [1, 0, 1, 0, 1, 1],
+  ] as const;
+
+  // Dead links: a bright outline where they meet anything else.
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      if (at(col, row) !== TILE_BLOCKED) continue;
+      for (const [dc, dr, x1, y1, x2, y2] of sides) {
+        if (at(col + dc, row + dr) === TILE_BLOCKED) continue;
+        g.moveTo((col + x1) * cell, (row + y1) * cell).lineTo((col + x2) * cell, (row + y2) * cell);
+      }
+    }
+  }
+  g.stroke({ width: 2, color: DEAD_LINK_EDGE, alpha: 0.9 });
+
+  // Cliffs: a bright lip on each side that drops to lower ground.
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      if (at(col, row) !== TILE_CLIFF) continue;
+      for (const [dc, dr, x1, y1, x2, y2] of sides) {
+        const next = at(col + dc, row + dr);
+        if (next === TILE_BLOCKED || next === TILE_CLIFF || h(col + dc, row + dr) >= h(col, row)) continue;
+        g.moveTo((col + x1) * cell, (row + y1) * cell).lineTo((col + x2) * cell, (row + y2) * cell);
+      }
+    }
+  }
+  g.stroke({ width: 3, color: CLIFF_LIP, alpha: 0.85 });
+
+  // Ramps: diagonal stripes.
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      if (at(col, row) !== TILE_RAMP) continue;
+      const x = col * cell;
+      const y = row * cell;
+      for (let k = 0.25; k < 1; k += 0.25) g.moveTo(x + k * cell, y).lineTo(x, y + k * cell);
+      for (let k = 0.25; k < 1; k += 0.25) g.moveTo(x + cell, y + k * cell).lineTo(x + k * cell, y + cell);
+    }
+  }
+  g.stroke({ width: 2, color: RAMP_STRIPE, alpha: 0.9 });
+
+  // Swamps: stipple.
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      if (at(col, row) !== TILE_SLOW) continue;
+      const x = col * cell;
+      const y = row * cell;
+      g.circle(x + cell * 0.3, y + cell * 0.35, 1.5).circle(x + cell * 0.7, y + cell * 0.7, 1.5);
+    }
+  }
+  g.fill({ color: 0x2b6f80, alpha: 0.8 });
+}
+
+export function drawWells(g: Graphics, terrain: Terrain, cell: number): void {
+  for (const node of terrain.resources) {
+    const cx = (node.col + 0.5) * cell;
+    const cy = (node.row + 0.5) * cell;
+    const r = Math.max(1.5, cell * 0.35);
+    g.moveTo(cx, cy - r).lineTo(cx + r, cy).lineTo(cx, cy + r).lineTo(cx - r, cy).closePath().fill({ color: WELL });
+  }
+}

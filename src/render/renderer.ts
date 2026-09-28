@@ -8,8 +8,6 @@ import { Application, Container, Graphics, Text } from "pixi.js";
 import {
   BUILD_RADIUS_TILES,
   TILE,
-  TILE_BLOCKED,
-  TILE_SLOW,
   type Content,
   type Terrain,
   type Unit,
@@ -17,18 +15,13 @@ import {
 } from "../sim";
 import { Camera } from "./camera";
 import { Fog } from "./fog";
+import { drawTerrainBase, drawTerrainDetail, drawWells } from "./terrain-art";
 
 const TEAM_COLORS = [0x4ade80, 0xf87171] as const;
 const SHOT_TTL_MS = 120;
 const PING_MS = 600;
 const MINIMAP_WIDTH = 240;
 const MINIMAP_MARGIN = 12;
-// Walls must read as walls: bright, outlined, and far from the floor color.
-const TERRAIN_COLORS: Record<number, number> = {
-  [TILE_BLOCKED]: 0x3b4a5c,
-  [TILE_SLOW]: 0x123845,
-};
-const WALL_EDGE = 0x7d8fa3;
 
 interface Shot {
   x1: number;
@@ -275,62 +268,14 @@ export class Renderer {
     });
   }
 
-  /** Terrain, run-length merged per row to keep the shape count down. */
+  /** The whole map at `cell` pixels per tile; details only at full size. */
   private drawTerrain(g: Graphics, terrain: Terrain, cell: number): void {
-    if (g === this.terrainLayer) {
-      g.clear();
-      g.rect(0, 0, terrain.cols * cell, terrain.rows * cell).fill({ color: 0x0e141b });
-    }
-    for (let row = 0; row < terrain.rows; row += 1) {
-      let col = 0;
-      while (col < terrain.cols) {
-        const tile = terrain.tiles[row * terrain.cols + col]!;
-        let end = col + 1;
-        while (end < terrain.cols && terrain.tiles[row * terrain.cols + end] === tile) end += 1;
-        const color = TERRAIN_COLORS[tile];
-        if (color !== undefined) g.rect(col * cell, row * cell, (end - col) * cell, cell).fill({ color });
-        col = end;
-      }
-    }
-    if (g === this.terrainLayer) this.drawTerrainDetail(g, terrain, cell);
-    for (const node of terrain.resources) {
-      const cx = (node.col + 0.5) * cell;
-      const cy = (node.row + 0.5) * cell;
-      const r = Math.max(1.5, cell * 0.35);
-      g.moveTo(cx, cy - r).lineTo(cx + r, cy).lineTo(cx, cy + r).lineTo(cx - r, cy).closePath().fill({ color: 0x38bdf8 });
-    }
-    if (g === this.terrainLayer) {
-      g.rect(0, 0, terrain.cols * cell, terrain.rows * cell).stroke({ width: 2, color: 0x243142 });
-    }
-  }
-
-  /** Outline walls where they meet walkable ground; stipple swamps. */
-  private drawTerrainDetail(g: Graphics, terrain: Terrain, cell: number): void {
-    const at = (c: number, r: number) =>
-      c < 0 || r < 0 || c >= terrain.cols || r >= terrain.rows ? TILE_BLOCKED : terrain.tiles[r * terrain.cols + c]!;
-    for (let row = 0; row < terrain.rows; row += 1) {
-      for (let col = 0; col < terrain.cols; col += 1) {
-        const tile = at(col, row);
-        const x = col * cell;
-        const y = row * cell;
-        if (tile === TILE_BLOCKED) {
-          if (at(col, row - 1) !== TILE_BLOCKED) g.moveTo(x, y).lineTo(x + cell, y);
-          if (at(col, row + 1) !== TILE_BLOCKED) g.moveTo(x, y + cell).lineTo(x + cell, y + cell);
-          if (at(col - 1, row) !== TILE_BLOCKED) g.moveTo(x, y).lineTo(x, y + cell);
-          if (at(col + 1, row) !== TILE_BLOCKED) g.moveTo(x + cell, y).lineTo(x + cell, y + cell);
-        }
-      }
-    }
-    g.stroke({ width: 2, color: WALL_EDGE, alpha: 0.9 });
-    for (let row = 0; row < terrain.rows; row += 1) {
-      for (let col = 0; col < terrain.cols; col += 1) {
-        if (at(col, row) !== TILE_SLOW) continue;
-        const x = col * cell;
-        const y = row * cell;
-        g.circle(x + cell * 0.3, y + cell * 0.35, 1.5).circle(x + cell * 0.7, y + cell * 0.7, 1.5);
-      }
-    }
-    g.fill({ color: 0x2b6f80, alpha: 0.8 });
+    const full = g === this.terrainLayer;
+    if (full) g.clear();
+    drawTerrainBase(g, terrain, cell);
+    if (full) drawTerrainDetail(g, terrain, cell);
+    drawWells(g, terrain, cell);
+    if (full) g.rect(0, 0, terrain.cols * cell, terrain.rows * cell).stroke({ width: 2, color: 0x243142 });
   }
 
   /**

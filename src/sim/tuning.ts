@@ -24,3 +24,7 @@ export const BUILDING_SIGHT = 700;
 export const FOUND_REACH = 72;
 /** A builder on a plain move order stops when this close. */
 export const MOVE_REACH = 6;
+/** From low ground you can only see up a cliff this close to the edge. */
+export const LOW_GROUND_SIGHT = 72;
+/** Attacking downhill hits this much harder. */
+export const HIGH_GROUND_DAMAGE = 1.25;

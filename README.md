@@ -40,6 +40,11 @@ The map starts black. You see what your agent, units, and buildings can see;
 places you've been stay dimmed, with enemy buildings as you last saw them.
 `?reveal` in the URL turns the fog off.
 
+**Height** matters. The web has three levels (deep web, surface web,
+backbone). Cliffs separate them and ramps are the only way between. From below
+you can't see up a cliff unless you're at its foot, and attacking downhill
+deals 25% more damage. Hold a ramp and you hold the plateau.
+
 **Users** are why you're online. They arrive while your core is up and grow
 toward your capacity (the core serves 40; each Web App adds 60). Every user
 pays compute each second, and every hit your buildings take drives some away.
@@ -125,7 +130,7 @@ Direction: survival on a procedurally generated open web.
 - [ ] Data wells feed the economy
 - [x] Wandering creep packs that only attack what they see
 - [x] Endless escalating waves from a nest in the middle; uptime score
-- [ ] Elevation: plateaus, cliffs, ramps; high-ground sight and range
+- [x] Elevation: plateaus, cliffs, ramps; high-ground sight and damage
 - [x] Rally points: per spawner, with a global default on the core
 - [x] Upgrades researched at the core
 - Heroes and security abilities (zero-day, RCE, ransomware, worm, DDoS, honeypot)
