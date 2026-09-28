@@ -10,8 +10,8 @@ const EDGE_DELAY_MS = 250;
 const EDGE_RAMP_MS = 600;
 const EDGE_MIN_SPEED = 0.25;
 const MAX_ZOOM = 2;
-/** Never zoom out past this: the map should always be bigger than the screen. */
-const MIN_ZOOM = 0.45;
+/** Far enough out to see a big chunk of the web; the minimap covers the rest. */
+const MIN_ZOOM = 0.15;
 
 export class Camera {
   /** World point at the center of the screen. */

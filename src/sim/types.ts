@@ -150,20 +150,13 @@ export type SimEvent =
   | { type: "rejected"; command: Command; reason: string };
 
 /**
- * Derived, immutable, and regenerated from the seed. Excluded from the world
- * hash: two peers with the same seed always agree on it.
+ * Route caches. Every field is a pure function of the terrain and a goal
+ * tile, so peers that fill them at different times still agree. Excluded
+ * from the world hash.
  */
 export interface Navigation {
-  /** Flow field toward each team's current builder order, by team id. */
-  builderOrder: [Int32Array | null, Int32Array | null];
-  /** Flow fields toward rally points, by goal tile. Filled on demand. */
-  rally: Map<number, Int32Array>;
-  /**
-   * Flow field toward each terrain roam point, same order. Filled lazily the
-   * first time a pack heads there: pure function of the terrain, so peers
-   * computing at different times still agree.
-   */
-  toRoam: (Int32Array | null)[];
+  /** Flow field toward a goal tile, keyed by tile index. Filled on demand by walkTo. */
+  goals: Map<number, Int32Array>;
 }
 
 export interface World {

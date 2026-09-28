@@ -3,3 +3,4 @@ dist/
 .spacefast/
 *.log
 .DS_Store
+shots/

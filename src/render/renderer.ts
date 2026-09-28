@@ -20,6 +20,7 @@ import { Fog } from "./fog";
 
 const TEAM_COLORS = [0x4ade80, 0xf87171] as const;
 const SHOT_TTL_MS = 120;
+const PING_MS = 600;
 const MINIMAP_WIDTH = 240;
 const MINIMAP_MARGIN = 12;
 // Walls must read as walls: bright, outlined, and far from the floor color.
@@ -65,6 +66,8 @@ export class Renderer {
   });
   private previous = new Map<number, { x: number; y: number }>();
   private shots: Shot[] = [];
+  /** Order markers: a ring that shrinks where you just sent something. */
+  private pings: { x: number; y: number; age: number }[] = [];
   private bannerAge = Infinity;
   private terrain: Terrain | null = null;
   private minimapScale = 1;
@@ -88,6 +91,7 @@ export class Renderer {
     this.terrain = terrain;
     this.previous.clear();
     this.shots = [];
+    this.pings = [];
     this.camera.setBounds(terrain.cols * TILE, terrain.rows * TILE);
     this.drawTerrain(this.terrainLayer, terrain, TILE);
     this.minimapScale = MINIMAP_WIDTH / (terrain.cols * TILE);
@@ -130,6 +134,11 @@ export class Renderer {
         this.showBanner(`Wave ${event.wave}: ${event.name} · ${event.units} creeps in ${event.packs} packs${boss}`);
       }
     }
+  }
+
+  /** Mark where an order was given. Render-only. */
+  ping(x: number, y: number): void {
+    this.pings.push({ x, y, age: 0 });
   }
 
   showBanner(text: string): void {
@@ -195,6 +204,12 @@ export class Renderer {
 
     this.overlay.clear();
     this.drawSelection(world, content, selectedId);
+    for (const ping of this.pings) {
+      const t = ping.age / PING_MS;
+      this.overlay.circle(ping.x, ping.y, 28 * (1 - t) + 6).stroke({ width: 2.5, color: 0xfacc15, alpha: 1 - t });
+      ping.age += deltaMs;
+    }
+    this.pings = this.pings.filter((ping) => ping.age < PING_MS);
     if (ghost) {
       const core = world.entities.find((entity) => entity.id === world.teams[0].coreId);
       if (core) this.overlay.circle(core.x, core.y, BUILD_RADIUS_TILES * TILE).stroke({ width: 2, color: 0x4ade80, alpha: 0.25 });
@@ -325,9 +340,13 @@ export class Renderer {
   private drawSelection(world: World, content: Content, selectedId: number | null): void {
     if (selectedId === null) return;
     const building = world.entities.find((e) => e.id === selectedId);
-    if (!building || building.kind !== "building") return;
+    if (!building) return;
     const g = this.overlay;
     const color = 0xfacc15;
+    if (building.kind === "unit") {
+      g.circle(building.x, building.y, building.radius + 9).stroke({ width: 2, color, alpha: 0.9 });
+      return;
+    }
     const size = building.footprint * TILE + 6;
     g.rect(building.x - size / 2, building.y - size / 2, size, size).stroke({ width: 2, color, alpha: 0.9 });
 
