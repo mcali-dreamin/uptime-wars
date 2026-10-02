@@ -28,7 +28,7 @@ const server = createServer(async (req, res) => {
 }).listen(0);
 
 const failures = [];
-/** Poll `fn` until it returns truthy or `ms` pass; returns the last value. */
+/** Poll `fn` until it returns truthy or `ms` of wall time pass; returns the last value. */
 const waitFor = async (fn, ms) => {
   const until = Date.now() + ms;
   let value;
@@ -38,6 +38,17 @@ const waitFor = async (fn, ms) => {
     await new Promise((r) => setTimeout(r, 200));
   } while (Date.now() < until);
   return value;
+};
+/**
+ * Poll `fn` until it returns truthy or the *game* advances `seconds` of game
+ * time. CI renders in software and runs the game at a fraction of real time,
+ * so budgets for things that happen in the game are counted in game ticks;
+ * the wall-clock cap only stops a hung page.
+ */
+let tickOf = async () => 0;
+const waitForGame = async (fn, seconds) => {
+  const start = await tickOf();
+  return waitFor(async () => (await fn()) || (await tickOf()) - start >= seconds * 20, 15 * 60 * 1000).then(async () => fn());
 };
 const check = (ok, message) => {
   console.log(`${ok ? "ok  " : "FAIL"} ${message}`);
@@ -57,6 +68,7 @@ try {
   await page.waitForTimeout(800);
   const box = await (await page.$("canvas")).boundingBox();
   const state = (fn, arg) => page.evaluate(fn, arg);
+  tickOf = () => state(() => window.uptime.world.tick);
   /** World point -> page point, through the live camera. */
   const toPage = async (x, y) => {
     const p = await state(([x, y]) => {
@@ -102,7 +114,7 @@ try {
       const a = w.entities.find((e) => e.id === w.teams[0].builderId);
       return Math.hypot(a.x - x, a.y - y);
     }, [walkTo.x, walkTo.y]);
-  await waitFor(async () => (await distanceLeft()) < 30, 90000);
+  await waitForGame(async () => (await distanceLeft()) < 30, 30);
   const walked = await distanceLeft();
   check(walked < 30, `clicking the ground walks the agent (ended ${Math.round(walked)}px away)`);
 
@@ -116,7 +128,7 @@ try {
   p = await toPage(here.x, here.y);
   await page.mouse.move(p.x, p.y);
   await page.mouse.click(p.x, p.y);
-  const founded = await waitFor(() => state(() => window.uptime.world.teams[0].coreId !== -1), 90000);
+  const founded = await waitForGame(() => state(() => window.uptime.world.teams[0].coreId !== -1), 30);
   check(founded, "C + click founds the core");
   await waitFor(() => page.$$eval(".build-btn", (b) => !b.some((x) => x.dataset.building === "found")), 10000);
   const buttons = await page.$$eval(".build-btn", (b) => b.map((x) => x.dataset.building));
@@ -133,12 +145,12 @@ try {
   p = await toPage(spot.x, spot.y);
   await page.mouse.move(p.x, p.y);
   await page.mouse.click(p.x, p.y);
-  const spawnerId = await waitFor(
+  const spawnerId = await waitForGame(
     () => state(() => window.uptime.world.entities.find((e) => e.kind === "building" && e.team === 0 && window.uptime.content.buildings[e.defId].spawn)?.id ?? null),
-    30000,
+    10,
   );
   check(spawnerId !== null, "placing a spawner works");
-  const spawned = await waitFor(() => state((id) => window.uptime.world.entities.some((e) => e.kind === "unit" && e.spawnerId === id), spawnerId), 120000);
+  const spawned = await waitForGame(() => state((id) => window.uptime.world.entities.some((e) => e.kind === "unit" && e.spawnerId === id), spawnerId), 30);
   check(Boolean(spawned), "the spawner produces units");
   p = await toPage(spot.x, spot.y);
   await page.mouse.click(p.x, p.y);
@@ -152,10 +164,10 @@ try {
       const units = window.uptime.world.entities.filter((e) => e.kind === "unit" && e.spawnerId === id);
       return units.map((u) => Math.round(Math.hypot(u.x - x, u.y - y)));
     }, [spawnerId, rally.x, rally.y]);
-  await waitFor(async () => {
+  await waitForGame(async () => {
     const d = await distances();
     return d.length > 0 && d.every((n) => n < 90);
-  }, 120000);
+  }, 60);
   const gathered = await distances();
   check(gathered.length > 0 && gathered.every((d) => d < 90), `right-click rallies the spawner's units (${gathered.join(", ")}px)`);
 
@@ -167,7 +179,7 @@ try {
   const upgrades = await waitFor(() => page.$$eval(".upgrade-btn", (b) => b.length), 10000);
   check(upgrades >= 6, `selecting the core shows research (${upgrades} upgrades)`);
   await page.click(".upgrade-btn:not([disabled])");
-  const researching = await waitFor(() => state(() => window.uptime.world.teams[0].research?.upgrade ?? null), 30000);
+  const researching = await waitForGame(() => state(() => window.uptime.world.teams[0].research?.upgrade ?? null), 10);
   check(Boolean(researching), `clicking an upgrade starts research (${researching})`);
 
   const ticks = await state(() => window.uptime.world.tick);
