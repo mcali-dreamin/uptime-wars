@@ -76,25 +76,45 @@ Add `?debug` to the URL to expose live state as `window.uptime`.
 
 ```
 src/
-  content/   JSON: races, buildings, units, waves, damage table
-  sim/       deterministic simulation (no DOM, no clock, no Math.random)
-    world.ts       createWorld, step() (the order systems run in), outcome
-    commands.ts    player commands: build, move, found, rally
-    placement.ts   "can I build here" rules, shared with the UI preview
-    entities.ts    creating buildings, units, cores
-    units.ts       unit behaviour: guard, roam, builder
-    movement.ts    walkTo: straight when clear, else a cached flow field
-    combat.ts      targeting (spatial grid) and damage
-    spawners.ts / economy.ts / waves.ts
-    terrain.ts / nav.ts   seeded map generation, flow fields, line of sight
-  game/      the player's side: Session (match + issuing commands) and
-             Selection (what a click means for what you have selected)
-  ui/        HUD, build bar, info panel, race picker
-  render/    PixiJS renderer, camera, fog (reads the world, never writes it)
-  input.ts   pointer + keys; camera controls, hands the rest to the game
-  main.ts    wiring and the frame loop
-tests/       simulation tests (vitest)
+  content/        JSON: races, buildings, units, waves, upgrades, economy, damage
+  sim/            deterministic simulation (no DOM, no clock, no Math.random)
+    world.ts        createWorld, step() (the order systems run in), outcome
+    commands.ts     player commands: build, move, found, rally, research
+    placement.ts    "can I build here", network reach, cores
+    entities.ts     creating buildings, units, cores
+    units/          one module per unit mode, dispatched from a registry:
+                      guard, roam (packs + traffic), builder; engage = fighting
+    movement.ts     walkTo: straight when clear, else a cached flow field
+    combat.ts       targeting (spatial grid), high ground, damage
+    economy.ts      income, users, revenue, churn, traffic
+    upgrades.ts     research and stat multipliers
+    spawners.ts / waves.ts
+    terrain/        map generation: tiles, generate, elevation, scatter, grid
+    content/        schema, load, validate
+    nav.ts          flow fields, line of sight, walkability
+  game/           the player's side: Session (match, issuing commands) and
+                  Selection (what a click means for what you have selected)
+  ui/             HUD, build bar, info panel, guide, race picker
+  render/         reads the world, never writes it
+    renderer.ts     shell: camera, fog, minimap, banner, interpolation, effects
+    frame.ts        the Frame / WorldView contract every world view implements
+    pixi/world2d.ts the default 2D view (plus glyphs, terrain art)
+    three/world3d.ts the experimental 3D view (?3d)
+    palette.ts      colours both views share
+  input.ts        pointer + keys; camera controls, hands the rest to the game
+  main.ts         wiring and the frame loop
+tests/            one file per system, plus rule tests
 ```
+
+**Layers only point one way**, and `tests/architecture-rules.test.ts` fails the
+build if that changes: `sim` imports nothing outside itself (and can't touch
+browser globals, so it can run headless for replays and lockstep peers);
+`game` and `render` import `sim`; `ui` imports `game` and `sim`; `input.ts` and
+`main.ts` wire everything together.
+
+**Adding things.** A race, unit, building, upgrade, or wave rule is usually a
+JSON edit. A new unit behaviour is a file in `sim/units/` plus one line in its
+registry. A new way to draw the world is a `WorldView` (see `render/frame.ts`).
 
 **The simulation is the game.** It runs at a fixed 20 ticks per second and,
 given the same content, seed, and command log, produces the same world on

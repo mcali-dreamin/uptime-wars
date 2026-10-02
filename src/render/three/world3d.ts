@@ -7,8 +7,8 @@
 
 import * as THREE from "three";
 import { TILE, TILE_BLOCKED, TILE_CLIFF, TILE_RAMP, networkProviders, type Entity, type Point, type Terrain, type World } from "../../sim";
-import { PING_MS, SHOT_TTL_MS, TEAM_COLORS, type Frame, type WorldView } from "../renderer";
-import { tileColor } from "../terrain-art";
+import { PING_MS, SHOT_TTL_MS, type Frame, type WorldView } from "../frame";
+import { TEAM_COLORS, tileColor } from "../palette";
 
 /** Height of one level step, in world units. */
 const STEP = 40;

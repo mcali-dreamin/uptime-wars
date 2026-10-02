@@ -19,7 +19,7 @@ import type { Content } from "./content";
 import { tickConstruction, tickCooldowns, tickIncome, tickUsers } from "./economy";
 import { foundCore, spawnUnit } from "./entities";
 import { footprintCenter } from "./map";
-import { isCore } from "./placement";
+import { teamCores } from "./placement";
 import { tickSpawners } from "./spawners";
 import { generateTerrain } from "./terrain";
 import { BASE_INCOME, STARTING_COMPUTE } from "./tuning";
@@ -132,7 +132,7 @@ function checkOutcome(ctx: TickContext): void {
     } else {
       const primary = ctx.byId.get(team.coreId);
       if (!primary || primary.hp <= 0) {
-        const next = world.entities.find((e) => e.hp > 0 && isCore(content, team, e));
+        const next = teamCores(world, content, team)[0];
         if (next) {
           team.coreId = next.id;
           world.events.push({ type: "failover", team: team.id, x: next.x, y: next.y });

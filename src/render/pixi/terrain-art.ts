@@ -4,29 +4,8 @@
 // swamps are stippled teal; data wells are blue diamonds.
 
 import type { Graphics } from "pixi.js";
-import { TILE_BLOCKED, TILE_CLIFF, TILE_RAMP, TILE_SLOW, type Terrain } from "../sim";
-
-const FLOOR = [0x0a0f14, 0x17222d, 0x253545] as const;
-const SWAMP = [0x0f2530, 0x14303b, 0x1a3a46] as const;
-const DEAD_LINK = 0x3b4a5c;
-const DEAD_LINK_EDGE = 0x7d8fa3;
-const CLIFF = 0x070a0e;
-const CLIFF_LIP = 0x9fb3c8;
-const RAMP_STRIPE = 0x2f4254;
-const WELL = 0x38bdf8;
-
-export function tileColor(tile: number, height: number): number {
-  switch (tile) {
-    case TILE_BLOCKED:
-      return DEAD_LINK;
-    case TILE_CLIFF:
-      return CLIFF;
-    case TILE_SLOW:
-      return SWAMP[height]!;
-    default:
-      return FLOOR[height]!;
-  }
-}
+import { TILE_BLOCKED, TILE_CLIFF, TILE_RAMP, TILE_SLOW, type Terrain } from "../../sim";
+import { CLIFF_LIP, DEAD_LINK_EDGE, RAMP_STRIPE, WELL, tileColor } from "../palette";
 
 /**
  * Fill every tile, run-length merged per row by color so a 320x180 map is a
