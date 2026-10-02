@@ -39,8 +39,8 @@ const HEIGHT_HIGH = 0.61;
 /** Height features are this many times larger than wall features. */
 const HEIGHT_SCALE = 0.45;
 /** Beyond the ramps connectivity needs, add this many more, spread out. */
-const EXTRA_RAMPS = 36;
-const RAMP_SPACING = 14;
+const EXTRA_RAMPS = 110;
+const RAMP_SPACING = 10;
 
 export interface TilePoint {
   col: number;

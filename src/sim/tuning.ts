@@ -28,3 +28,7 @@ export const MOVE_REACH = 6;
 export const LOW_GROUND_SIGHT = 72;
 /** Attacking downhill hits this much harder. */
 export const HIGH_GROUND_DAMAGE = 1.25;
+/** A pack heading for sensed traffic counts as arrived this close to it. */
+export const SENSED_ARRIVAL = 160;
+/** A roaming pack reconsiders where it's going this often, in ticks. */
+export const REROUTE_TICKS = 200;

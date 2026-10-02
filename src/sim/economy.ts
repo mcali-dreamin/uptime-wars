@@ -90,3 +90,17 @@ export function loseUsers(ctx: TickContext, team: Team, damage: number): void {
   team.churnCarry -= lost;
   team.users = Math.max(0, team.users - lost);
 }
+
+/**
+ * How far away (pixels) crawlers can sense this team's cores. It's the noise
+ * you make: more buildings and more users, more attention. 0 before a core.
+ */
+export function trafficRadius(world: World, content: TickContext["content"], team: Team): number {
+  if (team.controller !== "human" || team.coreId === -1) return 0;
+  const t = content.economy.traffic;
+  let buildings = 0;
+  for (const entity of world.entities) {
+    if (entity.kind === "building" && entity.team === team.id && entity.hp > 0) buildings += 1;
+  }
+  return Math.min(t.max, t.base + t.perBuilding * buildings + t.perUser * team.users);
+}

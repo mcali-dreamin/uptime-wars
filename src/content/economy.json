@@ -3,5 +3,12 @@
   "growthPerSecond": 0.04,
   "minArrivalsPerSecond": 1,
   "revenuePerUserPerSecond": 0.08,
-  "damagePerUserLost": 12
+  "damagePerUserLost": 12,
+  "traffic": {
+    "base": 8000,
+    "perBuilding": 250,
+    "perUser": 25,
+    "max": 16000,
+    "pullChance": 0.55
+  }
 }

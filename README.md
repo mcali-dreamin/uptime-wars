@@ -64,8 +64,10 @@ Numbers live in `src/content/economy.json`.
 The malware nest sits in the middle of the web and you start out toward the
 edge. Waves never stop: each one is bigger, comes sooner, and unlocks nastier
 creeps (worms, then trojans, then ransomware bosses). Every wave leaves the nest
-as packs of random size that wander outward. Nobody tells them where you are;
-a pack attacks whatever it can see, so trouble comes from any side. Your score
+as packs of random size that wander outward. Nobody tells them where you are,
+but you make **traffic**: crawlers can sense your cores from far away, more
+so as you grow, and packs that sense you march on you. Trouble comes from
+whichever side a pack is wandering in from. Your score
 is **uptime**: how long your core stays online. Taking the nest offline ends
 the run early, in your favor. Hover anything (buttons, buildings, units, terrain) to see what it does.
 Add `?debug` to the URL to expose live state as `window.uptime`.
