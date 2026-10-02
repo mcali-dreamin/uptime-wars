@@ -22,6 +22,7 @@ import {
   multiplier,
   nextLevel,
   userCapacity,
+  trafficRadius,
   waveInterval,
   TILE,
   tileAt,
@@ -809,6 +810,47 @@ describe("network and redundancy", () => {
     first.hp = 0;
     for (let i = 0; i < content.upgrades.anycast!.researchTicks + 5; i++) step(world, content);
     expect(levelOf(world.teams[0], "anycast")).toBe(1);
+  });
+});
+
+describe("traffic", () => {
+  const t = content.economy.traffic;
+
+  it("grows with buildings and users, is capped, and is zero before a core", () => {
+    const deploying = createWorld(content, { seed: 1234, races: ["open-source", "botnet"] as [string, string] });
+    expect(trafficRadius(deploying, content, deploying.teams[0])).toBe(0);
+    const world = createWorld(content, SETUP);
+    const team = world.teams[0];
+    const before = trafficRadius(world, content, team);
+    team.users += 10;
+    expect(trafficRadius(world, content, team)).toBe(before + 10 * t.perUser);
+    team.users = 100_000;
+    expect(trafficRadius(world, content, team)).toBe(t.max);
+  });
+
+  it("crawlers find an undefended base within a few minutes of the first wave, on every map", () => {
+    for (const seed of [1, 2, 3, 42, 1234]) {
+      const world = createWorld(content, { ...SETUP, seed });
+      let first: number | null = null;
+      while (first === null && world.tick < 20 * 300 && !world.outcome) {
+        step(world, content);
+        if (world.events.some((e) => e.type === "shot" && e.team === 1)) first = world.tick;
+      }
+      expect(first, `seed ${seed}`).not.toBeNull();
+      // The first wave leaves at firstWaveTicks; contact within 4 minutes of that.
+      expect(first! - content.waves.firstWaveTicks, `seed ${seed}`).toBeLessThan(20 * 240);
+    }
+  });
+
+  it("routes from the nest to your core are never wildly longer than the straight line", () => {
+    for (const seed of [1, 2, 3, 42, 1234]) {
+      const world = createWorld(content, { ...SETUP, seed });
+      const core = world.entities.find((e) => e.id === world.teams[0].coreId)!;
+      const nest = world.entities.find((e) => e.id === world.teams[1].coreId)!;
+      const field = flowField(world.terrain, [Math.floor(core.y / TILE) * world.terrain.cols + Math.floor(core.x / TILE)]);
+      const route = (field[Math.floor(nest.y / TILE) * world.terrain.cols + Math.floor(nest.x / TILE)]! / 10) * TILE;
+      expect(route / Math.hypot(core.x - nest.x, core.y - nest.y), `seed ${seed}`).toBeLessThan(2);
+    }
   });
 });
 

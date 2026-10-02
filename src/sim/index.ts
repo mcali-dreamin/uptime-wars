@@ -10,7 +10,7 @@ export { queueCommand } from "./commands";
 export { canPlace, canFound, buildCost, isOccupied, isCore, inNetwork, networkProviders } from "./placement";
 export { planWave, waveInterval } from "./waves";
 export { STARTING_COMPUTE, BASE_INCOME } from "./tuning";
-export { userCapacity } from "./economy";
+export { trafficRadius, userCapacity } from "./economy";
 export { canResearch, levelOf, multiplier, nextLevel } from "./upgrades";
 export { hashWorld, hashTerrain } from "./hash";
 

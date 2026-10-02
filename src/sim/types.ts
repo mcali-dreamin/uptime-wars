@@ -148,8 +148,8 @@ export interface WaveState {
   /** Units scheduled to enter, sorted by tick. */
   pending: WaveSpawn[];
   nextPackId: number;
-  /** Pack id -> index of the roam point it is heading for. */
-  packs: Record<number, number>;
+  /** Pack id -> where it's heading: a roam point index, or a point it sensed. */
+  packs: Record<number, number | Point>;
 
 }
 

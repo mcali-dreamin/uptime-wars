@@ -132,6 +132,12 @@ export interface EconomyDef {
   revenuePerUserPerSecond: number;
   /** One user leaves for every this much damage your buildings take. */
   damagePerUserLost: number;
+  /**
+   * Traffic: how far away crawlers can sense a core, in pixels. Grows with
+   * your buildings and users. A roaming pack that senses a core usually
+   * heads for it (pullChance); otherwise it wanders as before.
+   */
+  traffic: { base: number; perBuilding: number; perUser: number; max: number; pullChance: number };
 }
 
 export type UpgradeStat = "unitHp" | "unitDamage" | "towerRange" | "spawnSpeed" | "userCapacity" | "revenue";

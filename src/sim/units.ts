@@ -15,7 +15,10 @@ import { foundCore } from "./entities";
 import { goalField, distance, walkTo } from "./movement";
 import { hasClearPath, moveToward, nextStep } from "./nav";
 import { canFound } from "./placement";
-import { randomInt } from "./rng";
+import { nextRandom, randomInt } from "./rng";
+import { trafficRadius } from "./economy";
+import { TILE } from "./map";
+import { isCore } from "./placement";
 import { multiplier } from "./upgrades";
 import {
   BUILDING_SIGHT,
@@ -26,8 +29,10 @@ import {
   MOVE_REACH,
   PACK_SPREAD,
   ROAM_SPEED,
+  REROUTE_TICKS,
+  SENSED_ARRIVAL,
 } from "./tuning";
-import type { Entity, Unit, World } from "./types";
+import type { Entity, Point, Unit, World } from "./types";
 
 export function tickUnits(ctx: TickContext): void {
   const { world, content } = ctx;
@@ -53,7 +58,9 @@ export function tickUnits(ctx: TickContext): void {
       const home = { x: unit.homeX, y: unit.homeY };
       if (distance(unit, home) > HOME_SLACK) walkTo(world, unit, home, def.speed);
     } else {
-      roam(ctx, unit, leaders.get(unit.packId), def.speed * ROAM_SPEED);
+      // Aimless packs amble; packs that sensed traffic march.
+      const marching = typeof world.waves.packs[unit.packId] === "object";
+      roam(ctx, unit, leaders.get(unit.packId), def.speed * (marching ? 1 : ROAM_SPEED));
     }
   }
 }
@@ -105,10 +112,34 @@ function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
 }
 
 /**
- * Traffic flows outward from the middle of the web: a roam point's chance of
- * being picked grows with its distance from the nest. No knowledge of where
- * anyone lives, just which way the current runs.
+ * Where a pack goes next. If the pack can sense a core's traffic it usually
+ * heads there; otherwise it drifts outward from the nest. Each pack decides
+ * for itself, from where it stands: there is no shared knowledge.
  */
+function pickDestination(ctx: TickContext, unit: Unit): number | Point {
+  const { world, content } = ctx;
+  if (nextRandom(world) < content.economy.traffic.pullChance) {
+    let best: Point | null = null;
+    let bestGap = Infinity;
+    for (const team of world.teams) {
+      if (team.id === unit.team) continue;
+      const radius = trafficRadius(world, content, team);
+      if (radius <= 0) continue;
+      for (const entity of world.entities) {
+        if (entity.hp <= 0 || !isCore(content, team, entity)) continue;
+        const d = distance(unit, entity);
+        if (d <= radius && d < bestGap) {
+          best = { x: entity.x, y: entity.y };
+          bestGap = d;
+        }
+      }
+    }
+    if (best) return best;
+  }
+  return pickRoamPoint(world);
+}
+
+/** Drift outward: a roam point's chance grows with its distance from the nest. */
 function pickRoamPoint(world: World): number {
   const { roamPoints, nest } = world.terrain;
   const weights = roamPoints.map((point) => {
@@ -122,6 +153,14 @@ function pickRoamPoint(world: World): number {
     if (roll <= 0) return i;
   }
   return weights.length - 1;
+}
+
+/** Next waypoint toward a roam point index or a sensed point; null on arrival. */
+function stepToward(world: World, unit: Unit, destination: number | Point): Point | null {
+  if (typeof destination === "number") return nextStep(world.terrain, roamField(world, destination), unit.x, unit.y);
+  if (distance(unit, destination) <= SENSED_ARRIVAL) return null;
+  const tile = Math.floor(destination.y / TILE) * world.terrain.cols + Math.floor(destination.x / TILE);
+  return nextStep(world.terrain, goalField(world, tile), unit.x, unit.y) ?? destination;
 }
 
 function roamField(world: World, index: number): Int32Array {
@@ -143,12 +182,19 @@ function roam(ctx: TickContext, unit: Unit, leader: Unit | undefined, speed: num
   }
 
   let destination = world.waves.packs[unit.packId];
-  let waypoint = destination === undefined ? null : nextStep(terrain, roamField(world, destination), unit.x, unit.y);
+  // Every so often a pack wandering a roam route reconsiders; that's when it
+  // can pick up traffic it couldn't before. Only the leader decides, and the
+  // offset spreads packs out so they don't all reroute on the same tick.
+  const rethink =
+    typeof destination === "number" &&
+    leader === unit &&
+    (world.tick + unit.packId * 37) % REROUTE_TICKS === 0;
+  let waypoint = destination === undefined || rethink ? null : stepToward(world, unit, destination);
   if (!waypoint) {
-    // Arrived, or new pack: wander somewhere else.
-    destination = pickRoamPoint(world);
+    // Arrived, or new pack: decide where to go next.
+    destination = pickDestination(ctx, unit);
     world.waves.packs[unit.packId] = destination;
-    waypoint = nextStep(terrain, roamField(world, destination), unit.x, unit.y);
+    waypoint = stepToward(world, unit, destination);
   }
   if (waypoint) moveToward(terrain, unit, waypoint.x, waypoint.y, speed);
 }
