@@ -91,3 +91,8 @@ export function inNetwork(world: World, content: Content, teamId: TeamId, x: num
     return dx * dx + dy * dy <= reach * reach;
   });
 }
+
+/** The team's living cores, in id order. */
+export function teamCores(world: World, content: Content, team: Team): Building[] {
+  return world.entities.filter((e): e is Building => e.kind === "building" && e.hp > 0 && isCore(content, team, e));
+}

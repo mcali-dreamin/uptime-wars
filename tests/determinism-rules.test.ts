@@ -4,7 +4,8 @@
 
 import { describe, expect, it } from "vitest";
 
-const SOURCES = import.meta.glob<string>("../src/sim/*.ts", { query: "?raw", import: "default", eager: true });
+// Recursive: behaviour, terrain, and content live in subfolders.
+const SOURCES = import.meta.glob<string>("../src/sim/**/*.ts", { query: "?raw", import: "default", eager: true });
 
 const BANNED: [RegExp, string][] = [
   [/Math\.random\b/, "use the seeded RNG in rng.ts"],
@@ -19,10 +20,12 @@ function stripComments(source: string): string {
 }
 
 describe("determinism rules", () => {
-  const files = Object.entries(SOURCES).map(([path, source]) => [path.split("/").pop()!, source] as const);
+  const files = Object.entries(SOURCES).map(([path, source]) => [path.replace("../src/sim/", ""), source] as const);
 
-  it("finds the simulation sources", () => {
-    expect(files.length).toBeGreaterThan(5);
+  it("finds the simulation sources, including subfolders", () => {
+    const names = files.map(([name]) => name);
+    expect(names).toContain("world.ts");
+    for (const folder of ["units/", "terrain/", "content/"]) expect(names.some((n) => n.startsWith(folder))).toBe(true);
   });
 
   for (const [file, source] of files) {
