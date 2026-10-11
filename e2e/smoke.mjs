@@ -118,6 +118,8 @@ try {
   });
   check(agent.selected, "deploy agent starts selected");
   check((await page.textContent("#hint")).length > 0, "hint line is shown while deploying");
+  const preview = `${await page.textContent("#preview-title")} | ${await page.textContent("#preview-creeps")}`;
+  check(preview.startsWith("Wave 1 · ") && preview.includes("Bot"), `the HUD previews the next wave (${preview})`);
 
   // 2. Click the ground: the agent walks there.
   const walkTo = await openNear(agent.x, agent.y, 4, 8);

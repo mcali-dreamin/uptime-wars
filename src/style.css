@@ -58,6 +58,26 @@ body {
   letter-spacing: 0.08em;
 }
 
+.preview {
+  min-width: 0;
+}
+
+.preview .label,
+#preview-creeps {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#preview-creeps .new {
+  color: var(--accent);
+}
+
+#preview-creeps .boss {
+  color: var(--danger);
+  font-weight: bold;
+}
+
 #status {
   margin-left: auto;
   font-weight: bold;
