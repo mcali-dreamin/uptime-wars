@@ -103,6 +103,11 @@ try {
 
   // 1. Race picker, then the deploy agent starts selected.
   check(await page.$eval("#race-picker", (el) => !el.hidden), "race picker is shown");
+  const swatches = await page.$$eval(".color-swatch", (b) => b.map((x) => x.dataset.color));
+  check(swatches.length >= 6, `colour picker offers ${swatches.length} colours`);
+  await page.click('.color-swatch[data-color="purple"]');
+  check(await state(() => window.uptime.session.color.id === "purple"), "clicking a swatch picks that colour");
+  check(await page.$eval(".color-swatch.chosen", (el) => el.dataset.color) === "purple", "the chosen swatch is marked");
   await page.keyboard.press("1");
   const started = Date.now();
   await page.waitForTimeout(300);

@@ -13,10 +13,13 @@ import {
   type World,
 } from "../sim";
 
+import { playerColor, type PlayerColor } from "./colors";
+
 export const HUMAN: TeamId = 0;
 const HORDE_RACE = "botnet";
 const INPUT_DELAY_TICKS = 2;
 const RACE_KEY = "uptime:race";
+const COLOR_KEY = "uptime:color";
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
@@ -26,6 +29,8 @@ export type Order = DistributiveOmit<Command, "tick" | "team">;
 export class Session {
   readonly playable: string[];
   raceId: string;
+  /** The player's colour. Render-only: the simulation never sees it. */
+  color: PlayerColor;
   world: World;
 
   constructor(readonly content: Content) {
@@ -34,6 +39,7 @@ export class Session {
       .map(([id]) => id);
     const saved = localStorage.getItem(RACE_KEY) ?? "";
     this.raceId = this.playable.includes(saved) ? saved : this.playable[0]!;
+    this.color = playerColor(localStorage.getItem(COLOR_KEY) ?? "");
     this.world = this.newWorld();
   }
 
@@ -41,6 +47,11 @@ export class Session {
     this.raceId = raceId;
     localStorage.setItem(RACE_KEY, raceId);
     this.world = this.newWorld();
+  }
+
+  setColor(id: string): void {
+    this.color = playerColor(id);
+    localStorage.setItem(COLOR_KEY, this.color.id);
   }
 
   issue(order: Order): void {
