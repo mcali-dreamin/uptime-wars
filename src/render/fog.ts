@@ -2,10 +2,13 @@
 // player gets to *see*, never what the simulation does. (Creeps already only
 // act on what they can see; that rule lives in the sim.)
 //
-// Three states per tile:
-// - unexplored: black. Terrain and everything on it is hidden.
-// - explored:   dimmed. Terrain and last-seen enemy buildings show; creeps don't.
-// - visible:    clear. Within sight of something you own right now.
+// The map is known from the start, like a WC3 "explored" map: you see the
+// whole terrain and where enemy buildings stand (the nest, its C2 Servers),
+// on the map and the minimap. What fog hides is movement.
+// - not visible: dimmed. Terrain and enemy buildings show; creeps don't.
+// - visible:     clear. Within sight of something you own right now.
+// (A third, "unexplored" black state still exists in stateAt for views, but
+// nothing starts unexplored.)
 //
 // The fog is a one-pixel-per-tile canvas drawn as a scaled sprite, so linear
 // filtering gives soft edges for free.
@@ -14,7 +17,7 @@ import { Sprite, Texture } from "pixi.js";
 import { TILE, hostile, type Content, type TeamId, type World } from "../sim";
 
 const UPDATE_MS = 100;
-const EXPLORED_ALPHA = 150;
+const EXPLORED_ALPHA = 135;
 const DEFAULT_BUILDING_SIGHT = 300;
 
 export class Fog {
@@ -39,7 +42,8 @@ export class Fog {
     this.cols = cols;
     this.rows = rows;
     this.visible = new Uint8Array(cols * rows);
-    this.explored = new Uint8Array(cols * rows);
+    // The whole map is explored from the start: terrain and buildings are known.
+    this.explored = new Uint8Array(cols * rows).fill(1);
     this.canvas.width = cols;
     this.canvas.height = rows;
     this.image = this.context.createImageData(cols, rows);

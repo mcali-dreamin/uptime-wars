@@ -49,9 +49,10 @@ and red. Software rendering automatically drops shadows and bloom. `?low`
 forces that, `?hq` forces the full look, and `?2d` brings back the flat Pixi
 view.
 
-The map starts black. You see what your agent, units, and buildings can see;
-places you've been stay dimmed, with enemy buildings as you last saw them.
-`?reveal` in the URL turns the fog off.
+You know the map from the start: the whole terrain and where enemy buildings
+stand (the nest and its C2 Servers) show, dimmed, on the map and the minimap.
+Fog hides movement: you only see creeps within sight of your agent, units, and
+buildings. `?reveal` in the URL turns the fog off.
 
 **Heroes.** After your race, pick one of its three heroes. It appears at
 your core when the core comes online and is the one unit you command
@@ -272,7 +273,7 @@ CI deploy preset).
 npm run typecheck
 npm test          # simulation tests + determinism rules for src/sim
 npm run build
-npm run e2e       # browser smoke test + two-browser co-op (relay and copy-paste) against dist/ (needs: npx playwright install chromium)
+npm run e2e       # browser smoke test + two-browser co-op against dist/ (needs: npx playwright install chromium)
 ```
 
 CI runs all four on every pull request, and the deploy workflow runs them
