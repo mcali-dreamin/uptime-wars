@@ -68,6 +68,12 @@ describe("users", () => {
     while (!world.entities.some((e) => e.kind === "unit" && e.team === 1)) step(world, frozen);
     const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
     const creep = world.entities.find((e) => e.kind === "unit" && e.team === 1)!;
+    // Keep the hero out of it: creeps fight a defender in their face before buildings.
+    const hero = world.entities.find((e) => e.kind === "unit" && e.team === 0 && e.mode === "hero");
+    if (hero?.kind === "unit") {
+      hero.x = hero.homeX = core.x + 3000;
+      hero.y = hero.homeY = core.y;
+    }
     creep.x = core.x + core.radius + creep.radius + 4;
     creep.y = core.y;
     const hpBefore = core.hp;
