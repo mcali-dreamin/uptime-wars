@@ -3,7 +3,8 @@
 // engagement shared by everything.
 
 export const STARTING_COMPUTE = 200;
-export const BASE_INCOME = { amount: 3, intervalTicks: 20 };
+/** A trickle so you're never stuck. Users are the real income (see economy.json). */
+export const BASE_INCOME = { amount: 2, intervalTicks: 20 };
 /** Construction starts at this fraction of max hp and fills as it builds. */
 export const CONSTRUCTION_START_HP = 0.25;
 /** A unit drops a target that runs this far past its sight. */

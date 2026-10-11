@@ -1,6 +1,6 @@
 // Top bar numbers, the status line, and the hint line over the map.
 
-import { TICK_RATE, hashWorld, isCore, previewWave, userCapacity } from "../sim";
+import { TICK_RATE, hashWorld, incomeRate, isCore, previewWave, userCapacity } from "../sim";
 import { groundOrderLabel, leftClickOrders, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { $ } from "./dom";
@@ -10,10 +10,19 @@ export function clock(totalSeconds: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
+/** How long a churn number stays up after the last user left. */
+const CHURN_SHOW_MS = 2500;
+
 export class Hud {
   private readonly uptime = $("uptime");
   private readonly compute = $("compute");
   private readonly users = $("users");
+  private readonly income = $("income");
+  private readonly churn = $("churn");
+  /** Users last frame, and how many were lost recently, to flash churn. */
+  private lastUsers = 0;
+  private lost = 0;
+  private lostAt = -Infinity;
   private readonly core = $("core");
   private readonly wave = $("wave");
   private readonly nextWave = $("next-wave");
@@ -32,6 +41,7 @@ export class Hud {
     const core = this.session.core();
     this.compute.textContent = String(team.compute);
     this.users.textContent = team.coreId === -1 ? "0" : `${team.users} / ${userCapacity(world, this.session.content, team)}`;
+    this.updateIncome();
     const cores = world.entities.filter((e) => e.hp > 0 && isCore(this.session.content, team, e)).length;
     this.core.textContent = core
       ? `${Math.max(0, Math.ceil(core.hp))} / ${core.maxHp}${cores > 1 ? ` · ${cores} up` : ""}`
@@ -54,6 +64,29 @@ export class Hud {
       this.status.className = "";
     }
     this.hint.textContent = world.outcome ? "" : this.hintFor(selection);
+  }
+
+  /**
+   * Compute per second and where it comes from, and a red "-N" when users
+   * leave: the two things that make users feel like the economy they are.
+   */
+  private updateIncome(): void {
+    const { world, content } = this.session;
+    const team = this.session.team;
+    const rate = incomeRate(world, content, team);
+    const total = rate.base + rate.buildings + rate.users;
+    this.income.textContent = `+${total.toFixed(1)}/s`;
+    const share = total > 0 ? Math.round((100 * rate.users) / total) : 0;
+    this.income.title = `Users ${rate.users.toFixed(1)}/s (${share}%) · buildings ${rate.buildings.toFixed(1)}/s · base ${rate.base.toFixed(1)}/s`;
+    const now = performance.now();
+    if (team.users < this.lastUsers) {
+      this.lost = now - this.lostAt < CHURN_SHOW_MS ? this.lost + (this.lastUsers - team.users) : this.lastUsers - team.users;
+      this.lostAt = now;
+    }
+    this.lastUsers = team.users;
+    const showing = now - this.lostAt < CHURN_SHOW_MS && this.lost > 0;
+    this.churn.textContent = showing ? `−${this.lost}` : "";
+    this.users.classList.toggle("churning", showing);
   }
 
   /** What the next wave brings: its name, its creeps (new ones marked), and any boss. */

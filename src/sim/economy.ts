@@ -81,6 +81,23 @@ export function tickUsers(ctx: TickContext): void {
   }
 }
 
+/**
+ * Where a team's compute comes from right now, in compute per second. Pure:
+ * reads state, changes nothing, so the HUD can call it every frame.
+ */
+export function incomeRate(world: World, content: TickContext["content"], team: Team): { base: number; buildings: number; users: number } {
+  const base = (BASE_INCOME.amount * TICK_RATE) / BASE_INCOME.intervalTicks;
+  let buildings = 0;
+  for (const entity of world.entities) {
+    if (entity.kind !== "building" || entity.team !== team.id || entity.hp <= 0 || entity.buildRemaining > 0) continue;
+    const income = content.buildings[entity.defId]!.income;
+    if (income) buildings += (income.amount * TICK_RATE) / income.intervalTicks;
+  }
+  const online = team.controller === "human" && team.coreId !== -1 && team.downTick === null;
+  const users = online ? team.users * content.economy.revenuePerUserPerSecond * multiplier(content, team, "revenue") : 0;
+  return { base, buildings, users };
+}
+
 /** Damage to a player's building drives users away. */
 export function loseUsers(ctx: TickContext, team: Team, damage: number): void {
   if (team.controller !== "human" || team.users <= 0) return;

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createWorld,
   queueCommand,
+  incomeRate,
   levelOf,
   multiplier,
   nextLevel,
@@ -74,6 +75,57 @@ describe("users", () => {
     const damage = hpBefore - core.hp;
     expect(damage).toBeGreaterThan(0);
     expect(40 - world.teams[0]!.users).toBe(Math.floor(damage / econ.damagePerUserLost));
+  });
+});
+
+describe("users are the economy", () => {
+  /** Place each building as soon as it's affordable; return compute earned (banked + spent) after `seconds`. */
+  function earned(list: string[], seconds: number): number {
+    const world = createWorld(content, SETUP);
+    const spots = planBuildOrder(content, SETUP, list.map((b) => [0, b] as [number, string]));
+    const start = world.teams[0]!.compute;
+    let next = 0;
+    let spent = 0;
+    while (world.tick < seconds * 20) {
+      const cost = next < spots.length ? content.buildings[spots[next]!.building]!.cost : Infinity;
+      if (world.teams[0]!.compute >= cost) {
+        queueCommand(world, { ...spots[next]!, tick: world.tick });
+        spent += cost;
+        next += 1;
+      }
+      step(world, content);
+    }
+    return world.teams[0]!.compute + spent - start;
+  }
+
+  it("a base that grows users out-earns one that builds generators", () => {
+    // Same defence, then the same number of economy buildings: Web Apps or Solar Arrays.
+    const opening = ["server-rack", "server-rack", "firewall"];
+    const users = earned([...opening, "web-app", "web-app", "web-app"], 300);
+    const generators = earned([...opening, "solar-array", "solar-array", "solar-array"], 300);
+    expect(users).toBeGreaterThan(generators * 1.4);
+  });
+
+  it("incomeRate matches what actually lands, and splits it by source", () => {
+    const frozen: typeof content = structuredClone(content);
+    frozen.economy = { ...content.economy, growthPerSecond: 0, minArrivalsPerSecond: 0 };
+    const world = createWorld(frozen, SETUP);
+    world.teams[0]!.users = 30;
+    const rate = incomeRate(world, frozen, world.teams[0]!);
+    expect(rate.users).toBeCloseTo(30 * frozen.economy.revenuePerUserPerSecond);
+    expect(rate.buildings).toBe(0);
+    const before = world.teams[0]!.compute;
+    for (let i = 0; i < 20 * 20; i++) step(world, frozen);
+    const total = rate.base + rate.buildings + rate.users;
+    expect(world.teams[0]!.compute - before).toBeGreaterThanOrEqual(Math.floor(total * 20) - 1);
+    expect(world.teams[0]!.compute - before).toBeLessThanOrEqual(Math.ceil(total * 20) + 1);
+  });
+
+  it("an offline team earns nothing from users", () => {
+    const world = createWorld(content, SETUP);
+    world.teams[0]!.users = 30;
+    world.teams[0]!.downTick = 1;
+    expect(incomeRate(world, content, world.teams[0]!).users).toBe(0);
   });
 });
 

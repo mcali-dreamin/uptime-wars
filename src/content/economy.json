@@ -2,7 +2,7 @@
   "startingUsers": 5,
   "growthPerSecond": 0.04,
   "minArrivalsPerSecond": 1,
-  "revenuePerUserPerSecond": 0.08,
+  "revenuePerUserPerSecond": 0.1,
   "damagePerUserLost": 12,
   "traffic": {
     "base": 8000,

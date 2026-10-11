@@ -62,6 +62,23 @@ body {
   min-width: 0;
 }
 
+#income {
+  color: var(--accent);
+  font-size: 0.75rem;
+  cursor: help;
+}
+
+#churn {
+  color: #f87171;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+#users.churning {
+  color: #f87171;
+  transition: color 0.1s;
+}
+
 .preview .label,
 #preview-creeps {
   white-space: nowrap;

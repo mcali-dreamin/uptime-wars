@@ -75,7 +75,7 @@
   },
   "solar-array": {
     "name": "Solar Array",
-    "description": "Generates extra compute over time.",
+    "description": "A small, steady trickle of compute. Safe, but users pay far better.",
     "cost": 75,
     "buildTicks": 80,
     "hp": 250,
@@ -84,7 +84,7 @@
     "footprint": 1,
     "buildable": true,
     "income": {
-      "amount": 4,
+      "amount": 2,
       "intervalTicks": 20
     },
     "sight": 260
@@ -154,14 +154,14 @@
     "buildable": true,
     "sight": 240,
     "income": {
-      "amount": 10,
+      "amount": 5,
       "intervalTicks": 20
     }
   },
   "web-app": {
     "name": "Web App",
     "description": "Serves users. More capacity, more revenue, and more to lose when it gets hit.",
-    "cost": 80,
+    "cost": 100,
     "buildTicks": 80,
     "hp": 300,
     "armor": 1,
