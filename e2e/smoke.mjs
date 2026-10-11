@@ -147,6 +147,8 @@ try {
   await page.mouse.click(p.x, p.y);
   const founded = await waitForGame(() => state(() => window.uptime.world.teams[0].coreId !== -1), 30);
   check(founded, "C + click founds the core");
+  const income = await waitFor(async () => /^\+\d+(\.\d)?\/s$/.test((await page.textContent("#income")) ?? "") && (await page.getAttribute("#income", "title")), 10000);
+  check(Boolean(income), `the HUD shows income and where it comes from (${await page.textContent("#income")} · ${income})`);
   await waitFor(() => page.$$eval(".build-btn", (b) => !b.some((x) => x.dataset.building === "found")), 10000);
   const buttons = await page.$$eval(".build-btn", (b) => b.map((x) => x.dataset.building));
   check(buttons.length >= 4 && !buttons.includes("found"), `build bar shows the roster (${buttons.join(", ")})`);

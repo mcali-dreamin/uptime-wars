@@ -26,7 +26,7 @@ const CONTROLS: [string, string][] = [
   ["Rally", "With a spawner selected, right-click the ground to send its units there. With the core selected, right-click sets the rally for every spawner that doesn't have its own. No right button? Press T (or the button on the info card), then click the ground. Ctrl-click, Cmd-click and two-finger taps count as right-clicks too."],
   ["Camera", "WASD / arrows, drag, or the window edge to pan. Wheel or +/- to zoom. Click the minimap to jump. Space: back home."],
   ["Other", "Esc: deselect · P: pause · E: edge scroll on/off · G: this guide · R: new match after an outage"],
-  ["Users", "Users arrive while your core is up and grow toward your capacity (core + Web Apps). Every user pays compute each second. Damage to any of your buildings drives users away."],
+  ["Users", "Users are your income. They arrive while your core is up and grow toward your capacity (core + Web Apps), and every user pays compute each second, far more than Solar Arrays or Power Plants. But every hit any of your buildings takes drives some away (the red −N by Users), and more users make more traffic for crawlers to sense. Hover the +/s next to Compute to see where your income comes from."],
   ["Co-op", "On the race picker press H. Send each friend an invite link, paste back the reply code they give you, then Start. Everyone runs the same match; you see what your allies see, and the match goes on until every player is offline. Co-op can't pause."],
   ["Goal", "Waves never stop. Your score is uptime: how long your core stays online. Peak users is your bragging right."],
 ];
