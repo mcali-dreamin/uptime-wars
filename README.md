@@ -168,8 +168,23 @@ starts, so the map is the same whoever plays it. Humans are allies: they never
 target each other and share vision. Each has its own base, compute, and race,
 and either one's traffic draws the horde. A player whose cores are all down
 goes offline and their commands stop, but the match goes on until every player
-is offline (lost) or the nest is (won by all of them). The browser still plays
-solo: connecting browsers is the next step.
+is offline (lost) or the nest is (won by all of them).
+
+**Playing co-op.** On the race picker press `H` (or **Play co-op with
+friends**). Send a friend the invite link; they open it, pick a race, and send
+you back a reply code; paste it in and press Connect. One link per friend, up
+to three. Press **Start match** when everyone's in. No server is involved: the
+browsers connect directly over WebRTC (public STUN, no TURN yet, so a few
+strict corporate or mobile networks won't connect).
+
+Under the hood it's deterministic lockstep (`src/game/net/lockstep.ts`):
+every browser runs the whole simulation, and each tick every player sends one
+turn with its commands for 4 ticks later. A tick steps only once every turn
+for it is in, so a slow connection stalls everyone rather than desyncing
+anyone. The host relays all turns (a star), which lets it drop a player who
+disconnects at a tick everyone agrees on; their base keeps fighting. Every
+100 ticks turns carry a world hash, so a desync is caught right away. Co-op
+can't pause. If the host leaves, the match is over.
 
 **The horde is just a team.** Team 1 is the Botnet race, driven by the wave
 director instead of a human.
@@ -221,7 +236,7 @@ CI deploy preset).
 npm run typecheck
 npm test          # simulation tests + determinism rules for src/sim
 npm run build
-npm run e2e       # browser smoke test against dist/ (needs: npx playwright install chromium)
+npm run e2e       # browser smoke test + a two-browser co-op match against dist/ (needs: npx playwright install chromium)
 ```
 
 CI runs all four on every pull request, and the deploy workflow runs them

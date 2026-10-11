@@ -13,8 +13,11 @@ export class RacePicker {
   constructor(
     private readonly session: Session,
     private readonly onPick: (raceId: string) => void,
+    private readonly onCoop: () => void,
     private readonly onColor: () => void = () => {},
-  ) {}
+  ) {
+    $("coop-host").addEventListener("click", () => this.coop());
+  }
 
   show(): void {
     const { content, playable, raceId } = this.session;
@@ -55,9 +58,16 @@ export class RacePicker {
   /** Number keys pick while the picker is open. Returns true when handled. */
   key(key: string): boolean {
     if (!this.open) return false;
+    if (key === "h") return this.coop(), true;
     const id = this.session.playable[Number(key) - 1];
     if (id) this.pick(id);
     return true;
+  }
+
+  private coop(): void {
+    this.root.hidden = true;
+    this.open = false;
+    this.onCoop();
   }
 
   private pick(id: string): void {

@@ -289,6 +289,102 @@ body {
 }
 
 
+#coop-host {
+  margin-top: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  cursor: pointer;
+}
+
+#coop-host:hover {
+  border-color: var(--accent);
+}
+
+#coop {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(11, 15, 20, 0.92);
+}
+
+#coop[hidden] {
+  display: none;
+}
+
+.coop-window {
+  position: relative;
+  width: min(560px, 92vw);
+  padding: 1rem 1.25rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.coop-window h2 {
+  margin: 0 0 0.5rem;
+}
+
+.coop-window p {
+  color: var(--muted);
+  margin: 0.5rem 0;
+}
+
+#coop-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.6rem;
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+
+.coop-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.coop-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  background: #0b0f14;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.coop-window button:not(#coop-close),
+.coop-window select {
+  padding: 0.35rem 0.75rem;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.coop-window button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.coop-primary {
+  margin-top: 0.5rem;
+  border-color: var(--accent) !important;
+}
+
 #hint {
   position: absolute;
   left: 50%;

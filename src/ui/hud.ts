@@ -43,7 +43,14 @@ export class Hud {
     this.nextWave.textContent = `${Math.max(0, Math.ceil((world.waves.nextWaveTick - world.tick) / TICK_RATE))}s`;
     this.updatePreview(world.waves.nextIndex + 1);
     if (!world.outcome) {
-      this.status.textContent = paused ? "PAUSED (P)" : "";
+      const waiting = this.session.waitingOn().filter((team) => team !== this.session.local);
+      this.status.textContent = paused
+        ? "PAUSED (P)"
+        : waiting.length > 0
+          ? `Waiting for ${waiting.map((team) => `Player ${team + 1}`).join(", ")}…`
+          : this.session.net
+            ? `Co-op · you're Player ${this.session.local + 1}`
+            : "";
       this.status.className = "";
     }
     this.hint.textContent = world.outcome ? "" : this.hintFor(selection);
