@@ -24,7 +24,7 @@ const PAN_KEYS: Record<string, [number, number]> = {
   arrowup: [0, -1], arrowleft: [-1, 0], arrowdown: [0, 1], arrowright: [1, 0],
 };
 const EDGE_KEY = "uptime:edge-scroll";
-/** A Ctrl-click we already handled may be followed by the browser's own contextmenu. */
+/** A Ctrl/Cmd-click we already handled may be followed by the browser's own contextmenu. */
 const MENU_SUPPRESS_MS = 400;
 
 export function bindInput(renderer: Renderer, game: GameInput): void {
@@ -53,9 +53,10 @@ export function bindInput(renderer: Renderer, game: GameInput): void {
     if (game.blocked()) return;
     // The right button arrives as a contextmenu event below.
     if (event.button === 2) return;
-    // Ctrl-click is a secondary click everywhere. macOS also fires contextmenu
-    // for it; other platforms don't, so handle it here and skip that one.
-    if (event.button === 0 && event.ctrlKey) {
+    // Ctrl-click and Cmd-click (Mac) count as a secondary click. macOS also
+    // fires contextmenu for Ctrl-click; other platforms don't, so handle it
+    // here and skip that one.
+    if (event.button === 0 && (event.ctrlKey || event.metaKey)) {
       suppressMenuUntil = performance.now() + MENU_SUPPRESS_MS;
       secondary(event);
       return;
