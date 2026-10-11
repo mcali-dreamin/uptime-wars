@@ -8,7 +8,8 @@ import type { Renderer } from "./render/renderer";
 export interface GameInput {
   /** True while something (the race picker) owns input. */
   blocked(): boolean;
-  click(point: Point, shift: boolean): void;
+  /** `entity`: the entity drawn under the pointer, when the view knows (3D). */
+  click(point: Point, shift: boolean, entity: number | null): void;
   rightClick(point: Point, onMinimap: boolean): void;
   /** Pointer moved over the map (null when it left or is over the minimap). */
   hover(point: Point | null): void;
@@ -90,7 +91,9 @@ export function bindInput(renderer: Renderer, game: GameInput): void {
   canvas.addEventListener("pointerup", (event) => {
     const click = drag && !drag.moved && event.button === 0;
     drag = null;
-    if (click && !game.blocked()) game.click(renderer.toWorld(event.clientX, event.clientY), event.shiftKey);
+    if (click && !game.blocked()) {
+      game.click(renderer.toWorld(event.clientX, event.clientY), event.shiftKey, renderer.entityUnder(event.clientX, event.clientY));
+    }
   });
 
   canvas.addEventListener("pointerleave", () => game.hover(null));

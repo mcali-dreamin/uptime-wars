@@ -38,10 +38,16 @@ npm run dev
   scroll). Wheel or `+`/`-`: zoom. Click the minimap to jump. `Space` / `H`: back home.
 - Right-click / `Esc`: cancel. `P`: pause. `R`: new map after a match.
 
-**3D (experimental):** add `?3d` to the URL for a Three.js view of the same
-game, with plateaus as real steps and a WC3-style angled camera. Everything
-else (controls, UI, the simulation) is shared; Three.js only loads when asked
-for.
+**Graphics.** The web is drawn in 3D with Three.js, as WC3-style terrain under
+an angled camera. Each height level has its own look: the deep web is violet
+soil, the surface web teal moss with cyan circuit traces, and the backbone
+steel plating. Cliffs are dark rock with glowing fibre strata, and ramps are
+paved gateways with amber chevrons. Dead links are fields of black shards,
+data wells are glowing crystals, and data swamps are glossy pools. Buildings
+and units are procedural models in your team's colour; the botnet is spiky
+and red. Software rendering automatically drops shadows and bloom. `?low`
+forces that, `?hq` forces the full look, and `?2d` brings back the flat Pixi
+view.
 
 The map starts black. You see what your agent, units, and buildings can see;
 places you've been stay dimmed, with enemy buildings as you last saw them.
@@ -100,8 +106,11 @@ src/
   render/         reads the world, never writes it
     renderer.ts     shell: camera, fog, minimap, banner, interpolation, effects
     frame.ts        the Frame / WorldView contract every world view implements
-    pixi/world2d.ts the default 2D view (plus glyphs, terrain art)
-    three/world3d.ts the experimental 3D view (?3d)
+    three/          the default 3D view: world3d (scene, camera, entities),
+                    terrain3d (heightfield + doodads), models (procedural
+                    buildings and units), effects (bolts, sparks, bars,
+                    rings), fog3d (fog of war as a texture any material reads)
+    pixi/world2d.ts the flat 2D view (?2d; plus glyphs, terrain art)
     palette.ts      colours both views share
   input.ts        pointer + keys; camera controls, hands the rest to the game
   main.ts         wiring and the frame loop

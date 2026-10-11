@@ -144,7 +144,7 @@ function isArmed(): boolean {
 const gameInput: GameInput = {
   blocked: () => picker.open || guide.open,
 
-  click(point, shift) {
+  click(point, shift, entityId) {
     if (placement) {
       if (!placement.valid) return;
       session.issue(placement.order);
@@ -155,7 +155,8 @@ const gameInput: GameInput = {
     }
     // Armed: the click is the order, even on top of one of your buildings.
     if (isArmed()) return order(point);
-    const own = ownEntityAt(session, point);
+    const drawn = entityId === null ? undefined : session.entity(entityId);
+    const own = (drawn && drawn.team === session.team.id ? drawn : undefined) ?? ownEntityAt(session, point);
     if (own) return select({ kind: "entity", id: own.id });
     if (leftClickOrders(session, selection)) return order(point);
     select(NOTHING);
@@ -221,8 +222,8 @@ function startMatch(raceId: string): void {
 
 // HUD first: the stage's size depends on the build bar's height.
 bar.update(barMode(), null);
-// `?3d` swaps in the Three.js world view (loaded only when asked for).
-const use3d = new URLSearchParams(location.search).has("3d");
+// The Three.js world view is the default; `?2d` keeps the flat Pixi one.
+const use3d = !new URLSearchParams(location.search).has("2d");
 await renderer.init($("stage"), { transparent: use3d });
 if (use3d) {
   const { World3D } = await import("./render/three/world3d");

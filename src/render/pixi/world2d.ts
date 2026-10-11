@@ -45,6 +45,12 @@ export class World2D implements WorldView {
     return this.camera.view(0);
   }
 
+  project(x: number, y: number) {
+    const c = this.camera;
+    const view = c.view(0);
+    return { x: (x - view.left) * c.zoom, y: (y - view.top) * c.zoom };
+  }
+
   draw(frame: Frame): void {
     const { camera } = this;
     this.layer.scale.set(camera.zoom);
