@@ -196,5 +196,22 @@
     "buildable": true,
     "sight": 360,
     "buildRadius": 7
+  },
+  "data-pump": {
+    "name": "Data Pump",
+    "description": "Taps a data well for steady compute. Only goes on a well, and wells are out in the open.",
+    "cost": 100,
+    "buildTicks": 120,
+    "hp": 320,
+    "armor": 1,
+    "armorType": "hardened",
+    "footprint": 1,
+    "buildable": true,
+    "onWell": true,
+    "income": {
+      "amount": 8,
+      "intervalTicks": 20
+    },
+    "sight": 300
   }
 }
