@@ -63,7 +63,7 @@ export function waveInterval(content: Content, wave: number): number {
  * randomly chosen unlocked units, then shuffled so packs come out mixed.
  */
 export function planWave(world: World, content: Content, wave: number) {
-  const { budget, roster, bosses, names } = content.waves;
+  const { budget, roster, bosses } = content.waves;
   // Repeated multiplication, not Math.pow: the spec lets pow be approximate,
   // and two browsers disagreeing on a wave size would desync a match.
   let scale = 1;
@@ -71,9 +71,7 @@ export function planWave(world: World, content: Content, wave: number) {
   let points = Math.round(budget.start * scale);
   const units: string[] = [];
 
-  const bossCount = wave >= bosses.fromWave && (wave - bosses.fromWave) % bosses.every === 0
-    ? 1 + Math.floor((wave - bosses.fromWave) / (bosses.every * 3))
-    : 0;
+  const bossCount = bossesIn(content, wave);
   for (let i = 0; i < bossCount; i += 1) units.push(bosses.unit);
 
   const unlocked = roster.filter((entry) => entry.fromWave <= wave);
@@ -101,7 +99,49 @@ export function planWave(world: World, content: Content, wave: number) {
     const j = randomInt(world, 0, i);
     [units[i], units[j]] = [units[j]!, units[i]!];
   }
+  return { units, bosses: bossCount, name: waveName(content, wave) };
+}
+
+/** What wave n will bring, without rolling it. */
+export interface WavePreview {
+  wave: number;
+  name: string;
+  /** Creep types that can appear, roster order. */
+  creeps: string[];
+  /** Creep types appearing for the first time this wave. */
+  fresh: string[];
+  bosses: number;
+  boss: string;
+}
+
+/**
+ * Wave n as far as it's knowable in advance: its name, which creeps it can
+ * contain, which are new, and its bosses. Pure: it never touches the world's
+ * RNG, so the UI can call it every frame without changing the match.
+ */
+export function previewWave(content: Content, wave: number): WavePreview {
+  const { roster, bosses } = content.waves;
+  const unlocked = roster.filter((entry) => entry.fromWave <= wave);
+  const count = bossesIn(content, wave);
+  return {
+    wave,
+    name: waveName(content, wave),
+    creeps: unlocked.map((entry) => entry.unit),
+    fresh: unlocked.filter((entry) => entry.fromWave === wave).map((entry) => entry.unit),
+    bosses: count,
+    boss: bosses.unit,
+  };
+}
+
+function bossesIn(content: Content, wave: number): number {
+  const { fromWave, every } = content.waves.bosses;
+  if (wave < fromWave || (wave - fromWave) % every !== 0) return 0;
+  return 1 + Math.floor((wave - fromWave) / (every * 3));
+}
+
+function waveName(content: Content, wave: number): string {
+  const { names } = content.waves;
   const base = names[(wave - 1) % names.length]!;
   const cycle = Math.floor((wave - 1) / names.length);
-  return { units, bosses: bossCount, name: cycle === 0 ? base : `${base} ${cycle + 1}` };
+  return cycle === 0 ? base : `${base} ${cycle + 1}`;
 }

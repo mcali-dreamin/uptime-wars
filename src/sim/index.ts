@@ -8,7 +8,7 @@ export { createWorld, step } from "./world";
 export type { MatchSetup } from "./world";
 export { queueCommand } from "./commands";
 export { canPlace, canFound, buildCost, isOccupied, isCore, inNetwork, networkProviders, teamCores } from "./placement";
-export { planWave, waveInterval } from "./waves";
+export { planWave, previewWave, waveInterval, type WavePreview } from "./waves";
 export { STARTING_COMPUTE, BASE_INCOME } from "./tuning";
 export { trafficRadius, userCapacity } from "./economy";
 export { canResearch, levelOf, multiplier, nextLevel } from "./upgrades";
