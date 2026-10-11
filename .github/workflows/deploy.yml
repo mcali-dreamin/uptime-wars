@@ -49,7 +49,7 @@ jobs:
   deploy:
     name: Publish to Spacefast
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     environment:
       name: production
       url: ${{ steps.publish.outputs.url }}

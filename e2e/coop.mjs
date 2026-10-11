@@ -93,12 +93,13 @@ const open = async (url) => {
     errors.push(`${m.text()} (${m.location().url})`);
   });
   await page.goto(url);
-  // Booting: the 3D view compiles its shaders in software while the other
-  // browser already renders, so on a 2-core CI runner this can take a while.
-  await page.waitForSelector("canvas", { timeout: 90000 });
+  await page.waitForSelector("canvas", { timeout: 60000 });
   return page;
 };
-const base = `http://127.0.0.1:${server.address().port}/?debug`;
+// The flat 2D view: this test is about networking and lockstep, and two
+// browsers rendering 3D in software starve a 2-core CI runner. The smoke
+// test covers the 3D view. The invite link keeps the query, so the guest too.
+const base = `http://127.0.0.1:${server.address().port}/?debug&2d`;
 
 try {
   // 1. Host opens co-op and gets an invite link.
