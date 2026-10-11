@@ -171,7 +171,7 @@ try {
   const gathered = await distances();
   check(gathered.length > 0 && gathered.every((d) => d < 90), `right-click rallies the spawner's units (${gathered.join(", ")}px)`);
 
-  // 4b. No right button (laptops): T then a left-click, or Ctrl-click, sets the rally too.
+  // 4b. No right button (laptops): T then a left-click, Ctrl-click, or Cmd-click sets the rally too.
   const rallyOf = () =>
     state((id) => {
       const r = window.uptime.world.entities.find((e) => e.id === id)?.rally;
@@ -191,6 +191,12 @@ try {
   await page.mouse.click(p.x, p.y);
   await page.keyboard.up("Control");
   check(near(await waitForGame(async () => { const r = await rallyOf(); return near(r, viaCtrl) ? r : null; }, 5), viaCtrl), "Ctrl-click sets the rally");
+  const viaMeta = await openNear(spot.x, spot.y, 3, 8);
+  p = await toPage(viaMeta.x, viaMeta.y);
+  await page.keyboard.down("Meta");
+  await page.mouse.click(p.x, p.y);
+  await page.keyboard.up("Meta");
+  check(near(await waitForGame(async () => { const r = await rallyOf(); return near(r, viaMeta) ? r : null; }, 5), viaMeta), "Cmd-click sets the rally");
 
   // 5. Select the core: the bar shows research; researching an upgrade starts it.
   await page.keyboard.press("Escape");
