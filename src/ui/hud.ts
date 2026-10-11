@@ -1,6 +1,6 @@
 // Top bar numbers, the status line, and the hint line over the map.
 
-import { TICK_RATE, hashWorld, isCore, userCapacity } from "../sim";
+import { TICK_RATE, hashWorld, isCore, previewWave, userCapacity } from "../sim";
 import { groundOrderLabel, leftClickOrders, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { $ } from "./dom";
@@ -19,6 +19,10 @@ export class Hud {
   private readonly nextWave = $("next-wave");
   private readonly status = $("status");
   private readonly hint = $("hint");
+  private readonly previewTitle = $("preview-title");
+  private readonly previewCreeps = $("preview-creeps");
+  /** Which wave the preview shows, so it's rebuilt only when that changes. */
+  private previewed = -1;
 
   constructor(private readonly session: Session) {}
 
@@ -37,6 +41,7 @@ export class Hud {
     this.uptime.textContent = clock((world.outcome?.tick ?? world.tick) / TICK_RATE);
     this.wave.textContent = String(world.waves.nextIndex);
     this.nextWave.textContent = `${Math.max(0, Math.ceil((world.waves.nextWaveTick - world.tick) / TICK_RATE))}s`;
+    this.updatePreview(world.waves.nextIndex + 1);
     if (!world.outcome) {
       this.status.textContent = paused ? "PAUSED (P)" : "";
       this.status.className = "";
@@ -44,10 +49,37 @@ export class Hud {
     this.hint.textContent = world.outcome ? "" : this.hintFor(selection);
   }
 
+  /** What the next wave brings: its name, its creeps (new ones marked), and any boss. */
+  private updatePreview(wave: number): void {
+    if (wave === this.previewed) return;
+    this.previewed = wave;
+    const { units } = this.session.content;
+    const preview = previewWave(this.session.content, wave);
+    this.previewTitle.textContent = `Wave ${wave} · ${preview.name}`;
+    const parts: HTMLElement[] = preview.creeps.map((id) => {
+      const span = document.createElement("span");
+      const fresh = preview.fresh.includes(id) && wave > 1;
+      span.textContent = fresh ? `${units[id]!.name} (new)` : units[id]!.name;
+      if (fresh) span.className = "new";
+      return span;
+    });
+    if (preview.bosses > 0) {
+      const boss = document.createElement("span");
+      boss.className = "boss";
+      boss.textContent = `${preview.bosses > 1 ? `${preview.bosses}× ` : ""}${units[preview.boss]!.name} BOSS`;
+      parts.push(boss);
+    }
+    this.previewCreeps.replaceChildren(...parts.flatMap((part, i) => (i === 0 ? [part] : [document.createTextNode(" · "), part])));
+  }
+
   /** One line telling the player what they can do right now. */
   private hintFor(selection: Selection): string {
     if (selection.kind === "found") return "Click to deploy your core";
-    if (selection.kind === "place") return "Click inside the ring to build";
+    if (selection.kind === "place") {
+      return this.session.content.buildings[selection.building]?.onWell
+        ? "Click a data well (glowing crystals) inside your network"
+        : "Click inside the ring to build";
+    }
     if (!this.session.deploying) {
       const label = groundOrderLabel(this.session, selection);
       if (!label) return "";

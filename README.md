@@ -38,10 +38,16 @@ npm run dev
   scroll). Wheel or `+`/`-`: zoom. Click the minimap to jump. `Space` / `H`: back home.
 - Right-click / `Esc`: cancel. `P`: pause. `R`: new map after a match.
 
-**3D (experimental):** add `?3d` to the URL for a Three.js view of the same
-game, with plateaus as real steps and a WC3-style angled camera. Everything
-else (controls, UI, the simulation) is shared; Three.js only loads when asked
-for.
+**Graphics.** The web is drawn in 3D with Three.js, as WC3-style terrain under
+an angled camera. Each height level has its own look: the deep web is violet
+soil, the surface web teal moss with cyan circuit traces, and the backbone
+steel plating. Cliffs are dark rock with glowing fibre strata, and ramps are
+paved gateways with amber chevrons. Dead links are fields of black shards,
+data wells are glowing crystals, and data swamps are glossy pools. Buildings
+and units are procedural models in your team's colour; the botnet is spiky
+and red. Software rendering automatically drops shadows and bloom. `?low`
+forces that, `?hq` forces the full look, and `?2d` brings back the flat Pixi
+view.
 
 The map starts black. You see what your agent, units, and buildings can see;
 places you've been stay dimmed, with enemy buildings as you last saw them.
@@ -58,6 +64,12 @@ cheap, fragile Mesh Nodes (reach 4); Hyperscaler builds armored Edge PoPs
 (reach 7). Cores are buildable too (300 compute). If your main core falls, the
 next takes over, and you only go down when every core is down.
 
+**Data wells** are glowing crystals scattered across the web. Build a **Data
+Pump** on one (both races, 100 compute) for +8 compute a second, twice a Solar
+Array. No well is inside your core's starting reach, though the nearest two
+are always a short hop out, so your first pump means extending your network
+toward it. Pumps sit out in the open, where wandering packs find them.
+
 **Users** are why you're online. They arrive while your core is up and grow
 toward your capacity (the core serves 40; each Web App adds 60). Every user
 pays compute each second, and every hit your buildings take drives some away.
@@ -65,7 +77,8 @@ Numbers live in `src/content/economy.json`.
 
 The malware nest sits in the middle of the web and you start out toward the
 edge. Waves never stop: each one is bigger, comes sooner, and unlocks nastier
-creeps (worms, then trojans, then ransomware bosses). Every wave leaves the nest
+creeps (worms, then trojans, then ransomware bosses). The top bar previews the next wave: its name, the creeps it can bring (new
+ones marked), and any boss. Every wave leaves the nest
 as packs of random size that wander outward. Nobody tells them where you are,
 but you make **traffic**: crawlers can sense your cores from far away, more
 so as you grow, and packs that sense you march on you. Trouble comes from
@@ -100,8 +113,11 @@ src/
   render/         reads the world, never writes it
     renderer.ts     shell: camera, fog, minimap, banner, interpolation, effects
     frame.ts        the Frame / WorldView contract every world view implements
-    pixi/world2d.ts the default 2D view (plus glyphs, terrain art)
-    three/world3d.ts the experimental 3D view (?3d)
+    three/          the default 3D view: world3d (scene, camera, entities),
+                    terrain3d (heightfield + doodads), models (procedural
+                    buildings and units), effects (bolts, sparks, bars,
+                    rings), fog3d (fog of war as a texture any material reads)
+    pixi/world2d.ts the flat 2D view (?2d; plus glyphs, terrain art)
     palette.ts      colours both views share
   input.ts        pointer + keys; camera controls, hands the rest to the game
   main.ts         wiring and the frame loop
@@ -171,7 +187,7 @@ Direction: survival on a procedurally generated open web.
 - [x] Builder start: scout with a deploy agent and choose where your core goes
 - [x] Fog of war
 - [x] Users: capacity, revenue, and churn from damage
-- [ ] Data wells feed the economy
+- [x] Data wells feed the economy
 - [x] Wandering creep packs that only attack what they see
 - [x] Endless escalating waves from a nest in the middle; uptime score
 - [x] Elevation: plateaus, cliffs, ramps; high-ground sight and damage

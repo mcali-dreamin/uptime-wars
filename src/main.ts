@@ -15,6 +15,7 @@ import {
   type Selection,
 } from "./game/selection";
 import { Session } from "./game/session";
+import { setLocalColor } from "./render/palette";
 import { BuildBar, FOUND_BUTTON, type BarMode } from "./ui/build-bar";
 import { $ } from "./ui/dom";
 import { Guide } from "./ui/guide";
@@ -45,7 +46,7 @@ const bar = new BuildBar(session, {
   guide: () => guide.toggle(),
 });
 const guide = new Guide(session);
-const picker = new RacePicker(session, startMatch);
+const picker = new RacePicker(session, startMatch, applyColor);
 
 let selection: Selection = NOTHING;
 let placement: Placement | null = null;
@@ -144,7 +145,7 @@ function isArmed(): boolean {
 const gameInput: GameInput = {
   blocked: () => picker.open || guide.open,
 
-  click(point, shift) {
+  click(point, shift, entityId) {
     if (placement) {
       if (!placement.valid) return;
       session.issue(placement.order);
@@ -155,7 +156,8 @@ const gameInput: GameInput = {
     }
     // Armed: the click is the order, even on top of one of your buildings.
     if (isArmed()) return order(point);
-    const own = ownEntityAt(session, point);
+    const drawn = entityId === null ? undefined : session.entity(entityId);
+    const own = (drawn && drawn.team === session.team.id ? drawn : undefined) ?? ownEntityAt(session, point);
     if (own) return select({ kind: "entity", id: own.id });
     if (leftClickOrders(session, selection)) return order(point);
     select(NOTHING);
@@ -208,7 +210,14 @@ const gameInput: GameInput = {
 
 // --- match -----------------------------------------------------------------
 
+/** Paint the world and the UI accent in the player's colour. */
+function applyColor(): void {
+  setLocalColor(session.local, session.color.hex);
+  document.documentElement.style.setProperty("--accent", `#${session.color.hex.toString(16).padStart(6, "0")}`);
+}
+
 function startMatch(raceId: string): void {
+  applyColor();
   session.start(raceId);
   bar.reset();
   renderer.setWorld(session.world);
@@ -219,10 +228,11 @@ function startMatch(raceId: string): void {
   select(fallback());
 }
 
+applyColor();
 // HUD first: the stage's size depends on the build bar's height.
 bar.update(barMode(), null);
-// `?3d` swaps in the Three.js world view (loaded only when asked for).
-const use3d = new URLSearchParams(location.search).has("3d");
+// The Three.js world view is the default; `?2d` keeps the flat Pixi one.
+const use3d = !new URLSearchParams(location.search).has("2d");
 await renderer.init($("stage"), { transparent: use3d });
 if (use3d) {
   const { World3D } = await import("./render/three/world3d");

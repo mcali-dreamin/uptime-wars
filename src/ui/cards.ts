@@ -25,6 +25,7 @@ export function buildingCard(content: Content, raceId: string, buildingId: strin
   }
   if (def.attack) does.push(`tower · ${def.attack.damage} dmg · range ${def.attack.range}`);
   if (def.income) does.push(`+${def.income.amount} compute / ${seconds(def.income.intervalTicks)}`);
+  if (def.onWell) does.push("on a data well");
   if (def.userCapacity) does.push(`+${def.userCapacity} users`);
   if (def.buildRadius) does.push(`network ${def.buildRadius}`);
   const lines = [does.join(" · ") || `${def.hp} HP`];
@@ -61,6 +62,7 @@ export function buildingDetail(content: Content, raceId: string, buildingId: str
     stats.push(`Shoots ${a.damage} ${a.attackType} damage every ${seconds(a.cooldownTicks)}, range ${a.range}`);
   }
   if (def.income) stats.push(`+${def.income.amount} compute every ${seconds(def.income.intervalTicks)}`);
+  if (def.onWell) stats.push("Only on a data well inside your network. Wells sit out past your core's reach: extend your network to claim one");
   if (def.userCapacity) {
     const perSecond = def.userCapacity * content.economy.revenuePerUserPerSecond;
     stats.push(`Serves up to ${def.userCapacity} users (up to +${+perSecond.toFixed(1)} compute/s when full)`);
@@ -90,7 +92,7 @@ export const TERRAIN_GUIDE: GuideEntry[] = [
   { title: "Open ground", description: "Walkable and buildable.", stats: [] },
   { title: "Dead link", description: "Light grey with a bright edge.", stats: ["Impassable", "Can't build", "Blocks line of sight"] },
   { title: "Data swamp", description: "Dark teal, dotted.", stats: ["Units move at half speed", "Can't build"] },
-  { title: "Data well", description: "Blue diamond.", stats: ["Open data. The economy hooks in soon"] },
+  { title: "Data well", description: "Glowing blue crystals.", stats: ["Build a Data Pump on one for steady compute", "Two are always a short hop from your start; the rest are scattered across the web", "Walkable, but nothing else can be built on it"] },
   { title: "Height", description: "Three levels: deep web (darkest), surface web, backbone (lightest).", stats: ["Units below can't see up a cliff unless they're right at its foot", "Attacking downhill deals 25% more damage", "Towers follow the same rules"] },
   { title: "Cliff", description: "Near-black band with a bright lip on the drop side.", stats: ["Impassable", "Can't build", "You can see and shoot across it"] },
   { title: "Ramp", description: "Striped gap in a cliff.", stats: ["The only way up or down", "Hold the ramp, hold the plateau"] },

@@ -69,30 +69,45 @@ try {
   const box = await (await page.$("canvas")).boundingBox();
   const state = (fn, arg) => page.evaluate(fn, arg);
   tickOf = () => state(() => window.uptime.world.tick);
-  /** World point -> page point, through the live camera. */
-  const toPage = async (x, y) => {
-    const p = await state(([x, y]) => {
-      const { renderer } = window.uptime;
-      const c = renderer.camera;
-      return { x: (x - c.x) * c.zoom + renderer.app.screen.width / 2, y: (y - c.y) * c.zoom + renderer.app.screen.height / 2 };
-    }, [x, y]);
-    return { x: box.x + p.x, y: box.y + p.y };
-  };
-  /** An open tile `min`..`max` tiles from (x, y), searched in a fixed pattern. */
+  /** World point -> page point, through the live view (3D by default). */
+  const toPage = (x, y) => state(([x, y]) => window.uptime.renderer.toScreen(x, y), [x, y]);
+  /**
+   * An open tile `min`..`max` tiles from (x, y), searched in a fixed pattern,
+   * that you can actually click: in 3D, ground behind a higher plateau is
+   * hidden, so the point must survive a screen round trip. And never inside
+   * a building.
+   */
   const openNear = (x, y, min, max) =>
     state(([x, y, min, max]) => {
-      const { world, TILE } = window.uptime;
+      const { world, TILE, renderer } = window.uptime;
       const t = world.terrain;
+      // Not inside a building: you can't rally into one.
+      const free = (px, py) =>
+        !world.entities.some((e) => e.kind === "building" && e.hp > 0 && Math.abs(px - e.x) < (e.footprint * TILE) / 2 + 8 && Math.abs(py - e.y) < (e.footprint * TILE) / 2 + 8);
+      const clickable = (px, py) => {
+        const s = renderer.toScreen(px, py);
+        const back = renderer.toWorld(s.x, s.y);
+        return Math.hypot(back.x - px, back.y - py) < 12;
+      };
       for (let r = min; r <= max; r++)
         for (const [dx, dy] of [[r, 0], [-r, 0], [0, r], [0, -r], [r, r], [-r, -r], [r, -r], [-r, r]]) {
-          const px = x + dx * TILE, py = y + dy * TILE;
-          if (t.tiles[Math.floor(py / TILE) * t.cols + Math.floor(px / TILE)] === 0) return { x: px, y: py };
+          // Tile centres: a point on a tile edge can pick back as the neighbour (a wall).
+          const px = (Math.floor(x / TILE) + dx + 0.5) * TILE, py = (Math.floor(y / TILE) + dy + 0.5) * TILE;
+          if (t.tiles[Math.floor(py / TILE) * t.cols + Math.floor(px / TILE)] === 0 && free(px, py) && clickable(px, py)) return { x: px, y: py };
         }
       return null;
     }, [x, y, min, max]);
 
+  // 0. The Three.js view is the default: a WebGL canvas under the Pixi overlay.
+  check((await page.$$eval("#stage canvas", (c) => c.length)) === 2, "the 3D view is drawn by default (WebGL canvas + overlay)");
+
   // 1. Race picker, then the deploy agent starts selected.
   check(await page.$eval("#race-picker", (el) => !el.hidden), "race picker is shown");
+  const swatches = await page.$$eval(".color-swatch", (b) => b.map((x) => x.dataset.color));
+  check(swatches.length >= 6, `colour picker offers ${swatches.length} colours`);
+  await page.click('.color-swatch[data-color="purple"]');
+  check(await state(() => window.uptime.session.color.id === "purple"), "clicking a swatch picks that colour");
+  check(await page.$eval(".color-swatch.chosen", (el) => el.dataset.color) === "purple", "the chosen swatch is marked");
   await page.keyboard.press("1");
   const started = Date.now();
   await page.waitForTimeout(300);
@@ -103,6 +118,8 @@ try {
   });
   check(agent.selected, "deploy agent starts selected");
   check((await page.textContent("#hint")).length > 0, "hint line is shown while deploying");
+  const preview = `${await page.textContent("#preview-title")} | ${await page.textContent("#preview-creeps")}`;
+  check(preview.startsWith("Wave 1 · ") && preview.includes("Bot"), `the HUD previews the next wave (${preview})`);
 
   // 2. Click the ground: the agent walks there.
   const walkTo = await openNear(agent.x, agent.y, 4, 8);

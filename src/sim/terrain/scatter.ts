@@ -64,14 +64,15 @@ export function scatterResources(
       return;
     }
   };
-  // Two wells within reach of every start, the rest anywhere.
+  // Two wells a short hop from every start: just past the core's reach (7
+  // tiles from its centre), so the first pump means extending your network.
   for (const start of starts) {
-    tryPlace(start, 7, 14);
-    tryPlace(start, 7, 14);
+    tryPlace(start, 9, 14);
+    tryPlace(start, 9, 14);
   }
   while (placed.length < RESOURCE_COUNT) {
     const before = placed.length;
-    tryPlace(null, 7, 0);
+    tryPlace(null, 9, 0);
     if (placed.length === before) break;
   }
   return placed;
