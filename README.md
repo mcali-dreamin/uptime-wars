@@ -64,6 +64,12 @@ cheap, fragile Mesh Nodes (reach 4); Hyperscaler builds armored Edge PoPs
 (reach 7). Cores are buildable too (300 compute). If your main core falls, the
 next takes over, and you only go down when every core is down.
 
+**Data wells** are glowing crystals scattered across the web. Build a **Data
+Pump** on one (both races, 100 compute) for +8 compute a second, twice a Solar
+Array. No well is inside your core's starting reach, though the nearest two
+are always a short hop out, so your first pump means extending your network
+toward it. Pumps sit out in the open, where wandering packs find them.
+
 **Users** are why you're online. They arrive while your core is up and grow
 toward your capacity (the core serves 40; each Web App adds 60). Every user
 pays compute each second, and every hit your buildings take drives some away.
@@ -171,7 +177,7 @@ Direction: survival on a procedurally generated open web.
 - [x] Builder start: scout with a deploy agent and choose where your core goes
 - [x] Fog of war
 - [x] Users: capacity, revenue, and churn from damage
-- [ ] Data wells feed the economy
+- [x] Data wells feed the economy
 - [x] Wandering creep packs that only attack what they see
 - [x] Endless escalating waves from a nest in the middle; uptime score
 - [x] Elevation: plateaus, cliffs, ramps; high-ground sight and damage

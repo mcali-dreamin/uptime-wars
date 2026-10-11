@@ -47,7 +47,11 @@ export class Hud {
   /** One line telling the player what they can do right now. */
   private hintFor(selection: Selection): string {
     if (selection.kind === "found") return "Click to deploy your core";
-    if (selection.kind === "place") return "Click inside the ring to build";
+    if (selection.kind === "place") {
+      return this.session.content.buildings[selection.building]?.onWell
+        ? "Click a data well (glowing crystals) inside your network"
+        : "Click inside the ring to build";
+    }
     if (!this.session.deploying) {
       const label = groundOrderLabel(this.session, selection);
       if (!label) return "";
