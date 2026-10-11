@@ -30,7 +30,7 @@ describe("auto-spawn", () => {
     const world = createWorld(content, SETUP);
     queueCommand(world, firstSpot("server-rack"));
     while (world.tick < 400) step(world, content);
-    const guards = world.entities.filter((e) => e.kind === "unit" && e.team === 0);
+    const guards = world.entities.filter((e) => e.kind === "unit" && e.team === 0 && e.mode === "guard");
     expect(guards.length).toBeGreaterThan(0);
     for (const guard of guards) {
       if (guard.kind !== "unit") continue;
@@ -58,13 +58,13 @@ describe("rally points", () => {
   function worldWithRack() {
     const world = createWorld(content, SETUP);
     queueCommand(world, firstSpot("server-rack"));
-    while (!world.entities.some((e) => e.kind === "unit" && e.team === 0)) step(world, content);
+    while (!world.entities.some((e) => e.kind === "unit" && e.team === 0 && e.mode === "guard")) step(world, content);
     const rack = world.entities.find((e) => e.kind === "building" && e.defId === "server-rack")!;
     return { world, rack, coreId: world.teams[0]!.coreId };
   }
 
   const guards = (world: ReturnType<typeof createWorld>) =>
-    world.entities.filter((e): e is Extract<typeof e, { kind: "unit" }> => e.kind === "unit" && e.team === 0);
+    world.entities.filter((e): e is Extract<typeof e, { kind: "unit" }> => e.kind === "unit" && e.team === 0 && e.mode === "guard");
 
   it("a spawner's rally point sends its existing units and new ones there", () => {
     const { world, rack } = worldWithRack();

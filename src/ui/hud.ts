@@ -1,7 +1,7 @@
 // Top bar numbers, the status line, and the hint line over the map.
 
 import { TICK_RATE, hashWorld, incomeRate, isCore, previewWave, userCapacity } from "../sim";
-import { groundOrderLabel, leftClickOrders, type Selection } from "../game/selection";
+import { groundOrderLabel, leftClickOrders, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { $ } from "./dom";
 
@@ -115,6 +115,16 @@ export class Hud {
   /** One line telling the player what they can do right now. */
   private hintFor(selection: Selection): string {
     if (selection.kind === "found") return "Click to deploy your core";
+    if (selection.kind === "cast") {
+      const ability = this.session.content.heroes.abilities[selection.ability]!;
+      return `${ability.name}: click ${ability.target === "enemy" ? "an enemy" : "where"} · right-click or Esc to cancel`;
+    }
+    const entity = selectedEntity(this.session, selection);
+    if (entity?.kind === "unit" && entity.mode === "hero") {
+      return leftClickOrders(this.session, selection)
+        ? "Click the ground to move · Esc to cancel"
+        : "Right-click: move, or attack an enemy · 1-4 abilities · Shift+1-4 learn";
+    }
     if (selection.kind === "place") {
       return this.session.content.buildings[selection.building]?.onWell
         ? "Click a data well (glowing crystals) inside your network"

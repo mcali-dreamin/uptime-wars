@@ -437,6 +437,116 @@ export class Models {
         anim(halo, { type: "pulse", amount: 0.15, speed: 2 });
         break;
       }
+      // --- heroes: bigger, taller, and each with a silhouette of its own ----
+      case "maintainer": {
+        // Hooded figure carrying a glowing laptop, with a floating commit ring.
+        this.shape(g, team, "body", `m-robe:${r}`, () => new THREE.ConeGeometry(r * 0.85, r * 2.2, 10), 0, r * 1.1, 0);
+        this.shape(g, team, "trim", `m-hood:${r}`, () => new THREE.SphereGeometry(r * 0.5, 10, 8), 0, r * 2.35, 0);
+        this.shape(g, team, "glow", `m-eyes:${r}`, () => new THREE.BoxGeometry(r * 0.5, r * 0.1, r * 0.1), 0, r * 2.35, r * 0.42);
+        this.box(g, team, "screen", r * 0.9, r * 0.06, r * 0.6, 0, r * 1.35, r * 0.55).rotation.x = -0.5;
+        const ring = this.shape(g, team, "glow", `m-ring:${r}`, () => new THREE.TorusGeometry(r * 0.8, r * 0.06, 6, 24), 0, r * 3.2, 0);
+        ring.rotation.x = Math.PI / 2;
+        anim(ring, { type: "spin", speed: 1.6, axis: "z" });
+        break;
+      }
+      case "bdfl": {
+        // Broad armoured figure on a throne-like base, with a crown of spikes.
+        this.box(g, team, "frame", r * 1.7, r * 0.5, r * 1.4);
+        this.box(g, team, "body", r * 1.4, r * 1.5, r * 1.0, 0, r * 0.5);
+        for (const x of [-1, 1]) this.box(g, team, "trim", r * 0.5, r * 0.4, r * 0.9, x * r * 0.95, r * 1.6);
+        this.shape(g, team, "body", `b-head:${r}`, () => new THREE.SphereGeometry(r * 0.42, 10, 8), 0, r * 2.35, 0);
+        for (let i = 0; i < 5; i += 1) {
+          const spike = this.shape(g, team, "glow", `b-spike:${r}`, () => new THREE.ConeGeometry(r * 0.1, r * 0.45, 5), 0, 0, 0);
+          const a = (i / 5) * Math.PI * 2;
+          spike.position.set(Math.sin(a) * r * 0.35, r * 2.75, Math.cos(a) * r * 0.35);
+        }
+        this.box(g, team, "glow", r * 0.18, r * 1.8, r * 0.18, r * 1.05, r * 0.6).rotation.z = 0.2;
+        break;
+      }
+      case "bug-hunter": {
+        // Lean, cloaked, a long scope-rifle and a bug-lens visor.
+        this.shape(g, team, "dark", `h-body:${r}`, () => new THREE.CapsuleGeometry(r * 0.38, r * 1.3, 4, 8), 0, r * 1.2, 0);
+        this.shape(g, team, "trim", `h-cape:${r}`, () => new THREE.ConeGeometry(r * 0.75, r * 1.7, 4, 1, true), 0, r * 1.15, -r * 0.1);
+        this.shape(g, team, "glow", `h-visor:${r}`, () => new THREE.TorusGeometry(r * 0.22, r * 0.07, 6, 16), 0, r * 2.15, r * 0.3);
+        const rifle = this.box(g, team, "frame", r * 0.14, r * 0.14, r * 2.2, r * 0.45, r * 1.25, r * 0.5);
+        rifle.rotation.x = 0.15;
+        this.shape(g, team, "glow", `h-tip:${r}`, () => new THREE.SphereGeometry(r * 0.1, 6, 4), r * 0.45, r * 1.4, r * 1.6);
+        break;
+      }
+      case "sre": {
+        // Big rig in a hazard harness, pager glowing, two hard shoulder-lamps.
+        this.box(g, team, "body", r * 1.5, r * 1.6, r * 1.1, 0, r * 0.4);
+        this.box(g, team, "trim", r * 1.55, r * 0.25, r * 1.15, 0, r * 1.2);
+        for (const x of [-1, 1]) {
+          this.box(g, team, "frame", r * 0.45, r * 1.1, r * 0.5, x * r * 1.0, r * 0.2);
+          this.shape(g, team, "glow", `s-lamp:${r}`, () => new THREE.CylinderGeometry(r * 0.16, r * 0.2, r * 0.25, 10), x * r * 0.8, r * 2.15, 0);
+        }
+        this.shape(g, team, "frame", `s-helm:${r}`, () => new THREE.SphereGeometry(r * 0.5, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), 0, r * 2.0, 0);
+        this.box(g, team, "glow", r * 0.3, r * 0.2, r * 0.08, r * 0.35, r * 1.5, r * 0.58);
+        break;
+      }
+      case "architect": {
+        // Floating figure inside a slowly turning wireframe cube of boxes.
+        const body = new THREE.Group();
+        this.shape(body, team, "body", `a-body:${r}`, () => new THREE.CylinderGeometry(r * 0.35, r * 0.6, r * 1.6, 8), 0, r * 0.8, 0);
+        this.shape(body, team, "trim", `a-head:${r}`, () => new THREE.OctahedronGeometry(r * 0.38), 0, r * 1.95, 0);
+        body.position.y = r * 0.6;
+        anim(body, { type: "bob", amount: 2.5, speed: 1.6, base: r * 0.6 });
+        g.add(body);
+        const frame = new THREE.Group();
+        for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+          this.box(frame, team, "glow", r * 0.3, r * 0.3, r * 0.3, x * r * 1.05, r * 2.2, z * r * 1.05);
+        }
+        anim(frame, { type: "spin", speed: 0.7, axis: "y" });
+        g.add(frame);
+        break;
+      }
+      case "evangelist": {
+        // On a stage: a figure with a megaphone and a spotlight halo.
+        this.cyl(g, team, "frame", r * 1.0, r * 1.1, r * 0.35, 12);
+        this.shape(g, team, "trim", `e-body:${r}`, () => new THREE.CapsuleGeometry(r * 0.42, r * 1.0, 4, 8), 0, r * 1.35, 0);
+        this.shape(g, team, "body", `e-head:${r}`, () => new THREE.SphereGeometry(r * 0.38, 10, 8), 0, r * 2.35, 0);
+        const horn = this.shape(g, team, "glow", `e-horn:${r}`, () => new THREE.ConeGeometry(r * 0.3, r * 0.8, 10, 1, true), r * 0.55, r * 1.85, r * 0.45);
+        horn.rotation.x = -Math.PI / 2.4;
+        const halo = this.shape(g, team, "glow", `e-halo:${r}`, () => new THREE.TorusGeometry(r * 1.2, r * 0.05, 6, 32), 0, r * 0.4, 0);
+        halo.rotation.x = Math.PI / 2;
+        anim(halo, { type: "pulse", amount: 0.12, speed: 2.4 });
+        break;
+      }
+
+      // --- decoys --------------------------------------------------------
+      case "honeypot": {
+        // A server box dripping honey-gold.
+        this.box(g, team, "body", r * 1.6, r * 1.8, r * 1.4);
+        this.box(g, team, "flame", r * 1.7, r * 0.3, r * 1.5, 0, r * 1.8);
+        for (let i = -1; i <= 1; i += 1) this.box(g, team, "flame", r * 0.18, r * 0.6, r * 0.18, i * r * 0.5, r * 1.2, r * 0.72);
+        break;
+      }
+      case "flame-war": {
+        // A burning thread: stacked speech boxes on fire.
+        for (let i = 0; i < 3; i += 1) this.box(g, team, i % 2 ? "trim" : "body", r * (1.6 - i * 0.3), r * 0.5, r * 0.5, i * r * 0.15, i * r * 0.55);
+        for (let i = 0; i < 4; i += 1) {
+          const f = this.shape(g, team, "flame", `fw-f:${r}`, () => new THREE.ConeGeometry(r * 0.25, r * 0.9, 6), (i - 1.5) * r * 0.4, r * 1.9, 0);
+          anim(f, { type: "flicker" });
+        }
+        break;
+      }
+      case "canary": {
+        // A little bird on a perch.
+        this.cyl(g, team, "frame", r * 0.08, r * 0.08, r * 1.4, 6);
+        this.shape(g, team, "flame", `c-body:${r}`, () => new THREE.SphereGeometry(r * 0.55, 10, 8), 0, r * 1.75, 0);
+        this.shape(g, team, "flame", `c-head:${r}`, () => new THREE.SphereGeometry(r * 0.35, 10, 8), 0, r * 2.3, r * 0.35);
+        this.shape(g, team, "frame", `c-beak:${r}`, () => new THREE.ConeGeometry(r * 0.12, r * 0.3, 6), 0, r * 2.3, r * 0.75).rotation.x = Math.PI / 2;
+        anim(g, { type: "bob", amount: 1.5, speed: 3, base: 0 });
+        break;
+      }
+      case "free-tier": {
+        // A glowing gift-card sign on a post.
+        this.cyl(g, team, "frame", r * 0.1, r * 0.1, r * 1.5, 6);
+        this.box(g, team, "glow", r * 1.8, r * 1.1, r * 0.15, 0, r * 1.5);
+        this.box(g, team, "screen", r * 1.5, r * 0.8, r * 0.17, 0, r * 1.65);
+        break;
+      }
       default:
         this.cyl(g, team, team === HORDE_COLOR ? "flesh" : "trim", r * 0.8, r, r * 1.8, 10);
     }

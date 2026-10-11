@@ -19,6 +19,9 @@ import { Models, animate } from "./models";
 import { Terrain3D } from "./terrain3d";
 
 /** Camera distance at zoom 1, pitch above the horizon, and field of view. */
+/** Gold underfoot marks heroes. */
+const HERO_RING = 0xfacc15;
+const SHOCKWAVE_S = 0.6;
 const DISTANCE = 1000;
 const PITCH = (56 * Math.PI) / 180;
 const FOV = 40;
@@ -78,6 +81,10 @@ export class World3D implements WorldView {
   private readonly flag = new THREE.Group();
   private readonly rallyLine: THREE.Line;
   private readonly deaths: Extract<SimEvent, { type: "death" }>[] = [];
+  /** Ability casts and hero level-ups, for their effects. */
+  private readonly casts: Extract<SimEvent, { type: "cast" }>[] = [];
+  /** Expanding shockwave rings from casts: where, how big, how old. */
+  private shockwaves: { x: number; y: number; radius: number; color: number; age: number }[] = [];
   private world: World | null = null;
   private lastTime = performance.now();
   /** Software rendering (CI, old machines): no shadows, no bloom. */
@@ -166,6 +173,7 @@ export class World3D implements WorldView {
 
   event(event: SimEvent): void {
     if (event.type === "death") this.deaths.push(event);
+    if (event.type === "cast") this.casts.push(event);
   }
 
   draw(frame: Frame): void {
@@ -179,6 +187,7 @@ export class World3D implements WorldView {
     this.models.update(t);
     this.syncEntities(frame, t, dt);
     this.drawDeaths(frame);
+    this.drawCasts(frame, dt);
     this.drawShots(frame);
     this.drawOverlay(frame, t);
     this.particles.update(dt);
@@ -375,6 +384,22 @@ export class World3D implements WorldView {
     this.deaths.length = 0;
   }
 
+  /** Ability effects: a burst at the target and a shockwave ring the size of its area. */
+  private drawCasts(frame: Frame, dt: number): void {
+    for (const cast of this.casts) {
+      if (!frame.fog.isVisible(cast.x, cast.y)) continue;
+      const floor = this.terrain3d.floorAt(cast.x, cast.y);
+      const color = teamColor(frame.world, cast.team);
+      const area = cast.radius > 0;
+      this.particles.burst(cast.x, floor + 20, cast.y, area ? 120 : 50, color, area ? 2.2 : 1.4);
+      this.particles.burst(cast.x, floor + 30, cast.y, 30, 0xffffff, 1.2);
+      this.shockwaves.push({ x: cast.x, y: cast.y, radius: area ? cast.radius : 40, color, age: 0 });
+    }
+    this.casts.length = 0;
+    for (const wave of this.shockwaves) wave.age += dt;
+    this.shockwaves = this.shockwaves.filter((wave) => wave.age < SHOCKWAVE_S);
+  }
+
   private drawShots(frame: Frame): void {
     this.bolts.begin();
     for (const shot of frame.shots) {
@@ -435,6 +460,18 @@ export class World3D implements WorldView {
       if (g.range > 0) this.thinRings.add(cx, ground(cx, cz), cz, g.range + size / 2, HIGHLIGHT, 0.6);
     } else {
       this.ghost.visible = false;
+    }
+
+    // Heroes stand on a ring of their own, so you can find them in a crowd.
+    for (const entity of world.entities) {
+      if (entity.kind !== "unit" || entity.mode !== "hero" || entity.hp <= 0) continue;
+      const at = frame.position(entity);
+      if (!frame.shows(entity, at.x, at.y)) continue;
+      this.thinRings.add(at.x, ground(at.x, at.y), at.y, entity.radius + 14, HERO_RING, 0.8);
+    }
+    for (const wave of this.shockwaves) {
+      const k = wave.age / SHOCKWAVE_S;
+      this.rings.add(wave.x, ground(wave.x, wave.y), wave.y, wave.radius * (0.3 + 0.7 * k), wave.color, 1 - k);
     }
 
     for (const ping of frame.pings) {

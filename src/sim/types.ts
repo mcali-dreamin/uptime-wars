@@ -36,6 +36,34 @@ export interface Team {
    * allies play on. This is also its uptime.
    */
   downTick: number | null;
+  /** The hero unit this player picked (races with heroes), else null. */
+  heroId: string | null;
+  /** That hero's state, once the core is online. */
+  hero: HeroState | null;
+}
+
+export interface HeroState {
+  /** The hero unit, or -1 while it's dead or not yet spawned. */
+  unitId: number;
+  level: number;
+  /** Total XP earned. */
+  xp: number;
+  /** Max hp at level 1 as spawned (race and upgrades included); levels add to it. */
+  baseHp: number;
+  /** Rank learned in each ability (absent = not learned). */
+  ranks: Record<string, number>;
+  /** Ticks until each ability can be cast again (absent = ready). */
+  cooldowns: Record<string, number>;
+  /** When a dead hero comes back, else null. */
+  respawnAt: number | null;
+  /** An enemy the player told the hero to attack. */
+  focusId: number | null;
+  /** A cast the hero is walking into range to make. */
+  cast: { ability: string; x: number; y: number; targetId: number | null } | null;
+  /** Decoys and summons, and when they vanish. */
+  temps: { id: number; until: number }[];
+  /** A buff ability running: extra damage fraction for every unit, until a tick. */
+  buff: { amount: number; until: number } | null;
 }
 
 interface EntityBase {
@@ -58,7 +86,7 @@ interface EntityBase {
  * - roam:  wanders the map with its pack and attacks whatever it sees. Creeps
  *   never know where you are; they find you by running into you.
  */
-export type UnitMode = "guard" | "roam" | "builder";
+export type UnitMode = "guard" | "roam" | "builder" | "hero" | "decoy";
 
 export interface Unit extends EntityBase {
   kind: "unit";
@@ -99,7 +127,7 @@ export interface BuildCommand {
   row: number;
 }
 
-/** Walk the builder to a point. */
+/** Walk the builder (before the core) or the hero (after) to a point. */
 export interface MoveCommand {
   type: "move";
   tick: number;
@@ -138,7 +166,34 @@ export interface ResearchCommand {
   upgrade: string;
 }
 
-export type Command = BuildCommand | MoveCommand | FoundCommand | RallyCommand | ResearchCommand;
+/** Send the hero after one enemy. */
+export interface AttackCommand {
+  type: "attack";
+  tick: number;
+  team: TeamId;
+  targetId: number;
+}
+
+/** Spend a skill point on an ability. */
+export interface LearnCommand {
+  type: "learn";
+  tick: number;
+  team: TeamId;
+  ability: string;
+}
+
+/** Cast a hero ability at a point (point), an enemy (enemy), or the hero (self). */
+export interface CastCommand {
+  type: "cast";
+  tick: number;
+  team: TeamId;
+  ability: string;
+  x: number;
+  y: number;
+  targetId: number | null;
+}
+
+export type Command = BuildCommand | MoveCommand | FoundCommand | RallyCommand | ResearchCommand | AttackCommand | CastCommand | LearnCommand;
 
 export interface WaveSpawn {
   tick: number;
@@ -176,6 +231,10 @@ export type SimEvent =
   | { type: "failover"; team: TeamId; x: number; y: number }
   /** A team went offline while its allies play on. */
   | { type: "offline"; team: TeamId }
+  | { type: "cast"; team: TeamId; ability: string; x: number; y: number; radius: number; targetId: number | null }
+  | { type: "hero-level"; team: TeamId; level: number }
+  | { type: "hero-down"; team: TeamId; respawnAt: number }
+  | { type: "hero-up"; team: TeamId; x: number; y: number }
   | { type: "researched"; team: TeamId; upgrade: string; level: number }
   | { type: "rejected"; command: Command; reason: string };
 

@@ -6,6 +6,8 @@ import { placeBuilding, sendHome } from "./entities";
 import { TILE, footprintCenter } from "./map";
 import { buildCost, canFound, canPlace, isCore } from "./placement";
 import { canResearch, nextLevel } from "./upgrades";
+import { heroOf, learnBlocker, orderCast } from "./heroes";
+import { hostile } from "./teams";
 import { isWalkableTile } from "./terrain";
 import type { Command, RallyCommand, World } from "./types";
 
@@ -60,23 +62,62 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
       team.research = { upgrade: command.upgrade, remaining: next.ticks };
       return null;
     }
-    case "found":
-    case "move": {
-      const builder = ctx.byId.get(world.teams[command.team]!.builderId);
-      if (!builder || builder.kind !== "unit" || builder.hp <= 0) return "no builder";
-      if (command.type === "found") {
-        const reason = canFound(world, content, command.team, command.col, command.row);
-        if (reason) return reason;
-        builder.moveTo = footprintCenter(command.col, command.row, 2);
-        builder.foundAt = { col: command.col, row: command.row };
-      } else {
-        if (!walkable(world, command.x, command.y)) return "can't walk there";
-        builder.moveTo = { x: command.x, y: command.y };
-        builder.foundAt = null;
-      }
+    case "attack": {
+      const team = world.teams[command.team]!;
+      const hero = heroOf(world, team);
+      if (!hero) return "no hero";
+      const target = ctx.byId.get(command.targetId);
+      if (!target || target.hp <= 0 || !hostile(world, target.team, team.id)) return "not an enemy";
+      team.hero!.focusId = target.id;
+      team.hero!.cast = null;
+      hero.moveTo = null;
       return null;
     }
+    case "cast":
+      return orderCast(ctx, world.teams[command.team]!, command);
+    case "learn": {
+      const team = world.teams[command.team]!;
+      const reason = learnBlocker(content, team, command.ability);
+      if (reason) return reason;
+      team.hero!.ranks[command.ability] = (team.hero!.ranks[command.ability] ?? 0) + 1;
+      return null;
+    }
+    case "move":
+      // Before the core, "move" walks the deploy agent; after, the hero.
+      if (world.teams[command.team]!.coreId !== -1) return moveHero(ctx, command);
+      return moveBuilder(ctx, command);
+    case "found":
+      return moveBuilder(ctx, command);
   }
+}
+
+function moveHero(ctx: TickContext, command: Extract<Command, { type: "move" }>): string | null {
+  const { world } = ctx;
+  const team = world.teams[command.team]!;
+  const hero = heroOf(world, team);
+  if (!hero) return "no hero";
+  if (!walkable(world, command.x, command.y)) return "can't walk there";
+  hero.moveTo = { x: command.x, y: command.y };
+  team.hero!.focusId = null;
+  team.hero!.cast = null;
+  return null;
+}
+
+function moveBuilder(ctx: TickContext, command: Extract<Command, { type: "move" | "found" }>): string | null {
+  const { world, content } = ctx;
+  const builder = ctx.byId.get(world.teams[command.team]!.builderId);
+  if (!builder || builder.kind !== "unit" || builder.hp <= 0) return "no builder";
+  if (command.type === "found") {
+    const reason = canFound(world, content, command.team, command.col, command.row);
+    if (reason) return reason;
+    builder.moveTo = footprintCenter(command.col, command.row, 2);
+    builder.foundAt = { col: command.col, row: command.row };
+  } else {
+    if (!walkable(world, command.x, command.y)) return "can't walk there";
+    builder.moveTo = { x: command.x, y: command.y };
+    builder.foundAt = null;
+  }
+  return null;
 }
 
 function applyRally(ctx: TickContext, command: RallyCommand): string | null {

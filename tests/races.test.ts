@@ -24,8 +24,8 @@ describe("races", () => {
 
     const rack = planBuildOrder(content, HYPER, [[0, "hyperscale-rack"]])[0]!;
     queueCommand(hyper, rack);
-    while (!hyper.entities.some((e) => e.kind === "unit" && e.team === 0)) step(hyper, content);
-    const unit = hyper.entities.find((e) => e.kind === "unit" && e.team === 0)!;
+    while (!hyper.entities.some((e) => e.kind === "unit" && e.team === 0 && e.mode === "guard")) step(hyper, content);
+    const unit = hyper.entities.find((e) => e.kind === "unit" && e.team === 0 && e.mode === "guard")!;
     expect(unit.maxHp).toBe(Math.round(content.units["load-balancer"]!.hp * content.races.hyperscaler!.modifiers.unitHpMultiplier));
   });
 

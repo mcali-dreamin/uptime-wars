@@ -23,6 +23,7 @@ const HORDE_RACE = "botnet";
 const INPUT_DELAY_TICKS = 2;
 const RACE_KEY = "uptime:race";
 const COLOR_KEY = "uptime:color";
+const HERO_KEY = "uptime:hero:";
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
@@ -50,8 +51,9 @@ export class Session {
     this.world = this.newWorld();
   }
 
-  start(raceId: string): void {
+  start(raceId: string, heroId?: string): void {
     this.pick(raceId);
+    if (heroId) this.pickHero(heroId);
     this.net = null;
     this.local = 0;
     this.world = this.newWorld();
@@ -60,6 +62,17 @@ export class Session {
   setColor(id: string): void {
     this.color = playerColor(id);
     localStorage.setItem(COLOR_KEY, this.color.id);
+  }
+
+  /** The hero you last played with a race (its first, before you've picked). */
+  heroFor(raceId: string): string | undefined {
+    const heroes = this.content.races[raceId]?.heroes ?? [];
+    const saved = localStorage.getItem(HERO_KEY + raceId) ?? "";
+    return heroes.includes(saved) ? saved : heroes[0];
+  }
+
+  pickHero(heroId: string): void {
+    localStorage.setItem(HERO_KEY + this.raceId, heroId);
   }
 
   /** Remember the race for next time, without starting anything. */
@@ -129,6 +142,6 @@ export class Session {
     // `?seed=N` replays a specific map (tests, bug reports); otherwise random.
     const fixed = Number(new URLSearchParams(location.search).get("seed"));
     const seed = Number.isInteger(fixed) && fixed !== 0 ? fixed : (Math.random() * 2 ** 31) | 0;
-    return createWorld(this.content, { seed, races: [this.raceId, HORDE_RACE] });
+    return createWorld(this.content, { seed, races: [this.raceId, HORDE_RACE], heroes: [this.heroFor(this.raceId)] });
   }
 }

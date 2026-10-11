@@ -5,6 +5,8 @@
 // - roam:    creeps. Wanders the web with its pack; senses your traffic;
 //            attacks whatever it sees.
 // - builder: your deploy agent. Walks where it's told and becomes the core.
+// - hero:    your hero. Does what you tell it (move, attack, cast); see heroes.ts.
+// - decoy:   a honeypot a hero dropped. Doesn't move; creeps lured onto it stay.
 //
 // Adding a mode (heroes, burst-spawned serverless units, ...) means a new
 // file exporting a Behavior and one line in BEHAVIORS below.
@@ -13,6 +15,8 @@ import type { TickContext } from "../context";
 import type { UnitDef } from "../content";
 import type { Unit, UnitMode } from "../types";
 import { builder } from "./builder";
+import { decoy } from "./decoy";
+import { hero } from "./hero";
 import { guard } from "./guard";
 import { roam } from "./roam";
 
@@ -24,7 +28,7 @@ export interface UnitTickState {
 
 export type Behavior = (ctx: TickContext, unit: Unit, def: UnitDef, state: UnitTickState) => void;
 
-const BEHAVIORS: Record<UnitMode, Behavior> = { guard, roam, builder };
+const BEHAVIORS: Record<UnitMode, Behavior> = { guard, roam, builder, hero, decoy };
 
 export function tickUnits(ctx: TickContext): void {
   const { world, content } = ctx;

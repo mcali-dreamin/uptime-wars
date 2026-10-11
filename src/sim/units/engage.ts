@@ -4,8 +4,9 @@
 import { canSee, dealDamage, edgeDistance, nearestEnemy } from "../combat";
 import type { TickContext } from "../context";
 import type { UnitDef } from "../content";
-import { distance } from "../movement";
+import { distance, walkTo } from "../movement";
 import { hasClearPath, moveToward } from "../nav";
+import { buffMultiplier, luredBy } from "../heroes";
 import { BUILDING_SIGHT, GUARD_RADIUS, LEASH_MULTIPLIER } from "../tuning";
 import type { Entity, Unit } from "../types";
 import { multiplier } from "../upgrades";
@@ -25,8 +26,11 @@ export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
   const guardCanHold = (t: Entity) => !guard || distance(t, home) <= GUARD_RADIUS || edgeDistance(unit, t) <= def.aggro;
   const sight = (t: Entity) => (t.kind === "building" && !guard ? BUILDING_SIGHT : def.aggro);
 
-  let target = unit.targetId === null ? undefined : ctx.byId.get(unit.targetId);
+  // A creep lured by a honeypot goes for it, wherever it is.
+  const lure = guard ? undefined : luredBy(ctx, unit);
+  let target = lure ?? (unit.targetId === null ? undefined : ctx.byId.get(unit.targetId));
   const keep =
+    lure !== undefined ||
     target !== undefined &&
     target.hp > 0 &&
     edgeDistance(unit, target) <= sight(target) * LEASH_MULTIPLIER &&
@@ -42,10 +46,15 @@ export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
   const gap = edgeDistance(unit, target);
   if (gap <= def.range) {
     if (unit.attackCooldown <= 0) {
-      const damage = def.damage * multiplier(ctx.content, world.teams[unit.team]!, "unitDamage");
+      const team = world.teams[unit.team]!;
+      const damage = def.damage * multiplier(ctx.content, team, "unitDamage") * buffMultiplier(team, world.tick);
       dealDamage(ctx, unit, target, def.attackType, damage);
       unit.attackCooldown = def.cooldownTicks;
     }
+    return true;
+  }
+  if (lure) {
+    walkTo(world, unit, target, def.speed);
     return true;
   }
   if (hasClearPath(world.terrain, unit.x, unit.y, target.x, target.y, unit.radius)) {

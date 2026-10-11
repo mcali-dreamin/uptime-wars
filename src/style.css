@@ -542,3 +542,109 @@ body {
 .coop-window [hidden] {
   display: none !important;
 }
+
+.hero-card ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.hero-card ul b {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+#hero-card {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 190px;
+  padding: 0.45rem 0.65rem;
+  background: rgba(18, 25, 34, 0.9);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+#hero-card[hidden] {
+  display: none;
+}
+
+#hero-card:hover,
+#hero-card.points {
+  border-color: var(--accent);
+}
+
+#hero-card.down {
+  opacity: 0.6;
+}
+
+.hero-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+
+#hero-xp {
+  --xp: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent) calc(var(--xp) * 100%), #243142 0);
+}
+
+#hero-status {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+#hero-card.points #hero-status {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.ability-btn {
+  position: relative;
+}
+
+.ability-btn.cooling {
+  opacity: 0.75;
+}
+
+.ability-btn .learn {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #0b0f14;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.ability-btn .learn[hidden] {
+  display: none;
+}
+
+.ability-btn.cooling::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: calc(var(--progress, 0) * 100%);
+  background: var(--accent);
+}

@@ -109,6 +109,10 @@ try {
   check(await state(() => window.uptime.session.color.id === "purple"), "clicking a swatch picks that colour");
   check(await page.$eval(".color-swatch.chosen", (el) => el.dataset.color) === "purple", "the chosen swatch is marked");
   await page.keyboard.press("1");
+  // Then the race's heroes: pick the second one.
+  const heroes = await waitFor(() => page.$$eval(".hero-card", (c) => c.map((x) => x.dataset.hero)), 5000);
+  check(heroes.length >= 3, `picking a race offers its heroes (${heroes.join(", ")})`);
+  await page.keyboard.press("2");
   const started = Date.now();
   await page.waitForTimeout(300);
   const agent = await state(() => {
@@ -217,6 +221,46 @@ try {
   await page.keyboard.up("Meta");
   check(near(await waitForGame(async () => { const r = await rallyOf(); return near(r, viaMeta) ? r : null; }, 5), viaMeta), "Cmd-click sets the rally");
 
+  // 4c. The hero: it's yours once the core is up. Q selects it, abilities learn and cast.
+  const hero = await waitForGame(() => state(() => {
+    const t = window.uptime.world.teams[0];
+    const h = window.uptime.world.entities.find((e) => e.id === t.hero?.unitId);
+    return h ? { id: h.id, defId: h.defId, x: h.x, y: h.y } : null;
+  }), 5);
+  check(hero?.defId === heroes[1], `the hero you picked is on the field (${hero?.defId})`);
+  check(await page.$eval("#hero-card", (el) => !el.hidden), "the hero card is shown");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("q");
+  check(await state((id) => window.uptime.selection.kind === "entity" && window.uptime.selection.id === id, hero.id), "Q selects the hero");
+  const abilities = await waitFor(() => page.$$eval(".ability-btn", (b) => b.map((x) => x.dataset.ability)), 5000);
+  check(abilities.length === 4, `the hero's command card shows its 4 abilities (${abilities.join(", ")})`);
+  // Learn the first ability with the + button, then move the hero with a right-click.
+  await page.click(`.ability-btn[data-ability="${abilities[0]}"] .learn`);
+  check(await waitForGame(() => state((a) => window.uptime.world.teams[0].hero.ranks[a] === 1, abilities[0]), 3), "the + learns an ability");
+  const heroTo = await openNear(hero.x, hero.y, 3, 7);
+  p = await toPage(heroTo.x, heroTo.y);
+  await page.mouse.click(p.x, p.y, { button: "right" });
+  const heroGap = async () => state(([x, y]) => {
+    const t = window.uptime.world.teams[0];
+    const h = window.uptime.world.entities.find((e) => e.id === t.hero.unitId);
+    return Math.hypot(h.x - x, h.y - y);
+  }, [heroTo.x, heroTo.y]);
+  await waitForGame(async () => (await heroGap()) < 20, 20);
+  check((await heroGap()) < 20, `right-click moves the hero (${Math.round(await heroGap())}px away)`);
+  // Cast it: self abilities go at once; aimed ones want a click.
+  await page.keyboard.press("1");
+  const aiming = await state(() => window.uptime.selection.kind === "cast");
+  if (aiming) {
+    const at = await openNear(heroTo.x, heroTo.y, 1, 3);
+    p = await toPage(at.x, at.y);
+    await page.mouse.click(p.x, p.y);
+  }
+  const casted = await waitForGame(() => state((a) => (window.uptime.world.teams[0].hero.cooldowns[a] ?? 0) > 0, abilities[0]), 15);
+  // An enemy-target ability with no enemy around just asks for one; that's fine too.
+  const needsEnemy = (await page.evaluate((a) => window.uptime.content.heroes.abilities[a].target, abilities[0])) === "enemy";
+  check(Boolean(casted) || needsEnemy, `pressing 1 casts the first ability (${aiming ? "aimed" : "instant"}${needsEnemy ? ", needs an enemy" : ""})`);
+  await page.keyboard.press("Escape");
+
   // 5. Select the core: the bar shows research; researching an upgrade starts it.
   await page.keyboard.press("Escape");
   await state(() => { window.uptime.world.teams[0].compute += 500; });
@@ -236,7 +280,7 @@ try {
   await page.waitForTimeout(200);
   check(await page.$eval("#guide", (el) => !el.hidden), "G opens the guide");
   const tabs = await page.$$eval("#guide-tabs button", (b) => b.length);
-  check(tabs === 6, `guide has 6 tabs (${tabs})`);
+  check(tabs === 7, `guide has 7 tabs (${tabs})`);
   const t0 = await state(() => window.uptime.world.tick);
   await page.waitForTimeout(1500);
   check(t0 === (await state(() => window.uptime.world.tick)), "the match pauses while the guide is open");

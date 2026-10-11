@@ -141,10 +141,10 @@ describe("elevation", () => {
     }
     expect(target).not.toBeNull();
     queueCommand(world, firstSpot("server-rack"));
-    while (!world.entities.some((e) => e.kind === "unit" && e.team === 0)) step(world, content);
+    while (!world.entities.some((e) => e.kind === "unit" && e.team === 0 && e.mode === "guard")) step(world, content);
     queueCommand(world, { type: "rally", tick: world.tick, team: 0, buildingId: world.teams[0]!.coreId, x: target!.x, y: target!.y });
     for (let i = 0; i < 20 * 90; i++) step(world, content);
-    const guards = world.entities.filter((e) => e.kind === "unit" && e.team === 0);
+    const guards = world.entities.filter((e) => e.kind === "unit" && e.team === 0 && e.mode === "guard");
     expect(guards.length).toBeGreaterThan(0);
     for (const g of guards) expect(Math.hypot(g.x - target!.x, g.y - target!.y)).toBeLessThan(90);
   });

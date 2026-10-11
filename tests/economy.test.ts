@@ -178,8 +178,8 @@ describe("upgrades", () => {
     const capBefore = userCapacity(world, content, team);
     team.upgrades = { "hardened-containers": 2, "autoscaling": 1, "edge-caching": 1 };
     queueCommand(world, firstSpot("server-rack"));
-    while (!world.entities.some((e) => e.kind === "unit" && e.team === 0)) step(world, content);
-    const unit = world.entities.find((e) => e.kind === "unit" && e.team === 0)!;
+    while (!world.entities.some((e) => e.kind === "unit" && e.team === 0 && e.mode === "guard")) step(world, content);
+    const unit = world.entities.find((e) => e.kind === "unit" && e.team === 0 && e.mode === "guard")!;
     const base = content.units.process!.hp * content.races["open-source"]!.modifiers.unitHpMultiplier;
     expect(unit.maxHp).toBe(Math.round(base * (1 + 2 * content.upgrades["hardened-containers"]!.perLevel)));
     expect(userCapacity(world, content, team)).toBe(Math.floor(capBefore * (1 + content.upgrades["edge-caching"]!.perLevel)));
