@@ -79,7 +79,9 @@ await run("smoke test", async ({ check, open }) => {
   await page.keyboard.press("Escape");
   await state(() => (window.uptime.session.team.compute += 1000));
   await click(core);
-  await page.click(".upgrade-btn:not([disabled])", { timeout: 10000 });
+  check(await waitFor(() => state((id) => window.uptime.selection.id === id, core.id)), "clicking the core selects it");
+  // CI renders in software: the command card can take a while to redraw.
+  await page.click(".upgrade-btn:not([disabled])", { timeout: 60000 });
   check(await waitFor(() => state(() => window.uptime.session.team.research !== null)), "the core's card starts research");
 
   // The Guide opens, pauses the match, and closes.
