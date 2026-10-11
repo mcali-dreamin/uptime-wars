@@ -93,7 +93,9 @@ const open = async (url) => {
     errors.push(`${m.text()} (${m.location().url})`);
   });
   await page.goto(url);
-  await page.waitForSelector("canvas", { timeout: 20000 });
+  // Booting: the 3D view compiles its shaders in software while the other
+  // browser already renders, so on a 2-core CI runner this can take a while.
+  await page.waitForSelector("canvas", { timeout: 90000 });
   return page;
 };
 const base = `http://127.0.0.1:${server.address().port}/?debug`;
