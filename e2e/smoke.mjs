@@ -74,12 +74,16 @@ try {
   /**
    * An open tile `min`..`max` tiles from (x, y), searched in a fixed pattern,
    * that you can actually click: in 3D, ground behind a higher plateau is
-   * hidden, so the point must survive a screen round trip.
+   * hidden, so the point must survive a screen round trip. And never inside
+   * a building.
    */
   const openNear = (x, y, min, max) =>
     state(([x, y, min, max]) => {
       const { world, TILE, renderer } = window.uptime;
       const t = world.terrain;
+      // Not inside a building: you can't rally into one.
+      const free = (px, py) =>
+        !world.entities.some((e) => e.kind === "building" && e.hp > 0 && Math.abs(px - e.x) < (e.footprint * TILE) / 2 + 8 && Math.abs(py - e.y) < (e.footprint * TILE) / 2 + 8);
       const clickable = (px, py) => {
         const s = renderer.toScreen(px, py);
         const back = renderer.toWorld(s.x, s.y);
@@ -88,7 +92,7 @@ try {
       for (let r = min; r <= max; r++)
         for (const [dx, dy] of [[r, 0], [-r, 0], [0, r], [0, -r], [r, r], [-r, -r], [r, -r], [-r, r]]) {
           const px = x + dx * TILE, py = y + dy * TILE;
-          if (t.tiles[Math.floor(py / TILE) * t.cols + Math.floor(px / TILE)] === 0 && clickable(px, py)) return { x: px, y: py };
+          if (t.tiles[Math.floor(py / TILE) * t.cols + Math.floor(px / TILE)] === 0 && free(px, py) && clickable(px, py)) return { x: px, y: py };
         }
       return null;
     }, [x, y, min, max]);
@@ -184,10 +188,14 @@ try {
     }, spawnerId);
   const near = (a, b) => a !== null && Math.hypot(a.x - b.x, a.y - b.y) < 40;
   const viaKey = await openNear(spot.x, spot.y, 3, 8);
+  await state(() => { const u = window.uptime; u.rej = []; const st = u.session.issue.bind(u.session); u.session.issue = (o) => { u.rej.push(["issued", o]); st(o); };
+    const iv = setInterval(() => { for (const e of u.world.events) if (e.type === "rejected") u.rej.push(["rej", e.reason]); }, 5); });
   await page.keyboard.press("t");
   check(await state(() => window.uptime.selection.armed === true), "T arms the rally order");
   p = await toPage(viaKey.x, viaKey.y);
   await page.mouse.click(p.x, p.y);
+  const dbg = await state(([x, y, px, py]) => { const u = window.uptime; const w = u.renderer.toWorld(px, py); return { target: [x, y], back: w, tile: u.world.terrain.tiles[Math.floor(y/48)*u.world.terrain.cols+Math.floor(x/48)], h: u.world.terrain.heights[Math.floor(y/48)*u.world.terrain.cols+Math.floor(x/48)], sel: u.selection, under: u.renderer.entityUnder(px, py) }; }, [viaKey.x, viaKey.y, p.x, p.y]);
+  await page.waitForTimeout(3000); console.log("DBG", JSON.stringify(await state(() => ({ tick: window.uptime.world.tick, ents: window.uptime.world.entities.filter((e) => e.kind === "building").map((e) => [e.id, e.defId, e.rally]), team: window.uptime.world.teams[0].rally, cmds: window.uptime.world.commands, rej: window.uptime.rej }))), JSON.stringify(dbg), "rally", JSON.stringify(await rallyOf()));
   check(near(await waitForGame(async () => { const r = await rallyOf(); return near(r, viaKey) ? r : null; }, 5), viaKey), "T + left-click sets the rally");
   check(await state((id) => window.uptime.selection.kind === "entity" && window.uptime.selection.id === id && !window.uptime.selection.armed, spawnerId), "the armed order is one-shot; the spawner stays selected");
   const viaCtrl = await openNear(spot.x, spot.y, 6, 12);
