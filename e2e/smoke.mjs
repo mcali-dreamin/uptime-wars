@@ -91,7 +91,8 @@ try {
       };
       for (let r = min; r <= max; r++)
         for (const [dx, dy] of [[r, 0], [-r, 0], [0, r], [0, -r], [r, r], [-r, -r], [r, -r], [-r, r]]) {
-          const px = x + dx * TILE, py = y + dy * TILE;
+          // Tile centres: a point on a tile edge can pick back as the neighbour (a wall).
+          const px = (Math.floor(x / TILE) + dx + 0.5) * TILE, py = (Math.floor(y / TILE) + dy + 0.5) * TILE;
           if (t.tiles[Math.floor(py / TILE) * t.cols + Math.floor(px / TILE)] === 0 && free(px, py) && clickable(px, py)) return { x: px, y: py };
         }
       return null;
@@ -102,6 +103,11 @@ try {
 
   // 1. Race picker, then the deploy agent starts selected.
   check(await page.$eval("#race-picker", (el) => !el.hidden), "race picker is shown");
+  const swatches = await page.$$eval(".color-swatch", (b) => b.map((x) => x.dataset.color));
+  check(swatches.length >= 6, `colour picker offers ${swatches.length} colours`);
+  await page.click('.color-swatch[data-color="purple"]');
+  check(await state(() => window.uptime.session.color.id === "purple"), "clicking a swatch picks that colour");
+  check(await page.$eval(".color-swatch.chosen", (el) => el.dataset.color) === "purple", "the chosen swatch is marked");
   await page.keyboard.press("1");
   const started = Date.now();
   await page.waitForTimeout(300);
@@ -188,14 +194,10 @@ try {
     }, spawnerId);
   const near = (a, b) => a !== null && Math.hypot(a.x - b.x, a.y - b.y) < 40;
   const viaKey = await openNear(spot.x, spot.y, 3, 8);
-  await state(() => { const u = window.uptime; u.rej = []; const st = u.session.issue.bind(u.session); u.session.issue = (o) => { u.rej.push(["issued", o]); st(o); };
-    const iv = setInterval(() => { for (const e of u.world.events) if (e.type === "rejected") u.rej.push(["rej", e.reason]); }, 5); });
   await page.keyboard.press("t");
   check(await state(() => window.uptime.selection.armed === true), "T arms the rally order");
   p = await toPage(viaKey.x, viaKey.y);
   await page.mouse.click(p.x, p.y);
-  const dbg = await state(([x, y, px, py]) => { const u = window.uptime; const w = u.renderer.toWorld(px, py); return { target: [x, y], back: w, tile: u.world.terrain.tiles[Math.floor(y/48)*u.world.terrain.cols+Math.floor(x/48)], h: u.world.terrain.heights[Math.floor(y/48)*u.world.terrain.cols+Math.floor(x/48)], sel: u.selection, under: u.renderer.entityUnder(px, py) }; }, [viaKey.x, viaKey.y, p.x, p.y]);
-  await page.waitForTimeout(3000); console.log("DBG", JSON.stringify(await state(() => ({ tick: window.uptime.world.tick, ents: window.uptime.world.entities.filter((e) => e.kind === "building").map((e) => [e.id, e.defId, e.rally]), team: window.uptime.world.teams[0].rally, cmds: window.uptime.world.commands, rej: window.uptime.rej }))), JSON.stringify(dbg), "rally", JSON.stringify(await rallyOf()));
   check(near(await waitForGame(async () => { const r = await rallyOf(); return near(r, viaKey) ? r : null; }, 5), viaKey), "T + left-click sets the rally");
   check(await state((id) => window.uptime.selection.kind === "entity" && window.uptime.selection.id === id && !window.uptime.selection.armed, spawnerId), "the armed order is one-shot; the spawner stays selected");
   const viaCtrl = await openNear(spot.x, spot.y, 6, 12);

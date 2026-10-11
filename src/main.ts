@@ -14,7 +14,8 @@ import {
   type Placement,
   type Selection,
 } from "./game/selection";
-import { Session } from "./game/session";
+import { HUMAN, Session } from "./game/session";
+import { setTeamColor } from "./render/palette";
 import { BuildBar, FOUND_BUTTON, type BarMode } from "./ui/build-bar";
 import { $ } from "./ui/dom";
 import { Guide } from "./ui/guide";
@@ -45,7 +46,7 @@ const bar = new BuildBar(session, {
   guide: () => guide.toggle(),
 });
 const guide = new Guide(session);
-const picker = new RacePicker(session, startMatch);
+const picker = new RacePicker(session, startMatch, applyColor);
 
 let selection: Selection = NOTHING;
 let placement: Placement | null = null;
@@ -209,7 +210,14 @@ const gameInput: GameInput = {
 
 // --- match -----------------------------------------------------------------
 
+/** Paint the world and the UI accent in the player's colour. */
+function applyColor(): void {
+  setTeamColor(HUMAN, session.color.hex);
+  document.documentElement.style.setProperty("--accent", `#${session.color.hex.toString(16).padStart(6, "0")}`);
+}
+
 function startMatch(raceId: string): void {
+  applyColor();
   session.start(raceId);
   bar.reset();
   renderer.setWorld(session.world);
@@ -220,6 +228,7 @@ function startMatch(raceId: string): void {
   select(fallback());
 }
 
+applyColor();
 // HUD first: the stage's size depends on the build bar's height.
 bar.update(barMode(), null);
 // The Three.js world view is the default; `?2d` keeps the flat Pixi one.

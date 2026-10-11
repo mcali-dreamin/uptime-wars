@@ -2,7 +2,15 @@
 
 import { TILE_BLOCKED, TILE_CLIFF, TILE_SLOW } from "../sim";
 
-export const TEAM_COLORS = [0x4ade80, 0xf87171] as const;
+/**
+ * Team colours by team id. The player's (team 0) is chosen before each match
+ * (see setTeamColor); the botnet is always red. Read it live, don't copy it.
+ */
+export const TEAM_COLORS: [number, number] = [0x4ade80, 0xf87171];
+
+export function setTeamColor(team: 0 | 1, hex: number): void {
+  TEAM_COLORS[team] = hex;
+}
 /** Selection, rally flags, order pings, range previews. */
 export const HIGHLIGHT = 0xfacc15;
 export const VALID = 0x4ade80;

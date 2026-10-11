@@ -30,7 +30,8 @@ export class Models {
 
   /** A fresh instance of an entity's model. */
   make(defId: string, team: 0 | 1, size: number, isUnit: boolean): THREE.Group {
-    const key = `${defId}:${team}:${size}`;
+    // Keyed by colour too: a new match may bring a new player colour.
+    const key = `${defId}:${team}:${size}:${TEAM_COLORS[team]}`;
     let template = this.templates.get(key);
     if (!template) {
       template = isUnit ? this.unit(defId, team, size) : this.building(defId, team);
@@ -52,16 +53,17 @@ export class Models {
 
   /** Translucent "being deployed" look for buildings under construction. */
   hologram(team: 0 | 1): THREE.Material {
-    let material = this.holograms.get(team);
+    const color = TEAM_COLORS[team];
+    let material = this.holograms.get(color);
     if (!material) {
       material = new THREE.MeshBasicMaterial({
-        color: TEAM_COLORS[team],
+        color,
         transparent: true,
         opacity: 0.28,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
       });
-      this.holograms.set(team, material);
+      this.holograms.set(color, material);
     }
     return material;
   }
@@ -77,10 +79,10 @@ export class Models {
   // --- materials ------------------------------------------------------------
 
   private mat(kind: Mat, team: 0 | 1): THREE.Material {
-    const key = `${kind}:${team}`;
+    const color = TEAM_COLORS[team];
+    const key = `${kind}:${team}:${color}`;
     let material = this.materials.get(key);
     if (material) return material;
-    const color = TEAM_COLORS[team];
     const standard = (p: THREE.MeshStandardMaterialParameters) => this.fog.apply(new THREE.MeshStandardMaterial(p));
     switch (kind) {
       case "body":
@@ -451,8 +453,9 @@ function geometry(key: string, make: () => THREE.BufferGeometry): THREE.BufferGe
 
 const wireframes = new Map<number, THREE.Material>();
 function wireframe(team: 0 | 1): THREE.Material {
-  let m = wireframes.get(team);
-  if (!m) wireframes.set(team, (m = new THREE.MeshBasicMaterial({ color: TEAM_COLORS[team], wireframe: true, transparent: true, opacity: 0.85 })));
+  const color = TEAM_COLORS[team];
+  let m = wireframes.get(color);
+  if (!m) wireframes.set(color, (m = new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: 0.85 })));
   return m;
 }
 
