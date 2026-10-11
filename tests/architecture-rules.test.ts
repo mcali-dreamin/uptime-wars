@@ -46,8 +46,11 @@ describe("architecture rules", () => {
     if (!allowed) continue;
     it(`${file} only imports from ${allowed.join(", ")}`, () => {
       const imports = [...stripComments(source).matchAll(/from\s+"([^"]+)"/g)].map((m) => m[1]!);
+      // A package's subpaths (three/addons/...) count as the package.
+      const allowedPackage = (specifier: string) =>
+        PACKAGES[layer]!.some((name) => specifier === name || specifier.startsWith(`${name}/`));
       const violations = imports.filter((specifier) =>
-        specifier.startsWith(".") ? !allowed.includes(layerOf(file, specifier)) : !PACKAGES[layer]!.includes(specifier),
+        specifier.startsWith(".") ? !allowed.includes(layerOf(file, specifier)) : !allowedPackage(specifier),
       );
       expect(violations).toEqual([]);
     });

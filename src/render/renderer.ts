@@ -1,10 +1,10 @@
 // The renderer shell. Reads the world, never writes it.
 //
-// It owns what every view shares: the Pixi app (also the HUD-level overlay
-// when a 3D view is attached), the camera, fog, minimap, banner, entity
-// interpolation between 20 Hz ticks, and transient effects (shots, order
-// pings). The world itself is drawn by a WorldView: World2D by default, or
-// whatever attach() is given (the Three.js view).
+// It owns what every view shares: the Pixi app (the HUD-level overlay over
+// the 3D view), the camera, fog, minimap, banner, entity interpolation
+// between 20 Hz ticks, and transient effects (shots, order pings). The world
+// itself is drawn by a WorldView: the Three.js view once attached (the
+// default), or World2D (`?2d`).
 
 import { Application, Text } from "pixi.js";
 import { TILE, hostile, type Content, type TeamId, type World } from "../sim";
@@ -49,7 +49,7 @@ export class Renderer {
     this.app.stage.addChild(this.world2d.layer, this.minimap.root, this.banner);
   }
 
-  /** Draw the world with another view (3D). The 2D world layer goes quiet. */
+  /** Draw the world with another view (the 3D one). The 2D world layer goes quiet. */
   attach(view: WorldView): void {
     this.view = view;
     this.world2d.layer.visible = false;
@@ -83,6 +83,7 @@ export class Renderer {
   /** Call right after stepping to collect render-only events. */
   collectEvents(world: World): void {
     for (const event of world.events) {
+      this.view.event?.(event);
       if (event.type === "shot") this.shots.push({ ...event, age: 0 });
       if (event.type === "founded") this.showBanner("Core online");
       if (event.type === "wave") this.showBanner(`Wave ${event.wave} · ${event.name}${event.boss ? " · BOSS" : ""}`);
@@ -137,6 +138,19 @@ export class Renderer {
   toWorld(clientX: number, clientY: number): { x: number; y: number } {
     const { x, y } = this.local(clientX, clientY);
     return this.view.pick(x, y) ?? this.camera.screenToWorld(x, y);
+  }
+
+  /** The entity drawn under the pointer, if the view can tell (3D models stand up off the ground). */
+  entityUnder(clientX: number, clientY: number): number | null {
+    const { x, y } = this.local(clientX, clientY);
+    return this.view.entityAt?.(x, y) ?? null;
+  }
+
+  /** A world ground point to client (page) pixels. */
+  toScreen(x: number, y: number): { x: number; y: number } {
+    const rect = this.app.canvas.getBoundingClientRect();
+    const p = this.view.project(x, y);
+    return { x: rect.left + p.x, y: rect.top + p.y };
   }
 
   /** World point under the pointer if it is over the minimap, else null. */

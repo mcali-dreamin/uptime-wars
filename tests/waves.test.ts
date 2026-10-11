@@ -4,6 +4,7 @@ import {
   createWorld,
   queueCommand,
   planWave,
+  previewWave,
   trafficRadius,
   waveInterval,
   TILE,
@@ -84,6 +85,31 @@ describe("traffic", () => {
       const field = flowField(world.terrain, [Math.floor(core.y / TILE) * world.terrain.cols + Math.floor(core.x / TILE)]);
       const route = (field[Math.floor(nest.y / TILE) * world.terrain.cols + Math.floor(nest.x / TILE)]! / 10) * TILE;
       expect(route / Math.hypot(core.x - nest.x, core.y - nest.y), `seed ${seed}`).toBeLessThan(2);
+    }
+  });
+});
+
+describe("wave preview", () => {
+  it("matches what the wave actually rolls, and never touches the match RNG", () => {
+    const world = createWorld(content, SETUP);
+    for (let wave = 1; wave <= 30; wave += 1) {
+      const before = world.rngState;
+      const preview = previewWave(content, wave);
+      expect(world.rngState).toBe(before);
+
+      const plan = planWave(world, content, wave);
+      expect(preview.name).toBe(plan.name);
+      expect(preview.bosses).toBe(plan.bosses);
+      // Everything the wave rolled was previewed (bosses aside).
+      for (const unit of plan.units) if (unit !== preview.boss) expect(preview.creeps).toContain(unit);
+    }
+  });
+
+  it("announces each creep type on the wave it unlocks, and only then", () => {
+    for (const entry of content.waves.roster) {
+      expect(previewWave(content, entry.fromWave).fresh).toContain(entry.unit);
+      expect(previewWave(content, entry.fromWave + 1).fresh).not.toContain(entry.unit);
+      if (entry.fromWave > 1) expect(previewWave(content, entry.fromWave - 1).creeps).not.toContain(entry.unit);
     }
   });
 });

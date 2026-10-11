@@ -5,7 +5,7 @@
 // frame. A view draws the world however it likes and maps screen points back
 // to world points.
 
-import type { Content, Point, TeamId, World } from "../sim";
+import type { Content, Point, SimEvent, TeamId, World } from "../sim";
 import type { Camera } from "./camera";
 import type { Fog } from "./fog";
 
@@ -53,15 +53,20 @@ export interface Frame {
 }
 
 /**
- * An alternative view of the world (the Three.js one). When attached, the
- * Pixi renderer stops drawing the world itself and keeps only the minimap,
- * banner, and fog bookkeeping.
+ * A way of drawing the world: the Three.js view (default) or the 2D one
+ * (`?2d`). The Pixi shell keeps the minimap, banner, and fog bookkeeping.
  */
 export interface WorldView {
   setWorld(world: World): void;
   draw(frame: Frame): void;
-  /** Canvas-local pixels to a world point, or null if nothing is there. */
+  /** Sim events as they happen (deaths, for effects). Optional. */
+  event?(event: SimEvent): void;
+  /** Canvas-local pixels to a ground point, or null if nothing is there. */
   pick(x: number, y: number): Point | null;
+  /** The entity drawn under canvas-local pixels, if the view can tell (tall 3D models). */
+  entityAt?(x: number, y: number): number | null;
+  /** A world ground point to canvas-local pixels. */
+  project(x: number, y: number): Point;
   /** The world rectangle the view covers, for the minimap. */
   viewRect(): { left: number; right: number; top: number; bottom: number } | null;
 }
