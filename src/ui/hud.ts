@@ -48,7 +48,13 @@ export class Hud {
   private hintFor(selection: Selection): string {
     if (selection.kind === "found") return "Click to deploy your core";
     if (selection.kind === "place") return "Click inside the ring to build";
-    if (!this.session.deploying) return "";
+    if (!this.session.deploying) {
+      const label = groundOrderLabel(this.session, selection);
+      if (!label) return "";
+      return leftClickOrders(this.session, selection)
+        ? `Click the ground: ${label.toLowerCase()} · Esc to cancel`
+        : `Right-click or T, then click: ${label.toLowerCase()}`;
+    }
     if (groundOrderLabel(this.session, selection) && leftClickOrders(this.session, selection)) {
       return "Click to walk · C to deploy your core";
     }

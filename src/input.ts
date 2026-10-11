@@ -23,12 +23,25 @@ const PAN_KEYS: Record<string, [number, number]> = {
   arrowup: [0, -1], arrowleft: [-1, 0], arrowdown: [0, 1], arrowright: [1, 0],
 };
 const EDGE_KEY = "uptime:edge-scroll";
+/** A Ctrl-click we already handled may be followed by the browser's own contextmenu. */
+const MENU_SUPPRESS_MS = 400;
 
 export function bindInput(renderer: Renderer, game: GameInput): void {
   const canvas = renderer.app.canvas;
   const camera = renderer.camera;
   camera.edgeScrollEnabled = localStorage.getItem(EDGE_KEY) !== "off";
   let drag: { x: number; y: number; moved: boolean; minimap: boolean } | null = null;
+  let suppressMenuUntil = 0;
+
+  // Right-click means "whatever the platform calls a secondary click": a right
+  // button, a two-finger tap or click on a trackpad, Ctrl-click on a Mac, a
+  // long press. Browsers report all of those as a contextmenu event (laptop
+  // trackpads often never send button 2 at all), so that's what we listen to.
+  const secondary = (event: MouseEvent) => {
+    if (game.blocked()) return;
+    const onMinimap = renderer.minimapHit(event.clientX, event.clientY);
+    game.rightClick(onMinimap ?? renderer.toWorld(event.clientX, event.clientY), onMinimap !== null);
+  };
 
   const local = (event: MouseEvent) => {
     const rect = canvas.getBoundingClientRect();
@@ -37,12 +50,17 @@ export function bindInput(renderer: Renderer, game: GameInput): void {
 
   canvas.addEventListener("pointerdown", (event) => {
     if (game.blocked()) return;
-    const onMinimap = renderer.minimapHit(event.clientX, event.clientY);
-    if (event.button === 2) {
-      game.rightClick(onMinimap ?? renderer.toWorld(event.clientX, event.clientY), onMinimap !== null);
+    // The right button arrives as a contextmenu event below.
+    if (event.button === 2) return;
+    // Ctrl-click is a secondary click everywhere. macOS also fires contextmenu
+    // for it; other platforms don't, so handle it here and skip that one.
+    if (event.button === 0 && event.ctrlKey) {
+      suppressMenuUntil = performance.now() + MENU_SUPPRESS_MS;
+      secondary(event);
       return;
     }
     if (event.button !== 0 && event.button !== 1) return;
+    const onMinimap = renderer.minimapHit(event.clientX, event.clientY);
     if (onMinimap) camera.centerOn(onMinimap.x, onMinimap.y);
     drag = { x: event.clientX, y: event.clientY, moved: onMinimap !== null || event.button === 1, minimap: onMinimap !== null };
     canvas.setPointerCapture(event.pointerId);
@@ -76,7 +94,11 @@ export function bindInput(renderer: Renderer, game: GameInput): void {
   });
 
   canvas.addEventListener("pointerleave", () => game.hover(null));
-  canvas.addEventListener("contextmenu", (event) => event.preventDefault());
+  canvas.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    if (performance.now() < suppressMenuUntil) return;
+    secondary(event);
+  });
   canvas.addEventListener(
     "wheel",
     (event) => {

@@ -139,6 +139,27 @@ body {
   font-size: 0.85rem;
 }
 
+#info-action {
+  pointer-events: auto;
+  margin-top: 0.4rem;
+  padding: 0.25rem 0.6rem;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font: inherit;
+  cursor: pointer;
+}
+
+#info-action:hover,
+#info-action.armed {
+  border-color: var(--accent);
+}
+
+#info-action[hidden] {
+  display: none;
+}
+
 #info ul {
   margin: 0;
   padding: 0;

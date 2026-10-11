@@ -26,7 +26,9 @@ npm run dev
 - Click one of your buildings to select it. Right-click sets where its units
   gather; right-click with the **core** selected sets a global rally point for
   every spawner that doesn't have its own. Units fight whatever gets in their
-  way there, then guard the spot.
+  way there, then guard the spot. Right-click is any secondary click: a
+  two-finger tap or click on a trackpad and Ctrl-click work too. Or skip it:
+  press `T` (or the button on the info card), then left-click the ground.
 - Select your **core** to research upgrades (one at a time): Hardened
   Containers, Exploit Kits, Anycast, Autoscaling, Edge Caching, Premium Tier.
   Tuning lives in `src/content/upgrades.json`.
