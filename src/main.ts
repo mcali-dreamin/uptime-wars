@@ -243,6 +243,9 @@ renderer.app.ticker.add((ticker) => {
       renderer.collectEvents(world);
       for (const event of world.events) {
         if (event.type === "failover" && event.team === session.team.id) renderer.showBanner("Core lost · failover");
+        if (event.type === "offline") {
+          renderer.showBanner(event.team === session.local ? "You're offline · your allies play on" : `Player ${event.team + 1} is offline`);
+        }
         if (event.type === "researched" && event.team === session.team.id) {
           renderer.showBanner(`${content.upgrades[event.upgrade]!.name} ${event.level}`);
         }

@@ -13,7 +13,6 @@ import {
   type World,
 } from "../sim";
 
-export const HUMAN: TeamId = 0;
 const HORDE_RACE = "botnet";
 const INPUT_DELAY_TICKS = 2;
 const RACE_KEY = "uptime:race";
@@ -26,6 +25,8 @@ export type Order = DistributiveOmit<Command, "tick" | "team">;
 export class Session {
   readonly playable: string[];
   raceId: string;
+  /** The team this browser plays. Player n in a co-op match is team n. */
+  local: TeamId = 0;
   world: World;
 
   constructor(readonly content: Content) {
@@ -44,11 +45,11 @@ export class Session {
   }
 
   issue(order: Order): void {
-    queueCommand(this.world, { ...order, tick: this.world.tick + INPUT_DELAY_TICKS, team: HUMAN } as Command);
+    queueCommand(this.world, { ...order, tick: this.world.tick + INPUT_DELAY_TICKS, team: this.local } as Command);
   }
 
   get team() {
-    return this.world.teams[HUMAN];
+    return this.world.teams[this.local]!;
   }
 
   get race() {

@@ -1,8 +1,14 @@
 // Colours shared by every world view, so 2D and 3D read the same.
 
-import { TILE_BLOCKED, TILE_CLIFF, TILE_SLOW } from "../sim";
+import { TILE_BLOCKED, TILE_CLIFF, TILE_SLOW, type TeamId, type World } from "../sim";
 
-export const TEAM_COLORS = [0x4ade80, 0xf87171] as const;
+/** Player n's colour (co-op: up to four), and the horde's. */
+export const PLAYER_COLORS = [0x4ade80, 0x60a5fa, 0xc084fc, 0xfb923c] as const;
+export const HORDE_COLOR = 0xf87171;
+
+export function teamColor(world: World, team: TeamId): number {
+  return world.teams[team]?.controller === "human" ? PLAYER_COLORS[team % PLAYER_COLORS.length]! : HORDE_COLOR;
+}
 /** Selection, rally flags, order pings, range previews. */
 export const HIGHLIGHT = 0xfacc15;
 export const VALID = 0x4ade80;

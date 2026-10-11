@@ -19,12 +19,13 @@ export function planBuildOrder(
   setup: MatchSetup,
   order: [tick: number, building: string][],
   forwardTiles = 4,
+  team = 0,
 ): BuildCommand[] {
   const world = createWorld(content, setup);
   const { terrain } = world;
-  const core = world.entities.find((e) => e.id === world.teams[0].coreId)!;
+  const core = world.entities.find((e) => e.id === world.teams[team]!.coreId)!;
   if (core.kind !== "building") throw new Error("core must be a building");
-  const nest = world.entities.find((e) => e.id === world.teams[1].coreId)!;
+  const nest = world.entities.find((e) => e.id === world.teams[world.teams.length - 1]!.coreId)!;
   const dx = nest.x - core.x;
   const dy = nest.y - core.y;
   const length = Math.sqrt(dx * dx + dy * dy);
@@ -34,7 +35,7 @@ export function planBuildOrder(
   for (let r = core.row; r < core.row + 2; r += 1) for (let c = core.col; c < core.col + 2; c += 1) taken.add(r * terrain.cols + c);
 
   const candidates: { col: number; row: number; score: number }[] = [];
-  const reach = content.buildings[content.races[setup.races[0]]!.core]!.buildRadius! * TILE;
+  const reach = content.buildings[content.races[setup.races[team]!]!.core]!.buildRadius! * TILE;
   for (let row = 0; row < terrain.rows; row += 1) {
     for (let col = 0; col < terrain.cols; col += 1) {
       if (tileAt(terrain, col, row) !== TILE_OPEN) continue;
@@ -61,6 +62,6 @@ export function planBuildOrder(
     });
     if (!spot) throw new Error(`no room for ${building}`);
     taken.add(spot.row * terrain.cols + spot.col);
-    return { type: "build", tick, team: 0, building, col: spot.col, row: spot.row };
+    return { type: "build", tick, team, building, col: spot.col, row: spot.row };
   });
 }

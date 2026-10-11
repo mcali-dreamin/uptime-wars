@@ -17,7 +17,7 @@ describe("building", () => {
     const world = createWorld(content, SETUP);
     queueCommand(world, firstSpot("server-rack"));
     step(world, content);
-    expect(world.teams[0].compute).toBe(200 - 60);
+    expect(world.teams[0]!.compute).toBe(200 - 60);
     expect(world.entities.some((e) => e.kind === "building" && e.defId === "server-rack")).toBe(true);
   });
 
@@ -33,12 +33,12 @@ describe("building", () => {
       const rejected = world.events.find((e) => e.type === "rejected");
       return rejected?.type === "rejected" ? rejected.reason : null;
     };
-    blocked = { col: 0, row: terrain.start.row };
+    blocked = { col: 0, row: terrain.starts[0]!.row };
     expect(reject("server-rack", blocked.col, blocked.row)).toBe("terrain is not buildable");
     expect(reject("server-rack", far.col, far.row)).toMatch(/terrain is not buildable|outside your network/);
     expect(reject("server-rack", spot.col, spot.row)).toBeNull();
     expect(reject("firewall", spot.col, spot.row)).toBe("tile occupied");
-    world.teams[0].compute = 0;
+    world.teams[0]!.compute = 0;
     const other = planBuildOrder(content, SETUP, [[0, "server-rack"], [0, "server-rack"]])[1]!;
     expect(reject("server-rack", other.col, other.row)).toBe("not enough compute");
   });
@@ -57,17 +57,17 @@ describe("builder start", () => {
 
   it("you start with a deploy agent and no core, and the clock is on grace time", () => {
     const world = createWorld(content, BUILDER_SETUP);
-    expect(world.teams[0].coreId).toBe(-1);
-    const builder = world.entities.find((e) => e.id === world.teams[0].builderId);
+    expect(world.teams[0]!.coreId).toBe(-1);
+    const builder = world.entities.find((e) => e.id === world.teams[0]!.builderId);
     expect(builder).toMatchObject({ kind: "unit", mode: "builder", defId: "deploy-agent" });
     expect(world.waves.nextWaveTick).toBe(content.waves.graceTicks);
     // The nest still has its core.
-    expect(world.teams[1].coreId).not.toBe(-1);
+    expect(world.teams[1]!.coreId).not.toBe(-1);
   });
 
   it("the builder walks to the chosen site, becomes the core, and starts the wave clock", () => {
     const world = createWorld(content, BUILDER_SETUP);
-    const { start } = world.terrain;
+    const start = world.terrain.starts[0]!;
     // Pick a valid site a few tiles away from where the builder stands.
     let site: { col: number; row: number } | null = null;
     for (let r = 4; r <= 10 && !site; r += 1) {
@@ -80,11 +80,11 @@ describe("builder start", () => {
     }
     expect(site).not.toBeNull();
     queueCommand(world, { type: "found", tick: 0, team: 0, ...site! });
-    while (world.teams[0].coreId === -1 && world.tick < 2000) step(world, content);
+    while (world.teams[0]!.coreId === -1 && world.tick < 2000) step(world, content);
 
-    const core = world.entities.find((e) => e.id === world.teams[0].coreId)!;
+    const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
     expect(core).toMatchObject({ kind: "building", defId: "core", col: site!.col, row: site!.row });
-    expect(world.teams[0].builderId).toBe(-1);
+    expect(world.teams[0]!.builderId).toBe(-1);
     expect(world.entities.some((e) => e.kind === "unit" && e.mode === "builder")).toBe(false);
     expect(world.waves.nextWaveTick).toBe(Math.min(content.waves.graceTicks, world.tick - 1 + content.waves.firstWaveTicks));
   });
@@ -92,7 +92,7 @@ describe("builder start", () => {
   it("rejects founding on blocked terrain, and nothing can be built before the core", () => {
     const world = createWorld(content, BUILDER_SETUP);
     queueCommand(world, { type: "found", tick: 0, team: 0, col: 0, row: 0 });
-    queueCommand(world, { type: "build", tick: 0, team: 0, building: "server-rack", col: world.terrain.start.col, row: world.terrain.start.row });
+    queueCommand(world, { type: "build", tick: 0, team: 0, building: "server-rack", col: world.terrain.starts[0]!.col, row: world.terrain.starts[0]!.row });
     step(world, content);
     const reasons = world.events.flatMap((e) => (e.type === "rejected" ? [e.reason] : []));
     // Same tick and team: applied in the order they were queued.
@@ -101,10 +101,10 @@ describe("builder start", () => {
 
   it("losing the builder before founding loses the match", () => {
     const world = createWorld(content, BUILDER_SETUP);
-    const builder = world.entities.find((e) => e.id === world.teams[0].builderId)!;
+    const builder = world.entities.find((e) => e.id === world.teams[0]!.builderId)!;
     builder.hp = 0;
     step(world, content);
-    expect(world.outcome).toMatchObject({ winner: 1 });
+    expect(world.outcome).toMatchObject({ winners: [1], reason: "all-offline" });
   });
 
   it("the first wave arrives at the end of grace time even if you never found", () => {
@@ -139,8 +139,8 @@ describe("network and redundancy", () => {
 
   it("a finished mesh node lets you build beyond the core's radius; unfinished or destroyed, it doesn't", () => {
     const world = createWorld(content, SETUP);
-    world.teams[0].compute = 5000;
-    const core = world.entities.find((e) => e.id === world.teams[0].coreId)!;
+    world.teams[0]!.compute = 5000;
+    const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
     // A node near the edge of the core's reach.
     const node = openAt(world, core, 5, 6)!;
     queueCommand(world, { type: "build", tick: world.tick, team: 0, building: "mesh-node", col: node.col, row: node.row });
@@ -171,8 +171,8 @@ describe("network and redundancy", () => {
 
   it("you can build more cores; losing the main one fails over, and you only lose when every core is down", () => {
     const world = createWorld(content, SETUP);
-    world.teams[0].compute = 5000;
-    const first = world.entities.find((e) => e.id === world.teams[0].coreId)!;
+    world.teams[0]!.compute = 5000;
+    const first = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
     // A free 2x2 spot inside the network.
     let site: { col: number; row: number } | null = null;
     for (let r = 3; r <= 6 && !site; r++) {
@@ -194,18 +194,18 @@ describe("network and redundancy", () => {
     first.hp = 0;
     step(world, content);
     expect(world.outcome).toBeNull();
-    expect(world.teams[0].coreId).toBe(second.id);
+    expect(world.teams[0]!.coreId).toBe(second.id);
     expect(world.events).toContainEqual(expect.objectContaining({ type: "failover", team: 0 }));
 
     second.hp = 0;
     step(world, content);
-    expect(world.outcome).toMatchObject({ winner: 1 });
+    expect(world.outcome).toMatchObject({ winners: [1], reason: "all-offline" });
   });
 
   it("research continues at another core after failover", () => {
     const world = createWorld(content, SETUP);
-    world.teams[0].compute = 5000;
-    const first = world.entities.find((e) => e.id === world.teams[0].coreId)!;
+    world.teams[0]!.compute = 5000;
+    const first = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
     let site: { col: number; row: number } | null = null;
     for (let r = 3; r <= 6 && !site; r++) {
       for (const [dc, dr] of [[r, 0], [-r, 0], [0, r], [0, -r]] as const) {
@@ -225,6 +225,6 @@ describe("network and redundancy", () => {
     step(world, content);
     first.hp = 0;
     for (let i = 0; i < content.upgrades.anycast!.researchTicks + 5; i++) step(world, content);
-    expect(levelOf(world.teams[0], "anycast")).toBe(1);
+    expect(levelOf(world.teams[0]!, "anycast")).toBe(1);
   });
 });

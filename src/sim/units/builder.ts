@@ -28,6 +28,6 @@ export const builder: Behavior = (ctx, unit, def) => {
   ctx.byId.set(core.id, core);
   // The agent deploys into the core.
   unit.hp = 0;
-  world.teams[unit.team].builderId = -1;
+  world.teams[unit.team]!.builderId = -1;
   world.events.push({ type: "founded", x: core.x, y: core.y });
 };

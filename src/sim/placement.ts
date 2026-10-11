@@ -40,7 +40,7 @@ export function canPlace(
   col: number,
   row: number,
 ): string | null {
-  const team = world.teams[teamId];
+  const team = world.teams[teamId]!;
   const race = content.races[team.raceId]!;
   const def = content.buildings[buildingId];
   if (!def || !race.buildings.includes(buildingId)) return "not in this race's roster";
@@ -57,7 +57,7 @@ export function canPlace(
 
 /** Why a core can't be founded on this footprint, or null when it can. */
 export function canFound(world: World, content: Content, teamId: TeamId, col: number, row: number): string | null {
-  const team = world.teams[teamId];
+  const team = world.teams[teamId]!;
   if (team.coreId !== -1) return "core already online";
   const def = content.buildings[content.races[team.raceId]!.core]!;
   if (!footprintIsOpen(world, col, row, def.footprint)) return "terrain is not buildable";

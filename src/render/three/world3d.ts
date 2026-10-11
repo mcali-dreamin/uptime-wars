@@ -8,7 +8,7 @@
 import * as THREE from "three";
 import { TILE, TILE_BLOCKED, TILE_CLIFF, TILE_RAMP, networkProviders, type Entity, type Point, type Terrain, type World } from "../../sim";
 import { PING_MS, SHOT_TTL_MS, type Frame, type WorldView } from "../frame";
-import { TEAM_COLORS, tileColor } from "../palette";
+import { teamColor, tileColor } from "../palette";
 
 /** Height of one level step, in world units. */
 const STEP = 40;
@@ -214,7 +214,7 @@ export class World3D implements WorldView {
       seen.add(entity.id);
       let object = this.entities.get(entity.id);
       if (!object) {
-        object = this.makeEntity(entity);
+        object = this.makeEntity(frame.world, entity);
         this.entities.set(entity.id, object);
         this.scene.add(object);
       }
@@ -236,8 +236,8 @@ export class World3D implements WorldView {
     }
   }
 
-  private makeEntity(entity: Entity): THREE.Object3D {
-    const team = TEAM_COLORS[entity.team];
+  private makeEntity(world: World, entity: Entity): THREE.Object3D {
+    const team = teamColor(world, entity.team);
     if (entity.kind === "unit") {
       if (entity.mode === "builder") {
         const mesh = new THREE.Mesh(this.geometry("builder", () => new THREE.OctahedronGeometry(entity.radius + 4)), this.material(`glow-${team}`, () => new THREE.MeshLambertMaterial({ color: team, emissive: team, emissiveIntensity: 0.4 })));
@@ -284,7 +284,7 @@ export class World3D implements WorldView {
         const radius = selected.kind === "building" ? (selected.footprint * TILE) / 2 + 8 : selected.radius + 10;
         this.overlay.add(this.ring(at.x, at.y, radius - 2.5, radius, SELECT, 0.95));
         if (selected.kind === "building") {
-          const team = world.teams[selected.team];
+          const team = world.teams[selected.team]!;
           const core = selected.defId === content.races[team.raceId]!.core;
           if (core || content.buildings[selected.defId]!.spawn) {
             const rally = (core ? team.rally : selected.rally) ?? team.rally;
@@ -295,7 +295,7 @@ export class World3D implements WorldView {
     }
 
     if (frame.ghost) {
-      for (const provider of networkProviders(world, content, 0)) {
+      for (const provider of networkProviders(world, content, frame.localTeam)) {
         const reach = content.buildings[provider.defId]!.buildRadius! * TILE;
         this.overlay.add(this.ring(provider.x, provider.y, reach - 3, reach, 0x4ade80, 0.35));
       }
@@ -354,7 +354,7 @@ export class World3D implements WorldView {
       if (!frame.fog.isVisible(shot.x1, shot.y1) && !frame.fog.isVisible(shot.x2, shot.y2)) continue;
       const fade = Math.max(0, 1 - shot.age / SHOT_TTL_MS);
       positions.push(shot.x1, this.groundAt(shot.x1, shot.y1) + 18, shot.y1, shot.x2, this.groundAt(shot.x2, shot.y2) + 12, shot.y2);
-      color.setHex(TEAM_COLORS[shot.team]).multiplyScalar(fade);
+      color.setHex(teamColor(frame.world, shot.team)).multiplyScalar(fade);
       colors.push(color.r, color.g, color.b, color.r, color.g, color.b);
     }
     const geometry = this.shotLines.geometry;

@@ -7,7 +7,7 @@
 // whatever attach() is given (the Three.js view).
 
 import { Application, Text } from "pixi.js";
-import { TILE, type Content, type World } from "../sim";
+import { TILE, hostile, type Content, type TeamId, type World } from "../sim";
 import { Camera } from "./camera";
 import { Fog } from "./fog";
 import { PING_MS, SHOT_TTL_MS, type Ghost, type Shot, type WorldView } from "./frame";
@@ -22,6 +22,8 @@ export class Renderer {
   private readonly minimap = new Minimap(this.fog);
   private readonly world2d = new World2D(this.camera, this.fog);
   private view: WorldView = this.world2d;
+  /** The team this browser plays: whose home, whose fog, whose network. */
+  localTeam: TeamId = 0;
   private readonly banner = new Text({
     text: "",
     style: { fill: 0xd6e2f0, fontFamily: "monospace", fontSize: 26, fontWeight: "bold" },
@@ -69,7 +71,7 @@ export class Renderer {
 
   /** Your core, or your builder before the core is founded. */
   home(world: World) {
-    const team = world.teams[0];
+    const team = world.teams[this.localTeam]!;
     return world.entities.find((entity) => entity.id === (team.coreId !== -1 ? team.coreId : team.builderId));
   }
 
@@ -101,7 +103,7 @@ export class Renderer {
     const { width, height } = this.app.screen;
     this.camera.setViewport(width, height);
     this.camera.update(deltaMs);
-    this.fog.update(world, content, 0, deltaMs);
+    this.fog.update(world, content, this.localTeam, deltaMs);
 
     const shows = (entity: World["entities"][number], x: number, y: number) => this.shows(world, entity, x, y);
     this.view.draw({
@@ -111,6 +113,7 @@ export class Renderer {
       deltaMs,
       ghost,
       selectedId,
+      localTeam: this.localTeam,
       width,
       height,
       camera: this.camera,
@@ -149,7 +152,8 @@ export class Renderer {
 
   /** Whether the local player may see this entity right now. */
   private shows(world: World, entity: World["entities"][number], x: number, y: number): boolean {
-    if (world.teams[entity.team].controller === "human") return true;
+    // You and your allies are always visible to you.
+    if (!hostile(world, entity.team, this.localTeam)) return true;
     return entity.kind === "building" ? this.fog.isExplored(x, y) : this.fog.isVisible(x, y);
   }
 

@@ -11,6 +11,7 @@ import { distance, goalField } from "../movement";
 import { hasClearPath, moveToward, nextStep } from "../nav";
 import { teamCores } from "../placement";
 import { nextRandom, randomInt } from "../rng";
+import { hostile } from "../teams";
 import { PACK_SPREAD, REROUTE_TICKS, ROAM_SPEED, SENSED_ARRIVAL } from "../tuning";
 import type { Point, Unit, World } from "../types";
 import type { Behavior } from "./index";
@@ -64,7 +65,7 @@ function pickDestination(ctx: TickContext, unit: Unit): Destination {
     let best: Point | null = null;
     let bestGap = Infinity;
     for (const team of world.teams) {
-      if (team.id === unit.team) continue;
+      if (!hostile(world, team.id, unit.team)) continue;
       const radius = trafficRadius(world, content, team);
       if (radius <= 0) continue;
       for (const core of teamCores(world, content, team)) {

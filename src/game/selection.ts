@@ -3,7 +3,7 @@
 // so the input code, the cursor, the hint line, and the info panel agree.
 
 import { TILE, buildCost, canFound, canPlace, isCore, type Content, type Entity, type Point } from "../sim";
-import { HUMAN, type Order, type Session } from "./session";
+import type { Order, Session } from "./session";
 
 export type Selection =
   | { kind: "none" }
@@ -56,13 +56,13 @@ export function armed(session: Session, selection: Selection): Selection | null 
 export function selectedEntity(session: Session, selection: Selection): Entity | undefined {
   if (selection.kind !== "entity") return undefined;
   const entity = session.entity(selection.id);
-  return entity && entity.team === HUMAN ? entity : undefined;
+  return entity && entity.team === session.local ? entity : undefined;
 }
 
 /** Your own unit or building under a world point, if any. */
 export function ownEntityAt(session: Session, point: Point): Entity | undefined {
   for (const entity of session.world.entities) {
-    if (entity.team !== HUMAN || entity.hp <= 0) continue;
+    if (entity.team !== session.local || entity.hp <= 0) continue;
     if (entity.kind === "building") {
       const half = (entity.footprint * TILE) / 2;
       if (Math.abs(point.x - entity.x) <= half && Math.abs(point.y - entity.y) <= half) return entity;
@@ -99,14 +99,14 @@ export function placementAt(
     // Center the footprint on the pointer.
     const col = Math.round(point.x / TILE) - def.footprint / 2;
     const row = Math.round(point.y / TILE) - def.footprint / 2;
-    const valid = canFound(session.world, content, HUMAN, col, row) === null && explored(point);
+    const valid = canFound(session.world, content, session.local, col, row) === null && explored(point);
     return { col, row, footprint: def.footprint, valid, range: def.attack?.range ?? 0, order: { type: "found", col, row } };
   }
   if (selection.kind === "place") {
     const def = content.buildings[selection.building]!;
     const col = Math.floor(point.x / TILE);
     const row = Math.floor(point.y / TILE);
-    const valid = canPlace(session.world, content, HUMAN, selection.building, col, row) === null;
+    const valid = canPlace(session.world, content, session.local, selection.building, col, row) === null;
     return {
       col,
       row,

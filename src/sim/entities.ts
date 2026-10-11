@@ -44,7 +44,7 @@ export function placeBuilding(
     spawnTimer: 0,
     incomeTimer: def.income?.intervalTicks ?? 0,
   };
-  building.spawnTimer = spawnInterval(content, world.teams[team], defId);
+  building.spawnTimer = spawnInterval(content, world.teams[team]!, defId);
   world.entities.push(building);
   return building;
 }
@@ -84,8 +84,8 @@ export function spawnUnit(
 ): Unit {
   const { world, content } = ctx;
   const def = content.units[unitId]!;
-  const race = content.races[world.teams[team].raceId]!;
-  const upgraded = multiplier(content, world.teams[team], "unitHp");
+  const race = content.races[world.teams[team]!.raceId]!;
+  const upgraded = multiplier(content, world.teams[team]!, "unitHp");
   const hp = Math.round(def.hp * race.modifiers.unitHpMultiplier * hpMultiplier * upgraded);
   const spot = walkableSpot(world.terrain, x, y, def.size, from);
   const unit: Unit = {
@@ -117,7 +117,7 @@ export function spawnUnit(
 
 /** Put a team's core on the map. Starts the wave clock if it was a player's. */
 export function foundCore(world: World, content: Content, teamId: TeamId, col: number, row: number): Building {
-  const team = world.teams[teamId];
+  const team = world.teams[teamId]!;
   const core = placeBuilding(world, content, teamId, content.races[team.raceId]!.core, col, row, true);
   team.coreId = core.id;
   if (team.controller === "human") {

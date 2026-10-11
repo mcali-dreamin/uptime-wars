@@ -44,7 +44,7 @@ describe("auto-spawn", () => {
 describe("rally points", () => {
   /** A walkable point roughly `tiles` away from the core, found deterministically. */
   function openPointNear(world: ReturnType<typeof createWorld>, tiles: number) {
-    const core = world.entities.find((e) => e.id === world.teams[0].coreId)!;
+    const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
     for (let r = tiles; r < tiles + 10; r += 1) {
       for (const [dx, dy] of [[r, 0], [-r, 0], [0, r], [0, -r], [r, r], [-r, -r]] as const) {
         const x = core.x + dx * TILE;
@@ -60,7 +60,7 @@ describe("rally points", () => {
     queueCommand(world, firstSpot("server-rack"));
     while (!world.entities.some((e) => e.kind === "unit" && e.team === 0)) step(world, content);
     const rack = world.entities.find((e) => e.kind === "building" && e.defId === "server-rack")!;
-    return { world, rack, coreId: world.teams[0].coreId };
+    return { world, rack, coreId: world.teams[0]!.coreId };
   }
 
   const guards = (world: ReturnType<typeof createWorld>) =>
@@ -86,7 +86,7 @@ describe("rally points", () => {
     const ownPoint = openPointNear(world, 12);
     queueCommand(world, { type: "rally", tick: world.tick, team: 0, buildingId: coreId, x: globalPoint.x, y: globalPoint.y });
     step(world, content);
-    expect(world.teams[0].rally).toEqual(globalPoint);
+    expect(world.teams[0]!.rally).toEqual(globalPoint);
     for (const unit of guards(world)) expect(Math.hypot(unit.homeX - globalPoint.x, unit.homeY - globalPoint.y)).toBeLessThanOrEqual(60);
 
     queueCommand(world, { type: "rally", tick: world.tick, team: 0, buildingId: rack.id, x: ownPoint.x, y: ownPoint.y });
@@ -109,8 +109,8 @@ describe("rally points", () => {
     const reasons: string[] = [];
     for (const command of [
       { buildingId: firewall.id, x: open.x, y: open.y },
-      { buildingId: world.teams[1].coreId, x: open.x, y: open.y },
-      { buildingId: world.teams[0].coreId, x: 1, y: 1 },
+      { buildingId: world.teams[1]!.coreId, x: open.x, y: open.y },
+      { buildingId: world.teams[0]!.coreId, x: 1, y: 1 },
     ]) {
       queueCommand(world, { type: "rally", tick: world.tick, team: 0, ...command });
       step(world, content);
@@ -123,7 +123,7 @@ describe("rally points", () => {
 describe("creeps", () => {
   it("each wave leaves the nest in the middle as random-sized packs", () => {
     const world = createWorld(content, SETUP);
-    const nest = world.entities.find((e) => e.id === world.teams[1].coreId)!;
+    const nest = world.entities.find((e) => e.id === world.teams[1]!.coreId)!;
     while (world.tick <= content.waves.firstWaveTicks + 40) step(world, content);
     const creeps = world.entities.filter((e) => e.kind === "unit" && e.team === 1);
     expect(creeps.length).toBeGreaterThan(0);

@@ -32,8 +32,12 @@ export interface Terrain {
   tiles: Uint8Array;
   /** Row-major height level per tile: 0, 1, or 2. */
   heights: Uint8Array;
-  /** Top-left tile of the player's 2x2 core. */
-  start: TilePoint;
+  /**
+   * Top-left tile of each player's 2x2 core, MAX_PLAYERS of them, spread
+   * around the nest. Player n starts at starts[n]. Every map has all of them,
+   * whoever plays it, so the map stays a function of the seed alone.
+   */
+  starts: TilePoint[];
   /** Top-left tile of the creep nest's 2x2 footprint. */
   nest: TilePoint;
   resources: TilePoint[];

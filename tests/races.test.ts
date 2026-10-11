@@ -20,7 +20,7 @@ describe("races", () => {
   it("the Hyperscaler starts richer and fields tougher units", () => {
     const os = createWorld(content, SETUP);
     const hyper = createWorld(content, HYPER);
-    expect(hyper.teams[0].compute - os.teams[0].compute).toBe(content.races.hyperscaler!.modifiers.startingComputeBonus);
+    expect(hyper.teams[0]!.compute - os.teams[0]!.compute).toBe(content.races.hyperscaler!.modifiers.startingComputeBonus);
 
     const rack = planBuildOrder(content, HYPER, [[0, "hyperscale-rack"]])[0]!;
     queueCommand(hyper, rack);

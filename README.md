@@ -146,6 +146,15 @@ comes within reach.
 **No hidden knowledge.** Creeps never read the player's position. A test fails
 if any creep ever targets something beyond its sight.
 
+**Co-op is in the sim.** A match is 1 to 4 human teams plus the horde
+(`races: ["open-source", "hyperscaler", "botnet"]`). Every map has four
+starts, so the map is the same whoever plays it. Humans are allies: they never
+target each other and share vision. Each has its own base, compute, and race,
+and either one's traffic draws the horde. A player whose cores are all down
+goes offline and their commands stop, but the match goes on until every player
+is offline (lost) or the nest is (won by all of them). The browser still plays
+solo: connecting browsers is the next step.
+
 **The horde is just a team.** Team 1 is the Botnet race, driven by the wave
 director instead of a human.
 

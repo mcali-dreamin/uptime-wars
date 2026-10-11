@@ -34,8 +34,8 @@ describe("terrain", () => {
     for (const seed of SEEDS) {
       const world = createWorld(content, { ...SETUP, seed });
       const { terrain } = world;
-      const core = world.entities.find((e) => e.id === world.teams[0].coreId)!;
-      const nest = world.entities.find((e) => e.id === world.teams[1].coreId)!;
+      const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
+      const nest = world.entities.find((e) => e.id === world.teams[1]!.coreId)!;
       const nestTile = Math.floor(nest.y / TILE) * terrain.cols + Math.floor(nest.x / TILE);
       // The nest is the center of the web.
       expect(Math.abs(nest.x - (terrain.cols * TILE) / 2), `seed ${seed}`).toBeLessThanOrEqual(TILE * 2);
@@ -52,8 +52,8 @@ describe("terrain", () => {
       expect(planBuildOrder(content, { ...SETUP, seed }, OPENING_ORDER)).toHaveLength(OPENING_ORDER.length);
       // At least two wells near the start.
       const near = terrain.resources.filter((r) => {
-        const rx = r.col - terrain.start.col;
-        const ry = r.row - terrain.start.row;
+        const rx = r.col - terrain.starts[0]!.col;
+        const ry = r.row - terrain.starts[0]!.row;
         return rx * rx + ry * ry <= 15 * 15;
       });
       expect(near.length, `seed ${seed}`).toBeGreaterThanOrEqual(2);
@@ -84,7 +84,7 @@ describe("elevation", () => {
       }
       expect(cliffs, `seed ${seed}`).toBeGreaterThan(100);
       expect(ramps, `seed ${seed}`).toBeGreaterThan(10);
-      const field = flowField(terrain, [terrain.start.row * cols + terrain.start.col]);
+      const field = flowField(terrain, [terrain.starts[0]!.row * cols + terrain.starts[0]!.col]);
       for (let i = 0; i < tiles.length; i++) {
         if (walkable(tiles[i]!)) expect(field[i], `seed ${seed} tile ${i} unreachable`).not.toBe(UNREACHABLE);
       }
@@ -123,7 +123,7 @@ describe("elevation", () => {
 
   it("guards reach a rally point on another level", () => {
     const world = createWorld(content, SETUP);
-    const core = world.entities.find((e) => e.id === world.teams[0].coreId)!;
+    const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
     const { terrain } = world;
     const coreHeight = terrain.heights[Math.floor(core.y / TILE) * terrain.cols + Math.floor(core.x / TILE)];
     // The nearest open tile on a different level from the core.
@@ -142,7 +142,7 @@ describe("elevation", () => {
     expect(target).not.toBeNull();
     queueCommand(world, firstSpot("server-rack"));
     while (!world.entities.some((e) => e.kind === "unit" && e.team === 0)) step(world, content);
-    queueCommand(world, { type: "rally", tick: world.tick, team: 0, buildingId: world.teams[0].coreId, x: target!.x, y: target!.y });
+    queueCommand(world, { type: "rally", tick: world.tick, team: 0, buildingId: world.teams[0]!.coreId, x: target!.x, y: target!.y });
     for (let i = 0; i < 20 * 90; i++) step(world, content);
     const guards = world.entities.filter((e) => e.kind === "unit" && e.team === 0);
     expect(guards.length).toBeGreaterThan(0);

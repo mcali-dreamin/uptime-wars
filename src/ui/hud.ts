@@ -2,7 +2,7 @@
 
 import { TICK_RATE, hashWorld, isCore, userCapacity } from "../sim";
 import { groundOrderLabel, leftClickOrders, type Selection } from "../game/selection";
-import { HUMAN, type Session } from "../game/session";
+import type { Session } from "../game/session";
 import { $ } from "./dom";
 
 export function clock(totalSeconds: number): string {
@@ -64,8 +64,9 @@ export class Hud {
   announce(): string {
     const { world } = this.session;
     const outcome = world.outcome!;
-    const won = outcome.winner === HUMAN;
-    const uptime = clock(outcome.tick / TICK_RATE);
+    const won = outcome.winners.includes(this.session.local);
+    // Co-op: your uptime ends when you go offline, even if your allies played on.
+    const uptime = clock((this.session.team.downTick ?? outcome.tick) / TICK_RATE);
     const summary = won
       ? `NEST OFFLINE - you took down the botnet at ${uptime}.`
       : this.session.deploying

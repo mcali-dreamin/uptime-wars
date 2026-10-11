@@ -36,11 +36,14 @@ const walkable = (world: World, x: number, y: number) =>
 /** Returns a rejection reason, or null when the command was applied. */
 function applyCommand(ctx: TickContext, command: Command): string | null {
   const { world, content } = ctx;
+  const issuer = world.teams[command.team]!;
+  if (!issuer || issuer.controller !== "human") return "no such player";
+  if (issuer.downTick !== null) return "offline";
   switch (command.type) {
     case "build": {
       const reason = canPlace(world, content, command.team, command.building, command.col, command.row);
       if (reason) return reason;
-      const team = world.teams[command.team];
+      const team = world.teams[command.team]!;
       team.compute -= buildCost(content, team.raceId, command.building);
       const building = placeBuilding(world, content, team.id, command.building, command.col, command.row, false);
       ctx.byId.set(building.id, building);
@@ -49,7 +52,7 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
     case "rally":
       return applyRally(ctx, command);
     case "research": {
-      const team = world.teams[command.team];
+      const team = world.teams[command.team]!;
       const reason = canResearch(content, team, command.upgrade);
       if (reason) return reason;
       const next = nextLevel(content, team, command.upgrade);
@@ -59,7 +62,7 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
     }
     case "found":
     case "move": {
-      const builder = ctx.byId.get(world.teams[command.team].builderId);
+      const builder = ctx.byId.get(world.teams[command.team]!.builderId);
       if (!builder || builder.kind !== "unit" || builder.hp <= 0) return "no builder";
       if (command.type === "found") {
         const reason = canFound(world, content, command.team, command.col, command.row);
@@ -78,7 +81,7 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
 
 function applyRally(ctx: TickContext, command: RallyCommand): string | null {
   const { world, content } = ctx;
-  const team = world.teams[command.team];
+  const team = world.teams[command.team]!;
   const building = ctx.byId.get(command.buildingId);
   if (!building || building.kind !== "building" || building.team !== command.team || building.hp <= 0) {
     return "not your building";
