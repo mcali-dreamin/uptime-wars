@@ -86,7 +86,12 @@ const open = async (url) => {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await context.newPage();
   page.on("pageerror", (e) => errors.push(e.message));
-  page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+  page.on("console", (m) => {
+    if (m.type() !== "error") return;
+    // Without a relay, the client finds out by its POST /api/invites 404ing; that's the fallback working.
+    if (!RELAY && m.location().url.includes("/api/invites")) return;
+    errors.push(`${m.text()} (${m.location().url})`);
+  });
   await page.goto(url);
   await page.waitForSelector("canvas", { timeout: 20000 });
   return page;
