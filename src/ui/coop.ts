@@ -1,10 +1,13 @@
-// The co-op lobby. No server: the host sends a friend an invite link, the
-// friend sends back a reply code, and the two browsers connect directly.
-// Up to four players; each invite link seats one friend.
+// The co-op lobby. The host sends a friend an invite link; the browsers
+// connect directly. On Spacefast the link carries a six-letter code and the
+// game's invite relay passes the reply back on its own. Anywhere else the
+// friend sends back a reply code to paste. Up to four players; each invite
+// seats one friend.
 
 import { MAX_PLAYERS } from "../sim";
 import { HostLobby, joinHost, type NetMatch } from "../game/net/lobby";
 import { answerOffer, createOffer } from "../game/net/rtc";
+import { fetchOffer, isCode, postAnswer, publishOffer, type HostedInvite } from "../game/net/signal";
 import type { Session } from "../game/session";
 import { $ } from "./dom";
 
@@ -14,6 +17,7 @@ export class CoopLobby {
   private readonly root = $("coop");
   private readonly body = $("coop-body");
   private host: HostLobby | null = null;
+  private hosted: HostedInvite | null = null;
   open = false;
 
   constructor(
@@ -47,9 +51,26 @@ export class CoopLobby {
     invite.value = "Preparing an invite…";
     const { offer, accept } = await createOffer();
     if (this.host !== lobby) return;
+    const hosted = (this.hosted = await publishOffer(offer));
+    if (this.host !== lobby) return hosted?.cancel();
     const url = new URL(location.href);
-    url.hash = `${JOIN_PARAM}=${offer}`;
+    url.hash = `${JOIN_PARAM}=${hosted ? hosted.token : offer}`;
     invite.value = url.toString();
+    $("coop-manual").hidden = hosted !== null;
+    if (hosted) {
+      this.status("Waiting for your friend to open the link…");
+      try {
+        const answer = await hosted.answer;
+        if (this.host !== lobby) return;
+        this.status("Connecting…");
+        lobby.add(await accept(answer));
+        this.status("");
+      } catch (error) {
+        if (this.host !== lobby) return;
+        this.status(`That didn't work (${(error as Error).message}). Here's a fresh invite.`);
+      }
+      return this.nextInvite();
+    }
     const reply = $("coop-reply") as HTMLInputElement;
     const connect = $("coop-connect") as HTMLButtonElement;
     reply.value = "";
@@ -78,8 +99,10 @@ export class CoopLobby {
         <h2>Host co-op</h2>
         <p>Send a friend this link. Each link seats one friend (up to ${MAX_PLAYERS - 1}).</p>
         <div class="coop-row"><input id="coop-invite" readonly><button id="coop-copy">Copy</button></div>
-        <p>They'll get a reply code. Paste it here:</p>
-        <div class="coop-row"><input id="coop-reply" placeholder="Reply code"><button id="coop-connect">Connect</button></div>
+        <div id="coop-manual" hidden>
+          <p>They'll get a reply code. Paste it here:</p>
+          <div class="coop-row"><input id="coop-reply" placeholder="Reply code"><button id="coop-connect">Connect</button></div>
+        </div>
         <ol id="coop-players"></ol>
         <p id="coop-status"></p>
         <button id="coop-start" class="coop-primary">Start match</button>`;
@@ -95,6 +118,8 @@ export class CoopLobby {
   private startHost(): void {
     const lobby = this.host;
     if (!lobby || lobby.ready.length === 0) return;
+    this.hosted?.cancel();
+    this.hosted = null;
     const match = lobby.start(this.session.raceId, (Math.random() * 2 ** 31) | 0);
     lobby.onLeave = (team) => this.onLeave(team);
     this.hide();
@@ -103,7 +128,7 @@ export class CoopLobby {
 
   // --- guest ------------------------------------------------------------
 
-  async join(offer: string): Promise<void> {
+  async join(token: string): Promise<void> {
     this.show();
     history.replaceState(null, "", location.pathname + location.search);
     const races = this.session.playable
@@ -112,17 +137,22 @@ export class CoopLobby {
     this.body.innerHTML = `
       <h2>Join co-op</h2>
       <p>Your race: <select id="coop-race">${races}</select></p>
-      <p id="coop-status">Preparing your reply code…</p>
-      <div class="coop-row"><input id="coop-answer" readonly><button id="coop-copy">Copy</button></div>`;
+      <p id="coop-status">Connecting to your host…</p>
+      <div class="coop-row" id="coop-answer-row" hidden><input id="coop-answer" readonly><button id="coop-copy">Copy</button></div>`;
     $("coop-copy").addEventListener("click", () => copy($("coop-answer") as HTMLInputElement));
+    const relayed = isCode(token);
     let answer: Awaited<ReturnType<typeof answerOffer>>;
     try {
-      answer = await answerOffer(offer);
-    } catch {
-      return this.status("This invite link is broken. Ask your host for a new one.");
+      answer = await answerOffer(relayed ? await fetchOffer(token) : token);
+      if (relayed) await postAnswer(token, answer.answer);
+    } catch (error) {
+      return this.status(relayed ? (error as Error).message : "This invite link is broken. Ask your host for a new one.");
     }
-    ($("coop-answer") as HTMLInputElement).value = answer.answer;
-    this.status("Send this reply code to your host, then wait here.");
+    if (!relayed) {
+      ($("coop-answer") as HTMLInputElement).value = answer.answer;
+      $("coop-answer-row").hidden = false;
+      this.status("Send this reply code to your host, then wait here.");
+    }
     const link = await answer.link;
     this.status("Connected. Waiting for the host to start…");
     const race = ($("coop-race") as HTMLSelectElement).value;
@@ -157,6 +187,8 @@ export class CoopLobby {
   }
 
   private cancel(): void {
+    this.hosted?.cancel();
+    this.hosted = null;
     this.host?.close();
     this.host = null;
     this.hide();
