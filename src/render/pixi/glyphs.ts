@@ -33,6 +33,10 @@ export function drawGlyph(g: Graphics, defId: string, x: number, y: number, size
       g.rect(x - s, y - s, s * 2, s * 2).stroke({ width: 3, color, alpha });
       g.circle(x, y, s * 0.5).fill({ color, alpha });
       break;
+    case "c2-server":
+      g.moveTo(x, y - s).lineTo(x + s * 0.6, y + s).lineTo(x - s * 0.6, y + s).closePath().fill({ color, alpha });
+      g.circle(x, y + s * 0.2, s * 0.25).fill({ color: 0xffffff, alpha });
+      break;
     case "malware-nest":
       g.circle(x, y, s).stroke({ width: 3, color, alpha });
       g.circle(x, y, s * 0.4).fill({ color, alpha });

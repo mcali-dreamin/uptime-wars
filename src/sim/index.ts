@@ -32,3 +32,4 @@ export function simulate(
   while (world.tick < maxTicks && !world.outcome) step(world, content);
   return world;
 }
+export { fortressGates, fortressSpots } from "./fortress";

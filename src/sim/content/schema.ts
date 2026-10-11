@@ -108,6 +108,12 @@ export interface WavesDef {
   roster: { unit: string; cost: number; fromWave: number; weight: number }[];
   /** One more boss every `every` waves from `fromWave` on. */
   bosses: { unit: string; fromWave: number; every: number };
+  /**
+   * The nest's fortress: `building` guards its gateways. Every `rebuildEvery`
+   * waves the ones you knocked down come back, with hp grown by
+   * `hpGrowthPerWave` per wave.
+   */
+  fortress: { building: string; rebuildEvery: number; hpGrowthPerWave: number };
   names: string[];
 }
 

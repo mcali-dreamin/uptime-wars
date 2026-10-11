@@ -86,6 +86,7 @@ export class Renderer {
       this.view.event?.(event);
       if (event.type === "shot") this.shots.push({ ...event, age: 0 });
       if (event.type === "founded") this.showBanner("Core online");
+      if (event.type === "fortified") this.showBanner(`The botnet rebuilt ${event.rebuilt} C2 Server${event.rebuilt > 1 ? "s" : ""}`);
       if (event.type === "wave") this.showBanner(`Wave ${event.wave} · ${event.name}${event.boss ? " · BOSS" : ""}`);
     }
   }
