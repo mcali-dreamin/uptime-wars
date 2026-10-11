@@ -248,7 +248,7 @@ CI deploy preset).
 npm run typecheck
 npm test          # simulation tests + determinism rules for src/sim
 npm run build
-npm run e2e       # browser smoke test + two-browser co-op (relay and copy-paste) against dist/ (needs: npx playwright install chromium)
+npm run e2e       # browser smoke test + two-browser co-op against dist/ (needs: npx playwright install chromium)
 ```
 
 CI runs all four on every pull request, and the deploy workflow runs them
