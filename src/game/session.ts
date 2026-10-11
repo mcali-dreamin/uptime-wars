@@ -1,10 +1,14 @@
-// One match, from the player's side: which race, the world, and issuing
-// commands. Commands are scheduled a couple of ticks ahead, as they will be
-// in lockstep multiplayer.
+// One match, from the player's side: which race, the world, issuing
+// commands, and advancing the clock. Solo, commands are scheduled a couple of
+// ticks ahead and the world steps freely. In co-op, both go through lockstep:
+// commands travel as turns, and a tick steps once every player's turn is in.
 
+import type { Lockstep } from "./net/lockstep";
+import type { NetMatch } from "./net/lobby";
 import {
   createWorld,
   queueCommand,
+  step,
   type Building,
   type Command,
   type Content,
@@ -28,6 +32,8 @@ export class Session {
   /** The team this browser plays. Player n in a co-op match is team n. */
   local: TeamId = 0;
   world: World;
+  /** Set in a co-op match. */
+  net: Lockstep | null = null;
 
   constructor(readonly content: Content) {
     this.playable = Object.entries(content.races)
@@ -39,13 +45,41 @@ export class Session {
   }
 
   start(raceId: string): void {
-    this.raceId = raceId;
-    localStorage.setItem(RACE_KEY, raceId);
+    this.pick(raceId);
+    this.net = null;
+    this.local = 0;
     this.world = this.newWorld();
   }
 
+  /** Remember the race for next time, without starting anything. */
+  pick(raceId: string): void {
+    this.raceId = raceId;
+    localStorage.setItem(RACE_KEY, raceId);
+  }
+
+  /** Play a co-op match someone (maybe us) set up. */
+  startNet(match: NetMatch): void {
+    this.world = match.world;
+    this.net = match.lockstep;
+    this.local = match.local;
+    this.raceId = this.team.raceId;
+  }
+
   issue(order: Order): void {
+    if (this.net) return this.net.issue(order);
     queueCommand(this.world, { ...order, tick: this.world.tick + INPUT_DELAY_TICKS, team: this.local } as Command);
+  }
+
+  /** Advance one tick if we can. In co-op that waits on every player's turn. */
+  tryStep(): boolean {
+    if (this.net) return this.net.tryStep();
+    step(this.world, this.content);
+    return true;
+  }
+
+  /** In co-op: who we're waiting on right now, if anyone. */
+  waitingOn(): TeamId[] {
+    return this.net?.waitingOn() ?? [];
   }
 
   get team() {

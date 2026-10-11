@@ -21,7 +21,9 @@ import { Guide } from "./ui/guide";
 import { Hud } from "./ui/hud";
 import { InfoPanel } from "./ui/info-panel";
 import { RacePicker } from "./ui/race-picker";
-import { TICK_RATE, TILE, isCore, loadDefaultContent, step, type Point } from "./sim";
+import { TICK_RATE, TILE, isCore, loadDefaultContent, type Point } from "./sim";
+import type { NetMatch } from "./game/net/lobby";
+import { CoopLobby } from "./ui/coop";
 
 const STEP_MS = 1000 / TICK_RATE;
 const MAX_STEPS_PER_FRAME = 5;
@@ -45,7 +47,12 @@ const bar = new BuildBar(session, {
   guide: () => guide.toggle(),
 });
 const guide = new Guide(session);
-const picker = new RacePicker(session, startMatch);
+const picker = new RacePicker(session, startMatch, () => void coop.hostGame());
+const coop = new CoopLobby(session, startNetMatch, () => picker.show());
+coop.onLeave = (team) => {
+  if (team === 0 && session.local !== 0) renderer.showBanner("The host left · match over");
+  else renderer.showBanner(`Player ${team + 1} disconnected · their base fights on`);
+};
 
 let selection: Selection = NOTHING;
 let placement: Placement | null = null;
@@ -65,6 +72,7 @@ if (new URLSearchParams(location.search).has("debug")) {
         return selection;
       },
       session,
+      coop,
       renderer,
       content,
       TILE,
@@ -142,7 +150,7 @@ function isArmed(): boolean {
 // --- game input ------------------------------------------------------------
 
 const gameInput: GameInput = {
-  blocked: () => picker.open || guide.open,
+  blocked: () => picker.open || guide.open || coop.open,
 
   click(point, shift) {
     if (placement) {
@@ -183,7 +191,11 @@ const gameInput: GameInput = {
       return true;
     }
     if (key === "t") return arm();
-    if (key === "p") return (paused = !paused), true;
+    if (key === "p") {
+      if (session.net) renderer.showBanner("Co-op can't pause");
+      else paused = !paused;
+      return true;
+    }
     if (key === "r" && session.world.outcome) return picker.show(), true;
     if (key === " " || key === "h") {
       const home = session.home();
@@ -210,6 +222,16 @@ const gameInput: GameInput = {
 
 function startMatch(raceId: string): void {
   session.start(raceId);
+  resetMatch();
+}
+
+function startNetMatch(match: NetMatch): void {
+  session.startNet(match);
+  resetMatch();
+}
+
+function resetMatch(): void {
+  renderer.localTeam = session.local;
   bar.reset();
   renderer.setWorld(session.world);
   accumulator = 0;
@@ -230,16 +252,24 @@ if (use3d) {
 }
 bindInput(renderer, gameInput);
 renderer.setWorld(session.world);
-picker.show();
+const invite = CoopLobby.inviteInUrl();
+if (invite) void coop.join(invite);
+else picker.show();
 
 renderer.app.ticker.add((ticker) => {
   const { world } = session;
-  if (!paused && !picker.open && !guide.open && !world.outcome) {
+  // Co-op never pauses: the others are waiting on our turns.
+  const running = session.net ? !coop.open : !paused && !guide.open;
+  if (running && !picker.open && !world.outcome) {
     accumulator += ticker.deltaMS;
     let steps = 0;
     while (accumulator >= STEP_MS && steps < MAX_STEPS_PER_FRAME) {
       renderer.capturePrevious(world);
-      step(world, content);
+      if (!session.tryStep()) {
+        // Waiting on another player's turn: hold, don't bank time to burst through later.
+        accumulator = Math.min(accumulator, STEP_MS);
+        break;
+      }
       renderer.collectEvents(world);
       for (const event of world.events) {
         if (event.type === "failover" && event.team === session.team.id) renderer.showBanner("Core lost · failover");

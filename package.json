@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "publish:spacefast": "npm run build && npx -y spacefast publish dist --space spc_de286293390947f7beb1d37d7205b6e5",
-    "e2e": "node e2e/smoke.mjs dist"
+    "e2e": "node e2e/smoke.mjs dist && node e2e/coop.mjs dist"
   },
   "dependencies": {
     "pixi.js": "^8.21.0",
