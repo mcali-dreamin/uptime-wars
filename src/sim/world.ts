@@ -20,8 +20,9 @@ import { tickConstruction, tickCooldowns, tickIncome, tickUsers } from "./econom
 import { foundCore, spawnUnit } from "./entities";
 import { footprintCenter } from "./map";
 import { teamCores } from "./placement";
+import { hordeTeam, humanTeams } from "./teams";
 import { tickSpawners } from "./spawners";
-import { generateTerrain } from "./terrain";
+import { MAX_PLAYERS, generateTerrain } from "./terrain";
 import { BASE_INCOME, STARTING_COMPUTE } from "./tuning";
 import type { TeamId, World } from "./types";
 import { tickUnits } from "./units";
@@ -30,7 +31,12 @@ import { tickWaveDirector } from "./waves";
 
 export interface MatchSetup {
   seed: number;
-  races: [string, string];
+  /**
+   * One race per team, in team order: the human players (1 to MAX_PLAYERS)
+   * and then the horde, e.g. ["open-source", "hyperscaler", "botnet"].
+   * Player n starts at terrain.starts[n].
+   */
+  races: string[];
   /** Skip the builder phase: found every core at its start tile. */
   startWithCore?: boolean;
 }
@@ -44,7 +50,7 @@ export function createWorld(content: Content, setup: MatchSetup): World {
     terrain,
     nav: { goals: new Map() },
     nextId: 1,
-    teams: [makeTeam(content, 0, setup.races[0]), makeTeam(content, 1, setup.races[1])],
+    teams: setup.races.map((race, id) => makeTeam(content, id, race)),
     entities: [],
     commands: [],
     waves: {
@@ -58,9 +64,11 @@ export function createWorld(content: Content, setup: MatchSetup): World {
     events: [],
   };
 
-  const origins = [terrain.start, terrain.nest] as const;
+  const humans = humanTeams(world);
+  if (humans.length < 1 || humans.length > MAX_PLAYERS) throw new Error(`A match needs 1 to ${MAX_PLAYERS} players`);
+  if (humans.some((team, i) => team.id !== i)) throw new Error("Human teams come first");
   for (const team of world.teams) {
-    const { col, row } = origins[team.id];
+    const { col, row } = team.controller === "human" ? terrain.starts[team.id]! : terrain.nest;
     const race = content.races[team.raceId]!;
     if (race.builder && !setup.startWithCore) {
       const at = footprintCenter(col, row, 2);
@@ -91,6 +99,7 @@ function makeTeam(content: Content, id: TeamId, raceId: string) {
     churnCarry: 0,
     upgrades: {},
     research: null,
+    downTick: null,
   };
 }
 
@@ -119,11 +128,13 @@ export function step(world: World, content: Content): void {
 
 /**
  * Redundancy: when your primary core falls, the next one (lowest id) takes
- * over. You only go down when every core is down.
+ * over. A team goes offline when every core is down. Co-op: the match is lost
+ * when every human team is offline, and won by all of them when the nest is.
  */
 function checkOutcome(ctx: TickContext): void {
   const { world, content } = ctx;
   for (const team of world.teams) {
+    if (team.downTick !== null) continue;
     let alive: boolean;
     if (team.coreId === -1) {
       // Before founding, the team lives as long as its builder does.
@@ -142,9 +153,17 @@ function checkOutcome(ctx: TickContext): void {
       alive = core !== undefined && core.hp > 0;
     }
     if (!alive) {
-      world.outcome = { winner: team.id === 0 ? 1 : 0, reason: "core-destroyed", tick: world.tick };
-      return;
+      team.downTick = world.tick;
+      team.research = null;
+      if (team.controller === "human") world.events.push({ type: "offline", team: team.id });
     }
+  }
+  const humans = humanTeams(world);
+  const horde = hordeTeam(world);
+  if (horde && horde.downTick !== null) {
+    world.outcome = { winners: humans.map((team) => team.id), reason: "nest-offline", tick: world.tick };
+  } else if (humans.every((team) => team.downTick !== null)) {
+    world.outcome = { winners: horde ? [horde.id] : [], reason: "all-offline", tick: world.tick };
   }
   // No win by timer: the web never runs out of traffic. Your score is uptime.
 }

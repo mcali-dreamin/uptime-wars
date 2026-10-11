@@ -42,7 +42,7 @@ export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
   const gap = edgeDistance(unit, target);
   if (gap <= def.range) {
     if (unit.attackCooldown <= 0) {
-      const damage = def.damage * multiplier(ctx.content, world.teams[unit.team], "unitDamage");
+      const damage = def.damage * multiplier(ctx.content, world.teams[unit.team]!, "unitDamage");
       dealDamage(ctx, unit, target, def.attackType, damage);
       unit.attackCooldown = def.cooldownTicks;
     }

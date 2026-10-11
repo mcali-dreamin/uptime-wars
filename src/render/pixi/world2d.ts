@@ -7,7 +7,7 @@ import { TILE, isCore, networkProviders, type Content, type World } from "../../
 import type { Camera } from "../camera";
 import type { Fog } from "../fog";
 import { PING_MS, SHOT_TTL_MS, type Frame, type WorldView } from "../frame";
-import { HIGHLIGHT, INVALID, TEAM_COLORS, VALID } from "../palette";
+import { HIGHLIGHT, INVALID, VALID, teamColor } from "../palette";
 import { drawBuilder, drawGlyph, drawHealth } from "./glyphs";
 import { drawTerrainBase, drawTerrainDetail, drawWells } from "./terrain-art";
 
@@ -73,7 +73,7 @@ export class World2D implements WorldView {
       if (x < view.left || x > view.right || y < view.top || y > view.bottom) continue;
       if (!frame.shows(entity, x, y)) continue;
 
-      const color = TEAM_COLORS[entity.team];
+      const color = teamColor(world, entity.team);
       if (entity.kind === "building") {
         const size = entity.footprint * TILE - 4;
         const left = x - size / 2;
@@ -87,7 +87,7 @@ export class World2D implements WorldView {
         continue;
       }
       if (entity.mode === "builder") {
-        drawBuilder(g, entity, x, y);
+        drawBuilder(g, entity, x, y, color);
         continue;
       }
       g.circle(x, y, entity.radius).fill({ color, alpha: 0.85 });
@@ -97,12 +97,13 @@ export class World2D implements WorldView {
     }
   }
 
-  private drawShots({ shots, fog }: Frame): void {
+  private drawShots(frame: Frame): void {
+    const { shots, fog } = frame;
     const g = this.dynamic;
     for (const shot of shots) {
       if (!fog.isVisible(shot.x1, shot.y1) && !fog.isVisible(shot.x2, shot.y2)) continue;
       const fade = 1 - shot.age / SHOT_TTL_MS;
-      g.moveTo(shot.x1, shot.y1).lineTo(shot.x2, shot.y2).stroke({ width: 1.5, color: TEAM_COLORS[shot.team], alpha: fade });
+      g.moveTo(shot.x1, shot.y1).lineTo(shot.x2, shot.y2).stroke({ width: 1.5, color: teamColor(frame.world, shot.team), alpha: fade });
     }
   }
 
@@ -114,9 +115,9 @@ export class World2D implements WorldView {
   }
 
   /** Your network rings, the footprint, and (for towers) the range. */
-  private drawPlacement({ ghost, world, content }: Frame): void {
+  private drawPlacement({ ghost, world, content, localTeam }: Frame): void {
     if (!ghost) return;
-    for (const provider of networkProviders(world, content, 0)) {
+    for (const provider of networkProviders(world, content, localTeam)) {
       const reach = content.buildings[provider.defId]!.buildRadius! * TILE;
       this.overlay.circle(provider.x, provider.y, reach).stroke({ width: 2, color: VALID, alpha: 0.25 });
     }
@@ -145,7 +146,7 @@ export class World2D implements WorldView {
     const size = entity.footprint * TILE + 6;
     g.rect(entity.x - size / 2, entity.y - size / 2, size, size).stroke({ width: 2, color: HIGHLIGHT, alpha: 0.9 });
 
-    const team = world.teams[entity.team];
+    const team = world.teams[entity.team]!;
     const core = isCore(content, team, entity);
     if (!core && !content.buildings[entity.defId]!.spawn) return;
     const own = core ? team.rally : entity.rally;

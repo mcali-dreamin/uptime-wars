@@ -4,13 +4,13 @@ import { randomInt } from "../rng";
 import { RESOURCE_COUNT, ROAM_POINT_COUNT, ROAM_POINT_SPACING } from "./params";
 import { TILE_OPEN, type TilePoint } from "./tiles";
 
-/** Spread-out reachable points, anywhere but right on top of the start. */
+/** Spread-out reachable points, anywhere but right on top of a start. */
 export function scatterRoamPoints(
   tiles: Uint8Array,
   cols: number,
   rows: number,
   dist: Int32Array,
-  start: TilePoint,
+  starts: TilePoint[],
   rng: { rngState: number },
 ): TilePoint[] {
   const points: TilePoint[] = [];
@@ -23,7 +23,7 @@ export function scatterRoamPoints(
     const point = { col: randomInt(rng, 2, cols - 3), row: randomInt(rng, 2, rows - 3) };
     const i = point.row * cols + point.col;
     if (tiles[i] !== TILE_OPEN || dist[i]! < 0) continue;
-    if (!far(point, start, 8)) continue;
+    if (!starts.every((start) => far(point, start, 8))) continue;
     if (!points.every((other) => far(point, other, ROAM_POINT_SPACING))) continue;
     points.push(point);
   }
@@ -35,7 +35,7 @@ export function scatterResources(
   cols: number,
   rows: number,
   dist: Int32Array,
-  start: TilePoint,
+  starts: TilePoint[],
   nest: TilePoint,
   rng: { rngState: number },
 ): TilePoint[] {
@@ -45,11 +45,10 @@ export function scatterResources(
     const dy = a.row - b.row;
     return dx * dx + dy * dy >= min * min;
   };
-  const tryPlace = (minFromStart: number, maxFromStart: number) => {
-    // Sample near the start when the band is tight, anywhere otherwise.
-    const local = maxFromStart < 100;
+  /** Near `start` (within the band) when given one; otherwise anywhere clear of every start. */
+  const tryPlace = (start: TilePoint | null, minFromStart: number, maxFromStart: number) => {
     for (let attempt = 0; attempt < 2000; attempt += 1) {
-      const point = local
+      const point = start
         ? {
             col: randomInt(rng, Math.max(1, start.col - maxFromStart), Math.min(cols - 2, start.col + maxFromStart)),
             row: randomInt(rng, Math.max(1, start.row - maxFromStart), Math.min(rows - 2, start.row + maxFromStart)),
@@ -57,7 +56,8 @@ export function scatterResources(
         : { col: randomInt(rng, 1, cols - 2), row: randomInt(rng, 1, rows - 2) };
       const i = point.row * cols + point.col;
       if (tiles[i] !== TILE_OPEN || dist[i]! < 0) continue;
-      if (!far(point, start, minFromStart) || far(point, start, maxFromStart)) continue;
+      if (start && (!far(point, start, minFromStart) || far(point, start, maxFromStart))) continue;
+      if (!starts.every((s) => far(point, s, minFromStart))) continue;
       if (!far(point, nest, 6)) continue;
       if (!placed.every((other) => far(point, other, 6))) continue;
       placed.push(point);
@@ -66,11 +66,13 @@ export function scatterResources(
   };
   // Two wells a short hop from every start: just past the core's reach (7
   // tiles from its centre), so the first pump means extending your network.
-  tryPlace(9, 14);
-  tryPlace(9, 14);
+  for (const start of starts) {
+    tryPlace(start, 9, 14);
+    tryPlace(start, 9, 14);
+  }
   while (placed.length < RESOURCE_COUNT) {
     const before = placed.length;
-    tryPlace(9, 10_000);
+    tryPlace(null, 9, 0);
     if (placed.length === before) break;
   }
   return placed;

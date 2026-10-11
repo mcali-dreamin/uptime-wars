@@ -12,7 +12,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { TILE, isCore, networkProviders, type Entity, type Point, type SimEvent, type World } from "../../sim";
 import { PING_MS, SHOT_TTL_MS, type Frame, type WorldView } from "../frame";
-import { HIGHLIGHT, INVALID, TEAM_COLORS, VALID } from "../palette";
+import { HIGHLIGHT, INVALID, VALID, teamColor } from "../palette";
 import { Bars, Bolts, Particles, Rings } from "./effects";
 import { FogTexture } from "./fog3d";
 import { Models, animate } from "./models";
@@ -45,7 +45,8 @@ const SKY = 0x060a12;
 interface Shown {
   object: THREE.Group;
   kind: "unit" | "building";
-  team: 0 | 1;
+  /** The team colour it was built in. */
+  color: number;
   defId: string;
   size: number;
   seed: number;
@@ -274,7 +275,7 @@ export class World3D implements WorldView {
       const at = frame.position(entity);
       let s = this.shown.get(entity.id);
       if (!s) {
-        s = this.make(entity);
+        s = this.make(world, entity);
         this.shown.set(entity.id, s);
         this.entityLayer.add(s.object);
       }
@@ -321,9 +322,11 @@ export class World3D implements WorldView {
     }
   }
 
-  private make(entity: Entity): Shown {
+  private make(world: World, entity: Entity): Shown {
+    const color = teamColor(world, entity.team);
+    const horde = world.teams[entity.team]?.controller !== "human";
     const size = entity.kind === "unit" ? entity.radius : entity.footprint;
-    const object = this.models.make(entity.defId, entity.team, size, entity.kind === "unit");
+    const object = this.models.make(entity.defId, color, size, entity.kind === "unit");
     object.userData.entityId = entity.id;
     object.traverse((node) => {
       if ((node as THREE.Mesh).isMesh) node.userData.material = (node as THREE.Mesh).material;
@@ -331,11 +334,11 @@ export class World3D implements WorldView {
     return {
       object,
       kind: entity.kind,
-      team: entity.team,
+      color,
       defId: entity.defId,
       size,
       seed: (entity.id * 1.618) % (Math.PI * 2),
-      heading: entity.team === 1 ? 0 : Math.PI,
+      heading: horde ? 0 : Math.PI,
       lastX: entity.x,
       lastY: entity.y,
       holo: false,
@@ -344,7 +347,7 @@ export class World3D implements WorldView {
 
   private setHologram(s: Shown, on: boolean): void {
     s.holo = on;
-    const holo = this.models.hologram(s.team);
+    const holo = this.models.hologram(s.color);
     s.object.traverse((node) => {
       const mesh = node as THREE.Mesh;
       if (!mesh.isMesh) return;
@@ -360,7 +363,7 @@ export class World3D implements WorldView {
       if (!frame.fog.isVisible(death.x, death.y)) continue;
       const s = this.shown.get(death.id);
       const floor = this.terrain3d.floorAt(death.x, death.y);
-      const color = TEAM_COLORS[death.team];
+      const color = teamColor(frame.world, death.team);
       if (s?.kind === "building") {
         this.particles.burst(death.x, floor + 30, death.y, 90, color, 1.8);
         this.particles.burst(death.x, floor + 20, death.y, 60, 0xffb347, 1.4);
@@ -379,9 +382,9 @@ export class World3D implements WorldView {
       const progress = Math.min(1, shot.age / SHOT_TTL_MS);
       const y1 = this.terrain3d.floorAt(shot.x1, shot.y1) + 22;
       const y2 = this.terrain3d.floorAt(shot.x2, shot.y2) + 12;
-      this.bolts.add(shot.x1, y1, shot.y1, shot.x2, y2, shot.y2, progress, TEAM_COLORS[shot.team]);
+      this.bolts.add(shot.x1, y1, shot.y1, shot.x2, y2, shot.y2, progress, teamColor(frame.world, shot.team));
       // A spark where it lands, once.
-      if (shot.age === 0) this.particles.burst(shot.x2, y2, shot.y2, 3, TEAM_COLORS[shot.team], 0.45);
+      if (shot.age === 0) this.particles.burst(shot.x2, y2, shot.y2, 3, teamColor(frame.world, shot.team), 0.45);
     }
     this.bolts.end();
   }
@@ -405,7 +408,7 @@ export class World3D implements WorldView {
         if (selected.kind === "building") {
           const def = content.buildings[selected.defId]!;
           if (def.attack) this.thinRings.add(at.x, ground(at.x, at.y), at.y, def.attack.range + selected.radius, HIGHLIGHT, 0.35);
-          const team = world.teams[selected.team];
+          const team = world.teams[selected.team]!;
           const core = isCore(content, team, selected);
           if (core || def.spawn) {
             const own = core ? team.rally : selected.rally;
@@ -417,7 +420,7 @@ export class World3D implements WorldView {
     }
 
     if (frame.ghost) {
-      for (const provider of networkProviders(world, content, 0)) {
+      for (const provider of networkProviders(world, content, frame.localTeam)) {
         const reach = content.buildings[provider.defId]!.buildRadius! * TILE;
         this.thinRings.add(provider.x, ground(provider.x, provider.y), provider.y, reach, VALID, 0.45);
       }

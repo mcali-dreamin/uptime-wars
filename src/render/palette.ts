@@ -1,15 +1,28 @@
 // Colours shared by every world view, so 2D and 3D read the same.
 
-import { TILE_BLOCKED, TILE_CLIFF, TILE_SLOW } from "../sim";
+import { TILE_BLOCKED, TILE_CLIFF, TILE_SLOW, type TeamId, type World } from "../sim";
+
+/** Player n's default colour (co-op: up to four), and the horde's (always red). */
+export const PLAYER_COLORS = [0x4ade80, 0x60a5fa, 0xc084fc, 0xfb923c] as const;
+export const HORDE_COLOR = 0xf87171;
 
 /**
- * Team colours by team id. The player's (team 0) is chosen before each match
- * (see setTeamColor); the botnet is always red. Read it live, don't copy it.
+ * Colours picked before the match, by team. Render-only: each browser picks
+ * its own player's colour, and the sim never sees it.
  */
-export const TEAM_COLORS: [number, number] = [0x4ade80, 0xf87171];
+const chosen = new Map<TeamId, number>();
 
-export function setTeamColor(team: 0 | 1, hex: number): void {
-  TEAM_COLORS[team] = hex;
+/** The local player picked a colour. An ally whose default matches it takes the local default instead. */
+export function setLocalColor(team: TeamId, hex: number): void {
+  chosen.clear();
+  chosen.set(team, hex);
+  const clash = PLAYER_COLORS.findIndex((c, i) => c === hex && i !== team % PLAYER_COLORS.length);
+  if (clash >= 0) chosen.set(clash, PLAYER_COLORS[team % PLAYER_COLORS.length]!);
+}
+
+export function teamColor(world: World, team: TeamId): number {
+  if (world.teams[team]?.controller !== "human") return HORDE_COLOR;
+  return chosen.get(team) ?? PLAYER_COLORS[team % PLAYER_COLORS.length]!;
 }
 /** Selection, rally flags, order pings, range previews. */
 export const HIGHLIGHT = 0xfacc15;

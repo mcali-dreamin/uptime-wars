@@ -18,26 +18,26 @@ describe("users", () => {
   it("there are no users before the core is online", () => {
     const world = createWorld(content, BUILDER_SETUP);
     for (let i = 0; i < 200; i++) step(world, content);
-    expect(world.teams[0].users).toBe(0);
+    expect(world.teams[0]!.users).toBe(0);
   });
 
   it("users grow toward capacity and never past it", () => {
     const world = createWorld(content, SETUP);
-    expect(world.teams[0].users).toBe(econ.startingUsers);
-    let last = world.teams[0].users;
+    expect(world.teams[0]!.users).toBe(econ.startingUsers);
+    let last = world.teams[0]!.users;
     for (let s = 0; s < 120; s++) {
       for (let i = 0; i < 20; i++) step(world, content);
-      expect(world.teams[0].users).toBeGreaterThanOrEqual(last);
-      expect(world.teams[0].users).toBeLessThanOrEqual(coreCap);
-      last = world.teams[0].users;
+      expect(world.teams[0]!.users).toBeGreaterThanOrEqual(last);
+      expect(world.teams[0]!.users).toBeLessThanOrEqual(coreCap);
+      last = world.teams[0]!.users;
     }
-    expect(world.teams[0].users).toBe(coreCap);
+    expect(world.teams[0]!.users).toBe(coreCap);
   });
 
   it("users pay revenue on top of base income", () => {
     const withUsers = createWorld(content, SETUP);
     const without = createWorld(content, SETUP);
-    without.teams[0].users = 0;
+    without.teams[0]!.users = 0;
     const freeze: typeof content = structuredClone(content);
     freeze.economy = { ...econ, growthPerSecond: 0, minArrivalsPerSecond: 0 };
     for (let i = 0; i < 400; i++) {
@@ -46,15 +46,15 @@ describe("users", () => {
     }
     // 20 seconds of econ.startingUsers users.
     const expected = Math.floor(20 * econ.startingUsers * econ.revenuePerUserPerSecond);
-    expect(withUsers.teams[0].compute - without.teams[0].compute).toBe(expected);
+    expect(withUsers.teams[0]!.compute - without.teams[0]!.compute).toBe(expected);
   });
 
   it("a Web App raises capacity", () => {
     const world = createWorld(content, SETUP);
-    world.teams[0].compute = 1000;
+    world.teams[0]!.compute = 1000;
     queueCommand(world, planBuildOrder(content, SETUP, [[0, "web-app"]])[0]!);
     for (let i = 0; i < 20 * 150; i++) step(world, content);
-    expect(world.teams[0].users).toBe(coreCap + content.buildings["web-app"]!.userCapacity!);
+    expect(world.teams[0]!.users).toBe(coreCap + content.buildings["web-app"]!.userCapacity!);
   });
 
   it("damage to your buildings drives users away", () => {
@@ -62,10 +62,10 @@ describe("users", () => {
     const frozen: typeof content = structuredClone(content);
     frozen.economy = { ...econ, growthPerSecond: 0, minArrivalsPerSecond: 0 };
     const world = createWorld(frozen, SETUP);
-    world.teams[0].users = 40;
+    world.teams[0]!.users = 40;
     // Let the first wave out, then put one creep right next to the core.
     while (!world.entities.some((e) => e.kind === "unit" && e.team === 1)) step(world, frozen);
-    const core = world.entities.find((e) => e.id === world.teams[0].coreId)!;
+    const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
     const creep = world.entities.find((e) => e.kind === "unit" && e.team === 1)!;
     creep.x = core.x + core.radius + creep.radius + 4;
     creep.y = core.y;
@@ -73,7 +73,7 @@ describe("users", () => {
     for (let i = 0; i < 200; i++) step(world, frozen);
     const damage = hpBefore - core.hp;
     expect(damage).toBeGreaterThan(0);
-    expect(40 - world.teams[0].users).toBe(Math.floor(damage / econ.damagePerUserLost));
+    expect(40 - world.teams[0]!.users).toBe(Math.floor(damage / econ.damagePerUserLost));
   });
 });
 
@@ -86,43 +86,43 @@ describe("upgrades", () => {
 
   it("research costs compute, takes time, then raises the level", () => {
     const world = createWorld(content, SETUP);
-    world.teams[0].compute = 1000;
+    world.teams[0]!.compute = 1000;
     const def = content.upgrades["exploit-kits"]!;
     expect(research(world, "exploit-kits")).toEqual([]);
-    expect(world.teams[0].research).toMatchObject({ upgrade: "exploit-kits" });
-    expect(levelOf(world.teams[0], "exploit-kits")).toBe(0);
+    expect(world.teams[0]!.research).toMatchObject({ upgrade: "exploit-kits" });
+    expect(levelOf(world.teams[0]!, "exploit-kits")).toBe(0);
     let done = false;
     for (let i = 0; i < def.researchTicks + 5 && !done; i++) {
       step(world, content);
       done = world.events.some((e) => e.type === "researched");
     }
     expect(done).toBe(true);
-    expect(levelOf(world.teams[0], "exploit-kits")).toBe(1);
-    expect(world.teams[0].research).toBeNull();
-    expect(multiplier(content, world.teams[0], "unitDamage")).toBeCloseTo(1 + def.perLevel);
+    expect(levelOf(world.teams[0]!, "exploit-kits")).toBe(1);
+    expect(world.teams[0]!.research).toBeNull();
+    expect(multiplier(content, world.teams[0]!, "unitDamage")).toBeCloseTo(1 + def.perLevel);
   });
 
   it("level n costs cost * n", () => {
     const world = createWorld(content, SETUP);
-    world.teams[0].upgrades["anycast"] = 1;
-    expect(nextLevel(content, world.teams[0], "anycast")).toMatchObject({ level: 2, cost: content.upgrades.anycast!.cost * 2 });
+    world.teams[0]!.upgrades["anycast"] = 1;
+    expect(nextLevel(content, world.teams[0]!, "anycast")).toMatchObject({ level: 2, cost: content.upgrades.anycast!.cost * 2 });
   });
 
   it("one research at a time, no buying past max, and it must be affordable", () => {
     const world = createWorld(content, SETUP);
-    world.teams[0].compute = 5000;
+    world.teams[0]!.compute = 5000;
     expect(research(world, "anycast")).toEqual([]);
     expect(research(world, "autoscaling")).toEqual(["already researching"]);
-    world.teams[0].research = null;
-    world.teams[0].upgrades["anycast"] = content.upgrades.anycast!.maxLevel;
+    world.teams[0]!.research = null;
+    world.teams[0]!.upgrades["anycast"] = content.upgrades.anycast!.maxLevel;
     expect(research(world, "anycast")).toEqual(["fully researched"]);
-    world.teams[0].compute = 0;
+    world.teams[0]!.compute = 0;
     expect(research(world, "premium-tier")).toEqual(["not enough compute"]);
   });
 
   it("upgrades change unit HP, spawn speed, and user capacity", () => {
     const world = createWorld(content, SETUP);
-    const team = world.teams[0];
+    const team = world.teams[0]!;
     const capBefore = userCapacity(world, content, team);
     team.upgrades = { "hardened-containers": 2, "autoscaling": 1, "edge-caching": 1 };
     queueCommand(world, firstSpot("server-rack"));

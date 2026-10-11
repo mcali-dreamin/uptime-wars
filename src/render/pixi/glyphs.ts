@@ -2,11 +2,9 @@
 
 import type { Graphics } from "pixi.js";
 import { TILE, type Unit } from "../../sim";
-import { TEAM_COLORS } from "../palette";
 
 /** The deploy agent: a diamond with a pulse, plus a line to where it's headed. */
-export function drawBuilder(g: Graphics, unit: Unit, x: number, y: number): void {
-  const color = TEAM_COLORS[unit.team];
+export function drawBuilder(g: Graphics, unit: Unit, x: number, y: number, color: number): void {
   const r = unit.radius + 3;
   if (unit.moveTo) {
     g.moveTo(x, y).lineTo(unit.moveTo.x, unit.moveTo.y).stroke({ width: 1.5, color, alpha: 0.35 });

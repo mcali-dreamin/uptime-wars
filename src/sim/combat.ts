@@ -1,5 +1,6 @@
 // Targeting and damage.
 
+import { hostile } from "./teams";
 import { GRID_CELL, GRID_STRIDE, type TickContext } from "./context";
 import type { Content } from "./content";
 import { loseUsers } from "./economy";
@@ -58,7 +59,7 @@ export function nearestEnemy(
       const cell = ctx.grid.get(row * GRID_STRIDE + col);
       if (!cell) continue;
       for (const entity of cell) {
-        if (entity.team === from.team || entity.hp <= 0 || !filter(entity)) continue;
+        if (!hostile(ctx.world, entity.team, from.team) || entity.hp <= 0 || !filter(entity)) continue;
         const limit = entity.kind === "building" ? buildingDistance : maxDistance;
         const distance = edgeDistance(from, entity);
         if (distance > limit) continue;
@@ -88,7 +89,7 @@ export function dealDamage(
   const damage = Math.max(1, Math.round(baseDamage * multiplier * downhill) - target.armor);
   const wasAlive = target.hp > 0;
   target.hp -= damage;
-  if (target.kind === "building") loseUsers(ctx, world.teams[target.team], damage);
+  if (target.kind === "building") loseUsers(ctx, world.teams[target.team]!, damage);
   world.events.push({
     type: "shot",
     from: attacker.id,
@@ -102,7 +103,7 @@ export function dealDamage(
   if (wasAlive && target.hp <= 0) {
     world.events.push({ type: "death", id: target.id, x: target.x, y: target.y, team: target.team });
     if (target.kind === "unit") {
-      world.teams[attacker.team].compute += content.units[target.defId]!.bounty;
+      world.teams[attacker.team]!.compute += content.units[target.defId]!.bounty;
     }
   }
 }
@@ -113,7 +114,7 @@ export function tickBuildingAttacks(ctx: TickContext): void {
     if (building.kind !== "building" || building.hp <= 0 || building.buildRemaining > 0) continue;
     const attack = content.buildings[building.defId]!.attack;
     if (!attack || building.attackCooldown > 0) continue;
-    const range = attack.range * multiplier(content, world.teams[building.team], "towerRange");
+    const range = attack.range * multiplier(content, world.teams[building.team]!, "towerRange");
     const target = nearestEnemy(ctx, building, range, (entity) => entity.kind === "unit");
     if (!target) continue;
     dealDamage(ctx, building, target, attack.attackType, attack.damage);

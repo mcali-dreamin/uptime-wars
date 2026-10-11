@@ -5,7 +5,7 @@
 // frame. A view draws the world however it likes and maps screen points back
 // to world points.
 
-import type { Content, Point, SimEvent, World } from "../sim";
+import type { Content, Point, SimEvent, TeamId, World } from "../sim";
 import type { Camera } from "./camera";
 import type { Fog } from "./fog";
 
@@ -17,7 +17,7 @@ export interface Shot {
   y1: number;
   x2: number;
   y2: number;
-  team: 0 | 1;
+  team: TeamId;
   age: number;
 }
 
@@ -38,6 +38,8 @@ export interface Frame {
   deltaMs: number;
   ghost: Ghost | null;
   selectedId: number | null;
+  /** The team this browser plays. */
+  localTeam: TeamId;
   width: number;
   height: number;
   camera: Camera;

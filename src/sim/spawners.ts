@@ -28,9 +28,9 @@ export function tickSpawners(ctx: TickContext): void {
       const y = building.y + building.radius + 10 + randomInt(world, 0, 8);
       const unit = spawnUnit(ctx, building.team, spawn.unit, building, x, y, "guard");
       unit.spawnerId = building.id;
-      const rally = building.rally ?? world.teams[building.team].rally;
+      const rally = building.rally ?? world.teams[building.team]!.rally;
       if (rally) sendHome(world, unit, rally);
     }
-    building.spawnTimer = spawnInterval(content, world.teams[building.team], building.defId);
+    building.spawnTimer = spawnInterval(content, world.teams[building.team]!, building.defId);
   }
 }

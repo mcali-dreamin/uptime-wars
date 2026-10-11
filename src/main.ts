@@ -14,8 +14,8 @@ import {
   type Placement,
   type Selection,
 } from "./game/selection";
-import { HUMAN, Session } from "./game/session";
-import { setTeamColor } from "./render/palette";
+import { Session } from "./game/session";
+import { setLocalColor } from "./render/palette";
 import { BuildBar, FOUND_BUTTON, type BarMode } from "./ui/build-bar";
 import { $ } from "./ui/dom";
 import { Guide } from "./ui/guide";
@@ -212,7 +212,7 @@ const gameInput: GameInput = {
 
 /** Paint the world and the UI accent in the player's colour. */
 function applyColor(): void {
-  setTeamColor(HUMAN, session.color.hex);
+  setLocalColor(session.local, session.color.hex);
   document.documentElement.style.setProperty("--accent", `#${session.color.hex.toString(16).padStart(6, "0")}`);
 }
 
@@ -253,6 +253,9 @@ renderer.app.ticker.add((ticker) => {
       renderer.collectEvents(world);
       for (const event of world.events) {
         if (event.type === "failover" && event.team === session.team.id) renderer.showBanner("Core lost · failover");
+        if (event.type === "offline") {
+          renderer.showBanner(event.team === session.local ? "You're offline · your allies play on" : `Player ${event.team + 1} is offline`);
+        }
         if (event.type === "researched" && event.team === session.team.id) {
           renderer.showBanner(`${content.upgrades[event.upgrade]!.name} ${event.level}`);
         }

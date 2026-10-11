@@ -11,7 +11,7 @@
 // filtering gives soft edges for free.
 
 import { Sprite, Texture } from "pixi.js";
-import { TILE, type Content, type TeamId, type World } from "../sim";
+import { TILE, hostile, type Content, type TeamId, type World } from "../sim";
 
 const UPDATE_MS = 100;
 const EXPLORED_ALPHA = 150;
@@ -67,7 +67,8 @@ export class Fog {
 
     this.visible.fill(0);
     for (const entity of world.entities) {
-      if (entity.team !== team || entity.hp <= 0) continue;
+      // Shared vision: you see what you and your allies see.
+      if (hostile(world, entity.team, team) || entity.hp <= 0) continue;
       const sight =
         entity.kind === "unit"
           ? (content.units[entity.defId]!.sight ?? content.units[entity.defId]!.aggro)

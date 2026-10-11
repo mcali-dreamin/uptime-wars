@@ -24,7 +24,7 @@ export function raiseTerrain(
   tiles: Uint8Array,
   cols: number,
   rows: number,
-  start: TilePoint,
+  starts: TilePoint[],
   nest: TilePoint,
   noiseSeed: number,
   rng: { rngState: number },
@@ -36,8 +36,8 @@ export function raiseTerrain(
       heights[row * cols + col] = n > HEIGHT_HIGH ? 2 : n > HEIGHT_MID ? 1 : 0;
     }
   }
-  // The start and the nest each sit on one flat patch.
-  flattenDisc(heights, cols, rows, start.col + 1, start.row + 1, START_CLEAR_RADIUS + 2);
+  // Every start and the nest each sit on one flat patch.
+  for (const start of starts) flattenDisc(heights, cols, rows, start.col + 1, start.row + 1, START_CLEAR_RADIUS + 2);
   flattenDisc(heights, cols, rows, nest.col + 1, nest.row + 1, NEST_CLEAR_RADIUS + 2);
 
   // Cliffs: a walkable tile next to a lower walkable tile is the cliff edge.
@@ -59,7 +59,7 @@ export function raiseTerrain(
   // Ramps until every walkable tile is reachable from the start again. The
   // reached set grows by flooding out from each new ramp, not by re-searching
   // the whole map.
-  const reached = bfs(tiles, cols, rows, start);
+  const reached = bfs(tiles, cols, rows, starts[0]!);
   const flood = (seeds: number[]) => {
     const stack = seeds.filter((i) => !walls(tiles[i]));
     for (const i of stack) reached[i] = 0;

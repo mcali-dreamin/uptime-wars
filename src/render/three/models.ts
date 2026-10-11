@@ -1,13 +1,15 @@
 // Procedural models for every building and unit, built from primitives so
-// there are no asset files to ship. Each kind is built once per team as a
+// there are no asset files to ship. Each kind is built once per colour as a
 // template and cloned per entity (clones share geometry and materials).
+//
+// `team` below is always a team's colour (see teamColor in ../palette).
 //
 // The look: dark metal hardware with your team's colour as paint and light
 // (it glows, and bloom picks it up). The botnet is the opposite: organic,
 // spiky, red. Moving parts are tagged so the view can animate them.
 
 import * as THREE from "three";
-import { TEAM_COLORS } from "../palette";
+import { HORDE_COLOR } from "../palette";
 import type { FogTexture } from "./fog3d";
 
 export type Anim =
@@ -29,9 +31,9 @@ export class Models {
   constructor(private readonly fog: FogTexture) {}
 
   /** A fresh instance of an entity's model. */
-  make(defId: string, team: 0 | 1, size: number, isUnit: boolean): THREE.Group {
+  make(defId: string, team: number, size: number, isUnit: boolean): THREE.Group {
     // Keyed by colour too: a new match may bring a new player colour.
-    const key = `${defId}:${team}:${size}:${TEAM_COLORS[team]}`;
+    const key = `${defId}:${team}:${size}`;
     let template = this.templates.get(key);
     if (!template) {
       template = isUnit ? this.unit(defId, team, size) : this.building(defId, team);
@@ -52,8 +54,8 @@ export class Models {
   }
 
   /** Translucent "being deployed" look for buildings under construction. */
-  hologram(team: 0 | 1): THREE.Material {
-    const color = TEAM_COLORS[team];
+  hologram(team: number): THREE.Material {
+    const color = team;
     let material = this.holograms.get(color);
     if (!material) {
       material = new THREE.MeshBasicMaterial({
@@ -78,9 +80,9 @@ export class Models {
 
   // --- materials ------------------------------------------------------------
 
-  private mat(kind: Mat, team: 0 | 1): THREE.Material {
-    const color = TEAM_COLORS[team];
-    const key = `${kind}:${team}:${color}`;
+  private mat(kind: Mat, team: number): THREE.Material {
+    const color = team;
+    const key = `${kind}:${color}`;
     let material = this.materials.get(key);
     if (material) return material;
     const standard = (p: THREE.MeshStandardMaterialParameters) => this.fog.apply(new THREE.MeshStandardMaterial(p));
@@ -134,14 +136,14 @@ export class Models {
 
   // --- building blocks ------------------------------------------------------
 
-  private box(g: THREE.Group, team: 0 | 1, kind: Mat, w: number, h: number, d: number, x = 0, y = 0, z = 0): THREE.Mesh {
+  private box(g: THREE.Group, team: number, kind: Mat, w: number, h: number, d: number, x = 0, y = 0, z = 0): THREE.Mesh {
     const mesh = new THREE.Mesh(geometry(`box:${w}:${h}:${d}`, () => new THREE.BoxGeometry(w, h, d)), this.mat(kind, team));
     mesh.position.set(x, y + h / 2, z);
     g.add(mesh);
     return mesh;
   }
 
-  private cyl(g: THREE.Group, team: 0 | 1, kind: Mat, rTop: number, rBottom: number, h: number, sides: number, x = 0, y = 0, z = 0): THREE.Mesh {
+  private cyl(g: THREE.Group, team: number, kind: Mat, rTop: number, rBottom: number, h: number, sides: number, x = 0, y = 0, z = 0): THREE.Mesh {
     const mesh = new THREE.Mesh(
       geometry(`cyl:${rTop}:${rBottom}:${h}:${sides}`, () => new THREE.CylinderGeometry(rTop, rBottom, h, sides)),
       this.mat(kind, team),
@@ -151,7 +153,7 @@ export class Models {
     return mesh;
   }
 
-  private shape(g: THREE.Group, team: 0 | 1, kind: Mat, key: string, make: () => THREE.BufferGeometry, x = 0, y = 0, z = 0): THREE.Mesh {
+  private shape(g: THREE.Group, team: number, kind: Mat, key: string, make: () => THREE.BufferGeometry, x = 0, y = 0, z = 0): THREE.Mesh {
     const mesh = new THREE.Mesh(geometry(key, make), this.mat(kind, team));
     mesh.position.set(x, y, z);
     g.add(mesh);
@@ -160,7 +162,7 @@ export class Models {
 
   // --- buildings ------------------------------------------------------------
 
-  private building(defId: string, team: 0 | 1): THREE.Group {
+  private building(defId: string, team: number): THREE.Group {
     const g = new THREE.Group();
     switch (defId) {
       case "core": {
@@ -343,7 +345,7 @@ export class Models {
 
   // --- units ----------------------------------------------------------------
 
-  private unit(defId: string, team: 0 | 1, r: number): THREE.Group {
+  private unit(defId: string, team: number, r: number): THREE.Group {
     const g = new THREE.Group();
     switch (defId) {
       case "process": {
@@ -436,7 +438,7 @@ export class Models {
         break;
       }
       default:
-        this.cyl(g, team, team === 1 ? "flesh" : "trim", r * 0.8, r, r * 1.8, 10);
+        this.cyl(g, team, team === HORDE_COLOR ? "flesh" : "trim", r * 0.8, r, r * 1.8, 10);
     }
     return g;
   }
@@ -452,8 +454,8 @@ function geometry(key: string, make: () => THREE.BufferGeometry): THREE.BufferGe
 }
 
 const wireframes = new Map<number, THREE.Material>();
-function wireframe(team: 0 | 1): THREE.Material {
-  const color = TEAM_COLORS[team];
+function wireframe(team: number): THREE.Material {
+  const color = team;
   let m = wireframes.get(color);
   if (!m) wireframes.set(color, (m = new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: 0.85 })));
   return m;

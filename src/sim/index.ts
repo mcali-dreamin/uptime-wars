@@ -5,6 +5,7 @@ export * from "./terrain";
 export { flowField, nextStep, hasClearPath, hasLineOfSight, UNREACHABLE } from "./nav";
 export { canSee, heightOf } from "./combat";
 export { createWorld, step } from "./world";
+export { hostile, hordeTeam, humanTeams } from "./teams";
 export type { MatchSetup } from "./world";
 export { queueCommand } from "./commands";
 export { canPlace, canFound, buildCost, isOccupied, isCore, inNetwork, networkProviders, teamCores } from "./placement";

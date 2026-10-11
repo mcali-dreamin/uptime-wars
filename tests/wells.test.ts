@@ -14,7 +14,7 @@ import { content, SETUP } from "./fixtures";
 const PUMP = "data-pump";
 
 function core(world: World) {
-  const c = world.entities.find((e) => e.id === world.teams[0].coreId)!;
+  const c = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
   if (c.kind !== "building") throw new Error("core must be a building");
   return c;
 }
@@ -36,7 +36,7 @@ function run(world: World, ticks: number) {
  * Returns the number of nodes it took.
  */
 function reachWell(world: World, well: { col: number; row: number }): number {
-  const team = world.teams[0];
+  const team = world.teams[0]!;
   let nodes = 0;
   while (canPlace(world, content, 0, PUMP, well.col, well.row) === "outside your network" && nodes < 12) {
     team.compute += 1000;
@@ -68,7 +68,7 @@ describe("data wells", () => {
 
   it("a pump only goes on a well, and nothing else does", () => {
     const world = createWorld(content, SETUP);
-    world.teams[0].compute = 10_000;
+    world.teams[0]!.compute = 10_000;
     const c = core(world);
     // Open ground right next to the core: fine for a rack, not for a pump.
     let open: { col: number; row: number } | null = null;
@@ -85,7 +85,7 @@ describe("data wells", () => {
   it("on every map the nearest well is past the core's reach", () => {
     for (let seed = 1; seed <= 40; seed += 1) {
       const world = createWorld(content, { ...SETUP, seed });
-      world.teams[0].compute = 10_000;
+      world.teams[0]!.compute = 10_000;
       const well = nearestWell(world);
       expect(canPlace(world, content, 0, PUMP, well.col, well.row), `seed ${seed}`).toBe("outside your network");
     }
@@ -114,11 +114,11 @@ describe("data wells", () => {
     const pump = withPump.entities.find((e) => e.kind === "building" && e.defId === PUMP);
     expect(pump).toMatchObject({ buildRemaining: 0 });
 
-    const before = [withPump.teams[0].compute, without.teams[0].compute];
+    const before = [withPump.teams[0]!.compute, without.teams[0]!.compute];
     const seconds = 10;
     run(withPump, seconds * 20);
     run(without, seconds * 20);
-    const gained = withPump.teams[0].compute - before[0]! - (without.teams[0].compute - before[1]!);
+    const gained = withPump.teams[0]!.compute - before[0]! - (without.teams[0]!.compute - before[1]!);
     // The pump's own income, give or take one payout either side and the user drift its cost causes.
     const expected = (def.income!.amount * seconds * 20) / def.income!.intervalTicks;
     expect(gained).toBeGreaterThanOrEqual(expected - def.income!.amount * 2);

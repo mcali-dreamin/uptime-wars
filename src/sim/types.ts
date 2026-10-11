@@ -1,7 +1,8 @@
 import type { ArmorType, Controller } from "./content";
 import type { Terrain } from "./terrain";
 
-export type TeamId = 0 | 1;
+/** Index into world.teams. */
+export type TeamId = number;
 
 export interface Point {
   x: number;
@@ -29,6 +30,12 @@ export interface Team {
   upgrades: Record<string, number>;
   /** What the core is researching right now, if anything. */
   research: { upgrade: string; remaining: number } | null;
+  /**
+   * The tick this team went offline (every core, or the builder before one),
+   * else null. An offline team is out: its commands are ignored, but its
+   * allies play on. This is also its uptime.
+   */
+  downTick: number | null;
 }
 
 interface EntityBase {
@@ -154,8 +161,9 @@ export interface WaveState {
 }
 
 export interface Outcome {
-  winner: TeamId;
-  reason: "core-destroyed";
+  /** Every human team when the nest falls; the horde when every human team is down. */
+  winners: TeamId[];
+  reason: "nest-offline" | "all-offline";
   tick: number;
 }
 
@@ -166,6 +174,8 @@ export type SimEvent =
   | { type: "wave"; wave: number; name: string; packs: number; units: number; boss: boolean }
   | { type: "founded"; x: number; y: number }
   | { type: "failover"; team: TeamId; x: number; y: number }
+  /** A team went offline while its allies play on. */
+  | { type: "offline"; team: TeamId }
   | { type: "researched"; team: TeamId; upgrade: string; level: number }
   | { type: "rejected"; command: Command; reason: string };
 
@@ -186,7 +196,8 @@ export interface World {
   terrain: Terrain;
   nav: Navigation;
   nextId: number;
-  teams: [Team, Team];
+  /** Human teams first (player n is team n), then the horde. */
+  teams: Team[];
   /** Always kept in ascending id order: iteration order is part of determinism. */
   entities: Entity[];
   commands: Command[];

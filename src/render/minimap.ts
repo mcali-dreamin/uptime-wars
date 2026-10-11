@@ -4,7 +4,7 @@
 import { Container, Graphics } from "pixi.js";
 import { TILE, type Terrain, type World } from "../sim";
 import type { Fog } from "./fog";
-import { TEAM_COLORS } from "./palette";
+import { teamColor } from "./palette";
 import { drawTerrainBase, drawWells } from "./pixi/terrain-art";
 
 const WIDTH = 240;
@@ -49,7 +49,7 @@ export class Minimap {
     g.clear();
     for (const entity of world.entities) {
       if (!shows(entity)) continue;
-      const color = TEAM_COLORS[entity.team];
+      const color = teamColor(world, entity.team);
       if (entity.kind === "building") {
         const size = Math.max(3, entity.footprint * TILE * s);
         g.rect(entity.x * s - size / 2, entity.y * s - size / 2, size, size).fill({ color });

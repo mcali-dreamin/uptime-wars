@@ -27,7 +27,7 @@ export function tickIncome(ctx: TickContext): void {
     if (!income) continue;
     entity.incomeTimer -= 1;
     if (entity.incomeTimer <= 0) {
-      world.teams[entity.team].compute += income.amount;
+      world.teams[entity.team]!.compute += income.amount;
       entity.incomeTimer = income.intervalTicks;
     }
   }
@@ -62,7 +62,7 @@ export function tickUsers(ctx: TickContext): void {
   if (world.tick % TICK_RATE !== 0) return;
   const economy = content.economy;
   for (const team of world.teams) {
-    if (team.controller !== "human" || team.coreId === -1) continue;
+    if (team.controller !== "human" || team.coreId === -1 || team.downTick !== null) continue;
     const capacity = userCapacity(world, content, team);
     if (team.users < capacity) {
       const gap = capacity - team.users;
@@ -96,7 +96,7 @@ export function loseUsers(ctx: TickContext, team: Team, damage: number): void {
  * you make: more buildings and more users, more attention. 0 before a core.
  */
 export function trafficRadius(world: World, content: TickContext["content"], team: Team): number {
-  if (team.controller !== "human" || team.coreId === -1) return 0;
+  if (team.controller !== "human" || team.coreId === -1 || team.downTick !== null) return 0;
   const t = content.economy.traffic;
   let buildings = 0;
   for (const entity of world.entities) {
