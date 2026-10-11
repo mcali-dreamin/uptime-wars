@@ -31,6 +31,15 @@ await run("smoke test", async ({ check, open }) => {
   // Deploy: the agent starts selected; a click walks it; C + click founds the core.
   const agent = await home();
   check(await state((id) => window.uptime.selection.id === id, agent.id), "the deploy agent starts selected");
+  const known = await state(() => {
+    const u = window.uptime;
+    const nest = u.world.entities.find((e) => e.id === u.world.teams[u.world.teams.length - 1].coreId);
+    const fog = u.renderer.fog;
+    let dark = 0;
+    for (let i = 0; i < u.world.terrain.tiles.length; i++) if (fog.stateAt(i) === 0) dark++;
+    return dark === 0 && fog.isExplored(nest.x, nest.y) && !fog.isVisible(nest.x, nest.y);
+  });
+  check(known, "the whole map and the nest's spot are known, but the nest isn't in sight");
   const walk = await openNear(agent.x, agent.y, 4, 8);
   await click(walk);
   const heading = await waitFor(() => state(() => window.uptime.world.entities.find((e) => e.mode === "builder")?.moveTo));

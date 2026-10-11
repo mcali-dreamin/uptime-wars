@@ -49,9 +49,10 @@ and red. Software rendering automatically drops shadows and bloom. `?low`
 forces that, `?hq` forces the full look, and `?2d` brings back the flat Pixi
 view.
 
-The map starts black. You see what your agent, units, and buildings can see;
-places you've been stay dimmed, with enemy buildings as you last saw them.
-`?reveal` in the URL turns the fog off.
+You know the map from the start: the whole terrain and where enemy buildings
+stand (the nest and its C2 Servers) show, dimmed, on the map and the minimap.
+Fog hides movement: you only see creeps within sight of your agent, units, and
+buildings. `?reveal` in the URL turns the fog off.
 
 **Height** matters. The web has three levels (deep web, surface web,
 backbone). Cliffs separate them and ramps are the only way between. From below
