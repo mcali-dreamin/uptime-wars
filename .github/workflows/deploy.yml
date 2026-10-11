@@ -38,15 +38,18 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  # The build (dist/) is the static game plus a Spacefast Zero server for
+  # co-op invites (zero/, staged by scripts/stage-zero.mjs). Zero needs CLI
+  # 0.5.0+ to compile it on publish.
   # Space IDs survive renames. Not a secret.
   SPACEFAST_SPACE: spc_de286293390947f7beb1d37d7205b6e5
-  SPACEFAST_CLI_VERSION: 0.4.1
+  SPACEFAST_CLI_VERSION: 0.5.0
 
 jobs:
   deploy:
     name: Publish to Spacefast
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     environment:
       name: production
       url: ${{ steps.publish.outputs.url }}

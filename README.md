@@ -171,11 +171,19 @@ goes offline and their commands stop, but the match goes on until every player
 is offline (lost) or the nest is (won by all of them).
 
 **Playing co-op.** On the race picker press `H` (or **Play co-op with
-friends**). Send a friend the invite link; they open it, pick a race, and send
-you back a reply code; paste it in and press Connect. One link per friend, up
-to three. Press **Start match** when everyone's in. No server is involved: the
-browsers connect directly over WebRTC (public STUN, no TURN yet, so a few
-strict corporate or mobile networks won't connect).
+friends**). Send a friend the invite link (it ends in a six-letter code); they
+open it, pick a race, and you're connected. One link per friend, up to three.
+Press **Start match** when everyone's in. The browsers connect directly over
+WebRTC (public STUN, no TURN yet, so a few strict corporate or mobile networks
+won't connect).
+
+The only server is a tiny invite relay in the game's own Spacefast space
+(`zero/server`, Spacefast Zero): it holds each invite's WebRTC offer and the
+friend's answer for 30 minutes, and the answer is only readable with the
+host's key. Nothing about a match goes through it. `npm run build` stages it
+into `dist/` next to the static game. Where there's no relay (`npm run dev`, a
+plain static host), co-op falls back to copy and paste: the link carries the
+whole offer and the friend sends back a reply code.
 
 Under the hood it's deterministic lockstep (`src/game/net/lockstep.ts`):
 every browser runs the whole simulation, and each tick every player sends one
@@ -236,7 +244,7 @@ CI deploy preset).
 npm run typecheck
 npm test          # simulation tests + determinism rules for src/sim
 npm run build
-npm run e2e       # browser smoke test + a two-browser co-op match against dist/ (needs: npx playwright install chromium)
+npm run e2e       # browser smoke test + two-browser co-op (relay and copy-paste) against dist/ (needs: npx playwright install chromium)
 ```
 
 CI runs all four on every pull request, and the deploy workflow runs them

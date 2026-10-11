@@ -1,0 +1,11 @@
+{
+  // Copied into dist/ by scripts/stage-zero.mjs. The static build serves the
+  // game; server/index.ts is the co-op invite relay (Spacefast Zero).
+  "$schema": "https://spacefast.com/schemas/sf.json",
+  "runtime": {
+    "kind": "zero",
+    "server": "server/index.ts",
+    // No client app: the game's own index.html owns the page.
+    "client": "client/index.tsx"
+  }
+}
