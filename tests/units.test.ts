@@ -154,6 +154,31 @@ describe("creeps", () => {
     }
   });
 
+  it("a creep on a building turns on a defender that gets in its face", () => {
+    const world = createWorld(content, SETUP);
+    queueCommand(world, firstSpot("server-rack"));
+    // A defender, and the first creep out of the nest.
+    while (!(world.entities.some((e) => e.kind === "unit" && e.team === 0) && world.entities.some((e) => e.kind === "unit" && e.team === 1))) {
+      step(world, content);
+    }
+    const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
+    const creep = world.entities.find((e) => e.kind === "unit" && e.team === 1)!;
+    const defender = world.entities.find((e) => e.kind === "unit" && e.team === 0)!;
+    // The creep is at the core (nearest target: the core); the defender stands
+    // further off, but well inside the creep's aggro range.
+    creep.x = core.x + core.radius + creep.radius + 2;
+    creep.y = core.y;
+    creep.targetId = core.id;
+    defender.x = creep.x + 70;
+    defender.y = creep.y;
+    if (defender.kind === "unit") {
+      defender.homeX = defender.x;
+      defender.homeY = defender.y;
+    }
+    step(world, content);
+    expect(creep.targetId).toBe(defender.id);
+  });
+
   it("no creep is ever inside a wall", () => {
     const world = createWorld(content, SETUP);
     while (world.tick < 3000) {

@@ -35,6 +35,13 @@ export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
   if (!keep) {
     target = nearestEnemy(ctx, unit, def.aggro, undefined, guard ? def.aggro : Math.max(def.aggro, BUILDING_SIGHT)) ?? undefined;
   }
+  // Roamers find bases by their buildings (seen from far off), but a defender
+  // that gets in their face comes first: switch to the nearest enemy unit in
+  // aggro range rather than keep chewing on a building while it's shot at.
+  if (target?.kind === "building" && !guard) {
+    const threat = nearestEnemy(ctx, unit, def.aggro, (e) => e.kind === "unit");
+    if (threat) target = threat;
+  }
   if (target && !guardCanHold(target)) target = undefined;
   unit.targetId = target?.id ?? null;
   if (!target) return false;
