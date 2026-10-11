@@ -106,6 +106,24 @@
       "cooldownTicks": 24
     }
   },
+  "c2-server": {
+    "name": "C2 Server",
+    "description": "Command and control for the botnet. Guards the gateways up to the nest. Knock them down and push in: every few waves the botnet rebuilds them, tougher.",
+    "cost": 0,
+    "buildTicks": 0,
+    "hp": 900,
+    "armor": 2,
+    "armorType": "hardened",
+    "footprint": 1,
+    "buildable": false,
+    "sight": 340,
+    "attack": {
+      "attackType": "exploit",
+      "damage": 14,
+      "range": 210,
+      "cooldownTicks": 20
+    }
+  },
   "hyperscale-rack": {
     "name": "Hyperscale Rack",
     "description": "Provisions Load Balancers: slow to spin up, very hard to kill. They gather at its rally point.",

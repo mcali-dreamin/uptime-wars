@@ -28,7 +28,7 @@ const CONTROLS: [string, string][] = [
   ["Other", "Esc: deselect · P: pause · E: edge scroll on/off · G: this guide · R: new match after an outage"],
   ["Users", "Users are your income. They arrive while your core is up and grow toward your capacity (core + Web Apps), and every user pays compute each second, far more than Solar Arrays or Power Plants. But every hit any of your buildings takes drives some away (the red −N by Users), and more users make more traffic for crawlers to sense. Hover the +/s next to Compute to see where your income comes from."],
   ["Co-op", "On the race picker press H. Send each friend an invite link, paste back the reply code they give you, then Start. Everyone runs the same match; you see what your allies see, and the match goes on until every player is offline. Co-op can't pause."],
-  ["Goal", "Waves never stop. Your score is uptime: how long your core stays online. Peak users is your bragging right."],
+  ["Goal", "Waves never stop. Your score is uptime: how long your core stays online. Peak users is your bragging right. Or end it: the Malware Nest sits on a fortified plateau in the middle of the web, its gateways guarded by C2 Servers. Push up a ramp, take the nest offline, and you win. Every few waves the botnet rebuilds fallen C2 Servers, tougher."],
 ];
 
 export class Guide {

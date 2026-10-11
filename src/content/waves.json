@@ -41,6 +41,11 @@
     "fromWave": 8,
     "every": 4
   },
+  "fortress": {
+    "building": "c2-server",
+    "rebuildEvery": 5,
+    "hpGrowthPerWave": 0.08
+  },
   "names": [
     "Port scan",
     "Credential stuffing",

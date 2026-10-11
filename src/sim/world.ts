@@ -18,6 +18,7 @@ import { buildGrid, makeContext, type TickContext } from "./context";
 import type { Content } from "./content";
 import { tickConstruction, tickCooldowns, tickIncome, tickUsers } from "./economy";
 import { foundCore, spawnUnit } from "./entities";
+import { fortify } from "./fortress";
 import { footprintCenter } from "./map";
 import { teamCores } from "./placement";
 import { hordeTeam, humanTeams } from "./teams";
@@ -78,6 +79,8 @@ export function createWorld(content: Content, setup: MatchSetup): World {
       foundCore(world, content, team.id, col, row);
     }
   }
+  const horde = hordeTeam(world);
+  if (horde) fortify(world, content, horde.id, 1);
   return world;
 }
 
