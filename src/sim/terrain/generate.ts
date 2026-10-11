@@ -10,7 +10,8 @@ import { bfs, clearDisc } from "./grid";
 import {
   BLOCK_THRESHOLD,
   MAX_PLAYERS,
-  NEST_CLEAR_RADIUS,
+  FORTRESS_RADIUS,
+  MOAT_WIDTH,
   SLOW_THRESHOLD,
   START_CLEAR_RADIUS,
   START_MIN_FROM_NEST,
@@ -44,7 +45,9 @@ export function generateTerrain(seed: number, cols = MAP_COLS, rows = MAP_ROWS):
   const nest = { col: Math.floor(cols / 2) - 1, row: Math.floor(rows / 2) - 1 };
   const starts = pickStarts(cols, rows, nest, rng);
   const start = starts[0]!;
-  clearDisc(tiles, cols, rows, nest.col + 1, nest.row + 1, NEST_CLEAR_RADIUS);
+  // The fortress (plateau and moat) is built ground: no dead links or swamps,
+  // so its rim is a clean cliff that gateways can be cut into anywhere.
+  clearDisc(tiles, cols, rows, nest.col + 1, nest.row + 1, FORTRESS_RADIUS + MOAT_WIDTH - 1);
   for (const s of starts) clearDisc(tiles, cols, rows, s.col + 1, s.row + 1, START_CLEAR_RADIUS);
 
   // The nest and every start must be reachable on foot from the first start;

@@ -3,6 +3,7 @@
 import type { TickContext } from "./context";
 import type { Content } from "./content";
 import { spawnUnit } from "./entities";
+import { fortify } from "./fortress";
 import { randomInt } from "./rng";
 import type { World } from "./types";
 
@@ -35,6 +36,10 @@ export function tickWaveDirector(ctx: TickContext): void {
       at += waves.spawnSpacingTicks;
     }
     world.events.push({ type: "wave", wave, name: plan.name, packs, units: plan.units.length, boss: plan.bosses > 0 });
+    if (wave % waves.fortress.rebuildEvery === 0) {
+      const rebuilt = fortify(world, content, team.id, wave);
+      if (rebuilt > 0) world.events.push({ type: "fortified", wave, rebuilt });
+    }
     state.nextIndex = wave;
     state.nextWaveTick = world.tick + waveInterval(content, wave);
   }

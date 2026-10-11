@@ -227,6 +227,8 @@ export type SimEvent =
   | { type: "shot"; from: number; to: number; x1: number; y1: number; x2: number; y2: number; team: TeamId }
   | { type: "death"; id: number; x: number; y: number; team: TeamId }
   | { type: "wave"; wave: number; name: string; packs: number; units: number; boss: boolean }
+  /** The botnet put fallen C2 Servers back up. */
+  | { type: "fortified"; wave: number; rebuilt: number }
   | { type: "founded"; x: number; y: number }
   | { type: "failover"; team: TeamId; x: number; y: number }
   /** A team went offline while its allies play on. */

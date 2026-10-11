@@ -314,6 +314,22 @@ export class Models {
         anim(piston, { type: "bob", amount: 6, speed: 2.4, base: 28 });
         break;
       }
+      case "c2-server": {
+        // A spiked obelisk with a hot eye that watches the gateway.
+        this.cyl(g, team, "flesh", 16, 20, 8, 5);
+        this.shape(g, team, "flesh", "c2-spire", () => new THREE.ConeGeometry(10, 64, 5), 0, 40, 0);
+        for (let i = 0; i < 5; i += 1) {
+          const a = (i / 5) * Math.PI * 2;
+          const spike = this.shape(g, team, "hot", "c2-spike", () => new THREE.ConeGeometry(2.5, 18, 4), Math.cos(a) * 12, 16, Math.sin(a) * 12);
+          spike.rotation.set(Math.sin(a) * 0.7, 0, -Math.cos(a) * 0.7);
+        }
+        const eye = this.shape(g, team, "hot", "c2-eye", () => new THREE.OctahedronGeometry(6), 0, 50, 0);
+        anim(eye, { type: "spin", speed: 1.8, axis: "y" });
+        const halo = this.shape(g, team, "hot", "c2-halo", () => new THREE.TorusGeometry(11, 0.9, 6, 24), 0, 50, 0);
+        halo.rotation.x = Math.PI / 2;
+        anim(halo, { type: "pulse", amount: 0.2, speed: 3 });
+        break;
+      }
       case "malware-nest": {
         this.shape(g, team, "flesh", "nest", () => {
           const geo = new THREE.IcosahedronGeometry(36, 1);

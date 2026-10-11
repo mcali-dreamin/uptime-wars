@@ -108,7 +108,11 @@ but you make **traffic**: crawlers can sense your cores from far away, more
 so as you grow, and packs that sense you march on you. Trouble comes from
 whichever side a pack is wandering in from. Your score
 is **uptime**: how long your core stays online. Taking the nest offline ends
-the run early, in your favor. Hover anything (buttons, buildings, units, terrain) to see what it does.
+the run early, in your favor, but it's a **fortress**: the nest sits on a
+backbone plateau ringed by cliffs, every ramp up is guarded by a C2 Server,
+and more ring the nest itself. Every 5 waves the botnet rebuilds the ones you
+knocked down, tougher (`waves.json` → `fortress`). Where they stand is a pure
+function of the seed. Hover anything (buttons, buildings, units, terrain) to see what it does.
 Add `?debug` to the URL to expose live state as `window.uptime`.
 
 ## How it's built

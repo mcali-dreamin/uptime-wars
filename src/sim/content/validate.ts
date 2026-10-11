@@ -53,6 +53,9 @@ export function validateContent(content: Content): void {
     if (ability.target === "self" && ability.range !== 0) errors.push(`ability ${id} targets self, so its range is 0`);
   }
   if (!content.units[content.waves.bosses.unit]) errors.push(`wave boss is unknown unit ${content.waves.bosses.unit}`);
+  const fortress = content.waves.fortress;
+  if (!content.buildings[fortress.building]?.attack) errors.push(`fortress building ${fortress.building} must be a building that shoots`);
+  if (!(fortress.rebuildEvery >= 1)) errors.push("fortress.rebuildEvery must be at least 1");
   if (!content.waves.roster.some((entry) => entry.fromWave <= 1)) errors.push("wave roster needs a unit from wave 1");
   if (errors.length > 0) {
     throw new Error(`Invalid content:\n- ${errors.join("\n- ")}`);

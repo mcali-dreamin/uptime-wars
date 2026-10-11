@@ -29,6 +29,7 @@ const FOV = 40;
 const BUILDING_TOP: Record<string, number> = {
   core: 116,
   "malware-nest": 70,
+  "c2-server": 76,
   "server-rack": 62,
   "hyperscale-rack": 72,
   "gpu-cluster": 32,
