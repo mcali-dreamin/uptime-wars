@@ -237,7 +237,11 @@ const gameInput: GameInput = {
     // Armed: the click is the order, even on top of one of your buildings.
     if (isArmed()) return order(point);
     const drawn = entityId === null ? undefined : session.entity(entityId);
-    const own = (drawn && drawn.team === session.team.id ? drawn : undefined) ?? ownEntityAt(session, point);
+    // Clicking the ground inside one of your buildings selects it, even if a
+    // tall unit (your hero) is drawn in front of it.
+    const footprint = ownEntityAt(session, point);
+    const own =
+      footprint?.kind === "building" ? footprint : (drawn && drawn.team === session.team.id ? drawn : undefined) ?? footprint;
     if (own) return select({ kind: "entity", id: own.id });
     if (leftClickOrders(session, selection)) return order(point);
     select(NOTHING);
