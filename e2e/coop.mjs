@@ -175,7 +175,12 @@ try {
   const sync = async (page) => page.evaluate(() => ({ desync: window.uptime.session.net.desyncTick, checks: window.uptime.session.net.hashChecks }));
   const [hs, gs] = [await sync(host), await sync(guest)];
   check(Boolean(checked) && hs.desync === null && gs.desync === null, `worlds stay in sync (${hs.checks} + ${gs.checks} hash checks, no desync)`);
-  check((await host.textContent("#status")).includes("Player 1"), "the HUD says you're in co-op");
+  // The line reads "Waiting for Player 2…" during a lockstep stall; poll for the co-op one.
+  const status = await waitFor(async () => {
+    const text = await host.textContent("#status");
+    return text.includes("you're Player 1") ? text : null;
+  }, 15000);
+  check(Boolean(status), "the HUD says you're in co-op");
 
   // 7. The guest leaves: the host plays on.
   await guest.context().close();
