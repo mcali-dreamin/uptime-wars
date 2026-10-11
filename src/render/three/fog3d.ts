@@ -8,7 +8,7 @@ import { TILE, type Terrain } from "../../sim";
 import type { Fog } from "../fog";
 
 /** Brightness kept for explored-but-not-visible ground, 0..255. */
-const EXPLORED = 105;
+const EXPLORED = 120;
 
 export class FogTexture {
   readonly uniforms = {
