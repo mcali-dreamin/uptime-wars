@@ -2,7 +2,7 @@
 // it. Every "what does clicking here do?" question is answered in this file,
 // so the input code, the cursor, the hint line, and the info panel agree.
 
-import { TILE, buildCost, canFound, canPlace, isCore, type Content, type Entity, type Point } from "../sim";
+import { TILE, TILE_RESOURCE, buildCost, canFound, canPlace, isCore, tileAt, type Content, type Entity, type Point } from "../sim";
 import type { Order, Session } from "./session";
 
 export type Selection =
@@ -104,8 +104,13 @@ export function placementAt(
   }
   if (selection.kind === "place") {
     const def = content.buildings[selection.building]!;
-    const col = Math.floor(point.x / TILE);
-    const row = Math.floor(point.y / TILE);
+    let col = Math.floor(point.x / TILE);
+    let row = Math.floor(point.y / TILE);
+    // Pumps snap onto a well next to the pointer: wells are one tile, hard to hit.
+    if (def.onWell) {
+      const well = nearbyWell(session, col, row);
+      if (well) ({ col, row } = well);
+    }
     const valid = canPlace(session.world, content, session.local, selection.building, col, row) === null;
     return {
       col,
@@ -115,6 +120,18 @@ export function placementAt(
       range: def.attack?.range ?? 0,
       order: { type: "build", building: selection.building, col, row },
     };
+  }
+  return null;
+}
+
+/** The data well at or right next to a tile, if any. */
+function nearbyWell(session: Session, col: number, row: number): { col: number; row: number } | null {
+  const { terrain } = session.world;
+  if (tileAt(terrain, col, row) === TILE_RESOURCE) return { col, row };
+  for (let dr = -1; dr <= 1; dr += 1) {
+    for (let dc = -1; dc <= 1; dc += 1) {
+      if (tileAt(terrain, col + dc, row + dr) === TILE_RESOURCE) return { col: col + dc, row: row + dr };
+    }
   }
   return null;
 }

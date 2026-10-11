@@ -17,9 +17,12 @@ import {
   type World,
 } from "../sim";
 
+import { playerColor, type PlayerColor } from "./colors";
+
 const HORDE_RACE = "botnet";
 const INPUT_DELAY_TICKS = 2;
 const RACE_KEY = "uptime:race";
+const COLOR_KEY = "uptime:color";
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
@@ -31,6 +34,8 @@ export class Session {
   raceId: string;
   /** The team this browser plays. Player n in a co-op match is team n. */
   local: TeamId = 0;
+  /** The player's colour. Render-only: the simulation never sees it. */
+  color: PlayerColor;
   world: World;
   /** Set in a co-op match. */
   net: Lockstep | null = null;
@@ -41,6 +46,7 @@ export class Session {
       .map(([id]) => id);
     const saved = localStorage.getItem(RACE_KEY) ?? "";
     this.raceId = this.playable.includes(saved) ? saved : this.playable[0]!;
+    this.color = playerColor(localStorage.getItem(COLOR_KEY) ?? "");
     this.world = this.newWorld();
   }
 
@@ -49,6 +55,11 @@ export class Session {
     this.net = null;
     this.local = 0;
     this.world = this.newWorld();
+  }
+
+  setColor(id: string): void {
+    this.color = playerColor(id);
+    localStorage.setItem(COLOR_KEY, this.color.id);
   }
 
   /** Remember the race for next time, without starting anything. */
