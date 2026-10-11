@@ -3,7 +3,7 @@
 // selected. Nothing else pops up. The full story lives in the Guide.
 
 import { TICK_RATE, isCore } from "../sim";
-import { selectedEntity, type Selection } from "../game/selection";
+import { groundOrderLabel, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { upgradeOf } from "./build-bar";
 import { buildingCard, unitCard, upgradeCard, type InfoCard } from "./cards";
@@ -13,12 +13,20 @@ export class InfoPanel {
   private readonly root = $("info");
   private readonly title = $("info-title");
   private readonly lines = $("info-lines");
+  /** "Set rally (T)": the ground order without a right-click. */
+  private readonly action = $("info-action");
   /** Build button under the pointer, or "found" for the deploy button. */
   hoverButton: string | null = null;
 
-  constructor(private readonly session: Session) {}
+  constructor(
+    private readonly session: Session,
+    arm: () => void,
+  ) {
+    this.action.addEventListener("click", () => arm());
+  }
 
   refresh(selection: Selection): void {
+    this.action.hidden = true;
     const { content } = this.session;
     const raceId = this.session.team.raceId;
     const placing = selection.kind === "place" ? selection.building : selection.kind === "found" ? "found" : null;
@@ -38,9 +46,20 @@ export class InfoPanel {
       if (isCore(content, this.session.team, entity) && research) {
         lines.push(`Researching ${content.upgrades[research.upgrade]!.name} · ${Math.ceil(research.remaining / TICK_RATE)}s`);
       }
+      this.showAction(selection);
       return this.show({ title: card.title, lines });
     }
     this.show(unitCard(content, entity.defId, entity.hp, entity.maxHp));
+  }
+
+  /** Buildings with a ground order get a button for it; the deploy agent's is a plain click already. */
+  private showAction(selection: Selection): void {
+    const label = groundOrderLabel(this.session, selection);
+    if (!label) return;
+    const armed = selection.kind === "entity" && selection.armed === true;
+    this.action.hidden = false;
+    this.action.textContent = armed ? "Click the ground… (Esc)" : `${label} (T)`;
+    this.action.classList.toggle("armed", armed);
   }
 
   private show(card: InfoCard | null): void {

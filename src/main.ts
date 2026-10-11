@@ -5,6 +5,7 @@ import { bindInput, type GameInput } from "./input";
 import { Renderer } from "./render/renderer";
 import {
   NOTHING,
+  armed,
   groundOrder,
   leftClickOrders,
   ownEntityAt,
@@ -29,7 +30,7 @@ const content = loadDefaultContent();
 const session = new Session(content);
 const renderer = new Renderer();
 const hud = new Hud(session);
-const info = new InfoPanel(session);
+const info = new InfoPanel(session, () => arm());
 const bar = new BuildBar(session, {
   choose: (button) => {
     const current = buttonFor(selection);
@@ -123,6 +124,19 @@ function order(point: Point): void {
   if (!next) return;
   session.issue(next);
   renderer.ping(point.x, point.y);
+  // An armed order is one-shot: back to the plain selection.
+  if (selection.kind === "entity" && selection.armed) select({ kind: "entity", id: selection.id });
+}
+
+/** Arm the selection's ground order, so the next left-click gives it (T, or the panel button). */
+function arm(): boolean {
+  const next = armed(session, selection);
+  if (next) select(next);
+  return next !== null;
+}
+
+function isArmed(): boolean {
+  return selection.kind === "entity" && selection.armed === true;
 }
 
 // --- game input ------------------------------------------------------------
@@ -139,6 +153,8 @@ const gameInput: GameInput = {
       if (!shift) select(NOTHING);
       return;
     }
+    // Armed: the click is the order, even on top of one of your buildings.
+    if (isArmed()) return order(point);
     const own = ownEntityAt(session, point);
     if (own) return select({ kind: "entity", id: own.id });
     if (leftClickOrders(session, selection)) return order(point);
@@ -161,7 +177,12 @@ const gameInput: GameInput = {
     if (picker.key(key)) return true;
     if (guide.key(key)) return true;
     if (key === "g") return guide.show(), true;
-    if (key === "escape") return select(NOTHING), true;
+    if (key === "escape") {
+      // Esc backs out one step: an armed order first, then the selection.
+      select(selection.kind === "entity" && selection.armed ? { kind: "entity", id: selection.id } : NOTHING);
+      return true;
+    }
+    if (key === "t") return arm();
     if (key === "p") return (paused = !paused), true;
     if (key === "r" && session.world.outcome) return picker.show(), true;
     if (key === " " || key === "h") {

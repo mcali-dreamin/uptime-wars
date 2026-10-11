@@ -171,6 +171,27 @@ try {
   const gathered = await distances();
   check(gathered.length > 0 && gathered.every((d) => d < 90), `right-click rallies the spawner's units (${gathered.join(", ")}px)`);
 
+  // 4b. No right button (laptops): T then a left-click, or Ctrl-click, sets the rally too.
+  const rallyOf = () =>
+    state((id) => {
+      const r = window.uptime.world.entities.find((e) => e.id === id)?.rally;
+      return r ? { x: r.x, y: r.y } : null;
+    }, spawnerId);
+  const near = (a, b) => a !== null && Math.hypot(a.x - b.x, a.y - b.y) < 40;
+  const viaKey = await openNear(spot.x, spot.y, 3, 8);
+  await page.keyboard.press("t");
+  check(await state(() => window.uptime.selection.armed === true), "T arms the rally order");
+  p = await toPage(viaKey.x, viaKey.y);
+  await page.mouse.click(p.x, p.y);
+  check(near(await waitForGame(async () => { const r = await rallyOf(); return near(r, viaKey) ? r : null; }, 5), viaKey), "T + left-click sets the rally");
+  check(await state((id) => window.uptime.selection.kind === "entity" && window.uptime.selection.id === id && !window.uptime.selection.armed, spawnerId), "the armed order is one-shot; the spawner stays selected");
+  const viaCtrl = await openNear(spot.x, spot.y, 6, 12);
+  p = await toPage(viaCtrl.x, viaCtrl.y);
+  await page.keyboard.down("Control");
+  await page.mouse.click(p.x, p.y);
+  await page.keyboard.up("Control");
+  check(near(await waitForGame(async () => { const r = await rallyOf(); return near(r, viaCtrl) ? r : null; }, 5), viaCtrl), "Ctrl-click sets the rally");
+
   // 5. Select the core: the bar shows research; researching an upgrade starts it.
   await page.keyboard.press("Escape");
   await state(() => { window.uptime.world.teams[0].compute += 500; });

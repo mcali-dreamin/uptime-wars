@@ -7,8 +7,12 @@ import { HUMAN, type Order, type Session } from "./session";
 
 export type Selection =
   | { kind: "none" }
-  /** One of your units or buildings. */
-  | { kind: "entity"; id: number }
+  /**
+   * One of your units or buildings. `armed`: the next left-click on the
+   * ground gives its ground order (rally, walk), for players without a
+   * convenient right button.
+   */
+  | { kind: "entity"; id: number; armed?: boolean }
   /** Placing a building from the build bar. */
   | { kind: "place"; building: string }
   /** Choosing where the core goes. */
@@ -33,10 +37,20 @@ export function groundOrder(session: Session, selection: Selection, point: Point
   return { type: "rally", buildingId: entity.id, x: point.x, y: point.y };
 }
 
-/** Does a plain left-click on empty ground also issue the ground order? Only for the deploy agent. */
+/**
+ * Does a plain left-click on empty ground also issue the ground order? For the
+ * deploy agent always; for anything else once it's armed (T or the panel button).
+ */
 export function leftClickOrders(session: Session, selection: Selection): boolean {
   const entity = selectedEntity(session, selection);
-  return entity?.kind === "unit" && entity.mode === "builder";
+  if (!entity || !groundOrderLabel(session, selection)) return false;
+  return (selection.kind === "entity" && selection.armed === true) || (entity.kind === "unit" && entity.mode === "builder");
+}
+
+/** The selection with its ground order armed, or null if it has none to arm. */
+export function armed(session: Session, selection: Selection): Selection | null {
+  if (selection.kind !== "entity" || !groundOrderLabel(session, selection)) return null;
+  return { kind: "entity", id: selection.id, armed: true };
 }
 
 export function selectedEntity(session: Session, selection: Selection): Entity | undefined {
