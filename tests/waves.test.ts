@@ -51,7 +51,7 @@ describe("endless waves", () => {
 describe("traffic", () => {
   const t = content.economy.traffic;
 
-  it("grows with buildings and users, is capped, and is zero before a core", () => {
+  it("grows with buildings, users and time, is capped, and is zero before a core", () => {
     const deploying = createWorld(content, { seed: 1234, races: ["open-source", "botnet"] as [string, string] });
     expect(trafficRadius(deploying, content, deploying.teams[0]!)).toBe(0);
     const world = createWorld(content, SETUP);
@@ -59,21 +59,22 @@ describe("traffic", () => {
     const before = trafficRadius(world, content, team);
     team.users += 10;
     expect(trafficRadius(world, content, team)).toBe(before + 10 * t.perUser);
+    world.tick += 20 * 60 * 3;
+    expect(trafficRadius(world, content, team)).toBe(before + 10 * t.perUser + 3 * t.perMinute);
     team.users = 100_000;
     expect(trafficRadius(world, content, team)).toBe(t.max);
   });
 
-  it("crawlers find an undefended base within a few minutes of the first wave, on every map", () => {
+  it("crawlers find even an undefended base within eight minutes, on every map", () => {
     for (const seed of [1, 2, 3, 42, 1234]) {
       const world = createWorld(content, { ...SETUP, seed });
       let first: number | null = null;
-      while (first === null && world.tick < 20 * 300 && !world.outcome) {
+      while (first === null && world.tick < 20 * 600 && !world.outcome) {
         step(world, content);
         if (world.events.some((e) => e.type === "shot" && e.team === 1)) first = world.tick;
       }
       expect(first, `seed ${seed}`).not.toBeNull();
-      // The first wave leaves at firstWaveTicks; contact within 4 minutes of that.
-      expect(first! - content.waves.firstWaveTicks, `seed ${seed}`).toBeLessThan(20 * 240);
+      expect(first!, `seed ${seed}`).toBeLessThan(20 * 60 * 8);
     }
   });
 

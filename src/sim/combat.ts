@@ -88,7 +88,7 @@ export function dealDamage(
   const damage = Math.max(1, Math.round(baseDamage * downhill) - target.armor);
   const wasAlive = target.hp > 0;
   target.hp -= damage;
-  if (target.kind === "building") loseUsers(ctx, world.teams[target.team]!, damage);
+  if (target.kind === "building") loseUsers(ctx, world.teams[target.team]!, damage, target.defId);
   world.events.push({
     type: "shot",
     from: attacker.id,

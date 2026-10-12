@@ -5,9 +5,10 @@
   "revenuePerUserPerSecond": 0.1,
   "damagePerUserLost": 12,
   "traffic": {
-    "base": 8000,
-    "perBuilding": 250,
-    "perUser": 25,
+    "base": 3500,
+    "perBuilding": 200,
+    "perUser": 12,
+    "perMinute": 700,
     "max": 16000,
     "pullChance": 0.55
   }

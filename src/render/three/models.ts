@@ -274,12 +274,167 @@ export class Models {
     for (const [sx, sz, lw, ld] of [[0, d / 2 + 1, w + 2, 1.2], [0, -d / 2 - 1, w + 2, 1.2], [w / 2 + 1, 0, 1.2, d + 2], [-w / 2 - 1, 0, 1.2, d + 2]] as const) {
       this.box(g, team, "white", lw, 1.2, ld, sx, h - 2, sz);
     }
-    // ...and a glass shell over anything big enough to enclose.
+    // ...and chrome corner posts with lit seams on anything big enough.
     if (w > 22 && h > 24) {
-      const shell = this.box(g, team, "glass", w + 5, h + 3, d + 5, 0, 0, 0);
-      shell.userData.noShadow = true;
-      shell.renderOrder = 2;
+      for (const [cx, cz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]] as const) {
+        this.box(g, team, "chrome", 2.2, h - 2, 2.2, cx * (w / 2 + 1.2), 2.5, cz * (d / 2 + 1.2));
+        this.box(g, team, "white", 0.6, h - 8, 0.6, cx * (w / 2 + 2.6), 5, cz * (d / 2 + 2.6));
+      }
     }
+  }
+
+  // --- race silhouettes ----------------------------------------------------
+  //
+  // The buildings both races share (core, GPU Cluster, Web App) and their
+  // basic units get a different *shape* per look, not just a reskin, so a base
+  // reads by silhouette before colour: scrappy is low, sprawling, stacked and
+  // lopsided; monolith is tall, slim, seamless and symmetric.
+
+  private lookBuilding(defId: string, team: number): THREE.Group | null {
+    if (this.look === "default") return null;
+    const g = new THREE.Group();
+    const scrappy = this.look === "scrappy";
+    switch (defId) {
+      case "core":
+        if (scrappy) {
+          // A ramshackle tower of mismatched server cases, cables slung between them.
+          const stack = [
+            [72, 18, 64, 0, 0, 0],
+            [58, 16, 60, -5, 0, 3],
+            [62, 14, 50, 6, 0, -4],
+            [44, 16, 46, -3, 0, 2],
+            [36, 12, 34, 4, 0, 0],
+          ] as const;
+          let y = 6;
+          this.box(g, team, "rust", 86, 6, 80);
+          stack.forEach(([w, h, d, x, , z], i) => {
+            const c = this.box(g, team, i % 2 ? "rust" : "body", w, h, d, x, y, z);
+            c.rotation.y = ((i % 3) - 1) * 0.06;
+            this.box(g, team, "glow", w * 0.7, 1.6, 0.8, x - w * 0.08, y + h * 0.55, z + d / 2 + 0.4);
+            y += h;
+          });
+          for (const [x, z, rot] of [[30, 30, 0.2], [-34, 18, -0.4], [26, -32, 0.9]] as const) {
+            const cable = this.shape(g, team, "cable", `core-cable`, () => new THREE.TorusGeometry(16, 1.1, 5, 14, Math.PI), x, 46, z);
+            cable.rotation.set(0, rot, Math.PI);
+          }
+          // A bodged mast with a dish made from a pan.
+          this.cyl(g, team, "copper", 1.4, 2.4, 34, 6, 8, y, -4);
+          const dish = this.shape(g, team, "copper", "core-dish", () => new THREE.SphereGeometry(12, 12, 6, 0, Math.PI * 2, 0, Math.PI / 3), 8, y + 34, -4);
+          dish.rotation.x = Math.PI + 0.7;
+          anim(dish, { type: "spin", speed: 0.5, axis: "y" });
+          const tip = this.shape(g, team, "glow", "core-tip", () => new THREE.SphereGeometry(3, 8, 6), 8, y + 38, -4);
+          anim(tip, { type: "pulse", amount: 0.2, speed: 3 });
+        } else {
+          // One seamless chrome-and-glass slab with a light seam up each face.
+          this.box(g, team, "chrome", 84, 4, 84);
+          this.box(g, team, "body", 52, 110, 52, 0, 4);
+          this.box(g, team, "dark", 53, 104, 53, 0, 8);
+          for (const [sx, sz, lw, ld] of [[0, 27, 3, 0.8], [0, -27, 3, 0.8], [27, 0, 0.8, 3], [-27, 0, 0.8, 3]] as const) {
+            this.box(g, team, "glow", lw, 96, ld, sx, 12, sz);
+          }
+          this.box(g, team, "white", 56, 2, 56, 0, 114);
+          const halo = this.shape(g, team, "glow", "mono-halo", () => new THREE.TorusGeometry(34, 1, 8, 64), 0, 128, 0);
+          halo.rotation.x = Math.PI / 2;
+          anim(halo, { type: "bob", amount: 3, speed: 1.2, base: 128 });
+        }
+        return g;
+      case "gpu-cluster":
+        if (scrappy) {
+          // A sprawl of open-frame rigs on a pallet, fans everywhere.
+          this.box(g, team, "rust", 46, 3, 40);
+          for (const [x, z, h] of [[-12, -8, 12], [10, -10, 18], [-8, 12, 9], [13, 10, 14]] as const) {
+            this.box(g, team, "copper", 14, 1, 12, x, 3, z);
+            this.box(g, team, "copper", 14, 1, 12, x, 3 + h, z);
+            for (const [px, pz] of [[-6, -5], [6, -5], [-6, 5], [6, 5]] as const) this.cyl(g, team, "copper", 0.5, 0.5, h, 4, x + px, 3, z + pz);
+            this.box(g, team, "glow", 10, 1.2, 8, x, 3 + h * 0.5, z);
+            const fan = this.shape(g, team, "trim", "fan", () => fanGeometry(5), x, 4.4 + h, z);
+            anim(fan, { type: "spin", speed: 11, axis: "y" });
+          }
+        } else {
+          // A tall sealed tower, vented, like a liquid-cooled cabinet.
+          this.box(g, team, "chrome", 34, 3, 34);
+          this.box(g, team, "body", 24, 62, 24, 0, 3);
+          for (let i = 0; i < 6; i += 1) this.box(g, team, "glow", 25, 1, 25, 0, 10 + i * 9);
+          for (const x of [-1, 1]) this.cyl(g, team, "chrome", 2.5, 2.5, 58, 10, x * 15, 3, 0);
+        }
+        return g;
+      case "web-app":
+        if (scrappy) {
+          // A shack of salvaged monitors, stacked any old way.
+          this.box(g, team, "rust", 42, 3, 36);
+          this.box(g, team, "body", 30, 16, 22, -4, 3, 0);
+          const screens = [[-10, 19, 0.15, 18, 13], [8, 19, -0.2, 16, 12], [-2, 33, 0.05, 22, 15], [12, 6, 0.3, 12, 9]] as const;
+          for (const [x, y, rot, w, h] of screens) {
+            const m = new THREE.Group();
+            m.position.set(x, y, 10);
+            m.rotation.y = rot;
+            this.box(m, team, "dark", w + 2, h + 2, 4, 0, 0, 0);
+            this.box(m, team, "screen", w, h, 0.6, 0, 1, 2.2);
+            g.add(m);
+          }
+          this.cyl(g, team, "copper", 0.8, 0.8, 16, 5, -14, 48, -4);
+          this.shape(g, team, "glow", "tip", () => new THREE.SphereGeometry(1.6, 6, 4), -14, 64, -4);
+        } else {
+          // A slim, floating glass pane over a chrome pedestal.
+          this.box(g, team, "chrome", 30, 3, 30);
+          this.cyl(g, team, "chrome", 3, 5, 28, 12, 0, 3);
+          const pane = new THREE.Group();
+          pane.position.y = 52;
+          this.box(pane, team, "screen", 44, 28, 1.2, 0, -14);
+          for (const [x, y, w, h] of [[0, 14.5, 46, 1], [0, -14.5, 46, 1], [23, 0, 1, 30], [-23, 0, 1, 30]] as const) this.box(pane, team, "white", w, h, 1.6, x, y - h / 2);
+          anim(pane, { type: "bob", amount: 2, speed: 1, base: 52 });
+          g.add(pane);
+        }
+        return g;
+    }
+    return null;
+  }
+
+  private lookUnit(defId: string, team: number, r: number): THREE.Group | null {
+    if (this.look === "default") return null;
+    const g = new THREE.Group();
+    const scrappy = this.look === "scrappy";
+    switch (defId) {
+      case "inference-drone":
+        if (scrappy) {
+          // A hand-built quadcopter: cross frame, four rotors, a box hung underneath.
+          const body = new THREE.Group();
+          body.position.y = r * 2;
+          for (const rot of [Math.PI / 4, -Math.PI / 4]) this.box(body, team, "copper", r * 3, r * 0.15, r * 0.25, 0, 0, 0).rotation.y = rot;
+          for (const [x, z] of [[1, 1], [1, -1], [-1, 1], [-1, -1]] as const) {
+            const rotor = this.shape(body, team, "trim", "fan", () => fanGeometry(5), x * r * 1.05, r * 0.2, z * r * 1.05);
+            rotor.scale.setScalar(r / 7);
+            anim(rotor, { type: "spin", speed: 20, axis: "y" });
+          }
+          this.box(body, team, "rust", r * 0.9, r * 0.6, r * 0.9, 0, -r * 0.7, 0);
+          this.box(body, team, "glow", r * 0.5, r * 0.15, 0.4, 0, -r * 0.4, r * 0.46);
+          anim(body, { type: "bob", amount: 2, speed: 3.2, base: r * 2 });
+          g.add(body);
+        } else {
+          // A smooth floating lens: a disc with a light ring and no visible rotors.
+          const body = new THREE.Group();
+          body.position.y = r * 2.4;
+          this.shape(body, team, "body", `lens:${r}`, () => new THREE.SphereGeometry(r * 1.1, 16, 8).scale(1, 0.35, 1));
+          const ring = this.shape(body, team, "glow", `lens-ring:${r}`, () => new THREE.TorusGeometry(r * 1.1, r * 0.08, 6, 32));
+          ring.rotation.x = Math.PI / 2;
+          this.shape(body, team, "white", `lens-eye:${r}`, () => new THREE.SphereGeometry(r * 0.25, 8, 6), 0, -r * 0.3, 0);
+          anim(body, { type: "bob", amount: 2.5, speed: 1.8, base: r * 2.4 });
+          g.add(body);
+        }
+        return g;
+      case "deploy-agent":
+        if (scrappy) {
+          // A tracked little robot hauling a crate of parts.
+          for (const x of [-1, 1]) this.box(g, team, "dark", r * 0.4, r * 0.5, r * 1.6, x * r * 0.6);
+          this.box(g, team, "rust", r * 1, r * 0.7, r * 1.2, 0, r * 0.45);
+          this.box(g, team, "copper", r * 0.8, r * 0.5, r * 0.6, 0, r * 1.15, -r * 0.2);
+          this.box(g, team, "glow", r * 0.5, r * 0.15, 0.4, 0, r * 0.9, r * 0.62);
+          this.cyl(g, team, "copper", 0.4, 0.4, r * 1.2, 4, r * 0.3, r * 1.15, -r * 0.3);
+          return g;
+        }
+        return null;
+    }
+    return null;
   }
 
   // --- building blocks ------------------------------------------------------
@@ -311,6 +466,8 @@ export class Models {
   // --- buildings ------------------------------------------------------------
 
   private building(defId: string, team: number): THREE.Group {
+    const styled = this.lookBuilding(defId, team);
+    if (styled) return styled;
     const g = new THREE.Group();
     switch (defId) {
       case "core": {
@@ -510,6 +667,8 @@ export class Models {
   // --- units ----------------------------------------------------------------
 
   private unit(defId: string, team: number, r: number): THREE.Group {
+    const styled = this.lookUnit(defId, team, r);
+    if (styled) return styled;
     const g = new THREE.Group();
     switch (defId) {
       case "process": {
