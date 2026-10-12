@@ -148,7 +148,11 @@ export interface EconomyDef {
    * your buildings and users. A roaming pack that senses a core usually
    * heads for it (pullChance); otherwise it wanders as before.
    */
-  traffic: { base: number; perBuilding: number; perUser: number; max: number; pullChance: number };
+  /**
+   * How far crawlers sense a base, in px: base + perBuilding·buildings +
+   * perUser·users + perMinute·minutes of uptime, capped at max.
+   */
+  traffic: { base: number; perBuilding: number; perUser: number; perMinute: number; max: number; pullChance: number };
 }
 
 export type UpgradeStat = "unitHp" | "unitDamage" | "towerRange" | "spawnSpeed" | "userCapacity" | "revenue";
