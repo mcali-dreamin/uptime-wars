@@ -32,8 +32,9 @@ export function buildingCard(content: Content, raceId: string, buildingId: strin
   if (def.compute) does.push(`+${def.compute} compute`);
   if (def.userCapacity) does.push(`+${def.userCapacity} users`);
   if (def.buildRadius) does.push(`network ${def.buildRadius}`);
+  if (def.limitPerTier) does.push(`max ${def.limitPerTier.join(" / ")} by core tier`);
   const lines = [does.join(" · ") || `${def.hp} HP`];
-  if (def.buildable) lines.push(`$${Math.round(def.cost * race.modifiers.costMultiplier)}`);
+  if (def.buildable) lines.push(`$${Math.round(def.cost * race.modifiers.costMultiplier)}${def.tier ? ` · needs ${content.economy.tiers[def.tier]!.name}` : ""}`);
   return { title: def.name, lines };
 }
 
@@ -115,11 +116,33 @@ const STAT_TEXT: Record<string, string> = {
   spawnSpeed: "spawn speed",
   userCapacity: "user capacity",
   revenue: "revenue per user",
+  tier: "core tier",
 };
+
+/** What reaching a core tier gives, as one line. */
+function tierLine(content: Content, tier: number): string {
+  const t = content.economy.tiers[tier]!;
+  const unlocks = Object.values(content.buildings).filter((b) => b.tier === tier).map((b) => b.name);
+  const apps = content.buildings["web-app"]?.limitPerTier?.[tier];
+  return [
+    apps !== undefined ? `${apps} Web Apps` : "",
+    unlocks.length ? `unlocks ${unlocks.join(", ")}` : "",
+    `+${t.compute} compute`,
+    `+${t.buildRadius} core reach`,
+    `core ${Math.round(t.coreHp * 100)}% HP`,
+    `crawlers sense you ${t.traffic}px further`,
+  ].filter(Boolean).join(" · ");
+}
 
 export function upgradeCard(content: Content, team: Team, upgrade: string): InfoCard {
   const def = content.upgrades[upgrade]!;
   const level = levelOf(team, upgrade);
+  if (def.stat === "tier") {
+    const tiers = content.economy.tiers;
+    if (level >= def.maxLevel) return { title: tiers[level]!.name, lines: ["Top tier"] };
+    const next = nextLevel(content, team, upgrade);
+    return { title: `Upgrade to ${tiers[level + 1]!.name}`, lines: [tierLine(content, level + 1), `$${next.cost} · ${seconds(next.ticks)} · uses the core's research`] };
+  }
   const effect = `+${Math.round(def.perLevel * 100)}% ${STAT_TEXT[def.stat]} per level`;
   if (level >= def.maxLevel) return { title: def.name, lines: [effect, "Fully researched"] };
   const next = nextLevel(content, team, upgrade);
@@ -128,6 +151,14 @@ export function upgradeCard(content: Content, team: Team, upgrade: string): Info
 
 export function upgradeDetail(content: Content, upgrade: string): GuideEntry {
   const def = content.upgrades[upgrade]!;
+  if (def.stat === "tier") {
+    const costs = Array.from({ length: def.maxLevel }, (_, i) => `${def.cost * (i + 1)}`).join(" / ");
+    return {
+      title: def.name,
+      description: def.description,
+      stats: [...content.economy.tiers.slice(1).map((t, i) => `${t.name}: ${tierLine(content, i + 1)}`), `Costs $${costs}`],
+    };
+  }
   const costs = Array.from({ length: def.maxLevel }, (_, i) => `${def.cost * (i + 1)}`).join(" / ");
   return {
     title: def.name,

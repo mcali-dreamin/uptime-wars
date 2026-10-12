@@ -34,6 +34,13 @@ npm run dev
   them. Right-click the ground or an enemy to attack-move: they fight whatever
   they meet, then hold the spot. `F` then click is a plain move that ignores
   enemies (retreat). Units you've sent stay put when you change a rally.
+- **Grow your core.** The first research, **Upgrade core**, takes it from
+  Core to **Data Center** ($400) to **Region** ($800). Each tier hosts more Web
+  Apps (2, then 4, then 6), unlocks stronger buildings (GPU Cluster, Inference
+  Endpoint, App Review need a Data Center), adds compute, widens your cores'
+  build radius, and toughens them. A bigger base also draws crawlers from
+  further away. Tiers live in `economy.json` → `tiers`; gates are `tier` and
+  `limitPerTier` on a building.
 - Select your **core** to research upgrades (one at a time): Hardened
   Containers, Exploit Kits, Anycast, Autoscaling, Edge Caching, Premium Tier.
   Tuning lives in `src/content/upgrades.json`.
@@ -274,6 +281,7 @@ Direction: survival on a procedurally generated open web.
 - [x] Elevation: plateaus, cliffs, ramps; high-ground sight and damage
 - [x] Rally points: per spawner, with a global default on the core
 - [x] Upgrades researched at the core
+- [x] Core tech tiers: Core, Data Center, Region
 - [x] Network expansion (per race) and redundant cores
 - [x] Heroes: three per race, levels, skill points, four abilities each
 - [x] Race selection: Open Source Collective, Hyperscaler

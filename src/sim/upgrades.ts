@@ -6,6 +6,8 @@ import { lagging } from "./economy";
 import type { TickContext } from "./context";
 import type { Content, UpgradeStat } from "./content";
 import type { Team } from "./types";
+import { teamCores } from "./placement";
+import { tierDef } from "./tiers";
 
 /** 1 + the sum of every researched level's bonus for this stat. */
 export function multiplier(content: Content, team: Team | undefined, stat: UpgradeStat): number {
@@ -53,7 +55,16 @@ export function tickResearch(ctx: TickContext): void {
     team.research.remaining -= 1;
     if (team.research.remaining > 0) continue;
     const upgrade = team.research.upgrade;
+    const before = tierDef(ctx.content, team).coreHp;
     team.upgrades[upgrade] = levelOf(team, upgrade) + 1;
+    // A new tier toughens every core you have.
+    const after = tierDef(ctx.content, team).coreHp;
+    if (after !== before) {
+      for (const core of teamCores(world, ctx.content, team)) {
+        core.maxHp = Math.round((core.maxHp * after) / before);
+        core.hp = Math.min(core.maxHp, (core.hp * after) / before);
+      }
+    }
     team.research = null;
     world.events.push({ type: "researched", team: team.id, upgrade, level: team.upgrades[upgrade]! });
   }

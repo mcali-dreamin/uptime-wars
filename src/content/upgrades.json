@@ -1,4 +1,13 @@
 {
+  "core-tier": {
+    "name": "Upgrade core",
+    "description": "Grow your core: Data Center, then Region. Each tier hosts more Web Apps, unlocks buildings, supplies more compute, reaches further, and stands tougher, but a bigger base draws crawlers from further away.",
+    "stat": "tier",
+    "perLevel": 0,
+    "maxLevel": 2,
+    "cost": 400,
+    "researchTicks": 900
+  },
   "hardened-containers": {
     "name": "Hardened Containers",
     "description": "Your units spawn tougher.",
