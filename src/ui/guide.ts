@@ -20,7 +20,7 @@ const TABS: [Tab, string][] = [
 const CONTROLS: [string, string][] = [
   ["Start", "Your deploy agent starts selected. Click the ground to walk it, then press C and click to deploy your core."],
   ["Build", "Number keys or click a button, then click inside your network (the green rings). Shift-click to place several."],
-  ["Network", "Cores, Mesh Nodes (Open Source) and Edge PoPs (Hyperscaler) each extend where you can build. Build outward to reach ramps and wells."],
+  ["Network", "Cores, Mesh Nodes (Open Source) and Edge PoPs (Hyperscaler) each extend where you can build. Build outward to hold ramps and push toward the nest."],
   ["Redundancy", "Build more cores inside your network. If your main core falls the next takes over; you only go down when every core is down."],
   ["Select", "Click one of your buildings or units. Drag a box to select units; Shift adds to the group. Double-click a unit: every one of its kind on screen. Z: your whole army. Q: your hero."],
   ["Army", "With units selected, right-click the ground (or an enemy) to attack-move: they fight whatever they meet on the way, then hold the spot. F then click: a plain move that ignores enemies, for retreating. T then click works like right-click. Units you've sent stay put when you change a rally."],

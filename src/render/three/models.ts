@@ -597,28 +597,6 @@ export class Models {
         }
         break;
       }
-      case "data-pump": {
-        // A derrick over the well: four legs around the crystals, a pumping
-        // head on top, and a glowing pipe running down into the data.
-        for (const [x, z] of [[-17, -17], [17, -17], [-17, 17], [17, 17]] as const) {
-          const leg = this.box(g, team, "frame", 3, 62, 3, x * 0.82, 0, z * 0.82);
-          leg.rotation.set(z > 0 ? -0.16 : 0.16, 0, x > 0 ? 0.16 : -0.16);
-        }
-        for (const y of [20, 42]) {
-          const ring = this.shape(g, team, "trim", `pump-ring:${y}`, () => new THREE.TorusGeometry(y === 20 ? 16 : 11, 1.2, 6, 4), 0, y, 0);
-          ring.rotation.set(Math.PI / 2, 0, Math.PI / 4);
-        }
-        this.box(g, team, "body", 18, 8, 18, 0, 58);
-        this.box(g, team, "glow", 19, 1.6, 19, 0, 61);
-        const head = new THREE.Group();
-        head.position.y = 66;
-        this.box(head, team, "frame", 30, 4, 5, 6, 0);
-        this.box(head, team, "body", 8, 8, 8, 19, -2);
-        g.add(head);
-        const piston = this.cyl(g, team, "glow", 2.2, 2.2, 30, 8, 0, 28);
-        anim(piston, { type: "bob", amount: 6, speed: 2.4, base: 28 });
-        break;
-      }
       case "c2-server": {
         // A spiked obelisk with a hot eye that watches the gateway.
         this.cyl(g, team, "flesh", 16, 20, 8, 5);

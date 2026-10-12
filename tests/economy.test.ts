@@ -95,7 +95,8 @@ describe("users are the economy", () => {
     const start = world.teams[0]!.compute;
     let next = 0;
     let spent = 0;
-    while (world.tick < seconds * 20) {
+    // step() stops once the match is over, so a fallen base must end the loop.
+    while (world.tick < seconds * 20 && !world.outcome) {
       const cost = next < spots.length ? content.buildings[spots[next]!.building]!.cost : Infinity;
       if (world.teams[0]!.compute >= cost) {
         queueCommand(world, { ...spots[next]!, tick: world.tick });
@@ -104,14 +105,15 @@ describe("users are the economy", () => {
       }
       step(world, content);
     }
+    expect(world.outcome, `${list.join(",")} fell before ${seconds}s`).toBeNull();
     return world.teams[0]!.compute + spent - start;
   }
 
   it("a base that grows users out-earns one that builds generators", () => {
     // Same defence, then the same number of economy buildings: Web Apps or Solar Arrays.
     const opening = ["server-rack", "server-rack", "firewall"];
-    const users = earned([...opening, "web-app", "web-app", "web-app"], 300);
-    const generators = earned([...opening, "solar-array", "solar-array", "solar-array"], 300);
+    const users = earned([...opening, "web-app", "web-app", "web-app"], 240);
+    const generators = earned([...opening, "solar-array", "solar-array", "solar-array"], 240);
     expect(users).toBeGreaterThan(generators * 1.4);
   });
 

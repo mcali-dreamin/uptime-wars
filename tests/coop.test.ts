@@ -28,7 +28,7 @@ function kill(world: World, team: number): void {
 }
 
 describe("co-op maps", () => {
-  it(`every map has ${MAX_PLAYERS} starts: far from the nest and each other, reachable, flat, with wells`, () => {
+  it(`every map has ${MAX_PLAYERS} starts: far from the nest and each other, reachable, flat`, () => {
     for (const seed of SEEDS) {
       const world = createWorld(content, { ...FOUR, seed });
       const { terrain } = world;
@@ -48,9 +48,6 @@ describe("co-op maps", () => {
           const other = coreOf(world, q);
           expect(Math.sqrt((other.x - core.x) ** 2 + (other.y - core.y) ** 2), `seed ${seed} players ${q},${p}`).toBeGreaterThan(40 * TILE);
         }
-        // Two wells within reach of every start.
-        const near = terrain.resources.filter((r) => (r.col - start.col) ** 2 + (r.row - start.row) ** 2 <= 15 * 15);
-        expect(near.length, `seed ${seed} player ${p}`).toBeGreaterThanOrEqual(2);
       }
     }
   });

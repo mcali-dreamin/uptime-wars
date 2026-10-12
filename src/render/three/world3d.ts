@@ -40,7 +40,6 @@ const BUILDING_TOP: Record<string, number> = {
   "web-app": 72,
   "mesh-node": 48,
   "edge-pop": 50,
-  "data-pump": 74,
 };
 /** Turn rate for units changing heading, per second. */
 const TURN = 10;
