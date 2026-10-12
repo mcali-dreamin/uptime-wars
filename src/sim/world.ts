@@ -29,7 +29,7 @@ import { tickSpawners } from "./spawners";
 import { MAX_PLAYERS, generateTerrain } from "./terrain";
 import { BASE_INCOME, STARTING_MONEY } from "./tuning";
 import type { TeamId, World } from "./types";
-import { tickUnits } from "./units";
+import { tickHealers, tickUnits } from "./units";
 import { tickResearch } from "./upgrades";
 import { spawnHero, tickHeroes } from "./heroes";
 import { tickWaveDirector } from "./waves";
@@ -145,6 +145,7 @@ export function step(world: World, content: Content): void {
   tickUnits(ctx);
   // Last, so a building that finishes this tick starts working next tick.
   tickRepair(ctx);
+  tickHealers(ctx);
   tickConstruction(ctx);
   checkOutcome(ctx);
 

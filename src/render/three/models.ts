@@ -807,6 +807,67 @@ export class Models {
         anim(orb, { type: "spin", speed: 1.5, axis: "y" });
         break;
       }
+      case "monorepo": {
+        // One huge repository: a long slab of stacked layers with a glowing build light.
+        this.box(g, team, "frame", 44, 4, 44);
+        for (let i = 0; i < 5; i += 1) this.box(g, team, i % 2 ? "trim" : "body", 38 - i * 3, 9, 38 - i * 3, 0, 4 + i * 9);
+        const light = this.shape(g, team, "glow", "mono-light", () => new THREE.OctahedronGeometry(6), 0, 56, 0);
+        anim(light, { type: "spin", speed: 1.2, axis: "y" });
+        break;
+      }
+      case "edge-fleet": {
+        // A launch rack: three slim pylons with glowing tips, like a fleet waiting to go.
+        this.box(g, team, "frame", 42, 4, 42);
+        for (const [x, z] of [[-12, -8], [12, -8], [0, 12]] as const) {
+          this.cyl(g, team, "body", 3, 5, 34, 6, x, 4, z);
+          const tip = this.shape(g, team, "glow", "ef-tip", () => new THREE.ConeGeometry(4, 9, 6), x, 42, z);
+          anim(tip, { type: "pulse", amount: 0.2, speed: 4 });
+        }
+        break;
+      }
+      case "mainframe-bay": {
+        // A heavy hangar with a big door and a crane arm.
+        this.box(g, team, "frame", 46, 4, 46);
+        this.box(g, team, "body", 40, 32, 36, 0, 4);
+        this.box(g, team, "dark", 26, 22, 1, 0, 4, 18.5);
+        this.box(g, team, "trim", 42, 3, 38, 0, 36);
+        const arm = this.box(g, team, "frame", 30, 3, 3, 8, 42, 0);
+        anim(arm, { type: "spin", speed: 0.5, axis: "y" });
+        break;
+      }
+      case "state-machine": {
+        // States and transitions: four floating cubes joined in a loop.
+        this.cyl(g, team, "dark", 18, 20, 3, 8);
+        const loop = new THREE.Group();
+        loop.position.y = 30;
+        for (let i = 0; i < 4; i += 1) {
+          const a = (i / 4) * Math.PI * 2;
+          this.box(loop, team, i === 0 ? "glow" : "body", 9, 9, 9, Math.cos(a) * 13, -4.5, Math.sin(a) * 13);
+        }
+        const ring = this.shape(loop, team, "glow", "sm-ring", () => new THREE.TorusGeometry(13, 0.9, 6, 32));
+        ring.rotation.x = Math.PI / 2;
+        anim(loop, { type: "spin", speed: 0.9, axis: "y" });
+        g.add(loop);
+        break;
+      }
+      case "trust-safety": {
+        // A guard post: a squat tower with a barrier arm.
+        this.box(g, team, "frame", 40, 3, 40);
+        this.cyl(g, team, "body", 12, 14, 34, 8, 0, 3);
+        this.cyl(g, team, "trim", 15, 15, 4, 8, 0, 37);
+        const bar = this.box(g, team, "glow", 30, 2.5, 2.5, 16, 14, 0);
+        anim(bar, { type: "bob", amount: 2, speed: 1.2, base: 14 });
+        break;
+      }
+      case "legal-dept": {
+        // Columns and a pediment: very official.
+        this.box(g, team, "frame", 44, 4, 36);
+        for (const x of [-14, -5, 5, 14]) this.cyl(g, team, "body", 2.6, 2.6, 26, 10, x, 4, 10);
+        this.box(g, team, "body", 38, 26, 18, 0, 4, -6);
+        this.shape(g, team, "trim", "ld-roof", () => new THREE.ConeGeometry(28, 10, 4).rotateY(Math.PI / 4).scale(1, 1, 0.6), 0, 35, 0);
+        this.shape(g, team, "glow", "ld-seal", () => new THREE.TorusGeometry(4, 1, 6, 16), 0, 30, 13);
+        break;
+      }
       case "malware-nest": {
         this.shape(g, team, "flesh", "nest", () => {
           const geo = new THREE.IcosahedronGeometry(36, 1);
@@ -843,6 +904,52 @@ export class Models {
     if (styled) return styled;
     const g = new THREE.Group();
     switch (defId) {
+      case "kernel": {
+        // A big slow orb in a cradle, ringed by a mending halo.
+        this.cyl(g, team, "frame", r * 0.9, r * 1.1, r * 0.5, 10);
+        this.shape(g, team, "body", `kernel:${r}`, () => new THREE.SphereGeometry(r * 0.85, 14, 10), 0, r * 1.2, 0);
+        const halo = this.shape(g, team, "glow", `kernel-halo:${r}`, () => new THREE.TorusGeometry(r * 1.4, r * 0.07, 6, 32), 0, r * 0.3, 0);
+        halo.rotation.x = Math.PI / 2;
+        anim(halo, { type: "pulse", amount: 0.12, speed: 2 });
+        break;
+      }
+      case "cdn-swarm": {
+        // A small fast dart.
+        const dart = this.shape(g, team, "trim", `cdn:${r}`, () => new THREE.ConeGeometry(r * 0.6, r * 2.2, 5).rotateX(Math.PI / 2), 0, r * 1.2, 0);
+        dart.scale.set(1, 0.6, 1);
+        this.shape(g, team, "glow", `cdn-tail:${r}`, () => new THREE.SphereGeometry(r * 0.3, 6, 4), 0, r * 1.2, -r * 1.1);
+        break;
+      }
+      case "mainframe": {
+        // A rolling cabinet on treads with a ram.
+        for (const x of [-1, 1]) this.box(g, team, "dark", r * 0.45, r * 0.5, r * 2, x * r * 0.8);
+        this.box(g, team, "body", r * 1.5, r * 1.3, r * 1.7, 0, r * 0.4);
+        for (let i = 0; i < 3; i += 1) this.box(g, team, "glow", r * 1.2, r * 0.08, 0.6, 0, r * (0.7 + i * 0.3), r * 0.86);
+        this.box(g, team, "frame", r * 1.0, r * 0.5, r * 0.6, 0, r * 0.5, r * 1.15);
+        break;
+      }
+      case "step-function": {
+        // Two linked blocks: one step leading to the next.
+        this.box(g, team, "body", r * 0.9, r * 0.9, r * 0.9, -r * 0.5, r * 0.3);
+        this.box(g, team, "trim", r * 0.9, r * 0.9, r * 0.9, r * 0.5, r * 1.2);
+        this.box(g, team, "glow", r * 0.2, r * 0.9, r * 0.2, 0, r * 0.75);
+        break;
+      }
+      case "gatekeeper": {
+        // A broad shield-bearer.
+        this.shape(g, team, "body", `gk:${r}`, () => new THREE.CapsuleGeometry(r * 0.6, r * 0.8, 4, 8), 0, r * 1.0, 0);
+        this.box(g, team, "trim", r * 1.8, r * 1.6, r * 0.2, 0, r * 0.3, r * 0.75);
+        this.box(g, team, "glow", r * 1.2, r * 0.14, 0.4, 0, r * 1.2, r * 0.86);
+        break;
+      }
+      case "legal-team": {
+        // A briefcase on legs with a glowing seal.
+        this.box(g, team, "body", r * 1.4, r * 1.0, r * 0.6, 0, r * 0.7);
+        this.shape(g, team, "frame", `lt-handle:${r}`, () => new THREE.TorusGeometry(r * 0.3, r * 0.07, 6, 12, Math.PI), 0, r * 1.7, 0);
+        for (const x of [-1, 1]) this.box(g, team, "frame", r * 0.18, r * 0.7, r * 0.18, x * r * 0.4, 0);
+        this.shape(g, team, "glow", `lt-seal:${r}`, () => new THREE.SphereGeometry(r * 0.18, 8, 6), 0, r * 1.2, r * 0.32);
+        break;
+      }
       case "process": {
         this.shape(g, team, "trim", `capsule:${r}`, () => new THREE.CapsuleGeometry(r * 0.55, r * 0.8, 4, 8), 0, r * 0.95, 0);
         this.box(g, team, "body", r * 1.1, r * 0.75, r * 0.9, 0, r * 1.7);

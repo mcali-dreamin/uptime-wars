@@ -71,6 +71,16 @@ export function validateContent(content: Content): void {
     if (b.tier !== undefined && !tiers[b.tier]) errors.push(`building ${id} needs tier ${b.tier}, which doesn't exist`);
     if (b.limitPerTier && b.limitPerTier.length !== tiers.length) errors.push(`building ${id} limitPerTier needs one entry per tier`);
   }
+  for (const [id, race] of Object.entries(content.races)) {
+    const perks = race.tierPerks;
+    if (perks && perks.length !== tiers.length) errors.push(`race ${id} tierPerks needs one entry per tier`);
+    for (const perk of perks ?? []) {
+      for (const wall of perk?.mechanics?.thorns?.buildings ?? []) if (!content.buildings[wall]) errors.push(`race ${id} thorns on unknown building ${wall}`);
+    }
+  }
+  for (const [id, unit] of Object.entries(content.units)) {
+    if (unit.heal && (unit.heal.perSecond <= 0 || unit.heal.radius <= 0)) errors.push(`unit ${id} heal needs perSecond and radius > 0`);
+  }
   if (errors.length > 0) {
     throw new Error(`Invalid content:\n- ${errors.join("\n- ")}`);
   }

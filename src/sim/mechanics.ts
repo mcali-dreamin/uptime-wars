@@ -8,11 +8,12 @@ import { placeBuilding } from "./entities";
 import { TICK_RATE, TILE } from "./map";
 import { buildCost, canPlace, isCore } from "./placement";
 import type { Building, ForkCommand, TeamId, World } from "./types";
+import { raceMechanics } from "./tiers";
 
 /** What a fork of `source` costs this team, or null if the race can't fork it. */
 export function forkCost(world: World, content: Content, teamId: TeamId, source: Building | undefined): number | null {
   const team = world.teams[teamId]!;
-  const fork = content.races[team.raceId]!.mechanics?.fork;
+  const fork = raceMechanics(content, team).fork;
   if (!fork || !source || source.team !== teamId || source.hp <= 0 || source.buildRemaining > 0) return null;
   if (isCore(content, team, source)) return null;
   return Math.floor((buildCost(content, team.raceId, source.defId) * fork.costPermille) / 1000);
@@ -34,7 +35,7 @@ export function applyFork(ctx: TickContext, command: ForkCommand): string | null
   const team = world.teams[command.team]!;
   team.money -= forkCost(world, content, command.team, building)!;
   const copy = placeBuilding(world, content, team.id, building!.defId, command.col, command.row, false);
-  const fork = content.races[team.raceId]!.mechanics!.fork!;
+  const fork = raceMechanics(content, team).fork!;
   copy.buildRemaining = Math.max(1, Math.floor((content.buildings[copy.defId]!.buildTicks * fork.buildPermille) / 1000));
   ctx.byId.set(copy.id, copy);
   return null;
@@ -47,7 +48,7 @@ export function tickRepair(ctx: TickContext): void {
   for (const entity of world.entities) {
     if (entity.kind !== "building" || entity.hp <= 0 || entity.buildRemaining > 0 || entity.hp >= entity.maxHp) continue;
     const team = world.teams[entity.team]!;
-    const repair = content.races[team.raceId]?.mechanics?.repair;
+    const repair = raceMechanics(content, team).repair;
     if (!repair || world.tick - entity.lastHitTick < repair.quietTicks) continue;
     entity.hp = Math.min(entity.maxHp, entity.hp + Math.max(1, Math.floor((entity.maxHp * repair.permillePerSecond) / 1000)));
   }
@@ -56,7 +57,7 @@ export function tickRepair(ctx: TickContext): void {
 /** How much less damage this building takes from its region, in permille, and how many neighbours make it. */
 export function regionShield(world: World, content: Content, building: Building): { permille: number; neighbors: number } {
   const team = world.teams[building.team]!;
-  const region = content.races[team.raceId]?.mechanics?.region;
+  const region = raceMechanics(content, team).region;
   if (!region || building.buildRemaining > 0) return { permille: 0, neighbors: 0 };
   const reach = region.radiusTiles * TILE;
   let neighbors = 0;

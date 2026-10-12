@@ -513,7 +513,13 @@ renderer.app.ticker.add((ticker) => {
         if (event.type === "hero-down" && event.team === session.local) renderer.showBanner("Your hero is down");
         if (event.type === "hero-up" && event.team === session.local) renderer.showBanner("Your hero is back");
         if (event.type === "researched" && event.team === session.team.id) {
-          renderer.showBanner(`${content.upgrades[event.upgrade]!.name} ${event.level}`);
+          const def = content.upgrades[event.upgrade]!;
+          const perk = def.stat === "tier" ? content.races[session.team.raceId]?.tierPerks?.[event.level] : undefined;
+          renderer.showBanner(
+            def.stat === "tier"
+              ? `${content.economy.tiers[event.level]!.name} online${perk ? ` · ${perk.name}` : ""}`
+              : `${def.name} ${event.level}`,
+          );
         }
       }
       accumulator -= STEP_MS;

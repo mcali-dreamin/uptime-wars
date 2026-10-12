@@ -34,6 +34,14 @@ npm run dev
   them. Right-click the ground or an enemy to attack-move: they fight whatever
   they meet, then hold the spot. `F` then click is a plain move that ignores
   enemies (retreat). Units you've sent stay put when you change a rally.
+- **Every race fields three units of its own, one per core tier**, and earns a
+  fixed perk at Data Center and at Region (see the Guide's Races tab):
+  Open Source (Process, Inference Drone, Kernel; cheaper forks, faster
+  repair), Hyperscaler (Load Balancer, CDN Swarm, Mainframe; stronger region
+  shield, tougher units), Serverless (Lambda, Inference Call, Step Function;
+  faster cooldowns, cheaper runs), Walled Garden (Moderator, Gatekeeper, Legal
+  Team; walls hit back, near-zero churn). Perks live in `races.json` →
+  `tierPerks`.
 - **Grow your core.** The first research, **Upgrade core**, takes it from
   Core to **Data Center** ($400) to **Region** ($800). Each tier hosts more Web
   Apps (2, then 4, then 6), unlocks stronger buildings (GPU Cluster, Inference

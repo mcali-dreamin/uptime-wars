@@ -120,9 +120,10 @@ const STAT_TEXT: Record<string, string> = {
 };
 
 /** What reaching a core tier gives, as one line. */
-function tierLine(content: Content, tier: number): string {
+function tierLine(content: Content, tier: number, raceId?: string): string {
   const t = content.economy.tiers[tier]!;
-  const unlocks = Object.values(content.buildings).filter((b) => b.tier === tier).map((b) => b.name);
+  const roster = raceId ? content.races[raceId]!.buildings : Object.keys(content.buildings);
+  const unlocks = roster.filter((id) => content.buildings[id]!.tier === tier).map((id) => content.buildings[id]!.name);
   const apps = content.buildings["web-app"]?.limitPerTier?.[tier];
   return [
     apps !== undefined ? `${apps} Web Apps` : "",
@@ -141,7 +142,15 @@ export function upgradeCard(content: Content, team: Team, upgrade: string): Info
     const tiers = content.economy.tiers;
     if (level >= def.maxLevel) return { title: tiers[level]!.name, lines: ["Top tier"] };
     const next = nextLevel(content, team, upgrade);
-    return { title: `Upgrade to ${tiers[level + 1]!.name}`, lines: [tierLine(content, level + 1), `$${next.cost} · ${seconds(next.ticks)} · uses the core's research`] };
+    const perk = content.races[team.raceId]?.tierPerks?.[level + 1];
+    return {
+      title: `Upgrade to ${tiers[level + 1]!.name}`,
+      lines: [
+        tierLine(content, level + 1, team.raceId),
+        ...(perk ? [`Perk · ${perk.name}: ${perk.description}`] : []),
+        `$${next.cost} · ${seconds(next.ticks)} · uses the core's research`,
+      ],
+    };
   }
   const effect = `+${Math.round(def.perLevel * 100)}% ${STAT_TEXT[def.stat]} per level`;
   if (level >= def.maxLevel) return { title: def.name, lines: [effect, "Fully researched"] };
@@ -165,4 +174,10 @@ export function upgradeDetail(content: Content, upgrade: string): GuideEntry {
     description: def.description,
     stats: [`+${Math.round(def.perLevel * 100)}% ${STAT_TEXT[def.stat]} per level, ${def.maxLevel} levels`, `Costs $${costs}`],
   };
+}
+
+/** A race's tier perks, one line each ("Data Center · Community: Forks cost 35%..."). */
+export function perkLines(content: Content, raceId: string): string[] {
+  const perks = content.races[raceId]?.tierPerks ?? [];
+  return perks.flatMap((perk, tier) => (perk && tier > 0 ? [`${content.economy.tiers[tier]!.name} · ${perk.name}: ${perk.description}`] : []));
 }
