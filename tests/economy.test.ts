@@ -150,9 +150,9 @@ describe("churn", () => {
     const wall = world.entities.find((e) => e.defId === "firewall")!;
     const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
     const creep = { ...core, id: -9, team: 1 } as typeof core;
-    dealDamage(ctx, creep, wall, "brute", 120);
+    dealDamage(ctx, creep, wall, 120);
     expect(world.teams[0]!.users).toBe(40);
-    dealDamage(ctx, creep, core, "brute", 240);
+    dealDamage(ctx, creep, core, 240);
     expect(world.teams[0]!.users).toBeLessThan(40);
   });
 
