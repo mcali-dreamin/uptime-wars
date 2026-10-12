@@ -50,6 +50,9 @@ export function drawGlyph(g: Graphics, defId: string, x: number, y: number, size
     case "firewall":
       g.moveTo(x - s, y + s).lineTo(x, y - s).lineTo(x + s, y + s).closePath().stroke({ width: 2, color, alpha });
       break;
+    case "garden-wall":
+      g.rect(x - s * 1.5, y - s * 1.5, s * 3, s * 3).fill({ color, alpha: alpha * 0.6 });
+      break;
     case "mesh-node":
       g.circle(x, y, s * 0.35).fill({ color, alpha });
       for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
