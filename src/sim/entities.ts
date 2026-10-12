@@ -42,6 +42,7 @@ export function placeBuilding(
     rally: null,
     spawnTimer: 0,
     incomeTimer: def.income?.intervalTicks ?? 0,
+    lastHitTick: -1,
   };
   building.spawnTimer = spawnInterval(content, world.teams[team]!, defId);
   world.entities.push(building);

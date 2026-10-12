@@ -186,6 +186,7 @@ body {
 }
 
 #info-action,
+#info-fork,
 #info-invoke {
   pointer-events: auto;
   margin-top: 0.4rem;
@@ -198,12 +199,14 @@ body {
   cursor: pointer;
 }
 
+#info-fork:hover,
 #info-invoke:hover,
 #info-action:hover,
 #info-action.armed {
   border-color: var(--accent);
 }
 
+#info-fork[hidden],
 #info-invoke[hidden],
 #info-action[hidden] {
   display: none;

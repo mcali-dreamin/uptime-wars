@@ -1,7 +1,7 @@
 {
   "open-source": {
     "name": "Open Source Collective",
-    "specialty": "Cheap swarms. Spawns 15% faster.",
+    "specialty": "Cheap swarms that spawn 15% faster. Fork any building for half price, and buildings repair themselves when nothing's hitting them.",
     "controller": "human",
     "look": "scrappy",
     "core": "core",
@@ -14,6 +14,16 @@
       "mesh-node",
       "core"
     ],
+    "mechanics": {
+      "fork": {
+        "costPermille": 500,
+        "buildPermille": 400
+      },
+      "repair": {
+        "permillePerSecond": 15,
+        "quietTicks": 100
+      }
+    },
     "modifiers": {
       "spawnIntervalMultiplier": 0.85,
       "costMultiplier": 1,
@@ -29,7 +39,7 @@
   },
   "hyperscaler": {
     "name": "Hyperscaler",
-    "specialty": "Rich and tough. +$150, units 30% tougher, spawns 15% slower.",
+    "specialty": "Rich and tough: +$150, units 30% tougher. Buildings packed into a region shield each other: up to 40% less damage.",
     "controller": "human",
     "look": "monolith",
     "core": "core",
@@ -43,6 +53,13 @@
       "edge-pop",
       "core"
     ],
+    "mechanics": {
+      "region": {
+        "radiusTiles": 3,
+        "perNeighborPermille": 80,
+        "maxPermille": 400
+      }
+    },
     "modifiers": {
       "spawnIntervalMultiplier": 1.15,
       "costMultiplier": 1,
