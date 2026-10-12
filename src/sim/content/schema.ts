@@ -52,6 +52,13 @@ export interface BuildingDef {
   spawn?: { unit: string; intervalTicks: number; count: number; maxAlive: number };
   attack?: BuildingAttack;
   income?: { amount: number; intervalTicks: number };
+  /**
+   * Serverless: no standing army. Each invocation costs `cost` compute and
+   * spins up `count` units that live `ttlTicks`, then go cold. Fires on its own
+   * when an enemy comes within `triggerRange` (an event), or when you invoke
+   * it; then not again for `cooldownTicks`.
+   */
+  invoke?: { unit: string; count: number; cost: number; ttlTicks: number; cooldownTicks: number; triggerRange: number };
   /** Users this building can serve. Your total capacity caps your user count. */
   userCapacity?: number;
   /** Only buildable on a data well: every footprint tile must be one. */
@@ -62,8 +69,8 @@ export interface BuildingDef {
 
 export type Controller = "human" | "wave-director";
 
-export type RaceLook = "scrappy" | "monolith";
-export const RACE_LOOKS: readonly RaceLook[] = ["scrappy", "monolith"];
+export type RaceLook = "scrappy" | "monolith" | "ephemeral";
+export const RACE_LOOKS: readonly RaceLook[] = ["scrappy", "monolith", "ephemeral"];
 
 export interface RaceDef {
   name: string;
@@ -80,7 +87,8 @@ export interface RaceDef {
   /**
    * How the race's hardware looks, whatever it builds (render-only): "scrappy"
    * is cobbled-together copper and mismatched panels, "monolith" is glass,
-   * chrome, and clean white light. Every playable race needs one.
+   * chrome, and clean white light; "ephemeral" is wireframe that only turns
+   * solid while it's running. Every playable race needs one.
    */
   look?: RaceLook;
   /** Hero units this race can field (see HeroesDef); the player picks one. */

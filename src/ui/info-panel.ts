@@ -15,6 +15,8 @@ export class InfoPanel {
   private readonly lines = $("info-lines");
   /** "Set rally (T)": the ground order without a right-click. */
   private readonly action = $("info-action");
+  /** "Invoke (V)" for a serverless function. */
+  private readonly invokeButton = $("info-invoke");
   /** Build button under the pointer, or "found" for the deploy button. */
   hoverButton: string | null = null;
   /** Ability under the pointer in the hero's command card. */
@@ -25,12 +27,15 @@ export class InfoPanel {
   constructor(
     private readonly session: Session,
     arm: () => void,
+    invoke: () => void = () => {},
   ) {
     this.action.addEventListener("click", () => arm());
+    this.invokeButton.addEventListener("click", () => invoke());
   }
 
   refresh(selection: Selection): void {
     this.action.hidden = true;
+    this.invokeButton.hidden = true;
     const { content } = this.session;
     const raceId = this.session.team.raceId;
     const placing = selection.kind === "place" ? selection.building : selection.kind === "found" ? "found" : null;
@@ -53,6 +58,13 @@ export class InfoPanel {
       const research = this.session.team.research;
       if (isCore(content, this.session.team, entity) && research) {
         lines.push(`Researching ${content.upgrades[research.upgrade]!.name} · ${Math.ceil(research.remaining / TICK_RATE)}s`);
+      }
+      const fn = content.buildings[entity.defId]!.invoke;
+      if (fn && entity.buildRemaining <= 0) {
+        lines.push(entity.spawnTimer > 0 ? `Cooling down · ${Math.ceil(entity.spawnTimer / TICK_RATE)}s` : "Ready · runs when a creep comes near");
+        this.invokeButton.hidden = false;
+        this.invokeButton.textContent = `Invoke now · ${fn.cost} (V)`;
+        (this.invokeButton as HTMLButtonElement).disabled = entity.spawnTimer > 0 || this.session.team.compute < fn.cost;
       }
       this.showAction(selection);
       return this.show({ title: card.title, lines });

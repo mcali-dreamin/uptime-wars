@@ -155,7 +155,8 @@ export class World2D implements WorldView {
 
     const team = world.teams[entity.team]!;
     const core = isCore(content, team, entity);
-    if (!core && !content.buildings[entity.defId]!.spawn) return;
+    const def = content.buildings[entity.defId]!;
+    if (!core && !def.spawn && !def.invoke) return;
     const own = core ? team.rally : entity.rally;
     const rally = own ?? team.rally;
     if (!rally) return;

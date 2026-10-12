@@ -57,6 +57,33 @@
       "evangelist"
     ]
   },
+  "serverless": {
+    "name": "Serverless",
+    "specialty": "No standing army. Functions spin up squads when creeps show up, bill you per run, and go cold. Little to defend, but long fights add up.",
+    "controller": "human",
+    "look": "ephemeral",
+    "core": "core",
+    "builder": "deploy-agent",
+    "heroes": [
+      "function-author",
+      "chaos-engineer",
+      "finops"
+    ],
+    "buildings": [
+      "function",
+      "inference-endpoint",
+      "data-pump",
+      "web-app",
+      "mesh-node",
+      "core"
+    ],
+    "modifiers": {
+      "spawnIntervalMultiplier": 1,
+      "costMultiplier": 1,
+      "unitHpMultiplier": 1,
+      "startingComputeBonus": 50
+    }
+  },
   "botnet": {
     "name": "The Botnet",
     "specialty": "Crawls the open web in waves. Hostile to everyone.",

@@ -6,6 +6,7 @@ import { placeBuilding, sendHome } from "./entities";
 import { TILE, footprintCenter } from "./map";
 import { buildCost, canFound, canPlace, isCore } from "./placement";
 import { canResearch, nextLevel } from "./upgrades";
+import { invoke, invokeBlocker } from "./functions";
 import { heroOf, learnBlocker, orderCast } from "./heroes";
 import { hostile } from "./teams";
 import { isWalkableTile } from "./terrain";
@@ -78,6 +79,14 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
     }
     case "cast":
       return orderCast(ctx, world.teams[command.team]!, command);
+    case "invoke": {
+      const building = ctx.byId.get(command.buildingId);
+      if (!building || building.kind !== "building" || building.team !== command.team || building.hp <= 0) return "not your building";
+      const reason = invokeBlocker(ctx, building);
+      if (reason) return reason;
+      invoke(ctx, building, false);
+      return null;
+    }
     case "learn": {
       const team = world.teams[command.team]!;
       const reason = learnBlocker(content, team, command.ability);
@@ -156,7 +165,8 @@ function applyRally(ctx: TickContext, command: RallyCommand): string | null {
     return "not your building";
   }
   const global = isCore(content, team, building);
-  if (!global && !content.buildings[building.defId]!.spawn) return "doesn't spawn units";
+  const def = content.buildings[building.defId]!;
+  if (!global && !def.spawn && !def.invoke) return "doesn't spawn units";
   if (!walkable(world, command.x, command.y)) return "can't rally there";
   const point = { x: command.x, y: command.y };
   if (global) team.rally = point;

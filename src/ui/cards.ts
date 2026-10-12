@@ -23,6 +23,10 @@ export function buildingCard(content: Content, raceId: string, buildingId: strin
     const interval = Math.round(def.spawn.intervalTicks * race.modifiers.spawnIntervalMultiplier);
     does.push(`${def.spawn.count}× ${unit.name} / ${seconds(interval)}`);
   }
+  if (def.invoke) {
+    const unit = content.units[def.invoke.unit]!;
+    does.push(`${def.invoke.count}× ${unit.name} on demand · ${def.invoke.cost} compute / run`);
+  }
   if (def.attack) does.push(`tower · ${def.attack.damage} dmg · range ${def.attack.range}`);
   if (def.income) does.push(`+${def.income.amount} compute / ${seconds(def.income.intervalTicks)}`);
   if (def.onWell) does.push("on a data well");
@@ -55,6 +59,14 @@ export function buildingDetail(content: Content, raceId: string, buildingId: str
     const unit = content.units[def.spawn.unit]!;
     const interval = Math.round(def.spawn.intervalTicks * race.modifiers.spawnIntervalMultiplier);
     stats.push(`Spawns ${def.spawn.count}× ${unit.name} every ${seconds(interval)}, up to ${def.spawn.maxAlive} alive`);
+    stats.push(`${unit.name}: ${unitStats(unit, race.modifiers.unitHpMultiplier)}`);
+  }
+  if (def.invoke) {
+    const i = def.invoke;
+    const unit = content.units[i.unit]!;
+    stats.push(
+      `When a creep comes within ${i.triggerRange} (or you invoke it, V), spins up ${i.count}× ${unit.name} for ${seconds(i.ttlTicks)}, then cools down for ${seconds(i.cooldownTicks)}. Each run costs ${i.cost} compute; no compute, no run.`,
+    );
     stats.push(`${unit.name}: ${unitStats(unit, race.modifiers.unitHpMultiplier)}`);
   }
   if (def.attack) {

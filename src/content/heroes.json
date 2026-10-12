@@ -75,6 +75,42 @@
         "black-friday",
         "acquisition"
       ]
+    },
+    "function-author": {
+      "hpPerLevel": 40,
+      "damagePerLevel": 3,
+      "respawnTicks": 400,
+      "respawnPerLevel": 60,
+      "abilities": [
+        "cold-start",
+        "fan-out",
+        "retry-backoff",
+        "event-storm"
+      ]
+    },
+    "chaos-engineer": {
+      "hpPerLevel": 60,
+      "damagePerLevel": 3,
+      "respawnTicks": 400,
+      "respawnPerLevel": 60,
+      "abilities": [
+        "kill-nine",
+        "inject-latency",
+        "blast-radius",
+        "game-day"
+      ]
+    },
+    "finops": {
+      "hpPerLevel": 40,
+      "damagePerLevel": 3,
+      "respawnTicks": 400,
+      "respawnPerLevel": 60,
+      "abilities": [
+        "budget-alert",
+        "savings-plan",
+        "reserved-capacity",
+        "spot-fleet"
+      ]
     }
   },
   "abilities": {
@@ -405,6 +441,168 @@
       "attackType": "social",
       "maxRank": 1,
       "perRank": 90
+    },
+    "cold-start": {
+      "name": "Cold Start",
+      "description": "The first call is the slow one. It still lands: heavy damage to one target.",
+      "effect": "strike",
+      "target": "enemy",
+      "unlockLevel": 1,
+      "cooldownTicks": 170,
+      "range": 380,
+      "amount": 120,
+      "attackType": "social",
+      "maxRank": 3,
+      "perRank": 60
+    },
+    "fan-out": {
+      "name": "Fan-Out",
+      "description": "One event, a thousand invocations. Damage in an area.",
+      "effect": "blast",
+      "target": "point",
+      "unlockLevel": 1,
+      "cooldownTicks": 220,
+      "range": 380,
+      "radius": 120,
+      "amount": 65,
+      "attackType": "exploit",
+      "maxRank": 3,
+      "perRank": 35
+    },
+    "retry-backoff": {
+      "name": "Retry with Backoff",
+      "description": "Try again, a bit later, until it works: heals your units and buildings nearby.",
+      "effect": "heal",
+      "target": "self",
+      "unlockLevel": 1,
+      "cooldownTicks": 480,
+      "range": 0,
+      "radius": 260,
+      "amount": 140,
+      "maxRank": 3,
+      "perRank": 70
+    },
+    "event-storm": {
+      "name": "Event Storm",
+      "description": "Every trigger fires at once. Huge damage in a wide area.",
+      "effect": "blast",
+      "target": "point",
+      "unlockLevel": 6,
+      "cooldownTicks": 1500,
+      "range": 420,
+      "radius": 230,
+      "amount": 300,
+      "attackType": "brute",
+      "maxRank": 1,
+      "perRank": 50
+    },
+    "kill-nine": {
+      "name": "kill -9",
+      "description": "No graceful shutdown. One heavy hit.",
+      "effect": "strike",
+      "target": "enemy",
+      "unlockLevel": 1,
+      "cooldownTicks": 180,
+      "range": 90,
+      "amount": 150,
+      "attackType": "brute",
+      "maxRank": 3,
+      "perRank": 70
+    },
+    "inject-latency": {
+      "name": "Inject Latency",
+      "description": "Drop a Dead Letter Queue. Creeps nearby keep retrying it instead of you.",
+      "effect": "decoy",
+      "target": "point",
+      "unlockLevel": 1,
+      "cooldownTicks": 500,
+      "range": 320,
+      "radius": 280,
+      "amount": 380,
+      "durationTicks": 220,
+      "unit": "dead-letter-queue",
+      "maxRank": 3,
+      "perRank": 160
+    },
+    "blast-radius": {
+      "name": "Blast Radius",
+      "description": "Find out how far a failure spreads. Damage all around you.",
+      "effect": "blast",
+      "target": "self",
+      "unlockLevel": 1,
+      "cooldownTicks": 340,
+      "range": 0,
+      "radius": 150,
+      "amount": 85,
+      "attackType": "brute",
+      "maxRank": 3,
+      "perRank": 40
+    },
+    "game-day": {
+      "name": "Game Day",
+      "description": "You practised for this. All your units hit 50% harder for a while.",
+      "effect": "buff",
+      "target": "self",
+      "unlockLevel": 6,
+      "cooldownTicks": 1400,
+      "range": 0,
+      "amount": 0.5,
+      "durationTicks": 320,
+      "maxRank": 1,
+      "perRank": 0.05
+    },
+    "budget-alert": {
+      "name": "Budget Alert",
+      "description": "Someone's getting an email. Damage to one target.",
+      "effect": "strike",
+      "target": "enemy",
+      "unlockLevel": 1,
+      "cooldownTicks": 170,
+      "range": 400,
+      "amount": 110,
+      "attackType": "social",
+      "maxRank": 3,
+      "perRank": 55
+    },
+    "savings-plan": {
+      "name": "Savings Plan",
+      "description": "Commit up front. Your units hit 30% harder for a while.",
+      "effect": "buff",
+      "target": "self",
+      "unlockLevel": 1,
+      "cooldownTicks": 700,
+      "range": 0,
+      "amount": 0.3,
+      "durationTicks": 260,
+      "maxRank": 3,
+      "perRank": 0.07
+    },
+    "reserved-capacity": {
+      "name": "Reserved Capacity",
+      "description": "Capacity you already paid for: a big heal for everything nearby.",
+      "effect": "heal",
+      "target": "self",
+      "unlockLevel": 1,
+      "cooldownTicks": 560,
+      "range": 0,
+      "radius": 320,
+      "amount": 170,
+      "maxRank": 3,
+      "perRank": 80
+    },
+    "spot-fleet": {
+      "name": "Spot Fleet",
+      "description": "Cheap capacity, while it lasts. Six Lambdas fight beside you for a while.",
+      "effect": "summon",
+      "target": "self",
+      "unlockLevel": 6,
+      "cooldownTicks": 1300,
+      "range": 0,
+      "amount": 6,
+      "unit": "lambda",
+      "durationTicks": 600,
+      "maxRank": 1,
+      "perRank": 0
     }
   },
   "skillPointsPerLevel": 1,

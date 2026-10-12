@@ -33,3 +33,4 @@ export function simulate(
   return world;
 }
 export { fortressGates, fortressSpots } from "./fortress";
+export { invokeBlocker } from "./functions";

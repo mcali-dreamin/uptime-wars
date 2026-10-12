@@ -231,5 +231,45 @@
       "intervalTicks": 20
     },
     "sight": 300
+  },
+  "function": {
+    "name": "Function",
+    "description": "No standing army. When a creep comes near (or you invoke it), it spins up four Lambdas for 20 seconds, then cools down. Each run costs compute.",
+    "cost": 60,
+    "buildTicks": 50,
+    "hp": 220,
+    "armor": 1,
+    "armorType": "hardened",
+    "footprint": 1,
+    "buildable": true,
+    "sight": 320,
+    "invoke": {
+      "unit": "lambda",
+      "count": 4,
+      "cost": 15,
+      "ttlTicks": 400,
+      "cooldownTicks": 240,
+      "triggerRange": 300
+    }
+  },
+  "inference-endpoint": {
+    "name": "Inference Endpoint",
+    "description": "Spins up three ranged Inference Calls on demand. Costs more per run, hits from range.",
+    "cost": 130,
+    "buildTicks": 80,
+    "hp": 260,
+    "armor": 1,
+    "armorType": "hardened",
+    "footprint": 1,
+    "buildable": true,
+    "sight": 340,
+    "invoke": {
+      "unit": "inference-call",
+      "count": 3,
+      "cost": 25,
+      "ttlTicks": 400,
+      "cooldownTicks": 300,
+      "triggerRange": 360
+    }
   }
 }

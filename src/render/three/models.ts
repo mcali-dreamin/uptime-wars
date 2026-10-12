@@ -11,7 +11,10 @@
 //   frames, rusty patch panels, pipes, droopy cables, home-made antennas.
 // - monolith (Hyperscaler): cold and polished. Pale chrome, glass shells,
 //   chrome plinths, and white light strips.
-// The botnet is neither: organic, spiky, red. Moving parts are tagged so the
+// - ephemeral (Serverless): wireframe and smoked glass, as if only half
+//   there. Functions are drawn as holograms while cold and turn solid while
+//   their units are running (see world3d).
+// The botnet is none of these: organic, spiky, red. Moving parts are tagged so the
 // view can animate them.
 
 import * as THREE from "three";
@@ -30,7 +33,7 @@ type Mat =
   | "copper" | "rust" | "cable" | "glass" | "chrome" | "white";
 
 /** A race's look (see RaceDef.look), or "default" for the botnet and anything without one. */
-export type Look = "scrappy" | "monolith" | "default";
+export type Look = "scrappy" | "monolith" | "ephemeral" | "default";
 
 export class Models {
   private readonly templates = new Map<string, THREE.Group>();
@@ -204,6 +207,20 @@ export class Models {
           return standard({ color: 0x17120f, metalness: 0.2, roughness: 0.9 });
       }
     }
+    if (look === "ephemeral") {
+      switch (kind) {
+        case "body":
+          return this.fog.apply(
+            new THREE.MeshStandardMaterial({ color: 0x14303d, metalness: 0.3, roughness: 0.2, transparent: true, opacity: 0.55, depthWrite: false }),
+          );
+        case "frame":
+          return this.fog.apply(new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.5, wireframe: true }));
+        case "dark":
+          return this.fog.apply(
+            new THREE.MeshStandardMaterial({ color: 0x0a1820, metalness: 0.2, roughness: 0.3, transparent: true, opacity: 0.7, depthWrite: false }),
+          );
+      }
+    }
     if (look === "monolith") {
       switch (kind) {
         case "body":
@@ -261,6 +278,17 @@ export class Models {
       }
       return;
     }
+    if (this.look === "ephemeral") {
+      if (isUnit) return;
+      // A wireframe cage round the whole thing, with floating corner nodes.
+      const cage = this.box(g, team, "frame", w + 6, h + 4, d + 6, 0, 0, 0);
+      cage.userData.noShadow = true;
+      for (const [cx, cz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]] as const) {
+        const node = this.shape(g, team, "glow", "eph-node", () => new THREE.OctahedronGeometry(2), cx * (w / 2 + 3), h + 6, cz * (d / 2 + 3));
+        anim(node, { type: "bob", amount: 1.5, speed: 2, base: h + 6 });
+      }
+      return;
+    }
     // monolith
     if (isUnit) {
       // A chrome ring at the feet and a white visor line.
@@ -292,6 +320,7 @@ export class Models {
 
   private lookBuilding(defId: string, team: number): THREE.Group | null {
     if (this.look === "default") return null;
+    if (this.look === "ephemeral") return this.ephemeralBuilding(defId, team);
     const g = new THREE.Group();
     const scrappy = this.look === "scrappy";
     switch (defId) {
@@ -391,7 +420,7 @@ export class Models {
   }
 
   private lookUnit(defId: string, team: number, r: number): THREE.Group | null {
-    if (this.look === "default") return null;
+    if (this.look === "default" || this.look === "ephemeral") return null;
     const g = new THREE.Group();
     const scrappy = this.look === "scrappy";
     switch (defId) {
@@ -433,6 +462,44 @@ export class Models {
           return g;
         }
         return null;
+    }
+    return null;
+  }
+
+  /** Serverless: nothing heavy. Floating, scattered, barely there. */
+  private ephemeralBuilding(defId: string, team: number): THREE.Group | null {
+    const g = new THREE.Group();
+    switch (defId) {
+      case "core": {
+        // A control plane: a thin pillar with a cloud of small nodes orbiting it.
+        this.cyl(g, team, "dark", 34, 38, 4, 6);
+        this.cyl(g, team, "body", 6, 8, 70, 6, 0, 4);
+        this.cyl(g, team, "glow", 7, 7, 1.5, 6, 0, 74);
+        const cloud = new THREE.Group();
+        cloud.position.y = 52;
+        const spots = [[26, 8, 0], [-22, -6, 14], [8, 14, -26], [-12, 22, -18], [18, -10, 22], [-26, 4, -8], [0, 28, 6]] as const;
+        for (const [x, y, z] of spots) this.box(cloud, team, "body", 10, 10, 10, x, y - 5, z);
+        for (const [x, y, z] of spots) this.box(cloud, team, "frame", 12, 12, 12, x, y - 6, z);
+        anim(cloud, { type: "spin", speed: 0.4, axis: "y" });
+        g.add(cloud);
+        const gem = this.shape(g, team, "glow", "eph-gem", () => new THREE.OctahedronGeometry(8), 0, 92, 0);
+        anim(gem, { type: "bob", amount: 4, speed: 1.4, base: 92 });
+        return g;
+      }
+      case "web-app": {
+        // Three floating panes at different heights: an app that's only there when called.
+        this.cyl(g, team, "dark", 12, 14, 3, 6);
+        for (const [y, x, rot] of [[22, -8, 0.3], [36, 6, -0.25], [50, -2, 0.05]] as const) {
+          const pane = new THREE.Group();
+          pane.position.set(x, y, 0);
+          pane.rotation.y = rot;
+          this.box(pane, team, "screen", 22, 13, 0.8, 0, 0, 0);
+          this.box(pane, team, "frame", 24, 15, 1.4, 0, -1, 0);
+          anim(pane, { type: "bob", amount: 1.5, speed: 1.3 + y / 60, base: y });
+          g.add(pane);
+        }
+        return g;
+      }
     }
     return null;
   }
@@ -633,6 +700,33 @@ export class Models {
         const halo = this.shape(g, team, "hot", "c2-halo", () => new THREE.TorusGeometry(11, 0.9, 6, 24), 0, 50, 0);
         halo.rotation.x = Math.PI / 2;
         anim(halo, { type: "pulse", amount: 0.2, speed: 3 });
+        break;
+      }
+      case "function": {
+        // A floating cube with a lambda-ish chevron inside, over a small pad.
+        this.cyl(g, team, "dark", 14, 16, 3, 6);
+        const cube = new THREE.Group();
+        cube.position.y = 26;
+        this.box(cube, team, "body", 20, 20, 20, 0, -10, 0);
+        const a = this.box(cube, team, "glow", 3, 16, 3, -2, -8, 0);
+        a.rotation.z = 0.45;
+        const b = this.box(cube, team, "glow", 3, 9, 3, 4, -10, 0);
+        b.rotation.z = -0.5;
+        anim(cube, { type: "bob", amount: 2.5, speed: 1.6, base: 26 });
+        g.add(cube);
+        break;
+      }
+      case "inference-endpoint": {
+        // A stack of three rings around a glowing core: a model waiting for calls.
+        this.cyl(g, team, "dark", 16, 18, 3, 8);
+        this.cyl(g, team, "body", 3, 4, 40, 8, 0, 3);
+        for (const [y, r, speed] of [[16, 15, 0.8], [27, 12, -1.2], [37, 9, 1.6]] as const) {
+          const ring = this.shape(g, team, "frame", `ep-ring:${r}`, () => new THREE.TorusGeometry(r, 1.2, 6, 28), 0, y, 0);
+          ring.rotation.x = Math.PI / 2;
+          anim(ring, { type: "spin", speed, axis: "z" });
+        }
+        const orb = this.shape(g, team, "glow", "ep-orb", () => new THREE.IcosahedronGeometry(6, 0), 0, 48, 0);
+        anim(orb, { type: "spin", speed: 1.5, axis: "y" });
         break;
       }
       case "malware-nest": {
@@ -838,6 +932,63 @@ export class Models {
       }
 
       // --- decoys --------------------------------------------------------
+      case "lambda": {
+        // A fast little wedge, low and leaning forward, with a glowing spine.
+        this.shape(g, team, "body", `lambda:${r}`, () => new THREE.ConeGeometry(r * 0.75, r * 1.9, 4).rotateX(Math.PI / 2), 0, r * 0.8, 0);
+        this.box(g, team, "glow", r * 0.18, r * 0.25, r * 1.5, 0, r * 1.05, 0);
+        this.box(g, team, "frame", r * 1.4, r * 0.15, r * 0.4, 0, r * 0.35, -r * 0.4);
+        break;
+      }
+      case "inference-call": {
+        // A floating prism that spins while it runs.
+        const prism = this.shape(g, team, "body", `call:${r}`, () => new THREE.OctahedronGeometry(r * 0.9, 0), 0, r * 2.2, 0);
+        prism.scale.set(0.8, 1.3, 0.8);
+        anim(prism, { type: "spin", speed: 3, axis: "y" });
+        this.shape(g, team, "glow", `call-core:${r}`, () => new THREE.SphereGeometry(r * 0.3, 8, 6), 0, r * 2.2, 0);
+        break;
+      }
+      case "function-author": {
+        // Light robes, a floating keyboard, and a halo of three tiny function cubes.
+        this.cyl(g, team, "body", r * 0.45, r * 0.85, r * 1.9, 8);
+        this.shape(g, team, "frame", `fa-head:${r}`, () => new THREE.SphereGeometry(r * 0.42, 12, 8), 0, r * 2.2, 0);
+        this.box(g, team, "glow", r * 1.2, r * 0.1, r * 0.45, 0, r * 1.25, r * 0.75);
+        const halo = new THREE.Group();
+        halo.position.y = r * 2.9;
+        for (const [x, z] of [[r * 0.8, 0], [-r * 0.4, r * 0.7], [-r * 0.4, -r * 0.7]] as const) this.box(halo, team, "glow", r * 0.3, r * 0.3, r * 0.3, x, 0, z);
+        anim(halo, { type: "spin", speed: 2, axis: "y" });
+        g.add(halo);
+        break;
+      }
+      case "chaos-engineer": {
+        // Heavy, lopsided, carrying an oversized red kill switch.
+        this.box(g, team, "body", r * 1.4, r * 1.5, r * 1.0, 0, r * 0.35);
+        this.box(g, team, "frame", r * 0.5, r * 1.0, r * 0.5, -r * 0.95, r * 0.15);
+        this.shape(g, team, "frame", `ce-head:${r}`, () => new THREE.BoxGeometry(r * 0.7, r * 0.6, r * 0.7), 0, r * 2.2, 0);
+        this.cyl(g, team, "dark", r * 0.12, r * 0.12, r * 1.4, 6, r * 1.0, r * 0.4);
+        const knob = this.shape(g, team, "hot", `ce-knob:${r}`, () => new THREE.SphereGeometry(r * 0.32, 10, 8), r * 1.0, r * 1.95, 0);
+        anim(knob, { type: "pulse", amount: 0.15, speed: 4 });
+        break;
+      }
+      case "finops": {
+        // Neat, upright, with a floating bar chart that keeps going up.
+        this.cyl(g, team, "body", r * 0.5, r * 0.7, r * 1.8, 10);
+        this.shape(g, team, "frame", `fo-head:${r}`, () => new THREE.SphereGeometry(r * 0.4, 12, 8), 0, r * 2.1, 0);
+        const chart = new THREE.Group();
+        chart.position.set(r * 0.9, r * 1.6, 0);
+        for (const [i, h] of [[0, 0.4], [1, 0.7], [2, 1.1]] as const) this.box(chart, team, "glow", r * 0.18, r * h, r * 0.18, (i - 1) * r * 0.25, 0, 0);
+        anim(chart, { type: "bob", amount: 1.5, speed: 2, base: r * 1.6 });
+        g.add(chart);
+        break;
+      }
+      case "dead-letter-queue": {
+        // A heap of undelivered message envelopes.
+        for (const [x, y, z, rot] of [[0, 0, 0, 0.1], [r * 0.3, r * 0.45, -r * 0.2, -0.3], [-r * 0.35, r * 0.4, r * 0.25, 0.5], [0, r * 0.85, 0, -0.1]] as const) {
+          const env = this.box(g, team, "body", r * 1.4, r * 0.45, r * 0.95, x, y, z);
+          env.rotation.y = rot;
+        }
+        this.box(g, team, "flame", r * 0.3, r * 0.3, r * 0.3, 0, r * 1.35, 0);
+        break;
+      }
       case "honeypot": {
         // A server box dripping honey-gold.
         this.box(g, team, "body", r * 1.6, r * 1.8, r * 1.4);
