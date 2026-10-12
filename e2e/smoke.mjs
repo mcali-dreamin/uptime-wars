@@ -65,7 +65,7 @@ await run("smoke test", async ({ check, open }) => {
   // HUD: income, wave preview, the race's build bar.
   check(/^\+[\d.]+\/s$/.test(await page.textContent("#income")), "the HUD shows income");
   check(/^\d+ \/ \d+/.test(await page.textContent("#compute")), `the HUD shows compute in use / supplied (${await page.textContent("#compute")})`);
-  check((await page.textContent("#preview-title")).startsWith("Wave 1"), "the HUD previews the next wave");
+  check((await page.textContent("#preview-title")).startsWith("Incident 1"), "the HUD previews the next incident");
   check((await page.$$eval(".build-btn", (b) => b.length)) >= 4, "the build bar shows the race's buildings");
 
   // Build a spawner with a number key and a click, then select it.
@@ -79,6 +79,18 @@ await run("smoke test", async ({ check, open }) => {
   check(Boolean(spawner), "a number key + click places a spawner");
   await click(spot);
   check(await waitFor(() => state((id) => window.uptime.selection.id === id, spawner)), "clicking a building selects it");
+
+  // Open Source forks: X on a selected building, then a click places a half-price copy.
+  const racks = () => state((def) => window.uptime.world.entities.filter((e) => e.kind === "building" && e.defId === def).length, "server-rack");
+  const before = await racks();
+  // Only a finished building can be forked.
+  await waitFor(() => state((id) => window.uptime.world.entities.find((e) => e.id === id)?.buildRemaining === 0, spawner), 60000);
+  await page.keyboard.press("x");
+  check(await state(() => window.uptime.selection.kind === "place" && window.uptime.selection.fork !== undefined), "X starts forking the selected building");
+  await click(await openNear(spot.x, spot.y, 2, 5));
+  check(await waitFor(async () => (await racks()) === before + 1), "a click places the fork");
+  await click(spot);
+  await waitFor(() => state((id) => window.uptime.selection.id === id, spawner));
 
   // Every way to give a rally order: right-click, T then click, Ctrl-click, Cmd-click.
   const rallies = [

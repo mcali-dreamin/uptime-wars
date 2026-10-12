@@ -113,6 +113,10 @@ export interface Unit extends EntityBase {
   commanded: boolean;
   /** Serverless units go cold at this tick (absent: they don't). */
   expiresAt?: number;
+  /** Scanners: what they spotted and when, until they report it. */
+  spotted?: { tick: number; x: number; y: number; team: TeamId };
+  /** Scanners: already reported, nothing more to do. */
+  reported?: boolean;
 }
 
 export interface Building extends EntityBase {
@@ -126,6 +130,10 @@ export interface Building extends EntityBase {
   rally: Point | null;
   spawnTimer: number;
   incomeTimer: number;
+  /** The last tick anything hit it (for self-repair). */
+  lastHitTick: number;
+  /** Jammed by a DDoS until this tick: no shooting, spawning, or running. */
+  jammedUntil?: number;
 }
 
 export type Entity = Unit | Building;
@@ -228,7 +236,17 @@ export interface InvokeCommand {
   buildingId: number;
 }
 
-export type Command = BuildCommand | MoveCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | AttackCommand | CastCommand | LearnCommand | InvokeCommand;
+/** Copy one of your finished buildings for less (races with a fork mechanic). */
+export interface ForkCommand {
+  type: "fork";
+  tick: number;
+  team: TeamId;
+  sourceId: number;
+  col: number;
+  row: number;
+}
+
+export type Command = ForkCommand | BuildCommand | MoveCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | AttackCommand | CastCommand | LearnCommand | InvokeCommand;
 
 export interface WaveSpawn {
   tick: number;
@@ -242,6 +260,9 @@ export interface WaveState {
   /** Waves sent so far. The next wave is nextIndex + 1. */
   nextIndex: number;
   nextWaveTick: number;
+  /** When the next background-traffic pack leaves, and when the trickle began (-1: not yet). */
+  nextTrickleTick: number;
+  trickleSince: number;
   /** Units scheduled to enter, sorted by tick. */
   pending: WaveSpawn[];
   nextPackId: number;
@@ -268,6 +289,8 @@ export type SimEvent =
   | { type: "hub"; hub: number; team: TeamId; state: "connected" | "lost" | "cut-off" }
   /** A function ran: `units` spun up. `auto`: an enemy triggered it. */
   | { type: "invoked"; buildingId: number; team: TeamId; units: number; auto: boolean }
+  /** A scanner got away with it: `packs` horde packs now march on (x, y). */
+  | { type: "reported"; team: TeamId; x: number; y: number; packs: number }
   /** A short-lived unit's time ran out (not a kill: no bounty). */
   | { type: "expired"; id: number; x: number; y: number; team: TeamId }
   | { type: "wave"; wave: number; name: string; packs: number; units: number; boss: boolean }

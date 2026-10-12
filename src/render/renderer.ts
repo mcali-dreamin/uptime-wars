@@ -92,8 +92,12 @@ export class Renderer {
           event.state === "connected" ? `${name} connected · more users` : event.state === "cut-off" ? `${name} cut off from your network` : `${name} knocked offline`,
         );
       }
+      if (event.type === "reported" && event.team === this.localTeam) {
+        this.showBanner(`A scanner reported your base · ${event.packs} pack${event.packs === 1 ? "" : "s"} inbound`);
+        this.ping(event.x, event.y);
+      }
       if (event.type === "fortified") this.showBanner(`The botnet rebuilt ${event.rebuilt} C2 Server${event.rebuilt > 1 ? "s" : ""}`);
-      if (event.type === "wave") this.showBanner(`Wave ${event.wave} · ${event.name}${event.boss ? " · BOSS" : ""}`);
+      if (event.type === "wave") this.showBanner(`Incident ${event.wave} · ${event.name}${event.boss ? " · BOSS" : ""}`);
     }
   }
 

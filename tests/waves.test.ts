@@ -4,7 +4,9 @@ import {
   createWorld,
   queueCommand,
   planWave,
+  playerScale,
   previewWave,
+  trickleBudget,
   trafficRadius,
   waveInterval,
   TILE,
@@ -13,11 +15,15 @@ import {
 import { content, SETUP, OPENING, firstSpot } from "./fixtures";
 
 describe("endless waves", () => {
-  it("waves keep coming and there is no win by timer", () => {
+  it("incidents keep coming and there is no win by timer", () => {
     const world = createWorld(content, SETUP);
     for (const command of OPENING) queueCommand(world, command);
-    while (world.waves.nextIndex < 4) step(world, content);
-    expect(world.outcome).toBeNull();
+    // Fast-forward the clock between incidents rather than simulating every tick of them.
+    while (world.waves.nextIndex < 4 && !world.outcome) {
+      world.waves.nextWaveTick = Math.min(world.waves.nextWaveTick, world.tick + 1);
+      for (let i = 0; i < 40; i += 1) step(world, content);
+    }
+    expect(world.waves.nextIndex).toBe(4);
     expect(world.waves.nextWaveTick).toBeGreaterThan(world.tick);
   });
 
@@ -112,5 +118,56 @@ describe("wave preview", () => {
       expect(previewWave(content, entry.fromWave + 1).fresh).not.toContain(entry.unit);
       if (entry.fromWave > 1) expect(previewWave(content, entry.fromWave - 1).creeps).not.toContain(entry.unit);
     }
+  });
+});
+
+describe("background traffic and incidents", () => {
+  const coop = (players: number) => ({ seed: 1234, races: [...Array(players).fill("open-source"), "botnet"], startWithCore: true });
+
+  it("background traffic: a small pack every few seconds, never a boss, growing over time", () => {
+    const world = createWorld(content, SETUP);
+    world.waves.nextWaveTick = 1e9; // no incidents
+    const packs = new Map<number, string[]>();
+    while (world.tick < content.waves.firstWaveTicks + content.waves.trickle.everyTicks * 6) {
+      step(world, content);
+      for (const s of world.waves.pending) (packs.get(s.packId) ?? packs.set(s.packId, []).get(s.packId)!).push(s.unit);
+    }
+    for (const e of world.entities) if (e.kind === "unit" && e.team === 1) packs.set(e.packId, packs.get(e.packId) ?? ["seen"]);
+    expect(packs.size).toBeGreaterThanOrEqual(5);
+    expect(world.entities.some((e) => e.kind === "unit" && e.defId === content.waves.bosses.unit)).toBe(false);
+    const early = trickleBudget(world, content);
+    world.tick += 20 * 60 * 5;
+    expect(trickleBudget(world, content)).toBeGreaterThan(early);
+  });
+
+  it("incidents are much bigger than a background pack, and bosses only come with incidents", () => {
+    const world = createWorld(content, SETUP);
+    expect(planWave(world, content, 1).units.length).toBeGreaterThan(content.waves.trickle.maxPack * 2);
+  });
+
+  it("the first incident comes well after traffic starts", () => {
+    expect(content.waves.firstIncidentTicks).toBeGreaterThan(content.waves.firstWaveTicks + 600);
+  });
+
+  it("more players online, more pressure: the trickle scales strongly, incidents gently", () => {
+    const one = createWorld(content, coop(1));
+    const two = createWorld(content, coop(2));
+    const four = createWorld(content, coop(4));
+    const t = (w: typeof one) => playerScale(w, content, "trickle");
+    const i = (w: typeof one) => playerScale(w, content, "incident");
+    expect(t(one)).toBe(1);
+    expect(i(one)).toBe(1);
+    expect(t(two)).toBeGreaterThan(i(two));
+    expect(t(four)).toBeGreaterThan(t(two));
+    expect(planWave(two, content, 5).units.length).toBeGreaterThan(planWave(one, content, 5).units.length);
+    // A player who's offline no longer counts.
+    two.teams[1]!.downTick = 0;
+    expect(t(two)).toBe(1);
+  });
+
+  it("the preview still names the next incident and its boss", () => {
+    const { fromWave } = content.waves.bosses;
+    expect(previewWave(content, fromWave).bosses).toBeGreaterThan(0);
+    expect(previewWave(content, 1).bosses).toBe(0);
   });
 });

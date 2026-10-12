@@ -51,6 +51,12 @@ export interface Terrain {
   hubs: HubSpot[];
   /** Places wandering creeps drift between. Each gets its own flow field. */
   roamPoints: TilePoint[];
+  /**
+   * Tiles walled off by buildings that block movement (Walled Garden walls),
+   * 1 = blocked. Not part of the generated map: the simulation keeps it in
+   * step with the walls standing (see walls.ts), so it's per match.
+   */
+  built?: Uint8Array;
 }
 
 export function tileAt(terrain: Terrain, col: number, row: number): number {
@@ -61,7 +67,8 @@ export function tileAt(terrain: Terrain, col: number, row: number): number {
 export const walls = (tile: number | undefined) => tile === TILE_BLOCKED || tile === TILE_CLIFF;
 
 export function isWalkableTile(terrain: Terrain, col: number, row: number): boolean {
-  return !walls(tileAt(terrain, col, row));
+  if (walls(tileAt(terrain, col, row))) return false;
+  return terrain.built?.[row * terrain.cols + col] !== 1;
 }
 
 export function heightAtTile(terrain: Terrain, col: number, row: number): number {

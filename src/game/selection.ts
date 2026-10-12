@@ -2,7 +2,7 @@
 // it. Every "what does clicking here do?" question is answered in this file,
 // so the input code, the cursor, the hint line, and the info panel agree.
 
-import { TILE, buildCost, canFound, canPlace, hostile, isCore, type Content, type Entity, type Point, type Unit } from "../sim";
+import { TILE, buildCost, canFound, canPlace, forkBlocker, hostile, isCore, type Content, type Entity, type Point, type Unit } from "../sim";
 import type { Order, Session } from "./session";
 
 export type Selection =
@@ -20,7 +20,8 @@ export type Selection =
    */
   | { kind: "army"; ids: number[]; armed?: "attack" | "move" }
   /** Placing a building from the build bar. */
-  | { kind: "place"; building: string }
+  /** `fork`: copying that building of yours (fork mechanic) instead of buying new. */
+  | { kind: "place"; building: string; fork?: number }
   /** Choosing where the core goes. */
   | { kind: "found" }
   /** Aiming a hero ability: the next click picks its point or enemy. */
@@ -169,6 +170,11 @@ export function placementAt(
     const def = content.buildings[selection.building]!;
     const col = Math.floor(point.x / TILE);
     const row = Math.floor(point.y / TILE);
+    if (selection.fork !== undefined) {
+      const source = session.entity(selection.fork);
+      const valid = forkBlocker(session.world, content, session.local, source?.kind === "building" ? source : undefined, col, row) === null;
+      return { col, row, footprint: def.footprint, valid, range: def.attack?.range ?? 0, order: { type: "fork", sourceId: selection.fork, col, row } };
+    }
     const valid = canPlace(session.world, content, session.local, selection.building, col, row) === null;
     return {
       col,

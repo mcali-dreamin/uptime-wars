@@ -22,9 +22,30 @@ export interface UnitDef {
   size: number;
   /** Compute this unit uses while alive (default: economy.compute.perUnit). */
   upkeep?: number;
+  /** A creep's job beyond hitting things (see CreepRole). */
+  role?: CreepRole;
   /** How far this unit reveals the fog for its owner, in pixels. */
   sight?: number;
 }
+
+/**
+ * What a creep does besides hit things:
+ * - scanner: spots your buildings and, if it lives `reportTicks` after
+ *   spotting them, sends every horde pack within `reportRadius` marching on
+ *   them. It doesn't attack.
+ * - phisher: only goes for buildings that serve users (and cores), ignores
+ *   everything else, and drives users away `churnMultiplier` times as fast.
+ * - miner: each hit on a building also drains `drain` $ from its owner.
+ * - jammer: each hit on a building jams it for `jamTicks`: towers don't
+ *   shoot, spawners don't spawn, functions don't run.
+ * - siege: goes for buildings, and hits them `buildingMultiplier` times as hard.
+ */
+export type CreepRole =
+  | { kind: "scanner"; reportTicks: number; reportRadius: number }
+  | { kind: "phisher"; churnMultiplier: number }
+  | { kind: "miner"; drain: number }
+  | { kind: "jammer"; jamTicks: number }
+  | { kind: "siege"; buildingMultiplier: number };
 
 export interface BuildingAttack {
   damage: number;
@@ -59,6 +80,8 @@ export interface BuildingDef {
   invoke?: { unit: string; count: number; cost: number; ttlTicks: number; cooldownTicks: number; triggerRange: number };
   /** Compute this building supplies once finished: what keeps users and units running. */
   compute?: number;
+  /** Blocks movement for everyone, like terrain (walls). Not line of sight: you can shoot over it. */
+  blocks?: boolean;
   /** Users this building can serve. Your total capacity caps your user count. */
   userCapacity?: number;
   /** Tiles around this building (once finished) where you may build. */
@@ -67,8 +90,8 @@ export interface BuildingDef {
 
 export type Controller = "human" | "wave-director";
 
-export type RaceLook = "scrappy" | "monolith" | "ephemeral";
-export const RACE_LOOKS: readonly RaceLook[] = ["scrappy", "monolith", "ephemeral"];
+export type RaceLook = "scrappy" | "monolith" | "ephemeral" | "garden";
+export const RACE_LOOKS: readonly RaceLook[] = ["scrappy", "monolith", "ephemeral", "garden"];
 
 export interface RaceDef {
   name: string;
@@ -92,6 +115,22 @@ export interface RaceDef {
   /** Hero units this race can field (see HeroesDef); the player picks one. */
   heroes?: string[];
   buildings: string[];
+  /**
+   * What makes the race play differently, beyond its numbers. All optional.
+   * - fork: copy one of your finished buildings (not the core) for a share
+   *   of its price and build time (permille).
+   * - repair: your buildings mend themselves, `permillePerSecond` of max hp,
+   *   once they haven't been hit for `quietTicks`.
+   * - region: a building takes `perNeighborPermille` less damage for each
+   *   other finished building of yours within `radiusTiles`, up to `maxPermille`.
+   */
+  mechanics?: {
+    fork?: { costPermille: number; buildPermille: number };
+    repair?: { permillePerSecond: number; quietTicks: number };
+    region?: { radiusTiles: number; perNeighborPermille: number; maxPermille: number };
+    /** Users leave at this share of the usual rate when your buildings are hit (permille). */
+    loyalty?: { churnPermille: number };
+  };
   modifiers: {
     spawnIntervalMultiplier: number;
     costMultiplier: number;
@@ -102,15 +141,30 @@ export interface RaceDef {
 }
 
 /**
- * Endless waves, generated rather than listed. Wave n gets a point budget
- * that grows every wave and spends it on whatever the roster has unlocked by
- * then; bosses join on a cadence; every creep gets tougher as waves go on.
+ * The horde's pressure has two parts.
+ *
+ * - Background traffic (`trickle`): a small pack leaves the nest every
+ *   `everyTicks`, spending `start + perMinute * minutes` points (minutes since
+ *   it began). Always something out there.
+ * - Incidents (the numbered, named "waves"): big surges on a timer. Incident n
+ *   gets a point budget that grows every incident and spends it on whatever
+ *   the roster has unlocked by then; bosses only come with incidents; every
+ *   creep gets tougher as incidents go on.
+ *
+ * Both scale with the players still online, x(1 + k * (n - 1)): the trickle
+ * strongly (it spreads out over everyone), incidents gently (each one lands
+ * on whichever base it finds first).
+ * "Wave" in the fields below means incident.
  */
 export interface WavesDef {
-  /** First wave comes this long after your core goes online... */
+  /** Background traffic starts this long after your core goes online... */
   firstWaveTicks: number;
-  /** ...or this long after the match starts, whichever is sooner. */
+  /** ...the first incident this long after it... */
+  firstIncidentTicks: number;
+  /** ...or each this long after the match starts (plus the gap between the two), whichever is sooner. */
   graceTicks: number;
+  trickle: { everyTicks: number; start: number; perMinute: number; maxPack: number };
+  players: { trickle: number; incident: number };
   spawnSpacingTicks: number;
   /** Each wave is shuffled and cut into packs of this many units. */
   packSize: { min: number; max: number };

@@ -42,6 +42,7 @@ export function placeBuilding(
     rally: null,
     spawnTimer: 0,
     incomeTimer: def.income?.intervalTicks ?? 0,
+    lastHitTick: -1,
   };
   building.spawnTimer = spawnInterval(content, world.teams[team]!, defId);
   world.entities.push(building);
@@ -115,7 +116,7 @@ export function spawnUnit(
   return unit;
 }
 
-/** Put a team's core on the map. Starts the wave clock if it was a player's. */
+/** Put a team's core on the map. Starts the horde's clocks if it was a player's. */
 export function foundCore(world: World, content: Content, teamId: TeamId, col: number, row: number): Building {
   const team = world.teams[teamId]!;
   const core = placeBuilding(world, content, teamId, content.races[team.raceId]!.core, col, row, true);
@@ -123,7 +124,9 @@ export function foundCore(world: World, content: Content, teamId: TeamId, col: n
   if (team.controller === "human") {
     team.users = content.economy.startingUsers;
     team.peakUsers = team.users;
-    world.waves.nextWaveTick = Math.min(world.waves.nextWaveTick, world.tick + content.waves.firstWaveTicks);
+    const { waves } = world;
+    waves.nextTrickleTick = Math.min(waves.nextTrickleTick, world.tick + content.waves.firstWaveTicks);
+    waves.nextWaveTick = Math.min(waves.nextWaveTick, world.tick + content.waves.firstIncidentTicks);
   }
   return core;
 }

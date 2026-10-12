@@ -26,6 +26,9 @@ const CONTROLS: [string, string][] = [
   ["Army", "With units selected, right-click the ground (or an enemy) to attack-move: they fight whatever they meet on the way, then hold the spot. F then click: a plain move that ignores enemies, for retreating. T then click works like right-click. Units you've sent stay put when you change a rally."],
   ["Hero", "Right-click to move or attack, 1-4 to cast, Shift+1-4 to learn. Full rundown in the Heroes tab."],
   ["Research", "Select your core: the bar shows upgrades. Click one (or press its number) to research it. One at a time."],
+  ["Walls", "Walled Garden: Walls block every path, for creeps and your own units alike, so leave yourself a way out. Towers and ranged units shoot over them. Creeps that can't get round a wall tear into it. Users of a Walled Garden are loyal: they leave 60% slower when you're hit."],
+  ["Fork", "Open Source: select one of your finished buildings (not the core) and press X (or Fork on its card), then click to place a copy for half its price, built in less than half the time. Open Source buildings also repair themselves once nothing has hit them for 5 seconds."],
+  ["Region", "Hyperscaler: each finished building of yours within 3 tiles makes a building take 8% less damage, up to 40%. Pack your base into regions; a lone building gets no shield. The building's card shows its shield."],
   ["Functions", "Serverless has no racks. A Function (or Inference Endpoint) spins up a squad when a creep comes near, for 20 seconds, then cools down. Each run costs $: no $, no run. Their units only use compute while running. Select one and press V (or its Invoke button) to run it now. Their rally point works like a rack's."],
   ["Rally", "With a spawner selected, right-click the ground to send its units there. With the core selected, right-click sets the rally for every spawner that doesn't have its own. No right button? Press T (or the button on the info card), then click the ground. Ctrl-click, Cmd-click and two-finger taps count as right-clicks too."],
   ["Camera", "WASD / arrows, the window edge, or drag with the middle button or Alt held to pan. Wheel or +/- to zoom. Click the minimap to jump. Space: back home."],
@@ -35,7 +38,7 @@ const CONTROLS: [string, string][] = [
   ["Compute", "Capacity, not money. Your core, Solar Arrays and Power Plants supply it; every user and unit uses some (shown as in use / supplied). It can go over. The further over you are, the worse it gets: no new users arrive and some leave each second, and your towers, spawners and research all run slower by the same share (shown as % slow). Build generators to grow."],
   ["Hubs", "Users live in hubs out on the map: a Campus a short hop from every start, and bigger Metros toward the nest (the grey city blocks). Extend your network within reach of one and it connects: a Campus adds room for 80 users, a Metro 200. You'll need the compute to serve them. Crawlers sense your connected hubs like a core, hits on a hub drive its users away, and a hub knocked offline can't be reconnected for 45 seconds. Lose the network building that reaches it and it's cut off."],
   ["Co-op", "On the race picker press H. Send each friend an invite link, paste back the reply code they give you, then Start. Everyone runs the same match; you see what your allies see, and the match goes on until every player is offline. Co-op can't pause."],
-  ["Goal", "Waves never stop. Your score is uptime: how long your core stays online. Peak users is your bragging right. Or end it: the Malware Nest sits on a fortified plateau in the middle of the web, its gateways guarded by C2 Servers. Push up a ramp, take the nest offline, and you win. Every few waves the botnet rebuilds fallen C2 Servers, tougher."],
+  ["Goal", "The botnet never stops. Small packs of background traffic leave the nest every few seconds, more as the match goes on; every few minutes an incident (DDoS, Worm outbreak, Ransomware...) sends a big surge, and bosses only come with incidents. The top bar counts down to the next one and shows what it brings. In co-op the pressure grows with every player still online. Your score is uptime: how long your core stays online. Peak users is your bragging right. Or end it: the Malware Nest sits on a fortified plateau in the middle of the web, its gateways guarded by C2 Servers. Push up a ramp, take the nest offline, and you win. Every few waves the botnet rebuilds fallen C2 Servers, tougher."],
 ];
 
 export class Guide {
@@ -114,7 +117,7 @@ export class Guide {
           const detail = unitDetail(content, id);
           const from = content.waves.roster.find((r) => r.unit === id)?.fromWave ?? content.waves.bosses.fromWave;
           const bounty = content.units[id]!.bounty;
-          return entry({ ...detail, stats: [...detail.stats, `Bounty: $${bounty} per kill`, `First seen: wave ${from}`] });
+          return entry({ ...detail, stats: [...detail.stats, `Bounty: $${bounty} per kill`, `First seen: incident ${from}`] });
         });
       }
       case "terrain":

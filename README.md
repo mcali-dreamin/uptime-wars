@@ -124,9 +124,17 @@ network, it can be retaken at once). In co-op or free-for-all, whoever
 connects a hub first holds it.
 
 The malware nest sits in the middle of the web and you start out toward the
-edge. Waves never stop: each one is bigger, comes sooner, and unlocks nastier
-creeps (worms, then trojans, then ransomware bosses). The top bar previews the next wave: its name, the creeps it can bring (new
-ones marked), and any boss. Every wave leaves the nest
+edge. The botnet never stops, and its pressure comes in two forms.
+**Background traffic** is a small pack leaving the nest every 8 seconds,
+growing as the match goes on, so there's always something out there.
+**Incidents** (Port scan, Worm outbreak, DDoS, Ransomware...) are big surges
+every couple of minutes. Each one is bigger and comes sooner, unlocks nastier
+creeps (worms, then trojans), and bosses (ransomware) only come with
+incidents. In co-op every player still online adds pressure: the trickle
+scales strongly, since it spreads over everyone, and incidents gently,
+since each lands on one base. The top bar counts down to the next incident
+and previews it: its name, the creeps it can bring (new ones marked), and
+any boss. Every pack leaves the nest
 as packs of random size that wander outward. Nobody tells them where you are,
 but you make **traffic**: crawlers sense your cores from a radius that grows
 with your buildings, your users, and time online, and packs that sense you
@@ -136,7 +144,7 @@ whichever side a pack is wandering in from. Your score
 is **uptime**: how long your core stays online. Taking the nest offline ends
 the run early, in your favor, but it's a **fortress**: the nest sits on a
 backbone plateau ringed by cliffs, every ramp up is guarded by a C2 Server,
-and more ring the nest itself. Every 5 waves the botnet rebuilds the ones you
+and more ring the nest itself. Every 2 incidents the botnet rebuilds the ones you
 knocked down, tougher (`waves.json` → `fortress`). Where they stand is a pure
 function of the seed. Hover anything (buttons, buildings, units, terrain) to see what it does.
 Add `?debug` to the URL to expose live state as `window.uptime`.
@@ -271,7 +279,7 @@ Direction: survival on a procedurally generated open web.
 - [x] Fog of war
 - [x] Users: capacity, revenue, and churn from damage
 - [x] Wandering creep packs that only attack what they see
-- [x] Endless escalating waves from a nest in the middle; uptime score
+- [x] Endless escalating pressure from a nest in the middle (background traffic + incidents); uptime score
 - [x] Elevation: plateaus, cliffs, ramps; high-ground sight and damage
 - [x] Rally points: per spawner, with a global default on the core
 - [x] Upgrades researched at the core

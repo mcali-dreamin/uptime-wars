@@ -9,7 +9,7 @@ export { hostile, hordeTeam, humanTeams, type MatchMode } from "./teams";
 export type { MatchSetup } from "./world";
 export { queueCommand } from "./commands";
 export { canPlace, canFound, buildCost, isOccupied, isCore, inNetwork, networkProviders, teamCores } from "./placement";
-export { planWave, previewWave, waveInterval, type WavePreview } from "./waves";
+export { planWave, playerScale, previewWave, trickleBudget, waveInterval, type WavePreview } from "./waves";
 export { STARTING_MONEY, BASE_INCOME } from "./tuning";
 export { computeBalance, incomeRate, trafficRadius, userCapacity } from "./economy";
 export { canResearch, levelOf, multiplier, nextLevel } from "./upgrades";
@@ -35,3 +35,5 @@ export function simulate(
 export { fortressGates, fortressSpots } from "./fortress";
 export { invokeBlocker } from "./functions";
 export { hubBuilding, onHub } from "./hubs";
+export { forkBlocker, forkCost, regionShield } from "./mechanics";
+export { isJammed } from "./roles";
