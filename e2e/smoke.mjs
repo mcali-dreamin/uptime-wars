@@ -117,6 +117,42 @@ await run("smoke test", async ({ check, open }) => {
   check(cast, `1 casts the first ability (${kind})`);
   await page.keyboard.press("Escape");
 
+  // Army: drag a box over the spawner's units, right-click: they attack-move
+  // there. F + click is a plain move; Z grabs the whole army.
+  await page.keyboard.press("Escape");
+  // Wait until they've reached the rally and stopped, so the box lands on them.
+  const unitsOf = () =>
+    state((id) => window.uptime.world.entities.filter((e) => e.kind === "unit" && e.spawnerId === id).map((u) => ({ id: u.id, x: u.x, y: u.y })), spawner);
+  let units = [];
+  await waitFor(async () => {
+    const before = await unitsOf();
+    await page.waitForTimeout(1000);
+    units = await unitsOf();
+    return units.length > 0 && units.every((u) => before.some((b) => b.id === u.id && Math.hypot(b.x - u.x, b.y - u.y) < 2));
+  }, 120000);
+  const corners = await Promise.all(units.map((u) => toPage(u.x, u.y)));
+  const [x1, y1] = [Math.min(...corners.map((c) => c.x)) - 40, Math.min(...corners.map((c) => c.y)) - 40];
+  const [x2, y2] = [Math.max(...corners.map((c) => c.x)) + 40, Math.max(...corners.map((c) => c.y)) + 40];
+  await page.mouse.move(x1, y1);
+  await page.mouse.down();
+  await page.mouse.move(x2, y2, { steps: 6 });
+  check(await page.$eval("#select-box", (el) => !el.hidden), "dragging draws a selection box");
+  await page.mouse.up();
+  const ids = await state(() => (window.uptime.selection.kind === "army" ? window.uptime.selection.ids : []));
+  check(units.length > 0 && units.every((u) => ids.includes(u.id)), `a selection box grabs your units (${ids.length})`);
+  const orders = (target) =>
+    state(([ids, x, y]) => window.uptime.world.entities.filter((e) => ids.includes(e.id)).map((u) => ({ order: u.order, d: Math.hypot(u.homeX - x, u.homeY - y) })), [ids, target.x, target.y]);
+  const there = await openNear(spot.x, spot.y, 6, 14);
+  await click(there, { button: "right" });
+  check(await waitFor(async () => (await orders(there)).length > 0 && (await orders(there)).every((u) => u.order === "attack" && u.d < 160)), "right-click attack-moves the group");
+  await page.keyboard.press("f");
+  const back = await openNear(core.x, core.y, 3, 6);
+  await click(back);
+  check(await waitFor(async () => (await orders(back)).length > 0 && (await orders(back)).every((u) => u.order === "move" && u.d < 160)), "F + click moves the group");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("z");
+  check(await state(() => window.uptime.selection.kind === "army" && window.uptime.selection.ids.length > 0), "Z selects the whole army");
+
   // The core's card researches.
   await page.keyboard.press("Escape");
   await state(() => (window.uptime.session.team.compute += 1000));

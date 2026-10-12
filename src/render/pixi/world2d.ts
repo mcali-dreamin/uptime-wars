@@ -59,6 +59,12 @@ export class World2D implements WorldView {
     this.drawShots(frame);
     this.overlay.clear();
     this.drawSelection(frame.world, frame.content, frame.selectedId);
+    for (const entity of frame.world.entities) {
+      if (entity.kind !== "unit" || entity.hp <= 0 || !frame.selectedIds.has(entity.id) || entity.id === frame.selectedId) continue;
+      const at = frame.position(entity);
+      this.overlay.circle(at.x, at.y, entity.radius + 6).stroke({ width: 2, color: HIGHLIGHT, alpha: 0.9 });
+      if (entity.order) this.overlay.circle(entity.homeX, entity.homeY, 5).stroke({ width: 1.5, color: entity.order === "attack" ? INVALID : VALID, alpha: 0.8 });
+    }
     this.drawPings(frame);
     this.drawPlacement(frame);
   }

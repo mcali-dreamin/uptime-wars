@@ -130,6 +130,10 @@ export class Hud {
         ? "Click a data well (glowing crystals) inside your network"
         : "Click inside the ring to build";
     }
+    if (selection.kind === "army") {
+      if (selection.armed) return `Click the ground: ${selection.armed === "move" ? "move (ignores enemies)" : "attack-move"} · Esc to cancel`;
+      return "Right-click: attack-move · F then click: move · Shift: add · Z: whole army";
+    }
     if (!this.session.deploying) {
       const label = groundOrderLabel(this.session, selection);
       if (!label) return "";

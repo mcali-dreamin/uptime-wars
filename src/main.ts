@@ -5,13 +5,17 @@ import { bindInput, type GameInput } from "./input";
 import { Renderer } from "./render/renderer";
 import {
   NOTHING,
+  allSoldiers,
   armed,
+  armyUnits,
   enemyAt,
   groundOrder,
+  isSoldier,
   leftClickOrders,
   ownEntityAt,
   placementAt,
   selectedEntity,
+  selectedIds,
   type Placement,
   type Selection,
 } from "./game/selection";
@@ -30,6 +34,8 @@ import { HeroBar, heroUnit } from "./ui/hero-bar";
 import { castBlocker } from "./sim/heroes";
 
 const STEP_MS = 1000 / TICK_RATE;
+/** Two clicks on the same unit this close together select all of its kind on screen. */
+const DOUBLE_CLICK_MS = 350;
 const MAX_STEPS_PER_FRAME = 5;
 
 const content = loadDefaultContent();
@@ -72,6 +78,7 @@ coop.onLeave = (team) => {
 let selection: Selection = NOTHING;
 let placement: Placement | null = null;
 let pointer: Point | null = null;
+let lastUnitClick = { id: -1, at: 0 };
 let paused = false;
 let accumulator = 0;
 let announced = false;
@@ -205,18 +212,47 @@ function order(point: Point): void {
   session.issue(next);
   renderer.ping(point.x, point.y);
   // An armed order is one-shot: back to the plain selection.
-  if (selection.kind === "entity" && selection.armed) select({ kind: "entity", id: selection.id });
+  select(disarmed(selection));
 }
 
-/** Arm the selection's ground order, so the next left-click gives it (T, or the panel button). */
-function arm(): boolean {
-  const next = armed(session, selection);
+/**
+ * Arm the selection's ground order, so the next left-click gives it: T (or the
+ * panel button) for rally / attack-move, F for a plain move.
+ */
+function arm(how: "attack" | "move" = "attack"): boolean {
+  const next = armed(session, selection, how);
   if (next) select(next);
   return next !== null;
 }
 
 function isArmed(): boolean {
-  return selection.kind === "entity" && selection.armed === true;
+  return (selection.kind === "entity" || selection.kind === "army") && Boolean(selection.armed);
+}
+
+function disarmed(s: Selection): Selection {
+  if (s.kind === "entity") return { kind: "entity", id: s.id };
+  if (s.kind === "army") return { kind: "army", ids: s.ids };
+  return s;
+}
+
+/** Your soldiers drawn inside a screen rectangle (client pixels). */
+function soldiersIn(rect: { left: number; top: number; right: number; bottom: number }) {
+  return allSoldiers(session).filter((unit) => {
+    const at = renderer.toScreen(unit.x, unit.y);
+    return at.x >= rect.left && at.x <= rect.right && at.y >= rect.top && at.y <= rect.bottom;
+  });
+}
+
+/** Select these units (or add them, with shift). */
+function selectUnits(ids: number[], add: boolean): void {
+  const base = add && selection.kind === "army" ? selection.ids : [];
+  const merged = [...new Set([...base, ...ids])];
+  select(merged.length > 0 ? { kind: "army", ids: merged } : add ? selection : NOTHING);
+}
+
+function screenRect() {
+  const rect = renderer.app.canvas.getBoundingClientRect();
+  return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
 }
 
 // --- game input ------------------------------------------------------------
@@ -242,6 +278,19 @@ const gameInput: GameInput = {
     const footprint = ownEntityAt(session, point);
     const own =
       footprint?.kind === "building" ? footprint : (drawn && drawn.team === session.team.id ? drawn : undefined) ?? footprint;
+    if (isSoldier(session, own)) {
+      const now = performance.now();
+      const double = lastUnitClick.id === own.id && now - lastUnitClick.at < DOUBLE_CLICK_MS;
+      lastUnitClick = { id: own.id, at: now };
+      // Double-click: every one of its kind on screen.
+      if (double) return selectUnits(soldiersIn(screenRect()).filter((u) => u.defId === own.defId).map((u) => u.id), shift);
+      // Shift-click toggles it in or out of the group.
+      if (shift && selection.kind === "army") {
+        const ids = selection.ids.includes(own.id) ? selection.ids.filter((id) => id !== own.id) : [...selection.ids, own.id];
+        return select(ids.length > 0 ? { kind: "army", ids } : NOTHING);
+      }
+      return select({ kind: "army", ids: [own.id] });
+    }
     if (own) return select({ kind: "entity", id: own.id });
     if (leftClickOrders(session, selection)) return order(point);
     select(NOTHING);
@@ -268,6 +317,13 @@ const gameInput: GameInput = {
     order(point);
   },
 
+  boxSelect(rect, shift) {
+    if (selection.kind === "place" || selection.kind === "found") return;
+    const ids = soldiersIn(rect).map((u) => u.id);
+    if (ids.length === 0 && session.deploying) return;
+    selectUnits(ids, shift);
+  },
+
   hover(point) {
     pointer = point;
     refreshPointer();
@@ -281,11 +337,18 @@ const gameInput: GameInput = {
       // Esc backs out one step: aiming or an armed order first, then the selection.
       const hero = heroUnit(session);
       if (selection.kind === "cast") select(hero ? { kind: "entity", id: hero.id } : NOTHING);
-      else select(selection.kind === "entity" && selection.armed ? { kind: "entity", id: selection.id } : NOTHING);
+      else select(isArmed() ? disarmed(selection) : session.deploying ? fallback() : NOTHING);
       return true;
     }
     if (key === "q" && !session.deploying) return selectHero();
     if (key === "t") return arm();
+    if (key === "f") return arm("move");
+    if (key === "z") {
+      // The whole army.
+      const ids = allSoldiers(session).map((u) => u.id);
+      if (ids.length === 0) return renderer.showBanner("No units yet"), true;
+      return select({ kind: "army", ids }), true;
+    }
     if (key === "p") {
       if (session.net) renderer.showBanner("Co-op can't pause");
       else paused = !paused;
@@ -410,11 +473,16 @@ renderer.app.ticker.add((ticker) => {
   // Selections that stopped making sense: the agent deployed or died, the deploy phase ended.
   if (selection.kind === "entity" && !selectedEntity(session, selection)) select(fallback());
   if (selection.kind === "found" && !session.deploying) select(NOTHING);
+  if (selection.kind === "army") {
+    const alive = armyUnits(session, selection);
+    if (alive.length === 0) select(fallback());
+    else if (alive.length !== selection.ids.length) select({ ...selection, ids: alive.map((u) => u.id) });
+  }
   if (selection.kind === "cast" && !heroUnit(session)) select(NOTHING);
 
   bar.update(barMode(), buttonFor(selection));
   const selectedId = selection.kind === "entity" ? selection.id : null;
-  renderer.draw(world, content, paused ? 1 : accumulator / STEP_MS, ticker.deltaMS, placement, selectedId);
+  renderer.draw(world, content, paused ? 1 : accumulator / STEP_MS, ticker.deltaMS, placement, selectedId, selectedIds(selection));
   hud.update(selection, paused);
   heroBar.update();
 });

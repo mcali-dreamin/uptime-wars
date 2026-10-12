@@ -2,7 +2,7 @@
 // it. Every "what does clicking here do?" question is answered in this file,
 // so the input code, the cursor, the hint line, and the info panel agree.
 
-import { TILE, TILE_RESOURCE, buildCost, canFound, canPlace, hostile, isCore, tileAt, type Content, type Entity, type Point } from "../sim";
+import { TILE, TILE_RESOURCE, buildCost, canFound, canPlace, hostile, isCore, tileAt, type Content, type Entity, type Point, type Unit } from "../sim";
 import type { Order, Session } from "./session";
 
 export type Selection =
@@ -13,6 +13,12 @@ export type Selection =
    * convenient right button.
    */
   | { kind: "entity"; id: number; armed?: boolean }
+  /**
+   * A group of your fighting units (one or many). Right-click sends them
+   * (attack-move); `armed` makes the next left-click do it, as an
+   * attack-move (T) or a plain move that ignores enemies (F).
+   */
+  | { kind: "army"; ids: number[]; armed?: "attack" | "move" }
   /** Placing a building from the build bar. */
   | { kind: "place"; building: string }
   /** Choosing where the core goes. */
@@ -24,6 +30,10 @@ export const NOTHING: Selection = { kind: "none" };
 
 /** What right-clicking the ground does for this selection, as a short verb, or null. */
 export function groundOrderLabel(session: Session, selection: Selection): string | null {
+  if (selection.kind === "army") {
+    if (armyUnits(session, selection).length === 0) return null;
+    return selection.armed === "move" ? "Move here" : "Attack-move here";
+  }
   const entity = selectedEntity(session, selection);
   if (!entity) return null;
   if (entity.kind === "unit") return entity.mode === "builder" || entity.mode === "hero" ? "Move here" : null;
@@ -33,6 +43,11 @@ export function groundOrderLabel(session: Session, selection: Selection): string
 
 /** The order for right-clicking (or, for the deploy agent, clicking) the ground at `point`. */
 export function groundOrder(session: Session, selection: Selection, point: Point): Order | null {
+  if (selection.kind === "army") {
+    const units = armyUnits(session, selection);
+    if (units.length === 0) return null;
+    return { type: "order", unitIds: units.map((u) => u.id), x: point.x, y: point.y, attack: selection.armed !== "move" };
+  }
   const entity = selectedEntity(session, selection);
   if (!entity || !groundOrderLabel(session, selection)) return null;
   if (entity.kind === "unit") return { type: "move", x: point.x, y: point.y };
@@ -44,14 +59,16 @@ export function groundOrder(session: Session, selection: Selection, point: Point
  * deploy agent always; for anything else once it's armed (T or the panel button).
  */
 export function leftClickOrders(session: Session, selection: Selection): boolean {
+  if (selection.kind === "army") return selection.armed !== undefined && armyUnits(session, selection).length > 0;
   const entity = selectedEntity(session, selection);
   if (!entity || !groundOrderLabel(session, selection)) return false;
   return (selection.kind === "entity" && selection.armed === true) || (entity.kind === "unit" && entity.mode === "builder");
 }
 
 /** The selection with its ground order armed, or null if it has none to arm. */
-export function armed(session: Session, selection: Selection): Selection | null {
-  if (selection.kind !== "entity" || !groundOrderLabel(session, selection)) return null;
+export function armed(session: Session, selection: Selection, how: "attack" | "move" = "attack"): Selection | null {
+  if (selection.kind === "army") return armyUnits(session, selection).length > 0 ? { kind: "army", ids: selection.ids, armed: how } : null;
+  if (how === "move" || selection.kind !== "entity" || !groundOrderLabel(session, selection)) return null;
   return { kind: "entity", id: selection.id, armed: true };
 }
 
@@ -59,6 +76,28 @@ export function selectedEntity(session: Session, selection: Selection): Entity |
   if (selection.kind !== "entity") return undefined;
   const entity = session.entity(selection.id);
   return entity && entity.team === session.local ? entity : undefined;
+}
+
+/** A unit you can command: one of yours that fights (not the deploy agent). */
+export function isSoldier(session: Session, entity: Entity | undefined): entity is Unit {
+  return entity?.kind === "unit" && entity.team === session.local && entity.mode === "guard" && entity.hp > 0;
+}
+
+/** The living units of an army selection. */
+export function armyUnits(session: Session, selection: Selection): Unit[] {
+  if (selection.kind !== "army") return [];
+  const wanted = new Set(selection.ids);
+  return session.world.entities.filter((e): e is Unit => wanted.has(e.id) && isSoldier(session, e));
+}
+
+/** Every unit you can command. */
+export function allSoldiers(session: Session): Unit[] {
+  return session.world.entities.filter((e): e is Unit => isSoldier(session, e));
+}
+
+/** The ids a selection highlights. */
+export function selectedIds(selection: Selection): number[] {
+  return selection.kind === "army" ? selection.ids : selection.kind === "entity" ? [selection.id] : [];
 }
 
 /** An enemy the local player can see under a world point, if any. Units first: they're what you aim at. */

@@ -310,7 +310,9 @@ export class World3D implements WorldView {
         s.lastX = at.x;
         s.lastY = at.y;
         s.object.rotation.y = s.heading;
-        if (entity.hp < entity.maxHp) this.bars.add(at.x, floor + s.size * 3.4, at.y, Math.max(16, s.size * 2.4), entity.hp / entity.maxHp);
+        if (entity.hp < entity.maxHp || frame.selectedIds.has(entity.id)) {
+          this.bars.add(at.x, floor + s.size * 3.4, at.y, Math.max(16, s.size * 2.4), entity.hp / entity.maxHp);
+        }
         continue;
       }
 
@@ -424,6 +426,21 @@ export class World3D implements WorldView {
     this.flag.visible = false;
     this.rallyLine.visible = false;
     const ground = (x: number, y: number) => this.terrain3d.floorAt(x, y) + 1.5;
+
+    // A group of units: a ring under each, and a marker where each is headed.
+    const destinations = new Set<string>();
+    for (const entity of world.entities) {
+      if (entity.kind !== "unit" || entity.hp <= 0 || !frame.selectedIds.has(entity.id) || entity.id === frame.selectedId) continue;
+      const at = frame.position(entity);
+      this.rings.add(at.x, ground(at.x, at.y), at.y, entity.radius + 7, HIGHLIGHT, 0.9);
+      if (entity.order) {
+        const key = `${Math.round(entity.homeX / 24)}:${Math.round(entity.homeY / 24)}`;
+        if (destinations.has(key)) continue;
+        destinations.add(key);
+        const color = entity.order === "attack" ? INVALID : VALID;
+        this.thinRings.add(entity.homeX, ground(entity.homeX, entity.homeY), entity.homeY, 6, color, 0.8);
+      }
+    }
 
     if (frame.selectedId !== null) {
       const selected = world.entities.find((e) => e.id === frame.selectedId);

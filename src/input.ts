@@ -1,6 +1,9 @@
-// Raw input. Camera controls (drag, wheel, edge scroll, pan keys, minimap)
-// are handled here directly; anything that means something in the game is
-// handed to the game as a world point or a key.
+// Raw input. Camera controls (middle/Alt-drag, wheel, edge scroll, pan keys,
+// minimap) are handled here directly; anything that means something in the
+// game is handed to the game as a world point, a rectangle, or a key.
+//
+// Left-drag draws a selection box, like any RTS. Pan with WASD / arrows, the
+// window edge, the minimap, or by dragging with the middle button or Alt held.
 
 import type { Point } from "./sim";
 import type { Renderer } from "./render/renderer";
@@ -10,6 +13,8 @@ export interface GameInput {
   blocked(): boolean;
   /** `entity`: the entity drawn under the pointer, when the view knows (3D). */
   click(point: Point, shift: boolean, entity: number | null): void;
+  /** A drag-selection rectangle, in client pixels. */
+  boxSelect(rect: { left: number; top: number; right: number; bottom: number }, shift: boolean): void;
   rightClick(point: Point, onMinimap: boolean): void;
   /** Pointer moved over the map (null when it left or is over the minimap). */
   hover(point: Point | null): void;
@@ -31,7 +36,19 @@ export function bindInput(renderer: Renderer, game: GameInput): void {
   const canvas = renderer.app.canvas;
   const camera = renderer.camera;
   camera.edgeScrollEnabled = localStorage.getItem(EDGE_KEY) !== "off";
-  let drag: { x: number; y: number; moved: boolean; minimap: boolean } | null = null;
+  let drag: { x: number; y: number; startX: number; startY: number; moved: boolean; mode: "pan" | "box" | "minimap" } | null = null;
+  const box = document.createElement("div");
+  box.id = "select-box";
+  box.hidden = true;
+  canvas.parentElement?.appendChild(box);
+  const showBox = (x1: number, y1: number, x2: number, y2: number) => {
+    const host = canvas.getBoundingClientRect();
+    box.hidden = false;
+    box.style.left = `${Math.min(x1, x2) - host.left}px`;
+    box.style.top = `${Math.min(y1, y2) - host.top}px`;
+    box.style.width = `${Math.abs(x2 - x1)}px`;
+    box.style.height = `${Math.abs(y2 - y1)}px`;
+  };
   let suppressMenuUntil = 0;
 
   // Right-click means "whatever the platform calls a secondary click": a right
@@ -64,12 +81,13 @@ export function bindInput(renderer: Renderer, game: GameInput): void {
     if (event.button !== 0 && event.button !== 1) return;
     const onMinimap = renderer.minimapHit(event.clientX, event.clientY);
     if (onMinimap) camera.centerOn(onMinimap.x, onMinimap.y);
-    drag = { x: event.clientX, y: event.clientY, moved: onMinimap !== null || event.button === 1, minimap: onMinimap !== null };
+    const mode = onMinimap ? "minimap" : event.button === 1 || event.altKey ? "pan" : "box";
+    drag = { x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY, moved: mode !== "box", mode };
     canvas.setPointerCapture(event.pointerId);
   });
 
   canvas.addEventListener("pointermove", (event) => {
-    if (drag?.minimap) {
+    if (drag?.mode === "minimap") {
       const point = renderer.minimapHit(event.clientX, event.clientY);
       if (point) camera.centerOn(point.x, point.y);
       return;
@@ -77,8 +95,12 @@ export function bindInput(renderer: Renderer, game: GameInput): void {
     if (drag) {
       const dx = event.clientX - drag.x;
       const dy = event.clientY - drag.y;
-      if (!drag.moved && dx * dx + dy * dy > DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX) drag.moved = true;
-      if (drag.moved) {
+      if (drag.mode === "box") {
+        const bx = event.clientX - drag.startX;
+        const by = event.clientY - drag.startY;
+        if (!drag.moved && bx * bx + by * by > DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX) drag.moved = true;
+        if (drag.moved) return showBox(drag.startX, drag.startY, event.clientX, event.clientY);
+      } else if (drag.moved) {
         camera.panByScreen(dx, dy);
         drag.x = event.clientX;
         drag.y = event.clientY;
@@ -91,7 +113,19 @@ export function bindInput(renderer: Renderer, game: GameInput): void {
 
   canvas.addEventListener("pointerup", (event) => {
     const click = drag && !drag.moved && event.button === 0;
+    const boxed = drag?.mode === "box" && drag.moved ? drag : null;
     drag = null;
+    box.hidden = true;
+    if (boxed && !game.blocked()) {
+      const rect = {
+        left: Math.min(boxed.startX, event.clientX),
+        right: Math.max(boxed.startX, event.clientX),
+        top: Math.min(boxed.startY, event.clientY),
+        bottom: Math.max(boxed.startY, event.clientY),
+      };
+      game.boxSelect(rect, event.shiftKey);
+      return;
+    }
     if (click && !game.blocked()) {
       game.click(renderer.toWorld(event.clientX, event.clientY), event.shiftKey, renderer.entityUnder(event.clientX, event.clientY));
     }

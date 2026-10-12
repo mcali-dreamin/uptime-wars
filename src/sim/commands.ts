@@ -9,7 +9,8 @@ import { canResearch, nextLevel } from "./upgrades";
 import { heroOf, learnBlocker, orderCast } from "./heroes";
 import { hostile } from "./teams";
 import { isWalkableTile } from "./terrain";
-import type { Command, RallyCommand, World } from "./types";
+import { MAX_ORDER_UNITS, ORDER_SPREAD_MAX, ORDER_SPREAD_PER_UNIT, RALLY_SPREAD } from "./tuning";
+import type { Command, OrderCommand, RallyCommand, World } from "./types";
 
 /**
  * Schedule a command. Commands must target the current tick or later; in
@@ -53,6 +54,8 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
     }
     case "rally":
       return applyRally(ctx, command);
+    case "order":
+      return applyOrder(ctx, command);
     case "research": {
       const team = world.teams[command.team]!;
       const reason = canResearch(content, team, command.upgrade);
@@ -89,6 +92,31 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
     case "found":
       return moveBuilder(ctx, command);
   }
+}
+
+function applyOrder(ctx: TickContext, command: OrderCommand): string | null {
+  const { world } = ctx;
+  if (!Array.isArray(command.unitIds) || command.unitIds.length === 0) return "no units";
+  if (command.unitIds.length > MAX_ORDER_UNITS) return "too many units";
+  if (!walkable(world, command.x, command.y)) return "can't go there";
+  const units = [];
+  for (const id of command.unitIds) {
+    const unit = ctx.byId.get(id);
+    // Units that died since the order was given just drop out.
+    if (unit?.kind === "unit" && unit.team === command.team && unit.mode === "guard" && unit.hp > 0) units.push(unit);
+  }
+  if (units.length === 0) return "no units";
+  const point = { x: command.x, y: command.y };
+  // A bigger group needs more room at the destination.
+  const spread = Math.min(ORDER_SPREAD_MAX, Math.max(RALLY_SPREAD / 2, Math.round(ORDER_SPREAD_PER_UNIT * Math.sqrt(units.length) * 2)));
+  for (const unit of units) {
+    sendHome(world, unit, point, units.length === 1 ? 0 : spread);
+    unit.order = command.attack ? "attack" : "move";
+    unit.commanded = true;
+    // A plain move drops whatever it was fighting.
+    if (!command.attack) unit.targetId = null;
+  }
+  return null;
 }
 
 function moveHero(ctx: TickContext, command: Extract<Command, { type: "move" }>): string | null {
@@ -136,7 +164,8 @@ function applyRally(ctx: TickContext, command: RallyCommand): string | null {
 
   // Send the units already out there, not just new ones.
   for (const unit of world.entities) {
-    if (unit.kind !== "unit" || unit.team !== team.id || unit.mode !== "guard" || unit.spawnerId < 0) continue;
+    // Units you've ordered somewhere are yours to move, not the rally's.
+    if (unit.kind !== "unit" || unit.team !== team.id || unit.mode !== "guard" || unit.spawnerId < 0 || unit.commanded) continue;
     const spawner = ctx.byId.get(unit.spawnerId);
     if (spawner?.kind !== "building") continue;
     const affected = global ? spawner.rally === null : spawner.id === building.id;
