@@ -83,6 +83,13 @@ attacks an enemy, `1`-`4` cast, `Shift`+`1`-`4` (or the `+`) learn.
 Heroes and abilities are JSON (`src/content/heroes.json`). An ability is one
 of six effects: blast, strike, heal, decoy, summon, or buff.
 
+**Sound.** Everything you hear is synthesised in the browser with Web Audio
+(`src/audio/`): no audio files. Combat is positional and only plays for what
+you can see, and busy sounds are rate-limited. Waves, bosses, your core
+under attack, casts, and level-ups each have their own cue. The music is a
+generative ambient loop that picks up when enemies close in on your base.
+`M` (or the button in the top bar) cycles sound on, effects only, or off.
+
 **Height** matters. The web has three levels (deep web, surface web,
 backbone). Cliffs separate them and ramps are the only way between. From below
 you can't see up a cliff unless you're at its foot, and attacking downhill
