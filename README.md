@@ -114,16 +114,19 @@ you have the compute to serve them. Every hit your core or a Web App takes
 drives some away (towers and racks don't: they're what you put in between).
 Numbers live in `src/content/economy.json`.
 
-**Hubs** are where users live: neutral city blocks on the map, a **Campus**
-a short hop from every start and a few bigger **Metros** out toward the nest.
-Bring your network within reach of one and it connects, adding user room
-(+80 / +200) that you then need the compute to serve. Crawlers sense your
-connected hubs like a core, hits on a hub drive its users away, and a hub
-knocked offline can't be reconnected for 45 seconds (cut off from your
-network, it can be retaken at once). In free-for-all, whoever connects a
-hub first holds it. In co-op a hub is the team's: its room is split evenly
-between the allies who are online, and it stays connected while any ally's
-network reaches it.
+**Hubs** are where users live, and where real growth is: neutral city blocks
+on the map, a **Campus** a short hop from every start and a few bigger
+**Metros** out toward the nest. Home only holds your core's 40 users and two
+Web Apps (60 each). The botnet squats on every hub with C2 Servers (1 on a
+Campus, 3 on a Metro); knock them down, bring your network within reach, and
+the hub connects with room for 150 or 400 users, which you then need the
+compute to serve. Then hold it: while enemy units there outnumber yours, or an
+enemy building stands there, it serves nobody. Crawlers sense connected hubs
+like a core; a hub knocked offline can't be reconnected for 45 seconds, and
+the botnet moves back in at its next fortress rebuild. In free-for-all,
+whoever connects a hub holds it. In co-op a hub is the team's: its room is
+split evenly between the allies who are online, and it stays connected while
+any ally's network reaches it.
 
 The malware nest sits in the middle of the web and you start out toward the
 edge. The botnet never stops, and its pressure comes in two forms.

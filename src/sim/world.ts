@@ -73,7 +73,7 @@ export function createWorld(content: Content, setup: MatchSetup): World {
       nextPackId: 1,
       packs: {},
     },
-    hubs: terrain.hubs.map(() => ({ owner: -1, downUntil: 0 })),
+    hubs: terrain.hubs.map(() => ({ owner: -1, downUntil: 0, contested: false })),
     outcome: null,
     events: [],
   };

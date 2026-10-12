@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   TILE_OPEN,
+  canPlace,
   createWorld,
+  fortify,
   generateTerrain,
   hashWorld,
   hubBuilding,
@@ -12,14 +14,25 @@ import {
 } from "../src/sim";
 import { dealDamage } from "../src/sim/combat";
 import { makeContext } from "../src/sim/context";
-import { placeBuilding } from "../src/sim/entities";
+import { placeBuilding, spawnUnit } from "../src/sim/entities";
 import { bfs } from "../src/sim/terrain/grid";
 import { content, SETUP } from "./fixtures";
 
 const SEEDS = Array.from({ length: 40 }, (_, i) => i * 7919 + 1);
 
-/** Put a finished Mesh Node of `team` right beside hub `i`, so its network reaches it. */
+/** Knock down the botnet's squatters on hub `i`. */
+function clear(world: World, i: number) {
+  const hub = world.terrain.hubs[i]!;
+  const center = { x: (hub.col + 1) * 48, y: (hub.row + 1) * 48 };
+  const r = content.economy.hubs.contestRadius;
+  for (const e of world.entities) {
+    if (e.kind === "building" && e.defId === "c2-server" && Math.hypot(e.x - center.x, e.y - center.y) <= r) e.hp = 0;
+  }
+}
+
+/** Clear hub `i` and put a finished Mesh Node of `team` right beside it, so its network reaches it. */
 function reach(world: World, i: number, team = 0) {
+  clear(world, i);
   const hub = world.terrain.hubs[i]!;
   const { cols, tiles } = world.terrain;
   for (const [dc, dr] of [[-2, 0], [3, 0], [0, -2], [0, 3], [-2, -2], [3, 3], [-2, 3], [3, -2]] as const) {
@@ -183,5 +196,102 @@ describe("user hubs in co-op", () => {
     const total = content.buildings[world.terrain.hubs[0]!.size]!.userCapacity!;
     expect(base(world, 0) - before[0]!).toBe(total);
     expect(base(world, 1)).toBe(before[1]);
+  });
+});
+
+describe("hubs are worth fighting for", () => {
+  const squatters = (world: World, i: number) => {
+    const hub = world.terrain.hubs[i]!;
+    const center = { x: (hub.col + 1) * 48, y: (hub.row + 1) * 48 };
+    return world.entities.filter(
+      (e) => e.kind === "building" && e.defId === "c2-server" && e.hp > 0 && Math.hypot(e.x - center.x, e.y - center.y) <= content.economy.hubs.contestRadius,
+    );
+  };
+
+  it("on every map the botnet squats on every hub: one C2 Server on a Campus, three on a Metro", () => {
+    for (const seed of SEEDS.slice(0, 20)) {
+      const world = createWorld(content, { ...SETUP, seed });
+      world.terrain.hubs.forEach((hub, i) => {
+        expect(squatters(world, i).length, `seed ${seed} ${hub.size}`).toBe(content.economy.hubs.guards[hub.size]);
+      });
+    }
+  });
+
+  it("free-for-all without the horde: no squatters", () => {
+    const world = createWorld(content, { seed: SETUP.seed, races: ["open-source", "hyperscaler"], startWithCore: true, mode: "ffa" });
+    world.terrain.hubs.forEach((_, i) => expect(squatters(world, i)).toEqual([]));
+  });
+
+  it("a squatted hub won't connect, even in reach; clear the squatters and it does", () => {
+    const world = createWorld(content, SETUP);
+    const hub = world.terrain.hubs[0]!;
+    const { cols, tiles } = world.terrain;
+    // Reach it without clearing.
+    for (const [dc, dr] of [[-2, 0], [3, 0], [0, -2], [0, 3]] as const) {
+      const col = hub.col + dc;
+      const row = hub.row + dr;
+      if (tiles[row * cols + col] !== TILE_OPEN || world.entities.some((e) => e.kind === "building" && e.col === col && e.row === row)) continue;
+      placeBuilding(world, content, 0, "mesh-node", col, row, true);
+      break;
+    }
+    second(world, 2);
+    expect(world.hubs[0]!.owner).toBe(-1);
+    for (const s of squatters(world, 0)) s.hp = 0;
+    second(world, 2);
+    expect(world.hubs[0]!.owner).toBe(0);
+  });
+
+  it("enemies outnumbering you on a held hub cut its users off until you push them out", () => {
+    const world = createWorld(content, SETUP);
+    const room = () => userCapacity(world, content, world.teams[0]!);
+    const before = room();
+    reach(world, 0);
+    second(world);
+    const total = content.buildings[world.terrain.hubs[0]!.size]!.userCapacity!;
+    expect(room() - before).toBe(total);
+
+    const hub = world.terrain.hubs[0]!;
+    const ctx = makeContext(world, content);
+    const at = { x: (hub.col + 1) * 48, y: (hub.row + 1) * 48 + 96 };
+    const raiders = [0, 1, 2].map(() => spawnUnit(ctx, 1, "bot", at, at.x, at.y, "guard"));
+    for (const r of raiders) r.attackCooldown = 1e6;
+    second(world);
+    expect(world.hubs[0]!.contested).toBe(true);
+    expect(room()).toBe(before);
+
+    const defenders = [0, 1, 2].map(() => spawnUnit(ctx, 0, "process", at, at.x, at.y, "guard"));
+    for (const d of defenders) d.attackCooldown = 1e6;
+    second(world);
+    expect(world.hubs[0]!.contested).toBe(false);
+    expect(room() - before).toBe(total);
+  });
+
+  it("the botnet re-squats a hub nobody holds when it rebuilds its fortress, but not one you hold", () => {
+    const world = createWorld(content, SETUP);
+    reach(world, 0);
+    second(world);
+    expect(world.hubs[0]!.owner).toBe(0);
+    for (let i = 1; i < world.terrain.hubs.length; i += 1) for (const s of squatters(world, i)) s.hp = 0;
+    second(world);
+    fortify(world, content, 1, 4);
+    expect(squatters(world, 0)).toEqual([]);
+    for (let i = 1; i < world.terrain.hubs.length; i += 1) expect(squatters(world, i).length).toBe(content.economy.hubs.guards[world.terrain.hubs[i]!.size]);
+  });
+
+  it("a player can only have two Web Apps", () => {
+    const world = createWorld(content, SETUP);
+    world.teams[0]!.money = 100_000;
+    const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)! as { col: number; row: number };
+    const placed: string[] = [];
+    for (let r = core.row - 4; r <= core.row + 5 && placed.length < 3; r += 2) {
+      for (let c = core.col - 4; c <= core.col + 5 && placed.length < 3; c += 2) {
+        const reason = canPlace(world, content, 0, "web-app", c, r);
+        if (reason === null) {
+          placeBuilding(world, content, 0, "web-app", c, r, false);
+          placed.push("ok");
+        } else if (reason.startsWith("only")) placed.push(reason);
+      }
+    }
+    expect(placed).toEqual(["ok", "ok", "only 2 per player"]);
   });
 });

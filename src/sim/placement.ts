@@ -55,6 +55,10 @@ export function canPlace(
   if (!inNetwork(world, content, teamId, center.x, center.y)) return "outside your network";
 
   if (isOccupied(world, col, row, def.footprint)) return "tile occupied";
+  if (def.maxPerTeam !== undefined) {
+    const have = world.entities.filter((e) => e.kind === "building" && e.team === teamId && e.defId === buildingId && e.hp > 0).length;
+    if (have >= def.maxPerTeam) return `only ${def.maxPerTeam} per player`;
+  }
   if (def.blocks && unitInTheWay(world, col, row, def.footprint)) return "a unit is in the way";
   if (team.money < cost) return "not enough $";
   return null;

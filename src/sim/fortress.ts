@@ -8,7 +8,7 @@ import type { Content } from "./content";
 import { placeBuilding } from "./entities";
 import { clusters } from "./terrain/elevation";
 import { FORTRESS_RADIUS } from "./terrain/params";
-import { TILE_OPEN, TILE_RAMP, type Terrain, type TilePoint } from "./terrain/tiles";
+import { TILE_OPEN, TILE_RAMP, type HubSpot, type Terrain, type TilePoint } from "./terrain/tiles";
 import type { TeamId, World } from "./types";
 
 /** Diagonal posts around the nest, in tiles from its center. */
@@ -74,15 +74,49 @@ export function fortressSpots(terrain: Terrain): TilePoint[] {
   return spots;
 }
 
+/** Where a hub's squatting C2 Servers go, around a ring a few tiles out. Pure function of the terrain. */
+const HUB_POSTS = [[3, -1], [-2, 2], [1, -2], [-2, -1], [3, 2], [0, 3]] as const;
+
+export function hubGuardSpots(terrain: Terrain, hub: HubSpot, count: number): TilePoint[] {
+  const { cols, rows } = terrain;
+  const taken = new Set<number>();
+  // Never on the hub or right beside it: you have to be able to stand there.
+  for (let r = hub.row - 1; r <= hub.row + 2; r += 1) for (let c = hub.col - 1; c <= hub.col + 2; c += 1) taken.add(r * cols + c);
+  const free = (c: number, r: number) => c >= 0 && r >= 0 && c < cols && r < rows && terrain.tiles[r * cols + c] === TILE_OPEN && !taken.has(r * cols + c);
+  const spots: TilePoint[] = [];
+  for (const [dc, dr] of HUB_POSTS) {
+    if (spots.length >= count) break;
+    const col = hub.col + dc;
+    const row = hub.row + dr;
+    let found: TilePoint | null = null;
+    for (let d = 0; d <= 2 && !found; d += 1) {
+      for (let er = -d; er <= d && !found; er += 1) {
+        for (let ec = -d; ec <= d && !found; ec += 1) {
+          if (Math.max(Math.abs(ec), Math.abs(er)) === d && free(col + ec, row + er)) found = { col: col + ec, row: row + er };
+        }
+      }
+    }
+    if (!found) continue;
+    spots.push(found);
+    for (let r = found.row - 1; r <= found.row + 1; r += 1) for (let c = found.col - 1; c <= found.col + 1; c += 1) taken.add(r * cols + c);
+  }
+  return spots;
+}
+
 /**
  * Put up every missing C2 Server, with hp scaled for this wave the way creeps
- * are. Returns how many went up.
+ * are: the nest's fortress, and the guards on every hub nobody holds (the
+ * botnet squats on users nobody is serving). Returns how many went up.
  */
 export function fortify(world: World, content: Content, team: TeamId, wave: number): number {
   const { building, hpGrowthPerWave } = content.waves.fortress;
   const scale = 1 + hpGrowthPerWave * (wave - 1);
   let built = 0;
-  for (const spot of fortressSpots(world.terrain)) {
+  const spots = [...fortressSpots(world.terrain)];
+  world.terrain.hubs.forEach((hub, i) => {
+    if (world.hubs[i]?.owner === -1) spots.push(...hubGuardSpots(world.terrain, hub, content.economy.hubs.guards[hub.size]));
+  });
+  for (const spot of spots) {
     const standing = world.entities.some(
       (e) => e.kind === "building" && e.team === team && e.defId === building && e.col === spot.col && e.row === spot.row && e.hp > 0,
     );

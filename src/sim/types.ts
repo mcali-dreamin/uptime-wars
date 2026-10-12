@@ -286,7 +286,7 @@ export type SimEvent =
   | { type: "shot"; from: number; to: number; x1: number; y1: number; x2: number; y2: number; team: TeamId }
   | { type: "death"; id: number; x: number; y: number; team: TeamId; kind: Entity["kind"]; defId: string }
   /** A user hub was connected, or lost (knocked offline, or cut off from the network). */
-  | { type: "hub"; hub: number; team: TeamId; state: "connected" | "lost" | "cut-off" }
+  | { type: "hub"; hub: number; team: TeamId; state: "connected" | "lost" | "cut-off" | "contested" | "secured" }
   /** A function ran: `units` spun up. `auto`: an enemy triggered it. */
   | { type: "invoked"; buildingId: number; team: TeamId; units: number; auto: boolean }
   /** A scanner got away with it: `packs` horde packs now march on (x, y). */
@@ -336,7 +336,7 @@ export interface World {
    * One per terrain.hubs: who holds it (team id, -1 for nobody) and the tick
    * before which nobody can reconnect it (after it's knocked offline).
    */
-  hubs: { owner: number; downUntil: number }[];
+  hubs: { owner: number; downUntil: number; contested: boolean }[];
   outcome: Outcome | null;
   events: SimEvent[];
 }
