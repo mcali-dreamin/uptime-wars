@@ -153,7 +153,7 @@ export class World3D implements WorldView {
     } else {
       this.composer = new EffectComposer(this.renderer);
       this.composer.addPass(new RenderPass(this.scene, this.camera));
-      this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.75, 0.55, 0.82);
+      this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.5, 0.5, 0.9);
       this.composer.addPass(this.bloom);
       this.composer.addPass(new OutputPass());
     }
