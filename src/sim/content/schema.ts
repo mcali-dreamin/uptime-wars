@@ -141,15 +141,30 @@ export interface RaceDef {
 }
 
 /**
- * Endless waves, generated rather than listed. Wave n gets a point budget
- * that grows every wave and spends it on whatever the roster has unlocked by
- * then; bosses join on a cadence; every creep gets tougher as waves go on.
+ * The horde's pressure has two parts.
+ *
+ * - Background traffic (`trickle`): a small pack leaves the nest every
+ *   `everyTicks`, spending `start + perMinute * minutes` points (minutes since
+ *   it began). Always something out there.
+ * - Incidents (the numbered, named "waves"): big surges on a timer. Incident n
+ *   gets a point budget that grows every incident and spends it on whatever
+ *   the roster has unlocked by then; bosses only come with incidents; every
+ *   creep gets tougher as incidents go on.
+ *
+ * Both scale with the players still online, x(1 + k * (n - 1)): the trickle
+ * strongly (it spreads out over everyone), incidents gently (each one lands
+ * on whichever base it finds first).
+ * "Wave" in the fields below means incident.
  */
 export interface WavesDef {
-  /** First wave comes this long after your core goes online... */
+  /** Background traffic starts this long after your core goes online... */
   firstWaveTicks: number;
-  /** ...or this long after the match starts, whichever is sooner. */
+  /** ...the first incident this long after it... */
+  firstIncidentTicks: number;
+  /** ...or each this long after the match starts (plus the gap between the two), whichever is sooner. */
   graceTicks: number;
+  trickle: { everyTicks: number; start: number; perMinute: number; maxPack: number };
+  players: { trickle: number; incident: number };
   spawnSpacingTicks: number;
   /** Each wave is shuffled and cut into packs of this many units. */
   packSize: { min: number; max: number };

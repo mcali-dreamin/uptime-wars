@@ -65,7 +65,7 @@ await run("smoke test", async ({ check, open }) => {
   // HUD: income, wave preview, the race's build bar.
   check(/^\+[\d.]+\/s$/.test(await page.textContent("#income")), "the HUD shows income");
   check(/^\d+ \/ \d+/.test(await page.textContent("#compute")), `the HUD shows compute in use / supplied (${await page.textContent("#compute")})`);
-  check((await page.textContent("#preview-title")).startsWith("Wave 1"), "the HUD previews the next wave");
+  check((await page.textContent("#preview-title")).startsWith("Incident 1"), "the HUD previews the next incident");
   check((await page.$$eval(".build-btn", (b) => b.length)) >= 4, "the build bar shows the race's buildings");
 
   // Build a spawner with a number key and a click, then select it.

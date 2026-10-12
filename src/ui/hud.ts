@@ -116,7 +116,7 @@ export class Hud {
     this.previewed = wave;
     const { units } = this.session.content;
     const preview = previewWave(this.session.content, wave);
-    this.previewTitle.textContent = `Wave ${wave} · ${preview.name}`;
+    this.previewTitle.textContent = `Incident ${wave} · ${preview.name}`;
     const parts: HTMLElement[] = preview.creeps.map((id) => {
       const span = document.createElement("span");
       const fresh = preview.fresh.includes(id) && wave > 1;
@@ -187,7 +187,7 @@ export class Hud {
       ? `NEST OFFLINE - you took down the botnet at ${uptime}.`
       : this.session.deploying
         ? "OUTAGE - your deploy agent was lost before the core came online."
-        : `OUTAGE - uptime ${uptime}, wave ${world.waves.nextIndex}, peak ${this.session.team.peakUsers} users.`;
+        : `OUTAGE - uptime ${uptime}, incident ${world.waves.nextIndex}, peak ${this.session.team.peakUsers} users.`;
     this.status.textContent = `${summary} Press R to pick a race for a new web. [${hashWorld(world)}]`;
     this.status.className = won ? "won" : "lost";
     return won ? "NEST OFFLINE" : `OUTAGE · uptime ${uptime}`;

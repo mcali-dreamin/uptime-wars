@@ -37,7 +37,7 @@ const CONTROLS: [string, string][] = [
   ["Users", "Users are your income. They arrive while your core is up and grow toward your capacity (core + Web Apps), as long as you have the compute to serve them. Every hit your core or a Web App takes drives some away (the red −N by Users); towers and racks are what you put in between. And a bigger base makes more traffic: crawlers sense you from further away the more you build, the more users you have, and the longer you're online."],
   ["Compute", "Capacity, not money. Your core, Solar Arrays and Power Plants supply it; every user and unit uses some (shown as in use / supplied). It can go over. The further over you are, the worse it gets: no new users arrive and some leave each second, and your towers, spawners and research all run slower by the same share (shown as % slow). Build generators to grow."],
   ["Co-op", "On the race picker press H. Send each friend an invite link, paste back the reply code they give you, then Start. Everyone runs the same match; you see what your allies see, and the match goes on until every player is offline. Co-op can't pause."],
-  ["Goal", "Waves never stop. Your score is uptime: how long your core stays online. Peak users is your bragging right. Or end it: the Malware Nest sits on a fortified plateau in the middle of the web, its gateways guarded by C2 Servers. Push up a ramp, take the nest offline, and you win. Every few waves the botnet rebuilds fallen C2 Servers, tougher."],
+  ["Goal", "The botnet never stops. Small packs of background traffic leave the nest every few seconds, more as the match goes on; every few minutes an incident (DDoS, Worm outbreak, Ransomware...) sends a big surge, and bosses only come with incidents. The top bar counts down to the next one and shows what it brings. In co-op the pressure grows with every player still online. Your score is uptime: how long your core stays online. Peak users is your bragging right. Or end it: the Malware Nest sits on a fortified plateau in the middle of the web, its gateways guarded by C2 Servers. Push up a ramp, take the nest offline, and you win. Every few waves the botnet rebuilds fallen C2 Servers, tougher."],
 ];
 
 export class Guide {
@@ -116,7 +116,7 @@ export class Guide {
           const detail = unitDetail(content, id);
           const from = content.waves.roster.find((r) => r.unit === id)?.fromWave ?? content.waves.bosses.fromWave;
           const bounty = content.units[id]!.bounty;
-          return entry({ ...detail, stats: [...detail.stats, `Bounty: $${bounty} per kill`, `First seen: wave ${from}`] });
+          return entry({ ...detail, stats: [...detail.stats, `Bounty: $${bounty} per kill`, `First seen: incident ${from}`] });
         });
       }
       case "terrain":

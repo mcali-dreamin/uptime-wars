@@ -1,20 +1,32 @@
 {
   "firstWaveTicks": 600,
+  "firstIncidentTicks": 2400,
+  "graceTicks": 3600,
+  "trickle": {
+    "everyTicks": 160,
+    "start": 4,
+    "perMinute": 1.6,
+    "maxPack": 8
+  },
+  "players": {
+    "trickle": 0.6,
+    "incident": 0.3
+  },
   "spawnSpacingTicks": 4,
   "packSize": {
     "min": 2,
     "max": 8
   },
   "interval": {
-    "startTicks": 1000,
-    "minTicks": 500,
-    "shrinkPerWave": 30
+    "startTicks": 2400,
+    "minTicks": 1500,
+    "shrinkPerWave": 100
   },
   "budget": {
-    "start": 90,
-    "growth": 1.16
+    "start": 110,
+    "growth": 1.36
   },
-  "hpGrowthPerWave": 0.05,
+  "hpGrowthPerWave": 0.12,
   "maxAlive": 500,
   "roster": [
     {
@@ -26,13 +38,13 @@
     {
       "unit": "worm",
       "cost": 4,
-      "fromWave": 3,
+      "fromWave": 2,
       "weight": 4
     },
     {
       "unit": "trojan",
       "cost": 14,
-      "fromWave": 6,
+      "fromWave": 3,
       "weight": 2
     },
     {
@@ -68,13 +80,13 @@
   ],
   "bosses": {
     "unit": "ransomware",
-    "fromWave": 8,
-    "every": 4
+    "fromWave": 4,
+    "every": 2
   },
   "fortress": {
     "building": "c2-server",
-    "rebuildEvery": 5,
-    "hpGrowthPerWave": 0.08
+    "rebuildEvery": 2,
+    "hpGrowthPerWave": 0.2
   },
   "names": [
     "Port scan",
@@ -89,6 +101,5 @@
     "Supply chain",
     "Botnet surge",
     "Rootkit season"
-  ],
-  "graceTicks": 3600
+  ]
 }
