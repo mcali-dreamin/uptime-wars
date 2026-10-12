@@ -47,8 +47,7 @@ npm run dev
 an angled camera. Each height level has its own look: the deep web is violet
 soil, the surface web teal moss with cyan circuit traces, and the backbone
 steel plating. Cliffs are dark rock with glowing fibre strata, and ramps are
-paved gateways with amber chevrons. Dead links are fields of black shards,
- Buildings
+paved gateways with amber chevrons. Dead links are fields of black shards. Buildings
 and units are procedural models in your team's colour; the botnet is spiky
 and red. Software rendering automatically drops shadows and bloom. `?low`
 forces that, `?hq` forces the full look, and `?2d` brings back the flat Pixi
