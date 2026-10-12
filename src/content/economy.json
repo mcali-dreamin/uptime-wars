@@ -9,6 +9,6 @@
     "perBuilding": 250,
     "perUser": 25,
     "max": 16000,
-    "pullChance": 0.55
+    "pullChance": 0.85
   }
 }
