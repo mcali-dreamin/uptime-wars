@@ -71,8 +71,8 @@ export interface BuildingDef {
 
 export type Controller = "human" | "wave-director";
 
-export type RaceLook = "scrappy" | "monolith" | "ephemeral";
-export const RACE_LOOKS: readonly RaceLook[] = ["scrappy", "monolith", "ephemeral"];
+export type RaceLook = "scrappy" | "monolith" | "ephemeral" | "garden";
+export const RACE_LOOKS: readonly RaceLook[] = ["scrappy", "monolith", "ephemeral", "garden"];
 
 export interface RaceDef {
   name: string;
@@ -109,6 +109,8 @@ export interface RaceDef {
     fork?: { costPermille: number; buildPermille: number };
     repair?: { permillePerSecond: number; quietTicks: number };
     region?: { radiusTiles: number; perNeighborPermille: number; maxPermille: number };
+    /** Users leave at this share of the usual rate when your buildings are hit (permille). */
+    loyalty?: { churnPermille: number };
   };
   modifiers: {
     spawnIntervalMultiplier: number;

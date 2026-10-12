@@ -242,5 +242,62 @@
       "cooldownTicks": 300,
       "triggerRange": 360
     }
+  },
+  "garden-wall": {
+    "name": "Wall",
+    "description": "Blocks every path, for creeps and for your own units. Towers shoot over it. Cheap, tough, and the only way to shape where the war goes.",
+    "cost": 20,
+    "buildTicks": 30,
+    "hp": 900,
+    "armor": 4,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 160,
+    "blocks": true
+  },
+  "app-review": {
+    "name": "App Review",
+    "description": "A long-range tower. Nothing gets in without approval.",
+    "cost": 110,
+    "buildTicks": 90,
+    "hp": 760,
+    "armor": 4,
+    "footprint": 1,
+    "buildable": true,
+    "attack": {
+      "damage": 20,
+      "range": 230,
+      "cooldownTicks": 20
+    },
+    "sight": 380
+  },
+  "flagship-store": {
+    "name": "Flagship Store",
+    "description": "Trains Moderators: ranged, sturdy, and happiest behind a wall. They gather at its rally point.",
+    "cost": 100,
+    "buildTicks": 90,
+    "hp": 700,
+    "armor": 3,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 300,
+    "spawn": {
+      "unit": "moderator",
+      "intervalTicks": 220,
+      "count": 1,
+      "maxAlive": 4
+    }
+  },
+  "private-cloud": {
+    "name": "Private Cloud",
+    "description": "Supplies 110 compute, inside your walls where nobody else can reach it.",
+    "cost": 130,
+    "buildTicks": 100,
+    "hp": 700,
+    "armor": 3,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 240,
+    "compute": 110
   }
 }

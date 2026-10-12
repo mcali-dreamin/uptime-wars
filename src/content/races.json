@@ -101,6 +101,39 @@
       "startingMoneyBonus": 50
     }
   },
+  "walled-garden": {
+    "name": "Walled Garden",
+    "specialty": "Builds real walls that block every path; towers and Moderators fire over them. Users are loyal: they leave 60% slower when you're hit. No network nodes: you build around your cores, nowhere else.",
+    "controller": "human",
+    "look": "garden",
+    "core": "core",
+    "builder": "deploy-agent",
+    "buildings": [
+      "garden-wall",
+      "flagship-store",
+      "app-review",
+      "private-cloud",
+      "data-pump",
+      "web-app",
+      "core"
+    ],
+    "mechanics": {
+      "loyalty": {
+        "churnPermille": 400
+      }
+    },
+    "modifiers": {
+      "spawnIntervalMultiplier": 1,
+      "costMultiplier": 1,
+      "unitHpMultiplier": 1.1,
+      "startingMoneyBonus": 0
+    },
+    "heroes": [
+      "platform-owner",
+      "compliance-officer",
+      "brand-ambassador"
+    ]
+  },
   "botnet": {
     "name": "The Botnet",
     "specialty": "Crawls the open web in waves. Hostile to everyone.",
