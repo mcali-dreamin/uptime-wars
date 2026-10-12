@@ -175,7 +175,7 @@ describe("lockstep", () => {
     const net = network(2, 3);
     runUntil(net, 150);
     // Corrupt one peer's world.
-    net.peers[1]!.world.teams[1]!.compute += 1;
+    net.peers[1]!.world.teams[1]!.money += 1;
     runUntil(net, 450);
     expect(net.peers[0]!.desyncTick ?? net.peers[1]!.desyncTick).not.toBeNull();
   });

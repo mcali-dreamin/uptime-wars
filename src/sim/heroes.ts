@@ -217,12 +217,12 @@ export function resolveCast(ctx: TickContext, team: Team, hero: Unit, abilityId:
         const dx = entity.x - at.x;
         const dy = entity.y - at.y;
         const reach = ability.radius! + entity.radius;
-        if (dx * dx + dy * dy <= reach * reach) dealDamage(ctx, hero, entity, ability.attackType!, amount);
+        if (dx * dx + dy * dy <= reach * reach) dealDamage(ctx, hero, entity, amount);
       }
       return;
     case "strike": {
       const target = targetId === null ? undefined : ctx.byId.get(targetId);
-      if (target && target.hp > 0) dealDamage(ctx, hero, target, ability.attackType!, amount);
+      if (target && target.hp > 0) dealDamage(ctx, hero, target, amount);
       return;
     }
     case "heal":

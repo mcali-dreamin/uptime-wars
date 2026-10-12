@@ -5,7 +5,7 @@
 // seats one friend.
 
 import { MAX_PLAYERS } from "../sim";
-import { HostLobby, joinHost, type NetMatch } from "../game/net/lobby";
+import { HostLobby, joinHost, type MatchRules, type NetMatch } from "../game/net/lobby";
 import { answerOffer, createOffer } from "../game/net/rtc";
 import { fetchOffer, isCode, postAnswer, publishOffer, type HostedInvite } from "../game/net/signal";
 import type { Session } from "../game/session";
@@ -96,7 +96,12 @@ export class CoopLobby {
     const raceName = (id: string | null) => (id ? this.session.content.races[id]!.name : "joining…");
     if (!document.getElementById("coop-invite")) {
       this.body.innerHTML = `
-        <h2>Host co-op</h2>
+        <h2>Play with friends</h2>
+        <div class="coop-mode" role="radiogroup">
+          <label><input type="radio" name="coop-mode" value="coop" checked> <b>Co-op</b> · together against the horde</label>
+          <label><input type="radio" name="coop-mode" value="ffa"> <b>Free-for-all</b> · last core standing</label>
+          <label id="coop-horde-row" hidden><input type="checkbox" id="coop-horde" checked> The horde plays too (everyone's enemy)</label>
+        </div>
         <p>Send a friend this link. Each link seats one friend (up to ${MAX_PLAYERS - 1}).</p>
         <div class="coop-row"><input id="coop-invite" readonly><button id="coop-copy">Copy</button></div>
         <div id="coop-manual" hidden>
@@ -108,6 +113,9 @@ export class CoopLobby {
         <button id="coop-start" class="coop-primary">Start match</button>`;
       $("coop-copy").addEventListener("click", () => copy($("coop-invite") as HTMLInputElement));
       $("coop-start").addEventListener("click", () => this.startHost());
+      for (const radio of this.body.querySelectorAll<HTMLInputElement>('input[name="coop-mode"]')) {
+        radio.addEventListener("change", () => ($("coop-horde-row").hidden = this.rules().mode !== "ffa"));
+      }
     }
     const players = [`You (${raceName(this.session.raceId)})`, ...lobby.guests.map((g, i) => `Player ${i + 2} (${raceName(g.race)})`)];
     $("coop-players").replaceChildren(...players.map((text) => Object.assign(document.createElement("li"), { textContent: text })));
@@ -120,10 +128,17 @@ export class CoopLobby {
     if (!lobby || lobby.ready.length === 0) return;
     this.hosted?.cancel();
     this.hosted = null;
-    const match = lobby.start(this.session.raceId, (Math.random() * 2 ** 31) | 0, this.session.heroFor(this.session.raceId));
+    const match = lobby.start(this.session.raceId, (Math.random() * 2 ** 31) | 0, this.session.heroFor(this.session.raceId), this.rules());
     lobby.onLeave = (team) => this.onLeave(team);
     this.hide();
     this.onStart(match);
+  }
+
+  /** What the host picked: co-op, or FFA with or without the horde. */
+  private rules(): MatchRules {
+    const picked = this.body.querySelector<HTMLInputElement>('input[name="coop-mode"]:checked')?.value;
+    const horde = (document.getElementById("coop-horde") as HTMLInputElement | null)?.checked ?? true;
+    return picked === "ffa" ? { mode: "ffa", horde } : { mode: "coop", horde: true };
   }
 
   // --- guest ------------------------------------------------------------
@@ -135,7 +150,7 @@ export class CoopLobby {
       .map((id) => `<option value="${id}"${id === this.session.raceId ? " selected" : ""}>${this.session.content.races[id]!.name}</option>`)
       .join("");
     this.body.innerHTML = `
-      <h2>Join co-op</h2>
+      <h2>Join a match</h2>
       <p>Your race: <select id="coop-race">${races}</select></p>
       <p id="coop-status">Connecting to your host…</p>
       <div class="coop-row" id="coop-answer-row" hidden><input id="coop-answer" readonly><button id="coop-copy">Copy</button></div>`;

@@ -55,7 +55,7 @@ export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
     if (unit.attackCooldown <= 0) {
       const team = world.teams[unit.team]!;
       const damage = def.damage * multiplier(ctx.content, team, "unitDamage") * buffMultiplier(team, world.tick);
-      dealDamage(ctx, unit, target, def.attackType, damage);
+      dealDamage(ctx, unit, target, damage);
       unit.attackCooldown = def.cooldownTicks;
     }
     return true;

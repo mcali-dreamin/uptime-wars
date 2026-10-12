@@ -460,7 +460,12 @@ renderer.app.ticker.add((ticker) => {
       for (const event of world.events) {
         if (event.type === "failover" && event.team === session.team.id) renderer.showBanner("Core lost · failover");
         if (event.type === "offline") {
-          renderer.showBanner(event.team === session.local ? "You're offline · your allies play on" : `Player ${event.team + 1} is offline`);
+          const ffa = session.world.mode === "ffa";
+          renderer.showBanner(
+            event.team === session.local
+              ? ffa ? "You're offline · spectating" : "You're offline · your allies play on"
+              : ffa ? `Player ${event.team + 1} is out` : `Player ${event.team + 1} is offline`,
+          );
         }
         if (event.type === "hero-level" && event.team === session.local) renderer.showBanner(`Level ${event.level} · skill point ready (Q)`);
         if (event.type === "hero-down" && event.team === session.local) renderer.showBanner("Your hero is down");

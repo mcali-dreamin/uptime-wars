@@ -21,11 +21,11 @@ import { foundCore, spawnUnit } from "./entities";
 import { fortify } from "./fortress";
 import { footprintCenter } from "./map";
 import { teamCores } from "./placement";
-import { hordeTeam, humanTeams } from "./teams";
+import { hordeTeam, humanTeams, type MatchMode } from "./teams";
 import { tickFunctions } from "./functions";
 import { tickSpawners } from "./spawners";
 import { MAX_PLAYERS, generateTerrain } from "./terrain";
-import { BASE_INCOME, STARTING_COMPUTE } from "./tuning";
+import { BASE_INCOME, STARTING_MONEY } from "./tuning";
 import type { TeamId, World } from "./types";
 import { tickUnits } from "./units";
 import { tickResearch } from "./upgrades";
@@ -44,11 +44,14 @@ export interface MatchSetup {
   heroes?: (string | undefined)[];
   /** Skip the builder phase: found every core at its start tile. */
   startWithCore?: boolean;
+  /** co-op (default) or ffa. FFA needs two or more players; the horde is optional. */
+  mode?: MatchMode;
 }
 
 export function createWorld(content: Content, setup: MatchSetup): World {
   const terrain = generateTerrain(setup.seed);
   const world: World = {
+    mode: setup.mode ?? "coop",
     tick: 0,
     seed: setup.seed,
     rngState: setup.seed | 0,
@@ -72,6 +75,8 @@ export function createWorld(content: Content, setup: MatchSetup): World {
   const humans = humanTeams(world);
   if (humans.length < 1 || humans.length > MAX_PLAYERS) throw new Error(`A match needs 1 to ${MAX_PLAYERS} players`);
   if (humans.some((team, i) => team.id !== i)) throw new Error("Human teams come first");
+  if (world.mode === "ffa" && humans.length < 2) throw new Error("Free-for-all needs at least 2 players");
+  if (world.mode === "coop" && !hordeTeam(world)) throw new Error("Co-op needs the horde");
   for (const team of world.teams) {
     const { col, row } = team.controller === "human" ? terrain.starts[team.id]! : terrain.nest;
     const race = content.races[team.raceId]!;
@@ -97,12 +102,13 @@ function makeTeam(content: Content, id: TeamId, raceId: string, heroId: string |
     id,
     raceId,
     controller: race.controller,
-    compute: STARTING_COMPUTE + race.modifiers.startingComputeBonus,
+    money: STARTING_MONEY + race.modifiers.startingMoneyBonus,
     incomeTimer: BASE_INCOME.intervalTicks,
     coreId: -1,
     builderId: -1,
     rally: null,
     users: 0,
+    overload: 0,
     peakUsers: 0,
     revenueCarry: 0,
     churnCarry: 0,
@@ -173,6 +179,13 @@ function checkOutcome(ctx: TickContext): void {
   }
   const humans = humanTeams(world);
   const horde = hordeTeam(world);
+  if (world.mode === "ffa") {
+    // Last core standing. The nest falling just removes one enemy.
+    const up = humans.filter((team) => team.downTick === null);
+    if (up.length === 1) world.outcome = { winners: [up[0]!.id], reason: "last-standing", tick: world.tick };
+    else if (up.length === 0) world.outcome = { winners: horde && horde.downTick === null ? [horde.id] : [], reason: "all-offline", tick: world.tick };
+    return;
+  }
   if (horde && horde.downTick !== null) {
     world.outcome = { winners: humans.map((team) => team.id), reason: "nest-offline", tick: world.tick };
   } else if (humans.every((team) => team.downTick !== null)) {

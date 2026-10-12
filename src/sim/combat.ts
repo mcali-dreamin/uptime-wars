@@ -3,7 +3,6 @@
 import { creditKill } from "./heroes";
 import { hostile } from "./teams";
 import { GRID_CELL, GRID_STRIDE, type TickContext } from "./context";
-import type { Content } from "./content";
 import { loseUsers } from "./economy";
 import { TILE } from "./map";
 import { hasLineOfSight } from "./nav";
@@ -81,16 +80,15 @@ export function dealDamage(
   ctx: TickContext,
   attacker: Entity,
   target: Entity,
-  attackType: keyof Content["damage"],
   baseDamage: number,
 ): void {
   const { world, content } = ctx;
-  const multiplier = content.damage[attackType][target.armorType];
+  // One kind of damage: high ground hits harder, armor takes a flat amount off.
   const downhill = heightOf(ctx, attacker) > heightOf(ctx, target) ? HIGH_GROUND_DAMAGE : 1;
-  const damage = Math.max(1, Math.round(baseDamage * multiplier * downhill) - target.armor);
+  const damage = Math.max(1, Math.round(baseDamage * downhill) - target.armor);
   const wasAlive = target.hp > 0;
   target.hp -= damage;
-  if (target.kind === "building") loseUsers(ctx, world.teams[target.team]!, damage);
+  if (target.kind === "building") loseUsers(ctx, world.teams[target.team]!, damage, target.defId);
   world.events.push({
     type: "shot",
     from: attacker.id,
@@ -104,7 +102,7 @@ export function dealDamage(
   if (wasAlive && target.hp <= 0) {
     world.events.push({ type: "death", id: target.id, x: target.x, y: target.y, team: target.team });
     if (target.kind === "unit") {
-      world.teams[attacker.team]!.compute += content.units[target.defId]!.bounty;
+      world.teams[attacker.team]!.money += content.units[target.defId]!.bounty;
       creditKill(ctx, target);
     }
   }
@@ -119,7 +117,7 @@ export function tickBuildingAttacks(ctx: TickContext): void {
     const range = attack.range * multiplier(content, world.teams[building.team]!, "towerRange");
     const target = nearestEnemy(ctx, building, range, (entity) => entity.kind === "unit");
     if (!target) continue;
-    dealDamage(ctx, building, target, attack.attackType, attack.damage);
+    dealDamage(ctx, building, target, attack.damage);
     building.attackCooldown = attack.cooldownTicks;
   }
 }

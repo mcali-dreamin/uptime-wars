@@ -1,6 +1,6 @@
 // Top bar numbers, the status line, and the hint line over the map.
 
-import { TICK_RATE, hashWorld, incomeRate, isCore, previewWave, userCapacity } from "../sim";
+import { TICK_RATE, computeBalance, hashWorld, incomeRate, isCore, previewWave, userCapacity } from "../sim";
 import { groundOrderLabel, leftClickOrders, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { $ } from "./dom";
@@ -15,7 +15,9 @@ const CHURN_SHOW_MS = 2500;
 
 export class Hud {
   private readonly uptime = $("uptime");
+  private readonly money = $("money");
   private readonly compute = $("compute");
+  private readonly computeStat = $("compute-stat");
   private readonly users = $("users");
   private readonly income = $("income");
   private readonly churn = $("churn");
@@ -39,9 +41,10 @@ export class Hud {
     const { world } = this.session;
     const team = this.session.team;
     const core = this.session.core();
-    this.compute.textContent = String(team.compute);
+    this.money.textContent = String(team.money);
     this.users.textContent = team.coreId === -1 ? "0" : `${team.users} / ${userCapacity(world, this.session.content, team)}`;
     this.updateIncome();
+    this.updateCompute();
     const cores = world.entities.filter((e) => e.hp > 0 && isCore(this.session.content, team, e)).length;
     this.core.textContent = core
       ? `${Math.max(0, Math.ceil(core.hp))} / ${core.maxHp}${cores > 1 ? ` · ${cores} up` : ""}`
@@ -59,7 +62,7 @@ export class Hud {
         : waiting.length > 0
           ? `Waiting for ${waiting.map((team) => `Player ${team + 1}`).join(", ")}…`
           : this.session.net
-            ? `Co-op · you're Player ${this.session.local + 1}`
+            ? `${world.mode === "ffa" ? "Free-for-all" : "Co-op"} · you're Player ${this.session.local + 1}`
             : "";
       this.status.className = "";
     }
@@ -77,7 +80,7 @@ export class Hud {
     const total = rate.base + rate.buildings + rate.users;
     this.income.textContent = `+${total.toFixed(1)}/s`;
     const share = total > 0 ? Math.round((100 * rate.users) / total) : 0;
-    this.income.title = `Users ${rate.users.toFixed(1)}/s (${share}%) · buildings ${rate.buildings.toFixed(1)}/s · base ${rate.base.toFixed(1)}/s`;
+    this.income.title = `$ from users ${rate.users.toFixed(1)}/s (${share}%) · base ${rate.base.toFixed(1)}/s`;
     const now = performance.now();
     if (team.users < this.lastUsers) {
       this.lost = now - this.lostAt < CHURN_SHOW_MS ? this.lost + (this.lastUsers - team.users) : this.lastUsers - team.users;
@@ -87,6 +90,24 @@ export class Hud {
     const showing = now - this.lostAt < CHURN_SHOW_MS && this.lost > 0;
     this.churn.textContent = showing ? `−${this.lost}` : "";
     this.users.classList.toggle("churning", showing);
+  }
+
+  /** Compute in use / supplied; red, with how much slower everything runs, when over. */
+  private updateCompute(): void {
+    const { world, content } = this.session;
+    const team = this.session.team;
+    if (team.coreId === -1) {
+      this.compute.textContent = "-";
+      this.computeStat.classList.remove("overloaded");
+      return;
+    }
+    const { supply, demand } = computeBalance(world, content, team);
+    const over = team.overload > 0;
+    this.compute.textContent = over ? `${demand} / ${supply} · ${Math.round(team.overload / 10)}% slow` : `${demand} / ${supply}`;
+    this.computeStat.classList.toggle("overloaded", over);
+    this.computeStat.title =
+      `In use / supplied. Each user uses ${content.economy.compute.perUser}, each unit about ${content.economy.compute.perUnit}. ` +
+      "Over capacity, users stop arriving and start leaving, and your towers, spawners and research slow down, the further over the worse. Build generators (or a Data Pump) for more.";
   }
 
   /** What the next wave brings: its name, its creeps (new ones marked), and any boss. */
@@ -151,8 +172,19 @@ export class Hud {
     const { world } = this.session;
     const outcome = world.outcome!;
     const won = outcome.winners.includes(this.session.local);
-    // Co-op: your uptime ends when you go offline, even if your allies played on.
+    // Your uptime ends when you go offline, even if others played on.
     const uptime = clock((this.session.team.downTick ?? outcome.tick) / TICK_RATE);
+    if (world.mode === "ffa") {
+      const winner = outcome.reason === "last-standing" ? outcome.winners[0]! : null;
+      const summary = won
+        ? `LAST CORE STANDING - you outlasted everyone. Uptime ${uptime}.`
+        : winner !== null
+          ? `OUTAGE - Player ${winner + 1} is the last core standing. You lasted ${uptime}.`
+          : `OUTAGE - the horde took everyone down. You lasted ${uptime}.`;
+      this.status.textContent = `${summary} Press R to pick a race for a new web. [${hashWorld(world)}]`;
+      this.status.className = won ? "won" : "lost";
+      return won ? "VICTORY · last core standing" : winner !== null ? `DEFEAT · Player ${winner + 1} wins` : "OUTAGE · the horde wins";
+    }
     const summary = won
       ? `NEST OFFLINE - you took down the botnet at ${uptime}.`
       : this.session.deploying

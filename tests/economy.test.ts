@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
+  computeBalance,
   createWorld,
   queueCommand,
   incomeRate,
+  trafficRadius,
   levelOf,
   multiplier,
   nextLevel,
   userCapacity,
   step,
 } from "../src/sim";
+import { makeContext } from "../src/sim/context";
+import { dealDamage } from "../src/sim/combat";
 import { content, SETUP, firstSpot, planBuildOrder } from "./fixtures";
 
 describe("users", () => {
@@ -47,13 +51,14 @@ describe("users", () => {
     }
     // 20 seconds of econ.startingUsers users.
     const expected = Math.floor(20 * econ.startingUsers * econ.revenuePerUserPerSecond);
-    expect(withUsers.teams[0]!.compute - without.teams[0]!.compute).toBe(expected);
+    expect(withUsers.teams[0]!.money - without.teams[0]!.money).toBe(expected);
   });
 
   it("a Web App raises capacity", () => {
     const world = createWorld(content, SETUP);
-    world.teams[0]!.compute = 1000;
-    queueCommand(world, planBuildOrder(content, SETUP, [[0, "web-app"]])[0]!);
+    world.teams[0]!.money = 1000;
+    // Room for the users needs compute to serve them: a Web App and a generator.
+    for (const command of planBuildOrder(content, SETUP, [[0, "web-app"], [0, "solar-array"]])) queueCommand(world, command);
     for (let i = 0; i < 20 * 150; i++) step(world, content);
     expect(world.teams[0]!.users).toBe(coreCap + content.buildings["web-app"]!.userCapacity!);
   });
@@ -84,33 +89,8 @@ describe("users", () => {
   });
 });
 
-describe("users are the economy", () => {
-  /** Place each building as soon as it's affordable; return compute earned (banked + spent) after `seconds`. */
-  function earned(list: string[], seconds: number): number {
-    const world = createWorld(content, SETUP);
-    const spots = planBuildOrder(content, SETUP, list.map((b) => [0, b] as [number, string]));
-    const start = world.teams[0]!.compute;
-    let next = 0;
-    let spent = 0;
-    while (world.tick < seconds * 20) {
-      const cost = next < spots.length ? content.buildings[spots[next]!.building]!.cost : Infinity;
-      if (world.teams[0]!.compute >= cost) {
-        queueCommand(world, { ...spots[next]!, tick: world.tick });
-        spent += cost;
-        next += 1;
-      }
-      step(world, content);
-    }
-    return world.teams[0]!.compute + spent - start;
-  }
+describe("users are the $", () => {
 
-  it("a base that grows users out-earns one that builds generators", () => {
-    // Same defence, then the same number of economy buildings: Web Apps or Solar Arrays.
-    const opening = ["server-rack", "server-rack", "firewall"];
-    const users = earned([...opening, "web-app", "web-app", "web-app"], 300);
-    const generators = earned([...opening, "solar-array", "solar-array", "solar-array"], 300);
-    expect(users).toBeGreaterThan(generators * 1.4);
-  });
 
   it("incomeRate matches what actually lands, and splits it by source", () => {
     const frozen: typeof content = structuredClone(content);
@@ -120,11 +100,11 @@ describe("users are the economy", () => {
     const rate = incomeRate(world, frozen, world.teams[0]!);
     expect(rate.users).toBeCloseTo(30 * frozen.economy.revenuePerUserPerSecond);
     expect(rate.buildings).toBe(0);
-    const before = world.teams[0]!.compute;
+    const before = world.teams[0]!.money;
     for (let i = 0; i < 20 * 20; i++) step(world, frozen);
     const total = rate.base + rate.buildings + rate.users;
-    expect(world.teams[0]!.compute - before).toBeGreaterThanOrEqual(Math.floor(total * 20) - 1);
-    expect(world.teams[0]!.compute - before).toBeLessThanOrEqual(Math.ceil(total * 20) + 1);
+    expect(world.teams[0]!.money - before).toBeGreaterThanOrEqual(Math.floor(total * 20) - 1);
+    expect(world.teams[0]!.money - before).toBeLessThanOrEqual(Math.ceil(total * 20) + 1);
   });
 
   it("an offline team earns nothing from users", () => {
@@ -132,6 +112,95 @@ describe("users are the economy", () => {
     world.teams[0]!.users = 30;
     world.teams[0]!.downTick = 1;
     expect(incomeRate(world, content, world.teams[0]!).users).toBe(0);
+  });
+});
+
+describe("compute", () => {
+  const per = content.economy.compute;
+
+  it("buildings supply it; users and units use it", () => {
+    const world = createWorld(content, SETUP);
+    const team = world.teams[0]!;
+    team.users = 30;
+    const { supply, demand } = computeBalance(world, content, team);
+    expect(supply).toBe(content.buildings.core!.compute);
+    const units = world.entities.filter((e) => e.kind === "unit" && e.team === 0 && e.mode !== "builder").length;
+    expect(demand).toBe(30 * per.perUser + units * per.perUnit);
+  });
+
+  it("within capacity, nothing is wrong", () => {
+    const world = createWorld(content, SETUP);
+    for (let i = 0; i < 20 * 30; i++) step(world, content);
+    expect(world.teams[0]!.overload).toBe(0);
+  });
+
+  it("over capacity, users stop arriving and leave, the further over the faster", () => {
+    const supply = content.buildings.core!.compute!;
+    // Raise user capacity so only compute is the limit.
+    const slight = structuredClone(content);
+    slight.buildings.core!.userCapacity = 1000;
+    const run = (users: number) => {
+      const w = createWorld(slight, SETUP);
+      w.waves.nextWaveTick = 1e9;
+      w.teams[0]!.users = users;
+      for (let i = 0; i < 20 * 10 + 1; i++) step(w, slight);
+      return { lost: users - w.teams[0]!.users, overload: w.teams[0]!.overload };
+    };
+    const little = run(supply + 20);
+    const lots = run(supply * 3);
+    expect(little.overload).toBeGreaterThan(0);
+    expect(lots.overload).toBeGreaterThan(little.overload);
+    expect(little.lost).toBeGreaterThan(0);
+    expect(lots.lost).toBeGreaterThan(little.lost);
+  });
+
+  it("overload slows timers by the same share", () => {
+    const spawned = (overload: number) => {
+      const world = createWorld(content, SETUP);
+      world.waves.nextWaveTick = 1e9;
+      queueCommand(world, planBuildOrder(content, SETUP, [[0, "server-rack"]])[0]!);
+      let count = 0;
+      const seen = new Set<number>();
+      for (let i = 0; i < 20 * 60; i++) {
+        world.teams[0]!.overload = overload;
+        step(world, content);
+        for (const e of world.entities) if (e.kind === "unit" && e.spawnerId >= 0 && !seen.has(e.id)) (seen.add(e.id), (count += 1));
+        // Keep the rack's units from capping it.
+        for (const e of world.entities) if (e.kind === "unit" && e.spawnerId >= 0) e.hp = 0;
+      }
+      return count;
+    };
+    const full = spawned(0);
+    const half = spawned(500);
+    expect(half).toBeLessThan(full * 0.65);
+    expect(half).toBeGreaterThan(full * 0.35);
+  });
+});
+
+describe("churn", () => {
+  it("only damage to buildings that serve users drives them away", () => {
+    const frozen: typeof content = structuredClone(content);
+    frozen.economy = { ...content.economy, growthPerSecond: 0, minArrivalsPerSecond: 0 };
+    const world = createWorld(frozen, SETUP);
+    world.teams[0]!.users = 40;
+    queueCommand(world, firstSpot("firewall"));
+    while (!world.entities.some((e) => e.defId === "firewall" && e.kind === "building" && e.buildRemaining === 0)) step(world, frozen);
+    const ctx = makeContext(world, frozen);
+    const wall = world.entities.find((e) => e.defId === "firewall")!;
+    const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
+    const creep = { ...core, id: -9, team: 1 } as typeof core;
+    dealDamage(ctx, creep, wall, 120);
+    expect(world.teams[0]!.users).toBe(40);
+    dealDamage(ctx, creep, core, 240);
+    expect(world.teams[0]!.users).toBeLessThan(40);
+  });
+
+  it("a bigger base is sensed from further away", () => {
+    const world = createWorld(content, SETUP);
+    const team = world.teams[0]!;
+    const small = trafficRadius(world, content, team);
+    team.users += 200;
+    expect(trafficRadius(world, content, team)).toBeGreaterThan(small);
   });
 });
 
@@ -144,7 +213,7 @@ describe("upgrades", () => {
 
   it("research costs compute, takes time, then raises the level", () => {
     const world = createWorld(content, SETUP);
-    world.teams[0]!.compute = 1000;
+    world.teams[0]!.money = 1000;
     const def = content.upgrades["exploit-kits"]!;
     expect(research(world, "exploit-kits")).toEqual([]);
     expect(world.teams[0]!.research).toMatchObject({ upgrade: "exploit-kits" });
@@ -168,14 +237,14 @@ describe("upgrades", () => {
 
   it("one research at a time, no buying past max, and it must be affordable", () => {
     const world = createWorld(content, SETUP);
-    world.teams[0]!.compute = 5000;
+    world.teams[0]!.money = 5000;
     expect(research(world, "anycast")).toEqual([]);
     expect(research(world, "autoscaling")).toEqual(["already researching"]);
     world.teams[0]!.research = null;
     world.teams[0]!.upgrades["anycast"] = content.upgrades.anycast!.maxLevel;
     expect(research(world, "anycast")).toEqual(["fully researched"]);
-    world.teams[0]!.compute = 0;
-    expect(research(world, "premium-tier")).toEqual(["not enough compute"]);
+    world.teams[0]!.money = 0;
+    expect(research(world, "premium-tier")).toEqual(["not enough $"]);
   });
 
   it("upgrades change unit HP, spawn speed, and user capacity", () => {

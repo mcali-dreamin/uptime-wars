@@ -1,5 +1,5 @@
 // Serverless functions: buildings with no standing army. An invocation costs
-// compute and spins up a few short-lived units at the function, which head
+// $ and spins up a few short-lived units at the function, which head
 // for its rally point (or hold there) and go cold when their time is up.
 // Functions fire on their own when an enemy comes within their trigger range
 // (they're event-driven), or when the player invokes them.
@@ -18,7 +18,7 @@ export function invokeBlocker(ctx: TickContext, building: Building): string | nu
   if (building.spawnTimer > 0) return "cooling down";
   const team = ctx.world.teams[building.team]!;
   if (team.downTick !== null) return "offline";
-  if (team.compute < def.cost) return "not enough compute";
+  if (team.money < def.cost) return "not enough $";
   return null;
 }
 
@@ -27,7 +27,7 @@ export function invoke(ctx: TickContext, building: Building, auto: boolean): Uni
   const { world, content } = ctx;
   const def = content.buildings[building.defId]!.invoke!;
   const team = world.teams[building.team]!;
-  team.compute -= def.cost;
+  team.money -= def.cost;
   building.spawnTimer = def.cooldownTicks;
   const units: Unit[] = [];
   for (let i = 0; i < def.count; i += 1) {

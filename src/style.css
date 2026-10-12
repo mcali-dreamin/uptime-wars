@@ -68,6 +68,15 @@ body {
   cursor: help;
 }
 
+#compute-stat.overloaded #compute {
+  color: #f87171;
+  font-weight: bold;
+}
+
+#compute-stat {
+  cursor: help;
+}
+
 #churn {
   color: #f87171;
   font-size: 0.75rem;
@@ -662,4 +671,19 @@ body {
   height: 3px;
   width: calc(var(--progress, 0) * 100%);
   background: var(--accent);
+}
+
+.coop-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.coop-mode label {
+  cursor: pointer;
+}
+
+.coop-mode label[hidden] {
+  display: none;
 }

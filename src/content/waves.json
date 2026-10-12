@@ -6,12 +6,12 @@
     "max": 8
   },
   "interval": {
-    "startTicks": 1200,
+    "startTicks": 1000,
     "minTicks": 500,
-    "shrinkPerWave": 35
+    "shrinkPerWave": 30
   },
   "budget": {
-    "start": 40,
+    "start": 90,
     "growth": 1.16
   },
   "hpGrowthPerWave": 0.05,

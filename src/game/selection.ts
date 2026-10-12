@@ -200,5 +200,5 @@ function nearbyWell(session: Session, col: number, row: number): { col: number; 
 }
 
 export function affordable(session: Session, building: string): boolean {
-  return session.team.compute >= buildCost(session.content, session.team.raceId, building);
+  return session.team.money >= buildCost(session.content, session.team.raceId, building);
 }

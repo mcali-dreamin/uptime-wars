@@ -63,8 +63,8 @@ export class InfoPanel {
       if (fn && entity.buildRemaining <= 0) {
         lines.push(entity.spawnTimer > 0 ? `Cooling down · ${Math.ceil(entity.spawnTimer / TICK_RATE)}s` : "Ready · runs when a creep comes near");
         this.invokeButton.hidden = false;
-        this.invokeButton.textContent = `Invoke now · ${fn.cost} (V)`;
-        (this.invokeButton as HTMLButtonElement).disabled = entity.spawnTimer > 0 || this.session.team.compute < fn.cost;
+        this.invokeButton.textContent = `Invoke now · $${fn.cost} (V)`;
+        (this.invokeButton as HTMLButtonElement).disabled = entity.spawnTimer > 0 || this.session.team.money < fn.cost;
       }
       this.showAction(selection);
       return this.show({ title: card.title, lines });

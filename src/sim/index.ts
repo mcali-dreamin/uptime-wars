@@ -5,13 +5,13 @@ export * from "./terrain";
 export { flowField, nextStep, hasClearPath, hasLineOfSight, UNREACHABLE } from "./nav";
 export { canSee, heightOf } from "./combat";
 export { createWorld, step } from "./world";
-export { hostile, hordeTeam, humanTeams } from "./teams";
+export { hostile, hordeTeam, humanTeams, type MatchMode } from "./teams";
 export type { MatchSetup } from "./world";
 export { queueCommand } from "./commands";
 export { canPlace, canFound, buildCost, isOccupied, isCore, inNetwork, networkProviders, teamCores } from "./placement";
 export { planWave, previewWave, waveInterval, type WavePreview } from "./waves";
-export { STARTING_COMPUTE, BASE_INCOME } from "./tuning";
-export { incomeRate, trafficRadius, userCapacity } from "./economy";
+export { STARTING_MONEY, BASE_INCOME } from "./tuning";
+export { computeBalance, incomeRate, trafficRadius, userCapacity } from "./economy";
 export { canResearch, levelOf, multiplier, nextLevel } from "./upgrades";
 export { hashWorld, hashTerrain } from "./hash";
 
