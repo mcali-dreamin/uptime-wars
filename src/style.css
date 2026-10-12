@@ -185,7 +185,8 @@ body {
   font-size: 0.85rem;
 }
 
-#info-action {
+#info-action,
+#info-invoke {
   pointer-events: auto;
   margin-top: 0.4rem;
   padding: 0.25rem 0.6rem;
@@ -197,11 +198,13 @@ body {
   cursor: pointer;
 }
 
+#info-invoke:hover,
 #info-action:hover,
 #info-action.armed {
   border-color: var(--accent);
 }
 
+#info-invoke[hidden],
 #info-action[hidden] {
   display: none;
 }

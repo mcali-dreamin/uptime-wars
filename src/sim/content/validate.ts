@@ -6,6 +6,8 @@ export function validateContent(content: Content): void {
 
   for (const [id, building] of Object.entries(content.buildings)) {
     if (building.onWell && building.footprint !== 1) errors.push(`building ${id} goes on a well, so it must be 1x1`);
+    if (building.invoke && !content.units[building.invoke.unit]) errors.push(`building ${id} invokes unknown unit ${building.invoke.unit}`);
+    if (building.invoke && building.spawn) errors.push(`building ${id} can't both spawn and invoke`);
     if (building.spawn && !content.units[building.spawn.unit]) {
       errors.push(`building ${id} spawns unknown unit ${building.spawn.unit}`);
     }

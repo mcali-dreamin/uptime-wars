@@ -83,7 +83,7 @@ export class World3D implements WorldView {
   private readonly ghost: THREE.Mesh;
   private readonly flag = new THREE.Group();
   private readonly rallyLine: THREE.Line;
-  private readonly deaths: Extract<SimEvent, { type: "death" }>[] = [];
+  private readonly deaths: Extract<SimEvent, { type: "death" | "expired" }>[] = [];
   /** Ability casts and hero level-ups, for their effects. */
   private readonly casts: Extract<SimEvent, { type: "cast" }>[] = [];
   /** Expanding shockwave rings from casts: where, how big, how old. */
@@ -175,7 +175,7 @@ export class World3D implements WorldView {
   }
 
   event(event: SimEvent): void {
-    if (event.type === "death") this.deaths.push(event);
+    if (event.type === "death" || event.type === "expired") this.deaths.push(event);
     if (event.type === "cast") this.casts.push(event);
   }
 
@@ -281,6 +281,9 @@ export class World3D implements WorldView {
   private syncEntities(frame: Frame, t: number, dt: number): void {
     const { world } = frame;
     const alive = new Set<number>();
+    // Functions with units running are warm; the rest are drawn cold.
+    const running = new Set<number>();
+    for (const e of world.entities) if (e.kind === "unit" && e.expiresAt !== undefined && e.hp > 0) running.add(e.spawnerId);
     this.bars.begin(this.camera);
     for (const entity of world.entities) {
       alive.add(entity.id);
@@ -319,8 +322,9 @@ export class World3D implements WorldView {
       }
 
       // Buildings: a hologram that rises while it's being deployed.
+      const cold = frame.content.buildings[entity.defId]?.invoke !== undefined && !running.has(entity.id);
       const building = entity.buildRemaining > 0;
-      if (building !== s.holo) this.setHologram(s, building);
+      if ((building || cold) !== s.holo) this.setHologram(s, building || cold);
       s.object.scale.y = building ? Math.max(0.08, entity.hp / entity.maxHp) : 1;
       const top = s.top ?? BUILDING_TOP[entity.defId] ?? 50;
       const selected = frame.selectedId === entity.id;
@@ -379,6 +383,11 @@ export class World3D implements WorldView {
     for (const death of this.deaths) {
       if (!frame.fog.isVisible(death.x, death.y)) continue;
       const s = this.shown.get(death.id);
+      if (death.type === "expired") {
+        // Gone cold: a quiet fizzle, not an explosion.
+        this.particles.burst(death.x, this.terrain3d.floorAt(death.x, death.y) + 12, death.y, 8, teamColor(frame.world, death.team), 0.5);
+        continue;
+      }
       const floor = this.terrain3d.floorAt(death.x, death.y);
       const color = teamColor(frame.world, death.team);
       if (s?.kind === "building") {
@@ -458,7 +467,7 @@ export class World3D implements WorldView {
           if (def.attack) this.thinRings.add(at.x, ground(at.x, at.y), at.y, def.attack.range + selected.radius, HIGHLIGHT, 0.35);
           const team = world.teams[selected.team]!;
           const core = isCore(content, team, selected);
-          if (core || def.spawn) {
+          if (core || def.spawn || def.invoke) {
             const own = core ? team.rally : selected.rally;
             const rally = own ?? team.rally;
             if (rally) this.showRally(at, rally, own ? 1 : 0.5);

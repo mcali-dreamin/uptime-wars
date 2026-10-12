@@ -22,6 +22,7 @@ import { fortify } from "./fortress";
 import { footprintCenter } from "./map";
 import { teamCores } from "./placement";
 import { hordeTeam, humanTeams, type MatchMode } from "./teams";
+import { tickFunctions } from "./functions";
 import { tickSpawners } from "./spawners";
 import { MAX_PLAYERS, generateTerrain } from "./terrain";
 import { BASE_INCOME, STARTING_MONEY } from "./tuning";
@@ -133,6 +134,7 @@ export function step(world: World, content: Content): void {
   tickHeroes(ctx);
   tickWaveDirector(ctx);
   tickSpawners(ctx);
+  tickFunctions(ctx);
   tickBuildingAttacks(ctx);
   tickUnits(ctx);
   // Last, so a building that finishes this tick starts working next tick.

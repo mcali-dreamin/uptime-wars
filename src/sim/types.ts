@@ -111,6 +111,8 @@ export interface Unit extends EntityBase {
   order: "move" | "attack" | null;
   /** Ordered by its player at least once: its spawner's rally no longer moves it. */
   commanded: boolean;
+  /** Serverless units go cold at this tick (absent: they don't). */
+  expiresAt?: number;
 }
 
 export interface Building extends EntityBase {
@@ -218,7 +220,15 @@ export interface CastCommand {
   targetId: number | null;
 }
 
-export type Command = BuildCommand | MoveCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | AttackCommand | CastCommand | LearnCommand;
+/** Invoke a serverless function now (if it's ready and you can pay). */
+export interface InvokeCommand {
+  type: "invoke";
+  tick: number;
+  team: TeamId;
+  buildingId: number;
+}
+
+export type Command = BuildCommand | MoveCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | AttackCommand | CastCommand | LearnCommand | InvokeCommand;
 
 export interface WaveSpawn {
   tick: number;
@@ -254,6 +264,10 @@ export interface Outcome {
 export type SimEvent =
   | { type: "shot"; from: number; to: number; x1: number; y1: number; x2: number; y2: number; team: TeamId }
   | { type: "death"; id: number; x: number; y: number; team: TeamId }
+  /** A function ran: `units` spun up. `auto`: an enemy triggered it. */
+  | { type: "invoked"; buildingId: number; team: TeamId; units: number; auto: boolean }
+  /** A short-lived unit's time ran out (not a kill: no bounty). */
+  | { type: "expired"; id: number; x: number; y: number; team: TeamId }
   | { type: "wave"; wave: number; name: string; packs: number; units: number; boss: boolean }
   /** The botnet put fallen C2 Servers back up. */
   | { type: "fortified"; wave: number; rebuilt: number }

@@ -26,6 +26,7 @@ const CONTROLS: [string, string][] = [
   ["Army", "With units selected, right-click the ground (or an enemy) to attack-move: they fight whatever they meet on the way, then hold the spot. F then click: a plain move that ignores enemies, for retreating. T then click works like right-click. Units you've sent stay put when you change a rally."],
   ["Hero", "Right-click to move or attack, 1-4 to cast, Shift+1-4 to learn. Full rundown in the Heroes tab."],
   ["Research", "Select your core: the bar shows upgrades. Click one (or press its number) to research it. One at a time."],
+  ["Functions", "Serverless has no racks. A Function (or Inference Endpoint) spins up a squad when a creep comes near, for 20 seconds, then cools down. Each run costs $: no $, no run. Their units only use compute while running. Select one and press V (or its Invoke button) to run it now. Their rally point works like a rack's."],
   ["Rally", "With a spawner selected, right-click the ground to send its units there. With the core selected, right-click sets the rally for every spawner that doesn't have its own. No right button? Press T (or the button on the info card), then click the ground. Ctrl-click, Cmd-click and two-finger taps count as right-clicks too."],
   ["Camera", "WASD / arrows, the window edge, or drag with the middle button or Alt held to pan. Wheel or +/- to zoom. Click the minimap to jump. Space: back home."],
   ["Other", "Esc: deselect · P: pause · E: edge scroll on/off · G: this guide · R: new match after an outage"],
