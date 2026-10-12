@@ -247,7 +247,7 @@ export interface Outcome {
 /** Transient, render-only. Not part of the simulation state or its hash. */
 export type SimEvent =
   | { type: "shot"; from: number; to: number; x1: number; y1: number; x2: number; y2: number; team: TeamId }
-  | { type: "death"; id: number; x: number; y: number; team: TeamId }
+  | { type: "death"; id: number; x: number; y: number; team: TeamId; kind: Entity["kind"]; defId: string }
   | { type: "wave"; wave: number; name: string; packs: number; units: number; boss: boolean }
   /** The botnet put fallen C2 Servers back up. */
   | { type: "fortified"; wave: number; rebuilt: number }

@@ -52,6 +52,16 @@ await run("smoke test", async ({ check, open }) => {
   await click(await home());
   check(await waitFor(() => state(() => window.uptime.session.core() !== undefined), 60000), "C + click founds the core");
 
+  // Sound: the first click unlocked audio, founding played its cue, M cycles on / effects / off.
+  check(await waitFor(() => state(() => window.uptime.sound.running)), "audio starts after the first click");
+  check(await waitFor(() => state(() => (window.uptime.sound.played.get("founded") ?? 0) > 0)), "founding the core plays a sound");
+  const modes = [];
+  for (let i = 0; i < 3; i++) {
+    await page.keyboard.press("m");
+    modes.push(await page.textContent("#sound"));
+  }
+  check(modes.join() === "Sound: effects,Sound: off,Sound: on", `M cycles the sound mode (${modes.join(" → ")})`);
+
   // HUD: income, wave preview, the race's build bar.
   check(/^\+[\d.]+\/s$/.test(await page.textContent("#income")), "the HUD shows income");
   check((await page.textContent("#preview-title")).startsWith("Wave 1"), "the HUD previews the next wave");
