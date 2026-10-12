@@ -37,9 +37,9 @@
     },
     {
       "unit": "scanner",
-      "cost": 3,
-      "fromWave": 2,
-      "weight": 2
+      "cost": 6,
+      "fromWave": 3,
+      "weight": 1
     },
     {
       "unit": "phisher",
