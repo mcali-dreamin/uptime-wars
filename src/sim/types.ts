@@ -1,4 +1,4 @@
-import type { ArmorType, Controller } from "./content";
+import type { Controller } from "./content";
 import type { Terrain } from "./terrain";
 
 /** Index into world.teams. */
@@ -75,7 +75,6 @@ interface EntityBase {
   hp: number;
   maxHp: number;
   armor: number;
-  armorType: ArmorType;
   radius: number;
   attackCooldown: number;
   targetId: number | null;

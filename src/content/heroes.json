@@ -87,7 +87,6 @@
       "cooldownTicks": 160,
       "range": 380,
       "amount": 120,
-      "attackType": "social",
       "maxRank": 3,
       "perRank": 62.5
     },
@@ -140,7 +139,6 @@
       "cooldownTicks": 180,
       "range": 90,
       "amount": 160,
-      "attackType": "brute",
       "maxRank": 3,
       "perRank": 75.0
     },
@@ -154,7 +152,6 @@
       "range": 0,
       "radius": 150,
       "amount": 90,
-      "attackType": "brute",
       "maxRank": 3,
       "perRank": 45.0
     },
@@ -183,7 +180,6 @@
       "range": 400,
       "radius": 220,
       "amount": 320,
-      "attackType": "exploit",
       "maxRank": 1,
       "perRank": 50
     },
@@ -197,7 +193,6 @@
       "range": 380,
       "radius": 110,
       "amount": 60,
-      "attackType": "exploit",
       "maxRank": 3,
       "perRank": 35.0
     },
@@ -238,7 +233,6 @@
       "cooldownTicks": 1200,
       "range": 420,
       "amount": 450,
-      "attackType": "exploit",
       "maxRank": 1,
       "perRank": 90
     },
@@ -252,7 +246,6 @@
       "range": 0,
       "radius": 140,
       "amount": 55,
-      "attackType": "brute",
       "maxRank": 3,
       "perRank": 30.0
     },
@@ -307,7 +300,6 @@
       "cooldownTicks": 170,
       "range": 400,
       "amount": 130,
-      "attackType": "exploit",
       "maxRank": 3,
       "perRank": 65.0
     },
@@ -347,7 +339,6 @@
       "range": 450,
       "radius": 240,
       "amount": 280,
-      "attackType": "brute",
       "maxRank": 1,
       "perRank": 45
     },
@@ -389,7 +380,6 @@
       "range": 400,
       "radius": 160,
       "amount": 110,
-      "attackType": "social",
       "maxRank": 3,
       "perRank": 50.0
     },
@@ -402,7 +392,6 @@
       "cooldownTicks": 1200,
       "range": 420,
       "amount": 480,
-      "attackType": "social",
       "maxRank": 1,
       "perRank": 90
     }

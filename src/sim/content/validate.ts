@@ -49,7 +49,6 @@ export function validateContent(content: Content): void {
       errors.push(`ability ${id} is a decoy: it needs a known unit, durationTicks, and radius`);
     }
     if ((ability.effect === "blast" || ability.effect === "heal") && !ability.radius) errors.push(`ability ${id} needs a radius`);
-    if ((ability.effect === "blast" || ability.effect === "strike") && !ability.attackType) errors.push(`ability ${id} needs an attackType`);
     if (ability.effect === "strike" && ability.target !== "enemy") errors.push(`ability ${id} strikes, so it targets an enemy`);
     if (ability.target === "self" && ability.range !== 0) errors.push(`ability ${id} targets self, so its range is 0`);
   }

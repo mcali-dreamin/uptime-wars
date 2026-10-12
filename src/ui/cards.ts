@@ -59,7 +59,7 @@ export function buildingDetail(content: Content, raceId: string, buildingId: str
   }
   if (def.attack) {
     const a = def.attack;
-    stats.push(`Shoots ${a.damage} ${a.attackType} damage every ${seconds(a.cooldownTicks)}, range ${a.range}`);
+    stats.push(`Shoots ${a.damage} damage every ${seconds(a.cooldownTicks)}, range ${a.range}`);
   }
   if (def.income) stats.push(`+${def.income.amount} compute every ${seconds(def.income.intervalTicks)}`);
   if (def.onWell) stats.push("Only on a data well inside your network. Wells sit out past your core's reach: extend your network to claim one");
@@ -68,7 +68,7 @@ export function buildingDetail(content: Content, raceId: string, buildingId: str
     stats.push(`Serves up to ${def.userCapacity} users (up to +${+perSecond.toFixed(1)} compute/s when full)`);
   }
   if (def.buildRadius) stats.push(`Extends your network: you can build within ${def.buildRadius} tiles of it`);
-  stats.push(`${def.hp} HP, ${def.armor} armor (${def.armorType})`);
+  stats.push(`${def.hp} HP, ${def.armor} armor`);
   if (def.buildable) {
     stats.push(`Costs ${Math.round(def.cost * race.modifiers.costMultiplier)} compute, builds in ${seconds(def.buildTicks)}`);
   }
@@ -85,7 +85,7 @@ function unitStats(unit: Content["units"][string], hpMultiplier = 1): string {
   if (unit.damage <= 0) return `${hp} HP, can't attack`;
   const dps = (unit.damage / (unit.cooldownTicks / TICK_RATE)).toFixed(1);
   const reach = unit.range > 60 ? `ranged (${unit.range})` : "melee";
-  return `${hp} HP, ${unit.armor} armor, ${reach}, ${unit.damage} ${unit.attackType} damage (${dps}/s)`;
+  return `${hp} HP, ${unit.armor} armor, ${reach}, ${unit.damage} damage (${dps}/s)`;
 }
 
 export const TERRAIN_GUIDE: GuideEntry[] = [
