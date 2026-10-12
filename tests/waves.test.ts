@@ -42,7 +42,7 @@ describe("endless waves", () => {
     const world = createWorld(content, SETUP);
     queueCommand(world, firstSpot("server-rack"));
     while (world.tick < 2000) step(world, content);
-    const guards = world.entities.filter((e) => e.kind === "unit" && e.team === 0);
+    const guards = world.entities.filter((e) => e.kind === "unit" && e.team === 0 && e.mode === "guard");
     expect(guards.length).toBeLessThanOrEqual(content.buildings["server-rack"]!.spawn!.maxAlive);
     expect(guards.length).toBeGreaterThan(0);
   });

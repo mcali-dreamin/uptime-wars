@@ -28,6 +28,7 @@ import { BASE_INCOME, STARTING_COMPUTE } from "./tuning";
 import type { TeamId, World } from "./types";
 import { tickUnits } from "./units";
 import { tickResearch } from "./upgrades";
+import { spawnHero, tickHeroes } from "./heroes";
 import { tickWaveDirector } from "./waves";
 
 export interface MatchSetup {
@@ -38,6 +39,8 @@ export interface MatchSetup {
    * Player n starts at terrain.starts[n].
    */
   races: string[];
+  /** Hero unit per team (in team order); omitted or missing means the race's first. */
+  heroes?: (string | undefined)[];
   /** Skip the builder phase: found every core at its start tile. */
   startWithCore?: boolean;
 }
@@ -51,7 +54,7 @@ export function createWorld(content: Content, setup: MatchSetup): World {
     terrain,
     nav: { goals: new Map() },
     nextId: 1,
-    teams: setup.races.map((race, id) => makeTeam(content, id, race)),
+    teams: setup.races.map((race, id) => makeTeam(content, id, race, setup.heroes?.[id])),
     entities: [],
     commands: [],
     waves: {
@@ -76,7 +79,8 @@ export function createWorld(content: Content, setup: MatchSetup): World {
       const builder = spawnUnit(makeContext(world, content), team.id, race.builder, at, at.x, at.y, "builder");
       team.builderId = builder.id;
     } else {
-      foundCore(world, content, team.id, col, row);
+      const core = foundCore(world, content, team.id, col, row);
+      spawnHero(makeContext(world, content), team, core);
     }
   }
   const horde = hordeTeam(world);
@@ -84,9 +88,10 @@ export function createWorld(content: Content, setup: MatchSetup): World {
   return world;
 }
 
-function makeTeam(content: Content, id: TeamId, raceId: string) {
+function makeTeam(content: Content, id: TeamId, raceId: string, heroId: string | undefined) {
   const race = content.races[raceId];
   if (!race) throw new Error(`Unknown race ${raceId}`);
+  if (heroId !== undefined && !(race.heroes ?? []).includes(heroId)) throw new Error(`${raceId} has no hero ${heroId}`);
   return {
     id,
     raceId,
@@ -103,6 +108,8 @@ function makeTeam(content: Content, id: TeamId, raceId: string) {
     upgrades: {},
     research: null,
     downTick: null,
+    heroId: heroId ?? race.heroes?.[0] ?? null,
+    hero: null,
   };
 }
 
@@ -117,6 +124,7 @@ export function step(world: World, content: Content): void {
   tickIncome(ctx);
   tickUsers(ctx);
   tickResearch(ctx);
+  tickHeroes(ctx);
   tickWaveDirector(ctx);
   tickSpawners(ctx);
   tickBuildingAttacks(ctx);

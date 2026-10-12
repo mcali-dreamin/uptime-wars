@@ -20,7 +20,12 @@
       "unitHpMultiplier": 1,
       "startingComputeBonus": 0
     },
-    "builder": "deploy-agent"
+    "builder": "deploy-agent",
+    "heroes": [
+      "maintainer",
+      "bdfl",
+      "bug-hunter"
+    ]
   },
   "hyperscaler": {
     "name": "Hyperscaler",
@@ -43,7 +48,12 @@
       "costMultiplier": 1,
       "unitHpMultiplier": 1.3,
       "startingComputeBonus": 150
-    }
+    },
+    "heroes": [
+      "sre",
+      "architect",
+      "evangelist"
+    ]
   },
   "botnet": {
     "name": "The Botnet",

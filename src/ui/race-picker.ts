@@ -1,4 +1,5 @@
-// The race picker shown before each match.
+// The picker shown before each match: race, then (for races with heroes)
+// which hero you'll lead.
 
 import { PLAYER_COLORS } from "../game/colors";
 import type { Session } from "../game/session";
@@ -8,11 +9,14 @@ export class RacePicker {
   private readonly root = $("race-picker");
   private readonly cards = $("race-cards");
   private readonly colors = $("color-swatches");
+  private readonly title = $("picker-title");
+  /** Set while choosing a hero for this race. */
+  private race: string | null = null;
   open = false;
 
   constructor(
     private readonly session: Session,
-    private readonly onPick: (raceId: string) => void,
+    private readonly onPick: (raceId: string, heroId?: string) => void,
     private readonly onCoop: () => void,
     private readonly onColor: () => void = () => {},
   ) {
@@ -20,6 +24,8 @@ export class RacePicker {
   }
 
   show(): void {
+    this.race = null;
+    this.title.textContent = "Choose who you're keeping online.";
     const { content, playable, raceId } = this.session;
     this.cards.replaceChildren(
       ...playable.map((id, index) => {
@@ -55,9 +61,39 @@ export class RacePicker {
     );
   }
 
+  /** Step two: the race's heroes. */
+  private showHeroes(raceId: string): void {
+    const { content } = this.session;
+    const race = content.races[raceId]!;
+    this.race = raceId;
+    this.title.textContent = `${race.name}: choose your hero. Esc to go back.`;
+    const last = this.session.heroFor(raceId);
+    this.cards.replaceChildren(
+      ...race.heroes!.map((heroId, index) => {
+        const unit = content.units[heroId]!;
+        const abilities = content.heroes.heroes[heroId]!.abilities.map((id, i) => {
+          const a = content.heroes.abilities[id]!;
+          return `<li>${i === 3 ? "<b>Ultimate</b> " : ""}${a.name}: ${a.description}</li>`;
+        });
+        const card = document.createElement("button");
+        card.className = `race-card hero-card${heroId === last ? " last" : ""}`;
+        card.dataset.hero = heroId;
+        card.innerHTML = `<strong>${index + 1}. ${unit.name}</strong><em>${unit.description}</em><ul>${abilities.join("")}</ul>`;
+        card.addEventListener("click", () => this.pickHero(heroId));
+        return card;
+      }),
+    );
+  }
+
   /** Number keys pick while the picker is open. Returns true when handled. */
   key(key: string): boolean {
     if (!this.open) return false;
+    if (this.race) {
+      if (key === "escape") return this.show(), true;
+      const hero = this.session.content.races[this.race]!.heroes![Number(key) - 1];
+      if (hero) this.pickHero(hero);
+      return true;
+    }
     if (key === "h") return this.coop(), true;
     const id = this.session.playable[Number(key) - 1];
     if (id) this.pick(id);
@@ -71,8 +107,17 @@ export class RacePicker {
   }
 
   private pick(id: string): void {
+    if (this.session.content.races[id]!.heroes?.length) return this.showHeroes(id);
     this.root.hidden = true;
     this.open = false;
     this.onPick(id);
+  }
+
+  private pickHero(heroId: string): void {
+    const race = this.race!;
+    this.root.hidden = true;
+    this.open = false;
+    this.race = null;
+    this.onPick(race, heroId);
   }
 }

@@ -27,6 +27,10 @@ await run("smoke test", async ({ check, open }) => {
   await page.click('.color-swatch[data-color="purple"]');
   check(await state(() => window.uptime.session.color.id === "purple"), "a colour swatch picks the colour");
   await page.keyboard.press("1");
+  // The race's heroes come next: take the second.
+  const heroes = await waitFor(() => page.$$eval(".hero-card", (c) => (c.length ? c.map((x) => x.dataset.hero) : null)));
+  check(heroes?.length >= 3, `picking a race offers its heroes (${heroes?.join(", ")})`);
+  await page.keyboard.press("2");
 
   // Deploy: the agent starts selected; a click walks it; C + click founds the core.
   const agent = await home();
@@ -83,6 +87,35 @@ await run("smoke test", async ({ check, open }) => {
     );
     check(set, `${name} sets the rally`);
   }
+
+  // The hero you picked: Q selects it, + learns, right-click moves it, 1 casts.
+  await page.keyboard.press("Escape");
+  const hero = await state(() => {
+    const t = window.uptime.session.team;
+    const h = window.uptime.world.entities.find((e) => e.id === t.hero?.unitId);
+    return h && { id: h.id, defId: h.defId, x: h.x, y: h.y };
+  });
+  check(hero?.defId === heroes[1], `the hero you picked is on the field (${hero?.defId})`);
+  await page.keyboard.press("q");
+  check(await waitFor(() => state((id) => window.uptime.selection.id === id, hero.id)), "Q selects the hero");
+  const abilities = await waitFor(() => page.$$eval(".ability-btn", (b) => (b.length === 4 ? b.map((x) => x.dataset.ability) : null)), 60000);
+  check(abilities?.length === 4, `the hero's card shows its 4 abilities (${abilities?.join(", ")})`);
+  await page.click(`.ability-btn[data-ability="${abilities[0]}"] .learn`, { timeout: 60000 });
+  check(await waitFor(() => state((a) => window.uptime.session.team.hero.ranks[a] === 1, abilities[0])), "the + learns an ability");
+  const heroTo = await openNear(hero.x, hero.y, 3, 7);
+  await click(heroTo, { button: "right" });
+  const moving = await waitFor(() => state(([id, x, y]) => {
+    const h = window.uptime.world.entities.find((e) => e.id === id);
+    return h && ((h.moveTo && Math.hypot(h.moveTo.x - x, h.moveTo.y - y) < 30) || Math.hypot(h.x - x, h.y - y) < 20);
+  }, [hero.id, heroTo.x, heroTo.y]));
+  check(moving, "right-click moves the hero");
+  await page.keyboard.press("1");
+  // Aimed abilities want a click; an enemy-target one with nobody around just asks for an enemy.
+  const kind = await state((a) => window.uptime.content.heroes.abilities[a].target, abilities[0]);
+  if (await state(() => window.uptime.selection.kind === "cast")) await click(await openNear(heroTo.x, heroTo.y, 1, 3));
+  const cast = kind === "enemy" || (await waitFor(() => state((a) => (window.uptime.session.team.hero.cooldowns[a] ?? 0) > 0, abilities[0])));
+  check(cast, `1 casts the first ability (${kind})`);
+  await page.keyboard.press("Escape");
 
   // The core's card researches.
   await page.keyboard.press("Escape");

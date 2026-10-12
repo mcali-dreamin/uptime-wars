@@ -54,6 +54,30 @@ stand (the nest and its C2 Servers) show, dimmed, on the map and the minimap.
 Fog hides movement: you only see creeps within sight of your agent, units, and
 buildings. `?reveal` in the URL turns the fog off.
 
+**Heroes.** After your race, pick one of its three heroes. It appears at
+your core when the core comes online and is the one unit you command
+directly: `Q` selects it (again to centre on it), right-click moves it or
+attacks an enemy, `1`-`4` cast, `Shift`+`1`-`4` (or the `+`) learn.
+
+- Kills near your hero give it XP. Every level is a skill point and more hp
+  and damage.
+- Basic abilities have three ranks. The fourth is an ultimate, open at
+  level 6.
+- A fallen hero comes back at your core after a delay that grows with its
+  level.
+
+| Race | Hero | Plays as |
+| --- | --- | --- |
+| Open Source | Maintainer | ranged support: Code Review, Hotfix, Fork Bomb, ult Release Day |
+| Open Source | Benevolent Dictator | melee bruiser: Veto, Merge Conflict, Flame War, ult Rewrite It in Rust |
+| Open Source | Bug Bounty Hunter | ranged assassin: Fuzzing, Honeypot, Patch Tuesday, ult Zero-day |
+| Hyperscaler | Site Reliability Engineer | tank: Rate Limit, Runbook, Canary Deploy, ult Autoscale |
+| Hyperscaler | Solutions Architect | ranged nuker: Vendor Lock-in, Capacity Plan, SLA, ult Region Outage |
+| Hyperscaler | Developer Evangelist | support: Keynote, Free Tier, Black Friday, ult Acquisition |
+
+Heroes and abilities are JSON (`src/content/heroes.json`). An ability is one
+of six effects: blast, strike, heal, decoy, summon, or buff.
+
 **Height** matters. The web has three levels (deep web, surface web,
 backbone). Cliffs separate them and ramps are the only way between. From below
 you can't see up a cliff unless you're at its foot, and attacking downhill
@@ -222,7 +246,7 @@ Direction: survival on a procedurally generated open web.
 - [x] Rally points: per spawner, with a global default on the core
 - [x] Upgrades researched at the core
 - [x] Network expansion (per race) and redundant cores
-- Heroes and security abilities (zero-day, RCE, ransomware, worm, DDoS, honeypot)
+- [x] Heroes: three per race, levels, skill points, four abilities each
 - [x] Race selection: Open Source Collective, Hyperscaler
 - More races: Hacker crew, State actor / APT
 - Content from WordPress, saves and leaderboards via Spacefast Zero

@@ -74,6 +74,8 @@ export interface RaceDef {
    * core in place.
    */
   builder?: string;
+  /** Hero units this race can field (see HeroesDef); the player picks one. */
+  heroes?: string[];
   buildings: string[];
   modifiers: {
     spawnIntervalMultiplier: number;
@@ -158,6 +160,64 @@ export interface UpgradeDef {
 
 export type DamageTable = Record<AttackType, Record<ArmorType, number>>;
 
+/**
+ * - blast:  damage every enemy within `radius` of a point.
+ * - decoy:  drop a `unit` at a point for `durationTicks`; creeps within
+ *           `radius` of it attack it instead (`amount` = its hp).
+ * - heal:   heal your own units and finished buildings within `radius` of the hero.
+ * - strike: damage one enemy.
+ * - summon: `amount` of `unit` fight beside the hero for `durationTicks`.
+ * - buff:   every unit of yours hits `amount` (a fraction) harder for `durationTicks`.
+ * Abilities are learned with skill points, one per hero level. Rank r needs
+ * hero level unlockLevel + levelsPerRank * (r - 1); `amount` grows by
+ * `perRank` for each rank past 1. Ultimates: unlockLevel 6, maxRank 1.
+ */
+export interface AbilityDef {
+  name: string;
+  description: string;
+  effect: "blast" | "decoy" | "heal" | "strike" | "summon" | "buff";
+  target: "point" | "enemy" | "self";
+  unlockLevel: number;
+  maxRank: number;
+  cooldownTicks: number;
+  /** How far from the hero it can be cast, in pixels. 0 for self. */
+  range: number;
+  radius?: number;
+  amount: number;
+  perRank: number;
+  attackType?: AttackType;
+  durationTicks?: number;
+  unit?: string;
+}
+
+export interface HeroDef {
+  hpPerLevel: number;
+  damagePerLevel: number;
+  /** Dead heroes come back at the core after respawnTicks + respawnPerLevel * (level - 1). */
+  respawnTicks: number;
+  respawnPerLevel: number;
+  /** In hotkey order (1-4). */
+  abilities: string[];
+}
+
+/**
+ * Heroes: one controllable unit per player that levels up. Every kill near
+ * a hero (within xpRange) gives it the creep's bounty * xpPerBounty in XP;
+ * reaching level n takes xpPerLevel * n * (n - 1) / 2 XP in total.
+ */
+export interface HeroesDef {
+  xpRange: number;
+  xpPerBounty: number;
+  xpPerLevel: number;
+  maxLevel: number;
+  skillPointsPerLevel: number;
+  /** Levels between ranks of the same ability. */
+  levelsPerRank: number;
+  /** Keyed by the hero's unit id. */
+  heroes: Record<string, HeroDef>;
+  abilities: Record<string, AbilityDef>;
+}
+
 export interface Content {
   units: Record<string, UnitDef>;
   buildings: Record<string, BuildingDef>;
@@ -166,4 +226,5 @@ export interface Content {
   damage: DamageTable;
   economy: EconomyDef;
   upgrades: Record<string, UpgradeDef>;
+  heroes: HeroesDef;
 }

@@ -1,5 +1,6 @@
 // Targeting and damage.
 
+import { creditKill } from "./heroes";
 import { hostile } from "./teams";
 import { GRID_CELL, GRID_STRIDE, type TickContext } from "./context";
 import type { Content } from "./content";
@@ -104,6 +105,7 @@ export function dealDamage(
     world.events.push({ type: "death", id: target.id, x: target.x, y: target.y, team: target.team });
     if (target.kind === "unit") {
       world.teams[attacker.team]!.compute += content.units[target.defId]!.bounty;
+      creditKill(ctx, target);
     }
   }
 }

@@ -9,8 +9,8 @@ import type { PeerLink } from "./rtc";
 const HORDE_RACE = "botnet";
 
 type LobbyMessage =
-  | { t: "hello"; race: string }
-  | { t: "start"; seed: number; races: string[]; you: TeamId }
+  | { t: "hello"; race: string; hero?: string }
+  | { t: "start"; seed: number; races: string[]; heroes: (string | undefined)[]; you: TeamId }
   | LockstepMessage;
 
 export interface NetMatch {
@@ -22,6 +22,7 @@ export interface NetMatch {
 interface Guest {
   link: PeerLink;
   race: string | null;
+  hero: string | undefined;
 }
 
 export class HostLobby {
@@ -40,12 +41,14 @@ export class HostLobby {
 
   /** Add a guest over an open link. */
   add(link: PeerLink): void {
-    const guest: Guest = { link, race: null };
+    const guest: Guest = { link, race: null, hero: undefined };
     this.guests.push(guest);
     link.onMessage = (raw) => {
       const message = raw as LobbyMessage;
       if (message.t === "hello" && !this.lockstep) {
         guest.race = this.content.races[message.race]?.controller === "human" ? message.race : null;
+        // An unknown hero falls back to the race's default rather than breaking the match.
+        guest.hero = guest.race && this.content.races[guest.race]!.heroes?.includes(message.hero ?? "") ? message.hero : undefined;
         this.onChange();
         return;
       }
@@ -70,13 +73,14 @@ export class HostLobby {
   }
 
   /** Start the match for everyone who's ready. The host is player 1. */
-  start(hostRace: string, seed: number): NetMatch {
+  start(hostRace: string, seed: number, hostHero?: string): NetMatch {
     // Guests that never said hello don't get a seat.
     for (const guest of this.guests.filter((g) => g.race === null)) guest.link.close();
     this.guests.splice(0, this.guests.length, ...this.ready);
     const races = [hostRace, ...this.guests.map((guest) => guest.race!), HORDE_RACE];
-    for (const [i, guest] of this.guests.entries()) guest.link.send({ t: "start", seed, races, you: i + 1 } satisfies LobbyMessage);
-    const world = createWorld(this.content, { seed, races });
+    const heroes = [hostHero, ...this.guests.map((guest) => guest.hero)];
+    for (const [i, guest] of this.guests.entries()) guest.link.send({ t: "start", seed, races, heroes, you: i + 1 } satisfies LobbyMessage);
+    const world = createWorld(this.content, { seed, races, heroes });
     this.lockstep = new Lockstep(world, this.content, {
       local: 0,
       host: true,
@@ -98,11 +102,11 @@ export class HostLobby {
 }
 
 /** A guest's side: say hello, wait for the host to start. */
-export function joinHost(content: Content, link: PeerLink, race: string, onStart: (match: NetMatch) => void): void {
+export function joinHost(content: Content, link: PeerLink, race: string, hero: string | undefined, onStart: (match: NetMatch) => void): void {
   link.onMessage = (raw) => {
     const message = raw as LobbyMessage;
     if (message.t !== "start") return;
-    const world = createWorld(content, { seed: message.seed, races: message.races });
+    const world = createWorld(content, { seed: message.seed, races: message.races, heroes: message.heroes ?? [] });
     const lockstep = new Lockstep(world, content, { local: message.you, host: false, send: (m) => link.send(m) });
     link.onMessage = (next) => {
       const m = next as LobbyMessage;
@@ -110,5 +114,5 @@ export function joinHost(content: Content, link: PeerLink, race: string, onStart
     };
     onStart({ world, lockstep, local: message.you });
   };
-  link.send({ t: "hello", race } satisfies LobbyMessage);
+  link.send({ t: "hello", race, hero } satisfies LobbyMessage);
 }
