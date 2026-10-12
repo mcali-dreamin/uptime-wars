@@ -9,7 +9,7 @@ import type { Terrain } from "./terrain";
 import { CONSTRUCTION_START_HP, RALLY_SPREAD } from "./tuning";
 import type { Building, Point, Team, TeamId, Unit, World } from "./types";
 import { multiplier } from "./upgrades";
-import { tierDef } from "./tiers";
+import { raceModifiers, tierDef } from "./tiers";
 
 /** A building's max hp: a core's grows with its team's tier. */
 function coreHp(world: World, content: Content, teamId: TeamId, defId: string): number {
@@ -61,7 +61,7 @@ export function placeBuilding(
 export function spawnInterval(content: Content, team: Team | undefined, defId: string): number {
   const spawn = content.buildings[defId]?.spawn;
   if (!spawn) return 0;
-  const race = team ? content.races[team.raceId]!.modifiers.spawnIntervalMultiplier : 1;
+  const race = team ? raceModifiers(content, team).spawnIntervalMultiplier : 1;
   return Math.max(1, Math.round((spawn.intervalTicks * race) / multiplier(content, team, "spawnSpeed")));
 }
 
@@ -93,9 +93,9 @@ export function spawnUnit(
 ): Unit {
   const { world, content } = ctx;
   const def = content.units[unitId]!;
-  const race = content.races[world.teams[team]!.raceId]!;
+  const modifiers = raceModifiers(content, world.teams[team]!);
   const upgraded = multiplier(content, world.teams[team]!, "unitHp");
-  const hp = Math.round(def.hp * race.modifiers.unitHpMultiplier * hpMultiplier * upgraded);
+  const hp = Math.round(def.hp * modifiers.unitHpMultiplier * hpMultiplier * upgraded);
   const spot = walkableSpot(world.terrain, x, y, def.size, from);
   const unit: Unit = {
     kind: "unit",

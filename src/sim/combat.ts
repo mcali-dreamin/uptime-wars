@@ -11,6 +11,10 @@ import { heightAtTile } from "./terrain";
 import { HIGH_GROUND_DAMAGE, LOW_GROUND_SIGHT } from "./tuning";
 import { multiplier } from "./upgrades";
 import type { Entity } from "./types";
+import { raceMechanics } from "./tiers";
+
+/** Attacks this close (edge to edge) are melee, for thorns. */
+const MELEE_RANGE = 40;
 
 export function edgeDistance(a: Entity, b: Entity): number {
   const dx = b.x - a.x;
@@ -84,6 +88,9 @@ export function dealDamage(
   baseDamage: number,
 ): void {
   const { world, content } = ctx;
+  const attackerUnit = attacker.kind === "unit" ? content.units[attacker.defId] : undefined;
+  // Siege units tear into buildings.
+  if (attackerUnit?.siege && target.kind === "building") baseDamage *= attackerUnit.siege;
   // One kind of damage: high ground hits harder, armor takes a flat amount off.
   const downhill = heightOf(ctx, attacker) > heightOf(ctx, target) ? HIGH_GROUND_DAMAGE : 1;
   let damage = Math.max(1, Math.round(baseDamage * downhill) - target.armor);
@@ -94,6 +101,8 @@ export function dealDamage(
   }
   const wasAlive = target.hp > 0;
   target.hp -= damage;
+  // Paperwork: a slowing hit makes an enemy unit act at half speed for a while.
+  if (attackerUnit?.slowTicks && target.kind === "unit" && target.hp > 0) target.slowedUntil = world.tick + attackerUnit.slowTicks;
   if (target.kind === "building") loseUsers(ctx, world.teams[target.team]!, damage, target.defId);
   world.events.push({
     type: "shot",
@@ -105,6 +114,11 @@ export function dealDamage(
     y2: target.y,
     team: attacker.team,
   });
+  // Thorns: a melee blow on a spiked building hits back (never twice: the attacker is a unit).
+  if (target.kind === "building" && attacker.kind === "unit" && attacker.hp > 0 && (attackerUnit?.range ?? Infinity) <= MELEE_RANGE) {
+    const thorns = raceMechanics(content, world.teams[target.team]!).thorns;
+    if (thorns && thorns.buildings.includes(target.defId)) dealDamage(ctx, target, attacker, thorns.damage);
+  }
   if (wasAlive && target.hp <= 0) {
     world.events.push({ type: "death", id: target.id, x: target.x, y: target.y, team: target.team, kind: target.kind, defId: target.defId });
     if (target.kind === "unit") {

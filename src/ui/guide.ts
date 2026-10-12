@@ -2,7 +2,7 @@
 // the build bar or with G; pauses the match while open.
 
 import type { Session } from "../game/session";
-import { TERRAIN_GUIDE, buildingDetail, unitDetail, upgradeDetail, type GuideEntry } from "./cards";
+import { TERRAIN_GUIDE, perkLines, buildingDetail, unitDetail, upgradeDetail, type GuideEntry } from "./cards";
 import { $ } from "./dom";
 
 type Tab = "controls" | "heroes" | "buildings" | "upgrades" | "creeps" | "terrain" | "races";
@@ -154,7 +154,7 @@ export class Guide {
         return this.session.playable.map((id) => {
           const race = content.races[id]!;
           const roster = race.buildings.map((b) => content.buildings[b]!.name).join(", ");
-          return entry({ title: race.name, description: race.specialty, stats: [roster] });
+          return entry({ title: race.name, description: race.specialty, stats: [roster, ...perkLines(content, id)] });
         });
     }
   }

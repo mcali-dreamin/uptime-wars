@@ -28,6 +28,12 @@ const FOV = 40;
 /** Rough top of each building model, for health bars. */
 const BUILDING_TOP: Record<string, number> = {
   core: 116,
+  monorepo: 60,
+  "edge-fleet": 52,
+  "mainframe-bay": 50,
+  "state-machine": 44,
+  "trust-safety": 44,
+  "legal-dept": 42,
   "malware-nest": 70,
   "c2-server": 76,
   "server-rack": 62,

@@ -33,8 +33,8 @@ export function simulate(
   return world;
 }
 export { fortressGates, fortressSpots } from "./fortress";
-export { invokeBlocker } from "./functions";
+export { invokeBlocker, invokeCost } from "./functions";
 export { forkBlocker, forkCost, regionShield } from "./mechanics";
 export { isJammed } from "./roles";
 export { reachOf } from "./placement";
-export { tierBlocker, tierDef, tierOf, tierUpgrade } from "./tiers";
+export { earnedPerks, raceMechanics, raceModifiers, tierBlocker, tierDef, tierOf, tierUpgrade } from "./tiers";

@@ -26,6 +26,12 @@ export interface UnitDef {
   role?: CreepRole;
   /** How far this unit reveals the fog for its owner, in pixels. */
   sight?: number;
+  /** Mends allied units and buildings within `radius` px by `perSecond` hp each second (itself included). */
+  heal?: { perSecond: number; radius: number };
+  /** Multiplies its damage against buildings. */
+  siege?: number;
+  /** Enemy units it hits act at half speed for this many ticks. */
+  slowTicks?: number;
 }
 
 /**
@@ -97,6 +103,13 @@ export type Controller = "human" | "wave-director";
 export type RaceLook = "scrappy" | "monolith" | "ephemeral" | "garden";
 export const RACE_LOOKS: readonly RaceLook[] = ["scrappy", "monolith", "ephemeral", "garden"];
 
+export interface TierPerk {
+  name: string;
+  description: string;
+  mechanics?: { [K in keyof NonNullable<RaceDef["mechanics"]>]?: Partial<NonNullable<NonNullable<RaceDef["mechanics"]>[K]>> };
+  modifiers?: Partial<RaceDef["modifiers"]>;
+}
+
 export interface RaceDef {
   name: string;
   specialty: string;
@@ -134,13 +147,24 @@ export interface RaceDef {
     region?: { radiusTiles: number; perNeighborPermille: number; maxPermille: number };
     /** Users leave at this share of the usual rate when your buildings are hit (permille). */
     loyalty?: { churnPermille: number };
+    /** Melee attackers hitting one of `buildings` take `damage` back per blow. */
+    thorns?: { damage: number; buildings: string[] };
   };
+  /**
+   * Fixed perks per core tier (index = tier; 0 is unused). Each overrides
+   * parts of `mechanics` (field by field within a mechanic) and `modifiers`
+   * from that tier on, on top of the tiers below it.
+   */
+  tierPerks?: (TierPerk | null)[];
   modifiers: {
     spawnIntervalMultiplier: number;
     costMultiplier: number;
     unitHpMultiplier: number;
     /** Extra $ at the start of the match. */
     startingMoneyBonus: number;
+    /** Function (invoke) cooldowns and run costs scale by these (default 1). */
+    invokeCooldownMultiplier?: number;
+    invokeCostMultiplier?: number;
   };
 }
 

@@ -10,7 +10,7 @@ import { TICK_RATE } from "./map";
 import type { Team, World } from "./types";
 import { multiplier } from "./upgrades";
 import { BASE_INCOME, CONSTRUCTION_START_HP } from "./tuning";
-import { tierDef } from "./tiers";
+import { raceMechanics, tierDef } from "./tiers";
 
 export function tickCooldowns(ctx: TickContext): void {
   const { world } = ctx;
@@ -162,7 +162,7 @@ export function incomeRate(world: World, content: TickContext["content"], team: 
 export function loseUsers(ctx: TickContext, team: Team, damage: number, defId: string): void {
   if (team.controller !== "human" || team.users <= 0) return;
   if (!ctx.content.buildings[defId]?.userCapacity) return;
-  const loyalty = ctx.content.races[team.raceId]?.mechanics?.loyalty;
+  const loyalty = raceMechanics(ctx.content, team).loyalty;
   const share = loyalty ? loyalty.churnPermille / 1000 : 1;
   team.churnCarry += (damage * share) / ctx.content.economy.damagePerUserLost;
   const lost = Math.floor(team.churnCarry);

@@ -2,7 +2,7 @@
 // the build button you're hovering, what you're placing, or what you have
 // selected. Nothing else pops up. The full story lives in the Guide.
 
-import { tierDef, TICK_RATE, forkCost, isCore, regionShield } from "../sim";
+import { earnedPerks, tierDef, TICK_RATE, forkCost, isCore, regionShield } from "../sim";
 import { armyUnits, groundOrderLabel, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { upgradeOf } from "./build-bar";
@@ -61,7 +61,10 @@ export class InfoPanel {
       const hp = `${Math.ceil(entity.hp)} / ${entity.maxHp} HP`;
       const lines = [card.lines[0]!, entity.buildRemaining > 0 ? `building · ${hp}` : hp];
       const research = this.session.team.research;
-      if (isCore(content, this.session.team, entity)) lines.push(`Tier: ${tierDef(content, this.session.team).name}`);
+      if (isCore(content, this.session.team, entity)) {
+        const perks = earnedPerks(content, this.session.team).map((p) => p.name);
+        lines.push(`Tier: ${tierDef(content, this.session.team).name}${perks.length ? ` · ${perks.join(", ")}` : ""}`);
+      }
       if (isCore(content, this.session.team, entity) && research) {
         lines.push(`Researching ${content.upgrades[research.upgrade]!.name} · ${Math.ceil(research.remaining / TICK_RATE)}s`);
       }

@@ -19,6 +19,8 @@ import { decoy } from "./decoy";
 import { hero } from "./hero";
 import { guard } from "./guard";
 import { roam } from "./roam";
+import { TICK_RATE } from "../map";
+import { hostile } from "../teams";
 
 /** Shared, per-tick facts that more than one unit needs. */
 export interface UnitTickState {
@@ -29,6 +31,25 @@ export interface UnitTickState {
 export type Behavior = (ctx: TickContext, unit: Unit, def: UnitDef, state: UnitTickState) => void;
 
 const BEHAVIORS: Record<UnitMode, Behavior> = { guard, roam, builder, hero, decoy };
+
+/** Once a second: healers mend allied units and buildings around them. */
+export function tickHealers(ctx: TickContext): void {
+  const { world, content } = ctx;
+  if (world.tick % TICK_RATE !== 0) return;
+  for (const healer of world.entities) {
+    if (healer.kind !== "unit" || healer.hp <= 0) continue;
+    const heal = content.units[healer.defId]!.heal;
+    if (!heal) continue;
+    const r2 = heal.radius * heal.radius;
+    for (const other of world.entities) {
+      if (other.hp <= 0 || other.hp >= other.maxHp || hostile(world, other.team, healer.team)) continue;
+      if (other.kind === "building" && other.buildRemaining > 0) continue;
+      const dx = other.x - healer.x;
+      const dy = other.y - healer.y;
+      if (dx * dx + dy * dy <= r2) other.hp = Math.min(other.maxHp, other.hp + heal.perSecond);
+    }
+  }
+}
 
 export function tickUnits(ctx: TickContext): void {
   const { world, content } = ctx;
@@ -41,6 +62,8 @@ export function tickUnits(ctx: TickContext): void {
   }
   for (const unit of world.entities) {
     if (unit.kind !== "unit" || unit.hp <= 0) continue;
+    // Slowed: half speed, half attack rate.
+    if (unit.slowedUntil !== undefined && world.tick < unit.slowedUntil && world.tick % 2 === 1) continue;
     BEHAVIORS[unit.mode](ctx, unit, content.units[unit.defId]!, state);
   }
 }

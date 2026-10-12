@@ -113,6 +113,8 @@ export interface Unit extends EntityBase {
   commanded: boolean;
   /** Serverless units go cold at this tick (absent: they don't). */
   expiresAt?: number;
+  /** Slowed (a Legal Team hit it): acts every other tick until this tick. */
+  slowedUntil?: number;
   /** Scanners: what they spotted and when, until they report it. */
   spotted?: { tick: number; x: number; y: number; team: TeamId };
   /** Scanners: already reported, nothing more to do. */
