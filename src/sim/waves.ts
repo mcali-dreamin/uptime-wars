@@ -1,17 +1,20 @@
-// The wave director: endless, escalating waves from the nest.
+// The wave director: the horde's pressure, from the nest. Two parts:
+// background traffic (a small pack every few seconds, growing over the
+// match) and incidents (the numbered, named surges, with the bosses).
+// Both scale with how many players are still online.
 
 import type { TickContext } from "./context";
 import type { Content } from "./content";
 import { spawnUnit } from "./entities";
 import { fortify } from "./fortress";
 import { randomInt } from "./rng";
+import { humanTeams } from "./teams";
 import type { World } from "./types";
 
 /**
  * The horde is not special: it is a team whose controller is the wave
- * director instead of a human. Waves never stop. Each is generated from a
- * growing budget, shuffled, cut into random-sized packs, and released from the
- * nest in the middle of the web. Nobody tells the packs where you are.
+ * director instead of a human. Nothing ever stops. Every pack is released
+ * from the nest in the middle of the web, and nobody tells it where you are.
  */
 export function tickWaveDirector(ctx: TickContext): void {
   const { world, content } = ctx;
@@ -22,6 +25,17 @@ export function tickWaveDirector(ctx: TickContext): void {
   const nest = ctx.byId.get(team.coreId);
   if (!nest) return;
 
+  // Background traffic: one small pack, every few seconds.
+  if (world.tick >= state.nextTrickleTick) {
+    if (state.trickleSince < 0) state.trickleSince = world.tick;
+    const units = planTrickle(world, content);
+    const packId = state.nextPackId++;
+    const wave = Math.max(1, state.nextIndex);
+    for (const unit of units) state.pending.push({ tick: world.tick, unit, packId, wave });
+    state.nextTrickleTick = world.tick + waves.trickle.everyTicks;
+  }
+
+  // Incidents.
   if (world.tick >= state.nextWaveTick) {
     const wave = state.nextIndex + 1;
     const plan = planWave(world, content, wave);
@@ -57,6 +71,51 @@ export function tickWaveDirector(ctx: TickContext): void {
   }
 }
 
+/**
+ * Pressure multiplier for the players still online: 1 solo, plus `k` for
+ * each extra player. `kind` picks k: the trickle scales strongly (it spreads
+ * over everyone), incidents gently (each lands on one base).
+ */
+export function playerScale(world: World, content: Content, kind: "trickle" | "incident"): number {
+  let online = 0;
+  for (const team of humanTeams(world)) if (team.downTick === null) online += 1;
+  return 1 + content.waves.players[kind] * Math.max(0, online - 1);
+}
+
+/** The points the next background-traffic pack spends. */
+export function trickleBudget(world: World, content: Content): number {
+  const { trickle } = content.waves;
+  const since = world.waves.trickleSince < 0 ? 0 : world.tick - world.waves.trickleSince;
+  // Integer minutes keep it exact; it grows in steps a minute apart.
+  const minutes = Math.floor(since / (60 * 20));
+  return Math.round((trickle.start + trickle.perMinute * minutes) * playerScale(world, content, "trickle"));
+}
+
+/** One background-traffic pack: whatever the latest incident has unlocked, never bosses. */
+function planTrickle(world: World, content: Content): string[] {
+  const { roster, trickle } = content.waves;
+  const unlocked = roster.filter((entry) => entry.fromWave <= Math.max(1, world.waves.nextIndex));
+  const totalWeight = unlocked.reduce((sum, entry) => sum + entry.weight, 0);
+  const cheapest = Math.min(...unlocked.map((entry) => entry.cost));
+  let points = trickleBudget(world, content);
+  const units: string[] = [];
+  while (points >= cheapest && units.length < trickle.maxPack) {
+    let roll = randomInt(world, 1, totalWeight);
+    let pick = unlocked[0]!;
+    for (const entry of unlocked) {
+      roll -= entry.weight;
+      if (roll <= 0) {
+        pick = entry;
+        break;
+      }
+    }
+    if (pick.cost > points) pick = unlocked.find((entry) => entry.cost === cheapest)!;
+    units.push(pick.unit);
+    points -= pick.cost;
+  }
+  return units;
+}
+
 /** Ticks between wave n and wave n + 1. */
 export function waveInterval(content: Content, wave: number): number {
   const { startTicks, minTicks, shrinkPerWave } = content.waves.interval;
@@ -73,7 +132,7 @@ export function planWave(world: World, content: Content, wave: number) {
   // and two browsers disagreeing on a wave size would desync a match.
   let scale = 1;
   for (let i = 1; i < wave; i += 1) scale *= budget.growth;
-  let points = Math.round(budget.start * scale);
+  let points = Math.round(budget.start * scale * playerScale(world, content, "incident"));
   const units: string[] = [];
 
   const bossCount = bossesIn(content, wave);

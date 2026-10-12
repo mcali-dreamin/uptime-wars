@@ -242,6 +242,9 @@ export interface WaveState {
   /** Waves sent so far. The next wave is nextIndex + 1. */
   nextIndex: number;
   nextWaveTick: number;
+  /** When the next background-traffic pack leaves, and when the trickle began (-1: not yet). */
+  nextTrickleTick: number;
+  trickleSince: number;
   /** Units scheduled to enter, sorted by tick. */
   pending: WaveSpawn[];
   nextPackId: number;

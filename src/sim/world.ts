@@ -63,7 +63,9 @@ export function createWorld(content: Content, setup: MatchSetup): World {
     commands: [],
     waves: {
       nextIndex: 0,
-      nextWaveTick: content.waves.graceTicks,
+      nextWaveTick: content.waves.graceTicks + content.waves.firstIncidentTicks - content.waves.firstWaveTicks,
+      nextTrickleTick: content.waves.graceTicks,
+      trickleSince: -1,
       pending: [],
       nextPackId: 1,
       packs: {},
