@@ -4,8 +4,13 @@ import { bfs } from "../src/sim/terrain/grid";
 import { content, SETUP } from "./fixtures";
 
 const SEEDS = Array.from({ length: 40 }, (_, i) => i * 7919 + 1);
-const towers = (world: World) =>
-  world.entities.filter((e) => e.kind === "building" && e.team === 1 && e.defId === content.waves.fortress.building);
+/** The nest's own C2 Servers (the hubs' squatters are covered in hubs.test.ts). */
+const towers = (world: World) => {
+  const nest = new Set(fortressSpots(world.terrain).map((s) => `${s.col},${s.row}`));
+  return world.entities.filter(
+    (e) => e.kind === "building" && e.team === 1 && e.defId === content.waves.fortress.building && nest.has(`${e.col},${e.row}`),
+  );
+};
 
 describe("nest fortress", () => {
   it("on every map the nest sits on the backbone, with at least three gateways up, all reachable from every start", () => {

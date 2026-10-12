@@ -89,7 +89,15 @@ export class Renderer {
       if (event.type === "hub" && event.team === this.localTeam) {
         const name = world.terrain.hubs[event.hub]!.size === "metro" ? "Metro" : "Campus";
         this.showBanner(
-          event.state === "connected" ? `${name} connected · more users` : event.state === "cut-off" ? `${name} cut off from your network` : `${name} knocked offline`,
+          event.state === "connected"
+            ? `${name} connected · more users`
+            : event.state === "cut-off"
+              ? `${name} cut off from your network`
+              : event.state === "contested"
+                ? `${name} contested · its users can't reach you`
+                : event.state === "secured"
+                  ? `${name} secured`
+                  : `${name} knocked offline`,
         );
       }
       if (event.type === "reported" && event.team === this.localTeam) {

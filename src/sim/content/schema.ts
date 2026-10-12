@@ -84,6 +84,8 @@ export interface BuildingDef {
   blocks?: boolean;
   /** Users this building can serve. Your total capacity caps your user count. */
   userCapacity?: number;
+  /** At most this many per player (counting ones under construction). */
+  maxPerTeam?: number;
   /** Tiles around this building (once finished) where you may build. */
   buildRadius?: number;
 }
@@ -210,7 +212,17 @@ export interface EconomyDef {
    */
   compute: { perUser: number; perUnit: number; churnPerSecond: number; maxOverload: number };
   /** User hubs (campus, metro): after one is knocked offline, it can't be reconnected for this long. */
-  hubs: { reconnectTicks: number };
+  hubs: {
+    reconnectTicks: number;
+    /**
+     * A hub is contested while an enemy building stands within this many
+     * pixels of its center, or enemy units there outnumber yours. Contested:
+     * nobody can connect it, and a held one serves nobody.
+     */
+    contestRadius: number;
+    /** C2 Servers the botnet squats on each unheld hub with, by hub size. */
+    guards: Record<"campus" | "metro", number>;
+  };
   /** One user leaves for every this much damage your buildings take. */
   damagePerUserLost: number;
   /**

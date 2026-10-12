@@ -13,6 +13,7 @@
 import type { TickContext } from "./context";
 import { placeBuilding } from "./entities";
 import { TICK_RATE, footprintCenter } from "./map";
+import type { Point } from "./types";
 import { inNetwork } from "./placement";
 import { hostile } from "./teams";
 import type { HubSpot } from "./terrain";
@@ -43,6 +44,9 @@ export function hubUserRoom(world: World, content: TickContext["content"], team:
     const sharers = hubSharers(world, entity.team);
     const at = sharers.findIndex((t) => t.id === team.id);
     if (at < 0) continue;
+    // Contested: users can't get through, so it serves nobody until you clear it.
+    const spot = world.terrain.hubs.findIndex((h) => h.col === entity.col && h.row === entity.row);
+    if (spot >= 0 && world.hubs[spot]?.contested) continue;
     const total = content.buildings[entity.defId]!.userCapacity ?? 0;
     room += Math.floor(total / sharers.length) + (at < total % sharers.length ? 1 : 0);
   }
@@ -59,6 +63,32 @@ export function hubBuilding(world: World, spot: HubSpot): Building | undefined {
 /** Does this footprint overlap a hub spot? Nothing else may be built there. */
 export function onHub(world: World, col: number, row: number, footprint: number): boolean {
   return world.terrain.hubs.some((h) => col < h.col + 2 && col + footprint > h.col && row < h.row + 2 && row + footprint > h.row);
+}
+
+/**
+ * Is a hub contested for `team`? Any enemy building within reach of it, or
+ * more enemy units there than yours (and your allies'). Squatters must be
+ * cleared, and a hub you hold needs your army on the ground.
+ */
+export function contestedFor(world: World, content: TickContext["content"], team: TeamId, center: Point): boolean {
+  const radius = content.economy.hubs.contestRadius;
+  let enemies = 0;
+  let friends = 0;
+  for (const e of world.entities) {
+    if (e.hp <= 0) continue;
+    const dx = e.x - center.x;
+    const dy = e.y - center.y;
+    if (dx * dx + dy * dy > radius * radius) continue;
+    const enemy = hostile(world, e.team, team);
+    if (e.kind === "building") {
+      if (enemy) return true;
+      continue;
+    }
+    if (e.mode === "builder") continue;
+    if (enemy) enemies += 1;
+    else friends += 1;
+  }
+  return enemies > friends;
 }
 
 /** Once a second: connect hubs your network reaches; drop ones knocked offline or cut off. */
@@ -78,7 +108,14 @@ export function tickHubs(ctx: TickContext): void {
     }
     if (standing) {
       const owner = world.teams[standing.team]!;
-      if (owner.downTick === null && inNetwork(world, content, owner.id, center.x, center.y)) return;
+      if (owner.downTick === null && inNetwork(world, content, owner.id, center.x, center.y)) {
+        const contested = contestedFor(world, content, owner.id, center);
+        if (contested !== state.contested) {
+          state.contested = contested;
+          world.events.push({ type: "hub", hub: i, team: owner.id, state: contested ? "contested" : "secured" });
+        }
+        return;
+      }
       // Co-op: an ally whose network still reaches it takes it over, no gap.
       const heir = hubSharers(world, owner.id).find((t) => t.id !== owner.id && inNetwork(world, content, t.id, center.x, center.y));
       if (heir) {
@@ -95,7 +132,10 @@ export function tickHubs(ctx: TickContext): void {
     }
     if (world.tick < state.downUntil) return;
     // Nobody holds it: the lowest-numbered player whose network reaches it connects it.
-    const claimant = world.teams.find((t) => online(t) && inNetwork(world, content, t.id, center.x, center.y));
+    state.contested = false;
+    const claimant = world.teams.find(
+      (t) => online(t) && inNetwork(world, content, t.id, center.x, center.y) && !contestedFor(world, content, t.id, center),
+    );
     if (!claimant) return;
     const hub = placeBuilding(world, content, claimant.id, spot.size, spot.col, spot.row, true);
     ctx.byId.set(hub.id, hub);
