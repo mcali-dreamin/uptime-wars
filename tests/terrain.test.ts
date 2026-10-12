@@ -119,7 +119,7 @@ describe("elevation", () => {
   }
 
   function unitAt(team: 0 | 1, at: { x: number; y: number }) {
-    return { kind: "unit", id: 900 + team, team, x: at.x, y: at.y, radius: 8, armor: 0, armorType: "container", hp: 1000, maxHp: 1000 } as unknown as Entity;
+    return { kind: "unit", id: 900 + team, team, x: at.x, y: at.y, radius: 8, armor: 0, hp: 1000, maxHp: 1000 } as unknown as Entity;
   }
 
   it("units walk around cliffs instead of into them", () => {
@@ -176,11 +176,11 @@ describe("elevation", () => {
     const below = unitAt(1, low);
     const above = unitAt(0, high);
     const level = unitAt(1, { x: high.x + TILE, y: high.y });
-    dealDamage(ctx, above, below, "brute", 40);
-    dealDamage(ctx, above, level, "brute", 40);
+    dealDamage(ctx, above, below, 40);
+    dealDamage(ctx, above, level, 40);
     const downhill = 1000 - below.hp;
     const flat = 1000 - level.hp;
-    expect(downhill).toBe(Math.round(40 * content.damage.brute.container * 1.25));
-    expect(flat).toBe(Math.round(40 * content.damage.brute.container));
+    expect(downhill).toBe(Math.round(40 * 1.25));
+    expect(flat).toBe(40);
   });
 });
