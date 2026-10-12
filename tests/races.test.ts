@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  RACE_LOOKS,
   createWorld,
   queueCommand,
   step,
@@ -35,5 +36,15 @@ describe("races", () => {
     queueCommand(world, { ...spot, building: "server-rack" });
     step(world, content);
     expect(world.events).toContainEqual(expect.objectContaining({ type: "rejected", reason: "not in this race's roster" }));
+  });
+});
+
+describe("race looks", () => {
+  it("every playable race has a look, and no two races share one", () => {
+    const looks = Object.values(content.races)
+      .filter((race) => race.controller === "human")
+      .map((race) => race.look);
+    for (const look of looks) expect(RACE_LOOKS).toContain(look);
+    expect(new Set(looks).size).toBe(looks.length);
   });
 });

@@ -4,9 +4,15 @@
 //
 // `team` below is always a team's colour (see teamColor in ../palette).
 //
-// The look: dark metal hardware with your team's colour as paint and light
-// (it glows, and bloom picks it up). The botnet is the opposite: organic,
-// spiky, red. Moving parts are tagged so the view can animate them.
+// The look: hardware with your team's colour as paint and light (it glows,
+// and bloom picks it up). What the hardware is made of depends on the race's
+// look, so races read apart at a glance whatever colour they play in:
+// - scrappy (Open Source): warm, cobbled together. Dark brown metal, copper
+//   frames, rusty patch panels, pipes, droopy cables, home-made antennas.
+// - monolith (Hyperscaler): cold and polished. Pale chrome, glass shells,
+//   chrome plinths, and white light strips.
+// The botnet is neither: organic, spiky, red. Moving parts are tagged so the
+// view can animate them.
 
 import * as THREE from "three";
 import { HORDE_COLOR } from "../palette";
@@ -19,7 +25,12 @@ export type Anim =
   | { type: "wiggle"; amount: number; speed: number; phase: number; base: number }
   | { type: "flicker" };
 
-type Mat = "body" | "frame" | "trim" | "glow" | "screen" | "solar" | "flesh" | "hot" | "flame" | "dark";
+type Mat =
+  | "body" | "frame" | "trim" | "glow" | "screen" | "solar" | "flesh" | "hot" | "flame" | "dark"
+  | "copper" | "rust" | "cable" | "glass" | "chrome" | "white";
+
+/** A race's look (see RaceDef.look), or "default" for the botnet and anything without one. */
+export type Look = "scrappy" | "monolith" | "default";
 
 export class Models {
   private readonly templates = new Map<string, THREE.Group>();
@@ -27,19 +38,24 @@ export class Models {
   private readonly holograms = new Map<number, THREE.Material>();
   /** Shared animated materials (blinking LEDs, flames), keyed for update(). */
   private readonly blinking: THREE.MeshStandardMaterial[] = [];
+  /** The look of the template being built right now (see make). */
+  private look: Look = "default";
 
   constructor(private readonly fog: FogTexture) {}
 
   /** A fresh instance of an entity's model. */
-  make(defId: string, team: number, size: number, isUnit: boolean): THREE.Group {
-    // Keyed by colour too: a new match may bring a new player colour.
-    const key = `${defId}:${team}:${size}`;
+  make(defId: string, team: number, size: number, isUnit: boolean, look: Look = "default"): THREE.Group {
+    // Keyed by colour and look too: a new match may bring a new colour or race.
+    const key = `${defId}:${team}:${size}:${look}`;
     let template = this.templates.get(key);
     if (!template) {
+      this.look = look;
       template = isUnit ? this.unit(defId, team, size) : this.building(defId, team);
+      this.dress(template, defId, team, isUnit);
+      this.look = "default";
       template.traverse((node) => {
         if ((node as THREE.Mesh).isMesh) {
-          node.castShadow = true;
+          node.castShadow = !node.userData.noShadow;
           node.receiveShadow = true;
         }
       });
@@ -82,10 +98,16 @@ export class Models {
 
   private mat(kind: Mat, team: number): THREE.Material {
     const color = team;
-    const key = `${kind}:${color}`;
+    const look = this.look;
+    const key = `${kind}:${color}:${look}`;
     let material = this.materials.get(key);
     if (material) return material;
     const standard = (p: THREE.MeshStandardMaterialParameters) => this.fog.apply(new THREE.MeshStandardMaterial(p));
+    const styled = this.lookMaterial(kind, color, look, standard);
+    if (styled) {
+      this.materials.set(key, styled);
+      return styled;
+    }
     switch (kind) {
       case "body":
         material = standard({ color: 0x1b2431, metalness: 0.55, roughness: 0.45 });
@@ -129,9 +151,135 @@ export class Models {
         material = this.fog.apply(m);
         break;
       }
+      // Dressing materials, used by both looks.
+      case "copper":
+        material = standard({ color: 0xb87333, metalness: 0.9, roughness: 0.42 });
+        break;
+      case "rust":
+        material = standard({ color: 0x6e3a1e, metalness: 0.35, roughness: 0.85 });
+        break;
+      case "cable":
+        material = standard({ color: 0x15110e, metalness: 0.1, roughness: 0.9 });
+        break;
+      case "glass": {
+        const m = new THREE.MeshStandardMaterial({
+          color: 0xdbeafe,
+          metalness: 1,
+          roughness: 0.04,
+          transparent: true,
+          opacity: 0.16,
+          depthWrite: false,
+        });
+        material = this.fog.apply(m);
+        break;
+      }
+      case "chrome":
+        material = standard({ color: 0xe2e8f0, metalness: 1, roughness: 0.12 });
+        break;
+      case "white": {
+        // Cool white light, tinted a touch toward the team colour.
+        const tint = new THREE.Color(0xffffff).lerp(new THREE.Color(color), 0.25);
+        material = this.fog.apply(new THREE.MeshStandardMaterial({ color: tint, emissive: tint, emissiveIntensity: 1.8, roughness: 0.2 }));
+        break;
+      }
     }
     this.materials.set(key, material);
     return material;
+  }
+
+  /** The base materials (body, frame, dark, glow) as the look makes them; null to use the default. */
+  private lookMaterial(
+    kind: Mat,
+    color: number,
+    look: Look,
+    standard: (p: THREE.MeshStandardMaterialParameters) => THREE.Material,
+  ): THREE.Material | null {
+    if (look === "scrappy") {
+      switch (kind) {
+        case "body":
+          return standard({ color: 0x2b231d, metalness: 0.3, roughness: 0.82 });
+        case "frame":
+          return standard({ color: 0x9a6232, metalness: 0.85, roughness: 0.5 });
+        case "dark":
+          return standard({ color: 0x17120f, metalness: 0.2, roughness: 0.9 });
+      }
+    }
+    if (look === "monolith") {
+      switch (kind) {
+        case "body":
+          return standard({ color: 0xaeb8c4, metalness: 0.95, roughness: 0.16 });
+        case "frame":
+          return standard({ color: 0xe5eaf0, metalness: 1, roughness: 0.1 });
+        case "dark":
+          return standard({ color: 0x1e2733, metalness: 0.8, roughness: 0.08 });
+        case "glow": {
+          // Clean light: the team colour washed toward white, steady (no blinking).
+          const tint = new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.35);
+          return this.fog.apply(new THREE.MeshStandardMaterial({ color: tint, emissive: tint, emissiveIntensity: 2, roughness: 0.2 }));
+        }
+      }
+    }
+    return null;
+  }
+
+  // --- race dressing --------------------------------------------------------
+
+  /** Add the look's details around a finished model, sized to its bounds. */
+  private dress(g: THREE.Group, defId: string, team: number, isUnit: boolean): void {
+    if (this.look === "default") return;
+    const box = new THREE.Box3().setFromObject(g);
+    if (box.isEmpty()) return;
+    const w = box.max.x - box.min.x;
+    const h = box.max.y;
+    const d = box.max.z - box.min.z;
+    const r = hashString(defId);
+    if (this.look === "scrappy") {
+      if (isUnit) {
+        // A home-made antenna with a blinking tip.
+        this.cyl(g, team, "copper", 0.5, 0.5, h * 0.45, 4, w * 0.2, h * 0.95, -d * 0.1);
+        this.shape(g, team, "glow", "tip", () => new THREE.SphereGeometry(1.4, 6, 4), w * 0.2, h * 1.42, -d * 0.1);
+        return;
+      }
+      // A copper pipe up one corner, with an elbow over the top.
+      const side = r % 2 === 0 ? 1 : -1;
+      const px = side * (w / 2 + 1.5);
+      const pz = d / 2 - 3;
+      this.cyl(g, team, "copper", 1.7, 1.7, h * 0.75, 8, px, 0, pz);
+      const elbow = this.cyl(g, team, "copper", 1.7, 1.7, w * 0.35, 8, 0, 0, 0);
+      elbow.rotation.z = Math.PI / 2;
+      elbow.position.set(px - side * w * 0.17, h * 0.75, pz);
+      // A rusty patch panel bolted on crooked.
+      const patch = this.box(g, team, "rust", w * 0.38, h * 0.26, 1.2, -side * w * 0.15, h * 0.25, box.max.z + 0.4);
+      patch.rotation.z = (((r >> 3) % 7) - 3) * 0.035;
+      // A droopy cable on the far side.
+      const cable = this.shape(g, team, "cable", `cable:${Math.round(w)}`, () => new THREE.TorusGeometry(w * 0.28, 0.9, 5, 16, Math.PI), 0, h * 0.55, box.min.z - 0.8);
+      cable.rotation.z = Math.PI;
+      // A home-made antenna on the roof, off to one side.
+      if (w > 20) {
+        this.cyl(g, team, "copper", 0.6, 0.9, 16, 5, -side * w * 0.3, h, -d * 0.2);
+        this.shape(g, team, "glow", "tip", () => new THREE.SphereGeometry(1.6, 6, 4), -side * w * 0.3, h + 17, -d * 0.2);
+      }
+      return;
+    }
+    // monolith
+    if (isUnit) {
+      // A chrome ring at the feet and a white visor line.
+      const ring = this.shape(g, team, "chrome", `mono-ring:${Math.round(w)}`, () => new THREE.TorusGeometry(Math.max(w, d) * 0.55, 0.7, 6, 24), 0, 1, 0);
+      ring.rotation.x = Math.PI / 2;
+      return;
+    }
+    // A chrome plinth under it...
+    this.box(g, team, "chrome", w + 8, 2.5, d + 8, 0, 0, 0);
+    // ...white light strips round the top edges...
+    for (const [sx, sz, lw, ld] of [[0, d / 2 + 1, w + 2, 1.2], [0, -d / 2 - 1, w + 2, 1.2], [w / 2 + 1, 0, 1.2, d + 2], [-w / 2 - 1, 0, 1.2, d + 2]] as const) {
+      this.box(g, team, "white", lw, 1.2, ld, sx, h - 2, sz);
+    }
+    // ...and a glass shell over anything big enough to enclose.
+    if (w > 22 && h > 24) {
+      const shell = this.box(g, team, "glass", w + 5, h + 3, d + 5, 0, 0, 0);
+      shell.userData.noShadow = true;
+      shell.renderOrder = 2;
+    }
   }
 
   // --- building blocks ------------------------------------------------------
@@ -585,6 +733,13 @@ function wireframe(team: number): THREE.Material {
   let m = wireframes.get(color);
   if (!m) wireframes.set(color, (m = new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: 0.85 })));
   return m;
+}
+
+/** A stable small hash of a string, so each model's dressing varies but never changes. */
+function hashString(text: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i += 1) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193);
+  return h >>> 0;
 }
 
 function anim(node: THREE.Object3D, a: Anim): void {
