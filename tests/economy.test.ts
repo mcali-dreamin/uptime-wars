@@ -3,12 +3,15 @@ import {
   createWorld,
   queueCommand,
   incomeRate,
+  trafficRadius,
   levelOf,
   multiplier,
   nextLevel,
   userCapacity,
   step,
 } from "../src/sim";
+import { makeContext } from "../src/sim/context";
+import { dealDamage } from "../src/sim/combat";
 import { content, SETUP, firstSpot, planBuildOrder } from "./fixtures";
 
 describe("users", () => {
@@ -132,6 +135,33 @@ describe("users are the economy", () => {
     world.teams[0]!.users = 30;
     world.teams[0]!.downTick = 1;
     expect(incomeRate(world, content, world.teams[0]!).users).toBe(0);
+  });
+});
+
+describe("churn", () => {
+  it("only damage to buildings that serve users drives them away", () => {
+    const frozen: typeof content = structuredClone(content);
+    frozen.economy = { ...content.economy, growthPerSecond: 0, minArrivalsPerSecond: 0 };
+    const world = createWorld(frozen, SETUP);
+    world.teams[0]!.users = 40;
+    queueCommand(world, firstSpot("firewall"));
+    while (!world.entities.some((e) => e.defId === "firewall" && e.kind === "building" && e.buildRemaining === 0)) step(world, frozen);
+    const ctx = makeContext(world, frozen);
+    const wall = world.entities.find((e) => e.defId === "firewall")!;
+    const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
+    const creep = { ...core, id: -9, team: 1 } as typeof core;
+    dealDamage(ctx, creep, wall, "brute", 120);
+    expect(world.teams[0]!.users).toBe(40);
+    dealDamage(ctx, creep, core, "brute", 240);
+    expect(world.teams[0]!.users).toBeLessThan(40);
+  });
+
+  it("a bigger base is sensed from further away", () => {
+    const world = createWorld(content, SETUP);
+    const team = world.teams[0]!;
+    const small = trafficRadius(world, content, team);
+    team.users += 200;
+    expect(trafficRadius(world, content, team)).toBeGreaterThan(small);
   });
 });
 

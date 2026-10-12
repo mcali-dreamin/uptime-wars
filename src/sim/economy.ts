@@ -98,9 +98,13 @@ export function incomeRate(world: World, content: TickContext["content"], team: 
   return { base, buildings, users };
 }
 
-/** Damage to a player's building drives users away. */
-export function loseUsers(ctx: TickContext, team: Team, damage: number): void {
+/**
+ * Damage to a building that serves users (core, Web Apps) drives some away.
+ * Towers, racks and the rest are what you put between creeps and your users.
+ */
+export function loseUsers(ctx: TickContext, team: Team, damage: number, defId: string): void {
   if (team.controller !== "human" || team.users <= 0) return;
+  if (!ctx.content.buildings[defId]?.userCapacity) return;
   team.churnCarry += damage / ctx.content.economy.damagePerUserLost;
   const lost = Math.floor(team.churnCarry);
   if (lost <= 0) return;
@@ -110,7 +114,8 @@ export function loseUsers(ctx: TickContext, team: Team, damage: number): void {
 
 /**
  * How far away (pixels) crawlers can sense this team's cores. It's the noise
- * you make: more buildings and more users, more attention. 0 before a core.
+ * you make: more buildings and more users, more attention, and it creeps up
+ * with time so nobody can hide forever. 0 before a core.
  */
 export function trafficRadius(world: World, content: TickContext["content"], team: Team): number {
   if (team.controller !== "human" || team.coreId === -1 || team.downTick !== null) return 0;
@@ -119,5 +124,6 @@ export function trafficRadius(world: World, content: TickContext["content"], tea
   for (const entity of world.entities) {
     if (entity.kind === "building" && entity.team === team.id && entity.hp > 0) buildings += 1;
   }
-  return Math.min(t.max, t.base + t.perBuilding * buildings + t.perUser * team.users);
+  const minutes = Math.floor(world.tick / (TICK_RATE * 60));
+  return Math.min(t.max, t.base + t.perBuilding * buildings + t.perUser * team.users + t.perMinute * minutes);
 }
