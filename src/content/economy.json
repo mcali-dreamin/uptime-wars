@@ -17,5 +17,28 @@
     "perMinute": 700,
     "max": 16000,
     "pullChance": 0.85
-  }
+  },
+  "tiers": [
+    {
+      "name": "Core",
+      "compute": 0,
+      "buildRadius": 0,
+      "coreHp": 1,
+      "traffic": 0
+    },
+    {
+      "name": "Data Center",
+      "compute": 60,
+      "buildRadius": 2,
+      "coreHp": 1.35,
+      "traffic": 1500
+    },
+    {
+      "name": "Region",
+      "compute": 140,
+      "buildRadius": 4,
+      "coreHp": 1.7,
+      "traffic": 3000
+    }
+  ]
 }

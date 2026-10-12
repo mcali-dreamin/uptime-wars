@@ -3,7 +3,7 @@
 // that pans and zooms. Anything outside the camera is skipped.
 
 import { Container, Graphics } from "pixi.js";
-import { TILE, isCore, networkProviders, type Content, type World } from "../../sim";
+import { reachOf, TILE, isCore, tierOf, networkProviders, type Content, type World } from "../../sim";
 import type { Camera } from "../camera";
 import type { Fog } from "../fog";
 import { PING_MS, SHOT_TTL_MS, type Frame, type WorldView } from "../frame";
@@ -86,6 +86,10 @@ export class World2D implements WorldView {
         const building = entity.buildRemaining > 0;
         g.rect(left, top, size, size).fill({ color: 0x121922 }).stroke({ width: 2, color, alpha: building ? 0.4 : 1 });
         drawGlyph(g, entity.defId, x, y, size, color, building ? 0.35 : 0.9);
+        // A core's tier: one more outline per tier.
+        const owner = world.teams[entity.team];
+        const tier = owner && isCore(content, owner, entity) ? tierOf(content, owner) : 0;
+        for (let i = 1; i <= tier; i += 1) g.rect(left - 4 * i, top - 4 * i, size + 8 * i, size + 8 * i).stroke({ width: 1.5, color, alpha: 0.6 });
         drawHealth(g, left, top - 6, size, entity.hp / entity.maxHp);
         const attack = content.buildings[entity.defId]?.attack;
         if (attack) g.circle(x, y, attack.range + entity.radius).stroke({ width: 1, color, alpha: 0.08 });
@@ -124,7 +128,7 @@ export class World2D implements WorldView {
   private drawPlacement({ ghost, world, content, localTeam }: Frame): void {
     if (!ghost) return;
     for (const provider of networkProviders(world, content, localTeam)) {
-      const reach = content.buildings[provider.defId]!.buildRadius! * TILE;
+      const reach = reachOf(world, content, provider);
       this.overlay.circle(provider.x, provider.y, reach).stroke({ width: 2, color: VALID, alpha: 0.25 });
     }
     const size = ghost.footprint * TILE;

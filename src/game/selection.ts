@@ -2,7 +2,7 @@
 // it. Every "what does clicking here do?" question is answered in this file,
 // so the input code, the cursor, the hint line, and the info panel agree.
 
-import { TILE, buildCost, canFound, canPlace, forkBlocker, hostile, isCore, type Content, type Entity, type Point, type Unit } from "../sim";
+import { TILE, buildCost, canFound, canPlace, forkBlocker, hostile, isCore, tierBlocker, type Content, type Entity, type Point, type Unit } from "../sim";
 import type { Order, Session } from "./session";
 
 export type Selection =
@@ -186,6 +186,12 @@ export function placementAt(
     };
   }
   return null;
+}
+
+/** Why your core tier keeps you from building this right now, or null. */
+export function tierLock(session: Session, building: string): string | null {
+  const have = session.world.entities.filter((e) => e.kind === "building" && e.team === session.local && e.defId === building && e.hp > 0).length;
+  return tierBlocker(session.content, session.team, building, have);
 }
 
 export function affordable(session: Session, building: string): boolean {

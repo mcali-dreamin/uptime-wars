@@ -6,6 +6,7 @@ import { TILE, footprintCenter } from "./map";
 import { TILE_OPEN, tileAt } from "./terrain";
 import type { Building, Entity, Team, TeamId, World } from "./types";
 import { unitInTheWay } from "./walls";
+import { tierBlocker, tierDef } from "./tiers";
 
 export function buildCost(content: Content, raceId: string, buildingId: string): number {
   return Math.round(content.buildings[buildingId]!.cost * content.races[raceId]!.modifiers.costMultiplier);
@@ -53,6 +54,9 @@ export function canPlace(
   if (!inNetwork(world, content, teamId, center.x, center.y)) return "outside your network";
 
   if (isOccupied(world, col, row, def.footprint)) return "tile occupied";
+  const have = world.entities.filter((e) => e.kind === "building" && e.team === teamId && e.defId === buildingId && e.hp > 0).length;
+  const locked = tierBlocker(content, team, buildingId, have);
+  if (locked) return locked;
   if (def.blocks && unitInTheWay(world, col, row, def.footprint)) return "a unit is in the way";
   if (team.money < cost) return "not enough $";
   return null;
@@ -85,10 +89,17 @@ export function networkProviders(world: World, content: Content, teamId: TeamId)
   );
 }
 
+/** How far (px) a network building lets its team build: cores reach further at higher tiers. */
+export function reachOf(world: World, content: Content, provider: Building): number {
+  const team = world.teams[provider.team];
+  const bonus = team && isCore(content, team, provider) ? tierDef(content, team).buildRadius : 0;
+  return (content.buildings[provider.defId]!.buildRadius! + bonus) * TILE;
+}
+
 /** Whether a point is inside any of the team's build radii. */
 export function inNetwork(world: World, content: Content, teamId: TeamId, x: number, y: number): boolean {
   return networkProviders(world, content, teamId).some((provider) => {
-    const reach = content.buildings[provider.defId]!.buildRadius! * TILE;
+    const reach = reachOf(world, content, provider);
     const dx = x - provider.x;
     const dy = y - provider.y;
     return dx * dx + dy * dy <= reach * reach;

@@ -36,3 +36,5 @@ export { fortressGates, fortressSpots } from "./fortress";
 export { invokeBlocker } from "./functions";
 export { forkBlocker, forkCost, regionShield } from "./mechanics";
 export { isJammed } from "./roles";
+export { reachOf } from "./placement";
+export { tierBlocker, tierDef, tierOf, tierUpgrade } from "./tiers";

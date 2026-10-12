@@ -84,6 +84,10 @@ export interface BuildingDef {
   blocks?: boolean;
   /** Users this building can serve. Your total capacity caps your user count. */
   userCapacity?: number;
+  /** Needs this core tier (index into economy.tiers; 0 = from the start). */
+  tier?: number;
+  /** At most this many per player, by core tier (counting ones under construction). */
+  limitPerTier?: number[];
   /** Tiles around this building (once finished) where you may build. */
   buildRadius?: number;
 }
@@ -221,9 +225,18 @@ export interface EconomyDef {
    * perUser·users + perMinute·minutes of uptime, capped at max.
    */
   traffic: { base: number; perBuilding: number; perUser: number; perMinute: number; max: number; pullChance: number };
+  /**
+   * Core tech tiers, researched at the core (the "tier" upgrade; its level is
+   * the tier). Each tier adds `compute` to your supply, `buildRadius` tiles to
+   * every core's reach, multiplies core hp by `coreHp`, and adds `traffic` px
+   * to how far crawlers sense you. Buildings gate on it with `tier` and
+   * `limitPerTier`.
+   */
+  tiers: { name: string; compute: number; buildRadius: number; coreHp: number; traffic: number }[];
 }
 
-export type UpgradeStat = "unitHp" | "unitDamage" | "towerRange" | "spawnSpeed" | "userCapacity" | "revenue";
+/** "tier" is the core's tech tier (see EconomyDef.tiers): no multiplier, its level is the tier. */
+export type UpgradeStat = "unitHp" | "unitDamage" | "towerRange" | "spawnSpeed" | "userCapacity" | "revenue" | "tier";
 
 /**
  * Researched at the core, one at a time. Level n costs cost * n and takes

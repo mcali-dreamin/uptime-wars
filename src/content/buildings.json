@@ -50,7 +50,8 @@
       "count": 1,
       "maxAlive": 4
     },
-    "sight": 300
+    "sight": 300,
+    "tier": 1
   },
   "firewall": {
     "name": "Firewall",
@@ -166,7 +167,12 @@
     "footprint": 1,
     "buildable": true,
     "sight": 280,
-    "userCapacity": 60
+    "userCapacity": 60,
+    "limitPerTier": [
+      2,
+      4,
+      6
+    ]
   },
   "mesh-node": {
     "name": "Mesh Node",
@@ -228,7 +234,8 @@
       "ttlTicks": 400,
       "cooldownTicks": 300,
       "triggerRange": 360
-    }
+    },
+    "tier": 1
   },
   "garden-wall": {
     "name": "Wall",
@@ -256,7 +263,8 @@
       "range": 230,
       "cooldownTicks": 20
     },
-    "sight": 380
+    "sight": 380,
+    "tier": 1
   },
   "flagship-store": {
     "name": "Flagship Store",

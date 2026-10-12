@@ -6,7 +6,7 @@
 // - research: the core is selected, so its upgrades
 // - hero:     the hero is selected, so its abilities (see hero-bar.ts)
 
-import { affordable } from "../game/selection";
+import { affordable, tierLock } from "../game/selection";
 import type { Session } from "../game/session";
 import { buildCost, canResearch, levelOf, nextLevel } from "../sim";
 import { $ } from "./dom";
@@ -62,7 +62,15 @@ export class BuildBar {
         button.style.setProperty("--progress", String(progress));
         continue;
       }
-      button.disabled = id !== FOUND_BUTTON && !affordable(this.session, id);
+      const locked = id === FOUND_BUTTON ? null : tierLock(this.session, id);
+      button.disabled = id !== FOUND_BUTTON && (locked !== null || !affordable(this.session, id));
+      button.classList.toggle("locked", locked !== null);
+      const index = this.session.race.buildings.indexOf(id);
+      if (index >= 0) {
+        const detail = button.querySelector("small")!;
+        const text = locked ? `${index + 1} · ${locked}` : `${index + 1} · ${buildCost(content, team.raceId, id)}`;
+        if (detail.textContent !== text) detail.textContent = text;
+      }
       button.classList.toggle("selected", id === selected);
     }
   }
@@ -105,6 +113,12 @@ export class BuildBar {
     const def = content.upgrades[upgrade]!;
     const level = levelOf(team, upgrade);
     const index = Object.keys(content.upgrades).indexOf(upgrade) + 1;
+    if (def.stat === "tier") {
+      const tiers = content.economy.tiers;
+      if (level >= def.maxLevel) return `${index} · ${tiers[level]!.name}`;
+      if (team.research?.upgrade === upgrade) return `${index} · building ${tiers[level + 1]!.name}`;
+      return `${index} · → ${tiers[level + 1]!.name} · ${nextLevel(content, team, upgrade).cost}`;
+    }
     if (level >= def.maxLevel) return `${index} · max`;
     if (team.research?.upgrade === upgrade) return `${index} · researching`;
     return `${index} · Lv ${level}/${def.maxLevel} · ${nextLevel(content, team, upgrade).cost}`;

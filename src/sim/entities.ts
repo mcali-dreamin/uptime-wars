@@ -9,6 +9,15 @@ import type { Terrain } from "./terrain";
 import { CONSTRUCTION_START_HP, RALLY_SPREAD } from "./tuning";
 import type { Building, Point, Team, TeamId, Unit, World } from "./types";
 import { multiplier } from "./upgrades";
+import { tierDef } from "./tiers";
+
+/** A building's max hp: a core's grows with its team's tier. */
+function coreHp(world: World, content: Content, teamId: TeamId, defId: string): number {
+  const team = world.teams[teamId];
+  const base = content.buildings[defId]!.hp;
+  if (!team || content.races[team.raceId]?.core !== defId) return base;
+  return Math.round(base * tierDef(content, team).coreHp);
+}
 
 export function placeBuilding(
   world: World,
@@ -32,8 +41,8 @@ export function placeBuilding(
     col,
     row,
     footprint: def.footprint,
-    maxHp: def.hp,
-    hp: instant ? def.hp : def.hp * CONSTRUCTION_START_HP,
+    maxHp: coreHp(world, content, team, defId),
+    hp: (instant ? 1 : CONSTRUCTION_START_HP) * coreHp(world, content, team, defId),
     armor: def.armor,
     radius: (def.footprint * TILE) / 2,
     attackCooldown: 0,
