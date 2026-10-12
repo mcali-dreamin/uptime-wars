@@ -19,6 +19,7 @@ import type { Content } from "./content";
 import { tickConstruction, tickCooldowns, tickIncome, tickUsers } from "./economy";
 import { foundCore, spawnUnit } from "./entities";
 import { fortify } from "./fortress";
+import { tickHubs } from "./hubs";
 import { footprintCenter } from "./map";
 import { teamCores } from "./placement";
 import { hordeTeam, humanTeams, type MatchMode } from "./teams";
@@ -72,6 +73,7 @@ export function createWorld(content: Content, setup: MatchSetup): World {
       nextPackId: 1,
       packs: {},
     },
+    hubs: terrain.hubs.map(() => ({ owner: -1, downUntil: 0 })),
     outcome: null,
     events: [],
   };
@@ -135,6 +137,7 @@ export function step(world: World, content: Content): void {
   ctx.grid = buildGrid(world.entities);
   tickCooldowns(ctx);
   tickIncome(ctx);
+  tickHubs(ctx);
   tickUsers(ctx);
   tickResearch(ctx);
   tickHeroes(ctx);

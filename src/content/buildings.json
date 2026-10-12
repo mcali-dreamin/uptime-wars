@@ -230,6 +230,30 @@
       "triggerRange": 360
     }
   },
+  "campus": {
+    "name": "Campus",
+    "description": "Where users live: a campus a short hop from your start. Bring your network within reach to connect it for +80 user room. Crawlers sense it like a core; if it's knocked offline, it takes a while to come back.",
+    "cost": 0,
+    "buildTicks": 0,
+    "hp": 800,
+    "armor": 2,
+    "footprint": 2,
+    "buildable": false,
+    "sight": 280,
+    "userCapacity": 80
+  },
+  "metro": {
+    "name": "Metro",
+    "description": "A whole metro area of users, out toward the nest. Connect it for +200 user room, if you can hold it.",
+    "cost": 0,
+    "buildTicks": 0,
+    "hp": 1600,
+    "armor": 3,
+    "footprint": 2,
+    "buildable": false,
+    "sight": 320,
+    "userCapacity": 200
+  },
   "garden-wall": {
     "name": "Wall",
     "description": "Blocks every path, for creeps and for your own units. Towers shoot over it. Cheap, tough, and the only way to shape where the war goes.",

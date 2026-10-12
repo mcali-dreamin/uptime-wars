@@ -5,6 +5,7 @@ import { randomInt } from "../rng";
 import { bfs, flattenDisc, neighbors4 } from "./grid";
 import {
   EXTRA_RAMPS,
+  HUB_CLEAR_RADIUS,
   FORTRESS_GATES,
   FORTRESS_RADIUS,
   GATE_SPACING,
@@ -32,6 +33,7 @@ export function raiseTerrain(
   nest: TilePoint,
   noiseSeed: number,
   rng: { rngState: number },
+  hubs: TilePoint[] = [],
 ): Uint8Array {
   const heights = new Uint8Array(cols * rows);
   for (let row = 0; row < rows; row += 1) {
@@ -43,6 +45,8 @@ export function raiseTerrain(
   // Every start and the nest each sit on one flat patch.
   for (const start of starts) flattenDisc(heights, cols, rows, start.col + 1, start.row + 1, START_CLEAR_RADIUS + 2);
   flattenDisc(heights, cols, rows, nest.col + 1, nest.row + 1, NEST_CLEAR_RADIUS + 2);
+  // Hubs too, so their footprint never holds a cliff.
+  for (const hub of hubs) flattenDisc(heights, cols, rows, hub.col + 1, hub.row + 1, HUB_CLEAR_RADIUS);
   raiseFortress(heights, cols, rows, nest);
 
   // Cliffs: a walkable tile next to a lower walkable tile is the cliff edge.

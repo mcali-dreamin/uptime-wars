@@ -5,7 +5,7 @@ import { Container, Graphics } from "pixi.js";
 import { TILE, type Terrain, type World } from "../sim";
 import type { Fog } from "./fog";
 import { teamColor } from "./palette";
-import { drawTerrainBase } from "./pixi/terrain-art";
+import { drawHubs, drawTerrainBase } from "./pixi/terrain-art";
 
 const WIDTH = 240;
 const MARGIN = 12;
@@ -37,6 +37,7 @@ export class Minimap {
     g.clear();
     g.rect(0, 0, terrain.cols * cell, terrain.rows * cell).fill({ color: 0x0e141b }).stroke({ width: 1, color: 0x243142 });
     drawTerrainBase(g, terrain, cell);
+    drawHubs(g, terrain, cell);
     this.fog.setMinimapScale(this.scale);
   }
 

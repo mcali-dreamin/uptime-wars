@@ -86,6 +86,12 @@ export class Renderer {
       this.view.event?.(event);
       if (event.type === "shot") this.shots.push({ ...event, age: 0 });
       if (event.type === "founded") this.showBanner("Core online");
+      if (event.type === "hub" && event.team === this.localTeam) {
+        const name = world.terrain.hubs[event.hub]!.size === "metro" ? "Metro" : "Campus";
+        this.showBanner(
+          event.state === "connected" ? `${name} connected · more users` : event.state === "cut-off" ? `${name} cut off from your network` : `${name} knocked offline`,
+        );
+      }
       if (event.type === "reported" && event.team === this.localTeam) {
         this.showBanner(`A scanner reported your base · ${event.packs} pack${event.packs === 1 ? "" : "s"} inbound`);
         this.ping(event.x, event.y);

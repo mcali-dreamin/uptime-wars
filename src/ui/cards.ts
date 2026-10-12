@@ -105,6 +105,7 @@ export const TERRAIN_GUIDE: GuideEntry[] = [
   { title: "Dead link", description: "Light grey with a bright edge.", stats: ["Impassable", "Can't build", "Blocks line of sight"] },
   { title: "Height", description: "Three levels: deep web (darkest), surface web, backbone (lightest).", stats: ["Units below can't see up a cliff unless they're right at its foot", "Attacking downhill deals 25% more damage", "Towers follow the same rules"] },
   { title: "Cliff", description: "Near-black band with a bright lip on the drop side.", stats: ["Impassable", "Can't build", "You can see and shoot across it"] },
+  { title: "User hub", description: "A grey city block with lit windows: Campus near each start, Metro toward the nest.", stats: ["Extend your network within reach to connect it: +80 (Campus) or +200 (Metro) user room", "Crawlers sense connected hubs like a core", "Knocked offline: no reconnecting for 45 s", "Co-op: its room is split between online allies, and any ally can keep it connected", "Nothing can be built on it"] },
   { title: "Ramp", description: "Striped gap in a cliff.", stats: ["The only way up or down", "Hold the ramp, hold the plateau"] },
 ];
 
