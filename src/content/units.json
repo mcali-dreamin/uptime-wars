@@ -404,5 +404,92 @@
     "bounty": 0,
     "size": 14,
     "sight": 200
+  },
+  "scanner": {
+    "name": "Port Scanner",
+    "description": "Fast, fragile, and doesn't fight. If it spots your base and lives five seconds, every pack nearby marches on you. Kill it first.",
+    "hp": 30,
+    "armor": 0,
+    "damage": 0,
+    "range": 0,
+    "cooldownTicks": 999,
+    "speed": 4.6,
+    "aggro": 0,
+    "bounty": 8,
+    "size": 6,
+    "sight": 420,
+    "role": {
+      "kind": "scanner",
+      "reportTicks": 100,
+      "reportRadius": 2600
+    }
+  },
+  "phisher": {
+    "name": "Phisher",
+    "description": "Walks past your towers and army to get at whatever serves users. Every hit drives users away three times as fast.",
+    "hp": 70,
+    "armor": 0,
+    "damage": 8,
+    "range": 22,
+    "cooldownTicks": 16,
+    "speed": 3.4,
+    "aggro": 280,
+    "bounty": 9,
+    "size": 8,
+    "role": {
+      "kind": "phisher",
+      "churnMultiplier": 3
+    }
+  },
+  "ddos": {
+    "name": "DDoS Node",
+    "description": "Weak alone, never alone. Each hit jams a building for three seconds: towers stop shooting, racks stop spawning, functions stop running.",
+    "hp": 30,
+    "armor": 0,
+    "damage": 3,
+    "range": 20,
+    "cooldownTicks": 12,
+    "speed": 3.6,
+    "aggro": 260,
+    "bounty": 3,
+    "size": 6,
+    "role": {
+      "kind": "jammer",
+      "jamTicks": 60
+    }
+  },
+  "cryptominer": {
+    "name": "Cryptominer",
+    "description": "Latches onto a building and mines your money: every hit drains $4. Hunt it down.",
+    "hp": 120,
+    "armor": 1,
+    "damage": 4,
+    "range": 22,
+    "cooldownTicks": 20,
+    "speed": 2.9,
+    "aggro": 260,
+    "bounty": 16,
+    "size": 10,
+    "role": {
+      "kind": "miner",
+      "drain": 4
+    }
+  },
+  "brute-forcer": {
+    "name": "Brute Forcer",
+    "description": "Siege. Ignores your army, goes for buildings, and hits them four times as hard. Walls won't hold it for long.",
+    "hp": 260,
+    "armor": 3,
+    "damage": 14,
+    "range": 26,
+    "cooldownTicks": 28,
+    "speed": 2.3,
+    "aggro": 260,
+    "bounty": 22,
+    "size": 13,
+    "role": {
+      "kind": "siege",
+      "buildingMultiplier": 4
+    }
   }
 }

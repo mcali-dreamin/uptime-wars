@@ -16,6 +16,7 @@ export function invokeBlocker(ctx: TickContext, building: Building): string | nu
   if (!def) return "not a function";
   if (building.buildRemaining > 0) return "still deploying";
   if (building.spawnTimer > 0) return "cooling down";
+  if (building.jammedUntil !== undefined && ctx.world.tick < building.jammedUntil) return "jammed";
   const team = ctx.world.teams[building.team]!;
   if (team.downTick !== null) return "offline";
   if (team.money < def.cost) return "not enough $";
@@ -58,6 +59,7 @@ export function tickFunctions(ctx: TickContext): void {
   );
   for (const building of functions) {
     if (building.buildRemaining > 0) continue;
+    if (building.jammedUntil !== undefined && world.tick < building.jammedUntil) continue;
     if (building.spawnTimer > 0) {
       building.spawnTimer -= 1;
       continue;

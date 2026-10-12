@@ -21,6 +21,8 @@ export function tickSpawners(ctx: TickContext): void {
   for (const building of buildings) {
     const spawn = content.buildings[building.defId]!.spawn;
     if (!spawn || building.buildRemaining > 0) continue;
+    // Jammed by a DDoS: the timer stalls.
+    if (building.jammedUntil !== undefined && world.tick < building.jammedUntil) continue;
     if (lagging(world, building.team)) continue;
     building.spawnTimer -= 1;
     if (building.spawnTimer > 0) continue;

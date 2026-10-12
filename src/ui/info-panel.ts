@@ -64,6 +64,7 @@ export class InfoPanel {
       if (isCore(content, this.session.team, entity) && research) {
         lines.push(`Researching ${content.upgrades[research.upgrade]!.name} · ${Math.ceil(research.remaining / TICK_RATE)}s`);
       }
+      if (entity.jammedUntil !== undefined && this.session.world.tick < entity.jammedUntil) lines.push("Jammed by a DDoS · can't shoot, spawn or run");
       const fn = content.buildings[entity.defId]!.invoke;
       if (fn && entity.buildRemaining <= 0) {
         lines.push(entity.spawnTimer > 0 ? `Cooling down · ${Math.ceil(entity.spawnTimer / TICK_RATE)}s` : "Ready · runs when a creep comes near");

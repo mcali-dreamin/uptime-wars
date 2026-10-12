@@ -22,9 +22,30 @@ export interface UnitDef {
   size: number;
   /** Compute this unit uses while alive (default: economy.compute.perUnit). */
   upkeep?: number;
+  /** A creep's job beyond hitting things (see CreepRole). */
+  role?: CreepRole;
   /** How far this unit reveals the fog for its owner, in pixels. */
   sight?: number;
 }
+
+/**
+ * What a creep does besides hit things:
+ * - scanner: spots your buildings and, if it lives `reportTicks` after
+ *   spotting them, sends every horde pack within `reportRadius` marching on
+ *   them. It doesn't attack.
+ * - phisher: only goes for buildings that serve users (and cores), ignores
+ *   everything else, and drives users away `churnMultiplier` times as fast.
+ * - miner: each hit on a building also drains `drain` $ from its owner.
+ * - jammer: each hit on a building jams it for `jamTicks`: towers don't
+ *   shoot, spawners don't spawn, functions don't run.
+ * - siege: goes for buildings, and hits them `buildingMultiplier` times as hard.
+ */
+export type CreepRole =
+  | { kind: "scanner"; reportTicks: number; reportRadius: number }
+  | { kind: "phisher"; churnMultiplier: number }
+  | { kind: "miner"; drain: number }
+  | { kind: "jammer"; jamTicks: number }
+  | { kind: "siege"; buildingMultiplier: number };
 
 export interface BuildingAttack {
   damage: number;

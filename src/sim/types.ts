@@ -113,6 +113,10 @@ export interface Unit extends EntityBase {
   commanded: boolean;
   /** Serverless units go cold at this tick (absent: they don't). */
   expiresAt?: number;
+  /** Scanners: what they spotted and when, until they report it. */
+  spotted?: { tick: number; x: number; y: number; team: TeamId };
+  /** Scanners: already reported, nothing more to do. */
+  reported?: boolean;
 }
 
 export interface Building extends EntityBase {
@@ -128,6 +132,8 @@ export interface Building extends EntityBase {
   incomeTimer: number;
   /** The last tick anything hit it (for self-repair). */
   lastHitTick: number;
+  /** Jammed by a DDoS until this tick: no shooting, spawning, or running. */
+  jammedUntil?: number;
 }
 
 export type Entity = Unit | Building;
@@ -278,6 +284,8 @@ export type SimEvent =
   | { type: "death"; id: number; x: number; y: number; team: TeamId; kind: Entity["kind"]; defId: string }
   /** A function ran: `units` spun up. `auto`: an enemy triggered it. */
   | { type: "invoked"; buildingId: number; team: TeamId; units: number; auto: boolean }
+  /** A scanner got away with it: `packs` horde packs now march on (x, y). */
+  | { type: "reported"; team: TeamId; x: number; y: number; packs: number }
   /** A short-lived unit's time ran out (not a kill: no bounty). */
   | { type: "expired"; id: number; x: number; y: number; team: TeamId }
   | { type: "wave"; wave: number; name: string; packs: number; units: number; boss: boolean }
