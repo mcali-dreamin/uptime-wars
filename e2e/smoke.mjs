@@ -70,6 +70,18 @@ await run("smoke test", async ({ check, open }) => {
   await click(spot);
   check(await waitFor(() => state((id) => window.uptime.selection.id === id, spawner)), "clicking a building selects it");
 
+  // Open Source forks: X on a selected building, then a click places a half-price copy.
+  const racks = () => state((def) => window.uptime.world.entities.filter((e) => e.kind === "building" && e.defId === def).length, "server-rack");
+  const before = await racks();
+  // Only a finished building can be forked.
+  await waitFor(() => state((id) => window.uptime.world.entities.find((e) => e.id === id)?.buildRemaining === 0, spawner), 60000);
+  await page.keyboard.press("x");
+  check(await state(() => window.uptime.selection.kind === "place" && window.uptime.selection.fork !== undefined), "X starts forking the selected building");
+  await click(await openNear(spot.x, spot.y, 2, 5));
+  check(await waitFor(async () => (await racks()) === before + 1), "a click places the fork");
+  await click(spot);
+  await waitFor(() => state((id) => window.uptime.selection.id === id, spawner));
+
   // Every way to give a rally order: right-click, T then click, Ctrl-click, Cmd-click.
   const rallies = [
     ["right-click", (p) => click(p, { button: "right" })],

@@ -94,6 +94,20 @@ export interface RaceDef {
   /** Hero units this race can field (see HeroesDef); the player picks one. */
   heroes?: string[];
   buildings: string[];
+  /**
+   * What makes the race play differently, beyond its numbers. All optional.
+   * - fork: copy one of your finished buildings (not the core) for a share
+   *   of its price and build time (permille).
+   * - repair: your buildings mend themselves, `permillePerSecond` of max hp,
+   *   once they haven't been hit for `quietTicks`.
+   * - region: a building takes `perNeighborPermille` less damage for each
+   *   other finished building of yours within `radiusTiles`, up to `maxPermille`.
+   */
+  mechanics?: {
+    fork?: { costPermille: number; buildPermille: number };
+    repair?: { permillePerSecond: number; quietTicks: number };
+    region?: { radiusTiles: number; perNeighborPermille: number; maxPermille: number };
+  };
   modifiers: {
     spawnIntervalMultiplier: number;
     costMultiplier: number;

@@ -3,6 +3,7 @@
 import { creditKill } from "./heroes";
 import { hostile } from "./teams";
 import { GRID_CELL, GRID_STRIDE, type TickContext } from "./context";
+import { regionShield } from "./mechanics";
 import { loseUsers } from "./economy";
 import { TILE } from "./map";
 import { hasLineOfSight } from "./nav";
@@ -85,7 +86,12 @@ export function dealDamage(
   const { world, content } = ctx;
   // One kind of damage: high ground hits harder, armor takes a flat amount off.
   const downhill = heightOf(ctx, attacker) > heightOf(ctx, target) ? HIGH_GROUND_DAMAGE : 1;
-  const damage = Math.max(1, Math.round(baseDamage * downhill) - target.armor);
+  let damage = Math.max(1, Math.round(baseDamage * downhill) - target.armor);
+  if (target.kind === "building") {
+    target.lastHitTick = world.tick;
+    const shield = regionShield(world, content, target).permille;
+    if (shield > 0) damage = Math.max(1, Math.round((damage * (1000 - shield)) / 1000));
+  }
   const wasAlive = target.hp > 0;
   target.hp -= damage;
   if (target.kind === "building") loseUsers(ctx, world.teams[target.team]!, damage, target.defId);

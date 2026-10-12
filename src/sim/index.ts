@@ -34,3 +34,4 @@ export function simulate(
 }
 export { fortressGates, fortressSpots } from "./fortress";
 export { invokeBlocker } from "./functions";
+export { forkBlocker, forkCost, regionShield } from "./mechanics";
