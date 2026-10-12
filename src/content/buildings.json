@@ -192,19 +192,6 @@
     "sight": 360,
     "buildRadius": 7
   },
-  "data-pump": {
-    "name": "Data Pump",
-    "description": "Taps a data well for 100 compute. Only goes on a well, and wells are out in the open.",
-    "cost": 100,
-    "buildTicks": 120,
-    "hp": 410,
-    "armor": 1,
-    "footprint": 1,
-    "buildable": true,
-    "onWell": true,
-    "sight": 300,
-    "compute": 100
-  },
   "function": {
     "name": "Function",
     "description": "No standing army. When a creep comes near (or you invoke it), it spins up four Lambdas for 20 seconds, then cools down. Each run costs $.",

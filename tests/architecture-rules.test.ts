@@ -5,6 +5,7 @@
 //   game    -> sim
 //   render  -> sim
 //   ui      -> game, sim
+//   audio   -> sim (sounds and music, decided from sim events)
 //   input.ts, main.ts -> anything (they wire it together)
 //
 // The simulation must also stay runnable headless (server-side replay,
@@ -19,9 +20,10 @@ const LAYERS: Record<string, string[]> = {
   game: ["game", "sim"],
   render: ["render", "sim"],
   ui: ["ui", "game", "sim"],
+  audio: ["audio", "sim"],
 };
 const BROWSER_GLOBALS = /\b(window|document|localStorage|location|navigator|requestAnimationFrame)\b/;
-const PACKAGES: Record<string, string[]> = { sim: [], game: [], ui: [], render: ["pixi.js", "three"] };
+const PACKAGES: Record<string, string[]> = { sim: [], game: [], ui: [], audio: [], render: ["pixi.js", "three"] };
 
 function stripComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");

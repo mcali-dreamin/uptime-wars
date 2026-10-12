@@ -1,7 +1,7 @@
-// Scatter data wells and roam points over reachable open ground.
+// Scatter roam points over reachable open ground.
 
 import { randomInt } from "../rng";
-import { RESOURCE_COUNT, ROAM_POINT_COUNT, ROAM_POINT_SPACING } from "./params";
+import { ROAM_POINT_COUNT, ROAM_POINT_SPACING } from "./params";
 import { TILE_OPEN, type TilePoint } from "./tiles";
 
 /** Spread-out reachable points, anywhere but right on top of a start. */
@@ -28,52 +28,4 @@ export function scatterRoamPoints(
     points.push(point);
   }
   return points;
-}
-
-export function scatterResources(
-  tiles: Uint8Array,
-  cols: number,
-  rows: number,
-  dist: Int32Array,
-  starts: TilePoint[],
-  nest: TilePoint,
-  rng: { rngState: number },
-): TilePoint[] {
-  const placed: TilePoint[] = [];
-  const far = (a: TilePoint, b: TilePoint, min: number) => {
-    const dx = a.col - b.col;
-    const dy = a.row - b.row;
-    return dx * dx + dy * dy >= min * min;
-  };
-  /** Near `start` (within the band) when given one; otherwise anywhere clear of every start. */
-  const tryPlace = (start: TilePoint | null, minFromStart: number, maxFromStart: number) => {
-    for (let attempt = 0; attempt < 2000; attempt += 1) {
-      const point = start
-        ? {
-            col: randomInt(rng, Math.max(1, start.col - maxFromStart), Math.min(cols - 2, start.col + maxFromStart)),
-            row: randomInt(rng, Math.max(1, start.row - maxFromStart), Math.min(rows - 2, start.row + maxFromStart)),
-          }
-        : { col: randomInt(rng, 1, cols - 2), row: randomInt(rng, 1, rows - 2) };
-      const i = point.row * cols + point.col;
-      if (tiles[i] !== TILE_OPEN || dist[i]! < 0) continue;
-      if (start && (!far(point, start, minFromStart) || far(point, start, maxFromStart))) continue;
-      if (!starts.every((s) => far(point, s, minFromStart))) continue;
-      if (!far(point, nest, 6)) continue;
-      if (!placed.every((other) => far(point, other, 6))) continue;
-      placed.push(point);
-      return;
-    }
-  };
-  // Two wells a short hop from every start: just past the core's reach (7
-  // tiles from its centre), so the first pump means extending your network.
-  for (const start of starts) {
-    tryPlace(start, 9, 14);
-    tryPlace(start, 9, 14);
-  }
-  while (placed.length < RESOURCE_COUNT) {
-    const before = placed.length;
-    tryPlace(null, 9, 0);
-    if (placed.length === before) break;
-  }
-  return placed;
 }

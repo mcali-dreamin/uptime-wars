@@ -1,11 +1,10 @@
 // How the map looks. Three height levels read as three floor shades (the
 // higher, the lighter); cliffs are dark with a bright lip on the drop side;
-// ramps are striped; dead links are light slabs with a bright outline;
-// data wells are blue diamonds.
+// ramps are striped; dead links are light slabs with a bright outline.
 
 import type { Graphics } from "pixi.js";
 import { TILE_BLOCKED, TILE_CLIFF, TILE_RAMP, type Terrain } from "../../sim";
-import { CLIFF_LIP, DEAD_LINK_EDGE, RAMP_STRIPE, WELL, tileColor } from "../palette";
+import { CLIFF_LIP, DEAD_LINK_EDGE, RAMP_STRIPE, tileColor } from "../palette";
 
 /**
  * Fill every tile, run-length merged per row by color so a 320x180 map is a
@@ -26,7 +25,7 @@ export function drawTerrainBase(g: Graphics, terrain: Terrain, cell: number): vo
   }
 }
 
-/** Edges, stripes, stipple, and wells. Only worth drawing at full size. */
+/** Edges and stripes. Only worth drawing at full size. */
 export function drawTerrainDetail(g: Graphics, terrain: Terrain, cell: number): void {
   const { cols, rows, tiles, heights } = terrain;
   const at = (c: number, r: number) => (c < 0 || r < 0 || c >= cols || r >= rows ? TILE_BLOCKED : tiles[r * cols + c]!);
@@ -74,14 +73,4 @@ export function drawTerrainDetail(g: Graphics, terrain: Terrain, cell: number): 
     }
   }
   g.stroke({ width: 2, color: RAMP_STRIPE, alpha: 0.9 });
-
-}
-
-export function drawWells(g: Graphics, terrain: Terrain, cell: number): void {
-  for (const node of terrain.resources) {
-    const cx = (node.col + 0.5) * cell;
-    const cy = (node.row + 0.5) * cell;
-    const r = Math.max(1.5, cell * 0.35);
-    g.moveTo(cx, cy - r).lineTo(cx + r, cy).lineTo(cx, cy + r).lineTo(cx - r, cy).closePath().fill({ color: WELL });
-  }
 }

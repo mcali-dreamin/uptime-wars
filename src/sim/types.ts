@@ -275,7 +275,7 @@ export interface Outcome {
 /** Transient, render-only. Not part of the simulation state or its hash. */
 export type SimEvent =
   | { type: "shot"; from: number; to: number; x1: number; y1: number; x2: number; y2: number; team: TeamId }
-  | { type: "death"; id: number; x: number; y: number; team: TeamId }
+  | { type: "death"; id: number; x: number; y: number; team: TeamId; kind: Entity["kind"]; defId: string }
   /** A function ran: `units` spun up. `auto`: an enemy triggered it. */
   | { type: "invoked"; buildingId: number; team: TeamId; units: number; auto: boolean }
   /** A short-lived unit's time ran out (not a kill: no bounty). */

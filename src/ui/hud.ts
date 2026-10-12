@@ -107,7 +107,7 @@ export class Hud {
     this.computeStat.classList.toggle("overloaded", over);
     this.computeStat.title =
       `In use / supplied. Each user uses ${content.economy.compute.perUser}, each unit about ${content.economy.compute.perUnit}. ` +
-      "Over capacity, users stop arriving and start leaving, and your towers, spawners and research slow down, the further over the worse. Build generators (or a Data Pump) for more.";
+      "Over capacity, users stop arriving and start leaving, and your towers, spawners and research slow down, the further over the worse. Build generators for more.";
   }
 
   /** What the next wave brings: its name, its creeps (new ones marked), and any boss. */
@@ -147,9 +147,7 @@ export class Hud {
         : "Right-click: move, or attack an enemy · 1-4 abilities · Shift+1-4 learn";
     }
     if (selection.kind === "place") {
-      return this.session.content.buildings[selection.building]?.onWell
-        ? "Click a data well (glowing crystals) inside your network"
-        : "Click inside the ring to build";
+      return "Click inside the ring to build";
     }
     if (selection.kind === "army") {
       if (selection.armed) return `Click the ground: ${selection.armed === "move" ? "move (ignores enemies)" : "attack-move"} · Esc to cancel`;
