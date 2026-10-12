@@ -62,6 +62,9 @@ export interface BuildingDef {
 
 export type Controller = "human" | "wave-director";
 
+export type RaceLook = "scrappy" | "monolith";
+export const RACE_LOOKS: readonly RaceLook[] = ["scrappy", "monolith"];
+
 export interface RaceDef {
   name: string;
   specialty: string;
@@ -74,6 +77,12 @@ export interface RaceDef {
    * core in place.
    */
   builder?: string;
+  /**
+   * How the race's hardware looks, whatever it builds (render-only): "scrappy"
+   * is cobbled-together copper and mismatched panels, "monolith" is glass,
+   * chrome, and clean white light. Every playable race needs one.
+   */
+  look?: RaceLook;
   /** Hero units this race can field (see HeroesDef); the player picks one. */
   heroes?: string[];
   buildings: string[];

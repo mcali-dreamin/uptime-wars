@@ -1,4 +1,4 @@
-import type { Content } from "./schema";
+import { RACE_LOOKS, type Content } from "./schema";
 
 /** Fail loudly on broken references so bad content never reaches a match. */
 export function validateContent(content: Content): void {
@@ -16,6 +16,7 @@ export function validateContent(content: Content): void {
     else if (core.footprint !== 2) errors.push(`race ${id} core ${race.core} must have a 2x2 footprint`);
     else if (race.controller === "human" && !core.buildRadius) errors.push(`race ${id} core ${race.core} needs a buildRadius`);
     if (race.builder && !content.units[race.builder]) errors.push(`race ${id} has unknown builder ${race.builder}`);
+    if (race.controller === "human" && !RACE_LOOKS.includes(race.look!)) errors.push(`race ${id} needs a look (${RACE_LOOKS.join(", ")})`);
     for (const buildingId of race.buildings) {
       const building = content.buildings[buildingId];
       if (!building) errors.push(`race ${id} lists unknown building ${buildingId}`);

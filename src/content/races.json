@@ -3,6 +3,7 @@
     "name": "Open Source Collective",
     "specialty": "Cheap swarms. Spawns 15% faster.",
     "controller": "human",
+    "look": "scrappy",
     "core": "core",
     "buildings": [
       "server-rack",
@@ -31,6 +32,7 @@
     "name": "Hyperscaler",
     "specialty": "Rich and tough. +150 compute, units 30% tougher, spawns 15% slower.",
     "controller": "human",
+    "look": "monolith",
     "core": "core",
     "builder": "deploy-agent",
     "buildings": [

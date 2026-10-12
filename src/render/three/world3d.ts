@@ -10,7 +10,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
-import { TILE, isCore, networkProviders, type Entity, type Point, type SimEvent, type World } from "../../sim";
+import { TILE, isCore, networkProviders, type Content, type Entity, type Point, type SimEvent, type World } from "../../sim";
 import { PING_MS, SHOT_TTL_MS, type Frame, type WorldView } from "../frame";
 import { HIGHLIGHT, INVALID, VALID, teamColor } from "../palette";
 import { Bars, Bolts, Particles, Rings } from "./effects";
@@ -285,7 +285,7 @@ export class World3D implements WorldView {
       const at = frame.position(entity);
       let s = this.shown.get(entity.id);
       if (!s) {
-        s = this.make(world, entity);
+        s = this.make(world, frame.content, entity);
         this.shown.set(entity.id, s);
         this.entityLayer.add(s.object);
       }
@@ -332,11 +332,13 @@ export class World3D implements WorldView {
     }
   }
 
-  private make(world: World, entity: Entity): Shown {
+  private make(world: World, content: Content, entity: Entity): Shown {
     const color = teamColor(world, entity.team);
     const horde = world.teams[entity.team]?.controller !== "human";
     const size = entity.kind === "unit" ? entity.radius : entity.footprint;
-    const object = this.models.make(entity.defId, color, size, entity.kind === "unit");
+    const team = world.teams[entity.team];
+    const look = (team && content.races[team.raceId]?.look) ?? "default";
+    const object = this.models.make(entity.defId, color, size, entity.kind === "unit", look);
     object.userData.entityId = entity.id;
     object.traverse((node) => {
       if ((node as THREE.Mesh).isMesh) node.userData.material = (node as THREE.Mesh).material;
