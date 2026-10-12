@@ -925,6 +925,50 @@ export class Models {
         }
         break;
       }
+      case "scanner": {
+        // A floating eye with a sweeping beam.
+        const eye = new THREE.Group();
+        eye.position.y = r * 2.2;
+        this.shape(eye, team, "flesh", `scan:${r}`, () => new THREE.SphereGeometry(r * 0.7, 10, 8));
+        this.shape(eye, team, "hot", `scan-iris:${r}`, () => new THREE.SphereGeometry(r * 0.3, 8, 6), 0, 0, r * 0.55);
+        const beam = this.shape(eye, team, "hot", `scan-beam:${r}`, () => new THREE.ConeGeometry(r * 0.6, r * 3, 8, 1, true).rotateX(Math.PI / 2).translate(0, 0, r * 2.2));
+        beam.scale.set(1, 0.3, 1);
+        anim(eye, { type: "spin", speed: 2.5, axis: "y" });
+        g.add(eye);
+        break;
+      }
+      case "phisher": {
+        // A hooked, hunched thing trailing a glowing lure.
+        this.shape(g, team, "flesh", `phish:${r}`, () => new THREE.ConeGeometry(r * 0.7, r * 1.8, 5), 0, r * 0.9, 0).rotation.x = 0.4;
+        this.cyl(g, team, "flesh", r * 0.06, r * 0.06, r * 1.6, 4, 0, r * 1.4, r * 0.4).rotation.x = 0.9;
+        const lure = this.shape(g, team, "hot", `phish-lure:${r}`, () => new THREE.SphereGeometry(r * 0.25, 8, 6), 0, r * 1.9, r * 1.4);
+        anim(lure, { type: "pulse", amount: 0.3, speed: 6 });
+        break;
+      }
+      case "ddos": {
+        // A tiny buzzing cube: they come in swarms.
+        const cube = this.shape(g, team, "hot", `ddos:${r}`, () => new THREE.BoxGeometry(r * 1.1, r * 1.1, r * 1.1), 0, r * 1.2, 0);
+        anim(cube, { type: "spin", speed: 8, axis: "y" });
+        this.shape(g, team, "flesh", `ddos-shell:${r}`, () => new THREE.OctahedronGeometry(r * 0.9, 0), 0, r * 1.2, 0);
+        break;
+      }
+      case "cryptominer": {
+        // A tick-like body with a drill, and a coin glowing on its back.
+        this.shape(g, team, "flesh", `miner:${r}`, () => new THREE.SphereGeometry(r * 0.8, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), 0, r * 0.2, 0);
+        const drill = this.shape(g, team, "hot", `miner-drill:${r}`, () => new THREE.ConeGeometry(r * 0.25, r * 0.9, 6).rotateX(Math.PI / 2), 0, r * 0.4, r * 0.9);
+        anim(drill, { type: "spin", speed: 12, axis: "z" });
+        const coin = this.shape(g, team, "flame", `miner-coin:${r}`, () => new THREE.CylinderGeometry(r * 0.35, r * 0.35, r * 0.1, 16).rotateX(Math.PI / 2), 0, r * 1.2, -r * 0.1);
+        anim(coin, { type: "spin", speed: 3, axis: "y" });
+        break;
+      }
+      case "brute-forcer": {
+        // A hulking ram: armoured hump and a battering head.
+        this.box(g, team, "flesh", r * 1.4, r * 1.1, r * 1.8, 0, r * 0.2);
+        this.shape(g, team, "flesh", `brute-hump:${r}`, () => new THREE.SphereGeometry(r * 0.8, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), 0, r * 1.3, -r * 0.2);
+        this.box(g, team, "hot", r * 1.2, r * 0.8, r * 0.5, 0, r * 0.4, r * 1.1);
+        for (const x of [-1, 1]) this.shape(g, team, "flesh", `brute-horn:${r}`, () => new THREE.ConeGeometry(r * 0.15, r * 0.8, 5).rotateX(Math.PI / 2), x * r * 0.45, r * 0.9, r * 1.5);
+        break;
+      }
       case "trojan": {
         // A gift you shouldn't open: a box with a hot ribbon.
         this.box(g, team, "flesh", r * 1.6, r * 1.3, r * 1.6);

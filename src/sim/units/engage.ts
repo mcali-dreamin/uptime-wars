@@ -1,7 +1,7 @@
 // Fighting: pick (or keep) a target, close in, and attack. Shared by every
 // mode that fights.
 
-import { canSee, dealDamage, edgeDistance, nearestEnemy } from "../combat";
+import { canSee, edgeDistance, nearestEnemy } from "../combat";
 import type { TickContext } from "../context";
 import type { UnitDef } from "../content";
 import { distance, walkTo } from "../movement";
@@ -10,6 +10,7 @@ import { buffMultiplier, luredBy } from "../heroes";
 import { BUILDING_SIGHT, GUARD_RADIUS, LEASH_MULTIPLIER } from "../tuning";
 import type { Entity, Unit } from "../types";
 import { multiplier } from "../upgrades";
+import { ignoresDefenders, roleHit, roleTargets } from "../roles";
 
 /**
  * Returns true when the unit spent its tick fighting or closing in, false
@@ -36,13 +37,15 @@ export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
     edgeDistance(unit, target) <= sight(target) * LEASH_MULTIPLIER &&
     guardCanHold(target) &&
     canSee(ctx, unit, target);
-  if (!keep) {
-    target = nearestEnemy(ctx, unit, def.aggro, undefined, guard ? def.aggro : Math.max(def.aggro, BUILDING_SIGHT)) ?? undefined;
+  const wants = roleTargets(ctx, def.role);
+  if (target && wants && !lure && !wants(target)) target = undefined;
+  if (!keep || (target === undefined && !lure)) {
+    target = nearestEnemy(ctx, unit, def.aggro, wants, guard ? def.aggro : Math.max(def.aggro, BUILDING_SIGHT)) ?? undefined;
   }
   // Roamers find bases by their buildings (seen from far off), but a defender
   // that gets in their face comes first: switch to the nearest enemy unit in
   // aggro range rather than keep chewing on a building while it's shot at.
-  if (target?.kind === "building" && !guard) {
+  if (target?.kind === "building" && !guard && !ignoresDefenders(def.role)) {
     const threat = nearestEnemy(ctx, unit, def.aggro, (e) => e.kind === "unit");
     if (threat) target = threat;
   }
@@ -55,7 +58,7 @@ export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
     if (unit.attackCooldown <= 0) {
       const team = world.teams[unit.team]!;
       const damage = def.damage * multiplier(ctx.content, team, "unitDamage") * buffMultiplier(team, world.tick);
-      dealDamage(ctx, unit, target, damage);
+      roleHit(ctx, unit, def, target, damage);
       unit.attackCooldown = def.cooldownTicks;
     }
     return true;

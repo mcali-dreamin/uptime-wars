@@ -4,6 +4,11 @@ import { RACE_LOOKS, type Content } from "./schema";
 export function validateContent(content: Content): void {
   const errors: string[] = [];
 
+  const ROLES = ["scanner", "phisher", "miner", "jammer", "siege"];
+  for (const [id, unit] of Object.entries(content.units)) {
+    if (unit.role && !ROLES.includes(unit.role.kind)) errors.push(`unit ${id} has unknown role ${(unit.role as { kind: string }).kind}`);
+  }
+
   for (const [id, building] of Object.entries(content.buildings)) {
     if (building.onWell && building.footprint !== 1) errors.push(`building ${id} goes on a well, so it must be 1x1`);
     if (building.invoke && !content.units[building.invoke.unit]) errors.push(`building ${id} invokes unknown unit ${building.invoke.unit}`);
