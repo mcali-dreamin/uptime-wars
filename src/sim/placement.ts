@@ -1,7 +1,6 @@
 // "Can I build here?" rules. Shared by the sim and the placement preview so
 // they never disagree.
 
-import { onHub } from "./hubs";
 import type { Content } from "./content";
 import { TILE, footprintCenter } from "./map";
 import { TILE_OPEN, tileAt } from "./terrain";
@@ -48,17 +47,12 @@ export function canPlace(
   const def = content.buildings[buildingId];
   if (!def || !race.buildings.includes(buildingId)) return "not in this race's roster";
   if (!footprintIsOpen(world, col, row, def.footprint)) return "terrain is not buildable";
-  if (onHub(world, col, row, def.footprint)) return "users live there";
 
   if (team.coreId === -1) return "no core";
   const center = footprintCenter(col, row, def.footprint);
   if (!inNetwork(world, content, teamId, center.x, center.y)) return "outside your network";
 
   if (isOccupied(world, col, row, def.footprint)) return "tile occupied";
-  if (def.maxPerTeam !== undefined) {
-    const have = world.entities.filter((e) => e.kind === "building" && e.team === teamId && e.defId === buildingId && e.hp > 0).length;
-    if (have >= def.maxPerTeam) return `only ${def.maxPerTeam} per player`;
-  }
   if (def.blocks && unitInTheWay(world, col, row, def.footprint)) return "a unit is in the way";
   if (team.money < cost) return "not enough $";
   return null;
@@ -70,7 +64,6 @@ export function canFound(world: World, content: Content, teamId: TeamId, col: nu
   if (team.coreId !== -1) return "core already online";
   const def = content.buildings[content.races[team.raceId]!.core]!;
   if (!footprintIsOpen(world, col, row, def.footprint)) return "terrain is not buildable";
-  if (onHub(world, col, row, def.footprint)) return "users live there";
   if (isOccupied(world, col, row, def.footprint)) return "tile occupied";
   return null;
 }

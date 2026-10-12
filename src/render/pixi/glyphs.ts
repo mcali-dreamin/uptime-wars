@@ -37,12 +37,6 @@ export function drawGlyph(g: Graphics, defId: string, x: number, y: number, size
       g.moveTo(x, y - s).lineTo(x + s * 0.6, y + s).lineTo(x - s * 0.6, y + s).closePath().fill({ color, alpha });
       g.circle(x, y + s * 0.2, s * 0.25).fill({ color: 0xffffff, alpha });
       break;
-    case "campus":
-    case "metro":
-      g.moveTo(x, y + s).lineTo(x, y - s).stroke({ width: 2.5, color, alpha });
-      g.circle(x, y - s, s * 0.3).fill({ color, alpha });
-      g.circle(x, y - s, s * 0.7).stroke({ width: 1.5, color, alpha });
-      break;
     case "malware-nest":
       g.circle(x, y, s).stroke({ width: 3, color, alpha });
       g.circle(x, y, s * 0.4).fill({ color, alpha });

@@ -26,21 +26,6 @@ export function drawTerrainBase(g: Graphics, terrain: Terrain, cell: number): vo
 }
 
 /** Edges and stripes. Only worth drawing at full size. */
-/** User hubs: a neutral grey city block with lit windows. */
-export function drawHubs(g: Graphics, terrain: Terrain, cell: number): void {
-  for (const hub of terrain.hubs) {
-    const x = hub.col * cell;
-    const y = hub.row * cell;
-    g.rect(x - cell * 0.2, y - cell * 0.2, cell * 2.4, cell * 2.4).fill({ color: 0x1f2630 }).stroke({ width: 1.5, color: 0x56606d });
-    const n = hub.size === "metro" ? 4 : 3;
-    for (let i = 0; i < n; i += 1) {
-      for (let j = 0; j < n; j += 1) {
-        g.rect(x + (i + 0.3) * (cell * 2) / n, y + (j + 0.3) * (cell * 2) / n, cell * 0.25, cell * 0.25).fill({ color: 0xfbbf24, alpha: 0.6 });
-      }
-    }
-  }
-}
-
 export function drawTerrainDetail(g: Graphics, terrain: Terrain, cell: number): void {
   const { cols, rows, tiles, heights } = terrain;
   const at = (c: number, r: number) => (c < 0 || r < 0 || c >= cols || r >= rows ? TILE_BLOCKED : tiles[r * cols + c]!);

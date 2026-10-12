@@ -32,8 +32,7 @@ export function simulate(
   while (world.tick < maxTicks && !world.outcome) step(world, content);
   return world;
 }
-export { fortify, fortressGates, fortressSpots, hubGuardSpots } from "./fortress";
+export { fortressGates, fortressSpots } from "./fortress";
 export { invokeBlocker } from "./functions";
-export { hubBuilding, onHub } from "./hubs";
 export { forkBlocker, forkCost, regionShield } from "./mechanics";
 export { isJammed } from "./roles";
