@@ -10,7 +10,6 @@ export const MOAT_WIDTH = 3;
 /** ...with at least this many ramps up onto it, spread around the rim. */
 export const FORTRESS_GATES = 3;
 export const GATE_SPACING = 9;
-export const RESOURCE_COUNT = 140;
 export const ROAM_POINT_COUNT = 64;
 export const ROAM_POINT_SPACING = 24;
 /** The start is at least this fraction of the center-to-corner distance from the nest. */

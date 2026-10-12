@@ -1,6 +1,6 @@
 // Generate a map from a seed: walls from noise, nest in the
 // middle, starts out toward the edge, everything reachable, then height,
-// wells, and roam points.
+// and roam points.
 
 import { MAP_COLS, MAP_ROWS } from "../map";
 import { fbm } from "../noise";
@@ -16,8 +16,8 @@ import {
   START_MIN_FROM_NEST,
   START_SPACING,
 } from "./params";
-import { scatterResources, scatterRoamPoints } from "./scatter";
-import { TILE_BLOCKED, TILE_OPEN, TILE_RESOURCE, type Terrain, type TilePoint } from "./tiles";
+import { scatterRoamPoints } from "./scatter";
+import { TILE_BLOCKED, TILE_OPEN, type Terrain, type TilePoint } from "./tiles";
 
 export function generateTerrain(seed: number, cols = MAP_COLS, rows = MAP_ROWS): Terrain {
   // Separate stream from the match RNG so terrain never shifts gameplay rolls.
@@ -67,11 +67,9 @@ export function generateTerrain(seed: number, cols = MAP_COLS, rows = MAP_ROWS):
   const heights = raiseTerrain(tiles, cols, rows, starts, nest, noiseSeed, rng);
 
   dist = bfs(tiles, cols, rows, start);
-  const resources = scatterResources(tiles, cols, rows, dist, starts, nest, rng);
-  for (const point of resources) tiles[point.row * cols + point.col] = TILE_RESOURCE;
   const roamPoints = scatterRoamPoints(tiles, cols, rows, dist, starts, rng);
 
-  return { cols, rows, tiles, heights, starts, nest, resources, roamPoints };
+  return { cols, rows, tiles, heights, starts, nest, roamPoints };
 }
 
 /**

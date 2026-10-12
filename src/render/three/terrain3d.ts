@@ -7,14 +7,13 @@
 //   is violet soil with faint violet traces, the surface web teal moss with
 //   cyan circuit traces, the backbone steel plating. Cliffs are dark rock
 //   with glowing fibre strata; ramps are paved gateways with amber chevrons.
-// - Dead links are fields of broken black shards, data wells are glowing
-//   crystal clusters.
+// - Dead links are fields of broken black shards.
 //
 // Everything is drawn from the terrain alone, so it is a pure function of
 // the seed, like the map itself.
 
 import * as THREE from "three";
-import { TILE, TILE_BLOCKED, TILE_CLIFF, TILE_OPEN, TILE_RAMP, TILE_RESOURCE, type Terrain } from "../../sim";
+import { TILE, TILE_BLOCKED, TILE_CLIFF, TILE_OPEN, TILE_RAMP, type Terrain } from "../../sim";
 import type { FogTexture } from "./fog3d";
 
 /** Height of one level step, in world units (a tile is 48). */
@@ -64,7 +63,6 @@ export class Terrain3D {
     this.computeHeights(terrain);
     this.buildGround(terrain);
     this.buildShards(terrain);
-    this.buildWells(terrain);
     this.buildDoodads(terrain);
     this.buildVoid(terrain);
   }
@@ -230,27 +228,6 @@ export class Terrain3D {
     this.add(mesh, geometry, material);
   }
 
-  /** Data wells: glowing crystal clusters on a lit pad. */
-  private buildWells(terrain: Terrain): void {
-    const spots = tilesOf(terrain, (t) => t === TILE_RESOURCE);
-    const geometry = crystalGeometry();
-    const material = this.fog.apply(
-      new THREE.MeshStandardMaterial({ color: 0x67e8f9, emissive: 0x0ea5e9, emissiveIntensity: 1.6, roughness: 0.2, metalness: 0.1, flatShading: true }),
-    );
-    const mesh = new THREE.InstancedMesh(geometry, material, spots.length);
-    const m = new THREE.Matrix4();
-    spots.forEach((i, n) => {
-      const col = i % terrain.cols;
-      const row = Math.floor(i / terrain.cols);
-      const x = (col + 0.5) * TILE;
-      const z = (row + 0.5) * TILE;
-      m.makeRotationY(hash01(i, 5) * Math.PI * 2).setPosition(x, this.heightAt(x, z), z);
-      mesh.setMatrixAt(n, m);
-    });
-    mesh.castShadow = true;
-    this.add(mesh, geometry, material);
-  }
-
   /** Small life on open ground: violet fungus below, cyan pixels on the surface, vents on the backbone. */
   private buildDoodads(terrain: Terrain): void {
     const kinds: { level: number; geometry: THREE.BufferGeometry; material: THREE.Material; chance: number }[] = [
@@ -412,28 +389,6 @@ function shardGeometry(): THREE.BufferGeometry {
     g.translate(x, 0, z);
     parts.push(g);
   }
-  return merge(parts);
-}
-
-function crystalGeometry(): THREE.BufferGeometry {
-  const parts: THREE.BufferGeometry[] = [];
-  const specs = [
-    [0, 0, 8, 46, 0],
-    [9, 4, 5, 28, 0.35],
-    [-8, 5, 5, 32, -0.3],
-    [2, -9, 4, 22, 0.2],
-  ] as const;
-  for (const [x, z, r, h, tilt] of specs) {
-    const g = new THREE.OctahedronGeometry(1, 0);
-    g.scale(r, h / 2, r);
-    g.translate(0, h / 2, 0);
-    g.rotateZ(tilt);
-    g.translate(x, 0, z);
-    parts.push(g);
-  }
-  const pad = new THREE.CylinderGeometry(18, 21, 3, 6);
-  pad.translate(0, 1.5, 0);
-  parts.push(pad);
   return merge(parts);
 }
 

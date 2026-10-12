@@ -1,7 +1,7 @@
 # Uptime Wars
 
 Survival on the open web, in the browser. Every match generates a fresh patch
-of the internet from a seed: dead links, data wells, and a
+of the internet from a seed: dead links and a
 malware nest somewhere far off-screen. Build around your core, let your racks
 fork defenders, and keep your uptime while packs of crawlers wander the web.
 
@@ -47,8 +47,7 @@ npm run dev
 an angled camera. Each height level has its own look: the deep web is violet
 soil, the surface web teal moss with cyan circuit traces, and the backbone
 steel plating. Cliffs are dark rock with glowing fibre strata, and ramps are
-paved gateways with amber chevrons. Dead links are fields of black shards,
-data wells are glowing crystals. Buildings
+paved gateways with amber chevrons. Dead links are fields of black shards. Buildings
 and units are procedural models in your team's colour; the botnet is spiky
 and red. Software rendering automatically drops shadows and bloom. `?low`
 forces that, `?hq` forces the full look, and `?2d` brings back the flat Pixi
@@ -101,15 +100,10 @@ cheap, fragile Mesh Nodes (reach 4); Hyperscaler builds armored Edge PoPs
 (reach 7). Cores are buildable too ($300). If your main core falls, the
 next takes over, and you only go down when every core is down.
 
-**Data wells** are glowing crystals scattered across the web. Build a **Data
-Pump** on one (both races, $100) for 100 compute, more than a Solar Array. No well is inside your core's starting reach, though the nearest two
-are always a short hop out, so your first pump means extending your network
-toward it. Pumps sit out in the open, where wandering packs find them.
-
 **$ and compute** are two different things. **$** is money: users pay it
 every second, and everything (buildings, research) is bought with it.
-**Compute** is capacity: your core (80), Solar Arrays (60), Power Plants (150)
-and Data Pumps (100) supply it, and every user (1) and unit (about 2) uses it.
+**Compute** is capacity: your core (80), Solar Arrays (60) and Power Plants
+(150) supply it, and every user (1) and unit (about 2) uses it.
 The HUD shows it as in use / supplied. It can go over, and the further over
 you are the worse it gets: no new users arrive, users leave in proportion, and
 your towers, spawners and research all slow by the same share.
@@ -267,7 +261,6 @@ Direction: survival on a procedurally generated open web.
 - [x] Builder start: scout with a deploy agent and choose where your core goes
 - [x] Fog of war
 - [x] Users: capacity, revenue, and churn from damage
-- [x] Data wells feed the economy
 - [x] Wandering creep packs that only attack what they see
 - [x] Endless escalating waves from a nest in the middle; uptime score
 - [x] Elevation: plateaus, cliffs, ramps; high-ground sight and damage

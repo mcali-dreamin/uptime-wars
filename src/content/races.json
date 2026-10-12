@@ -10,7 +10,6 @@
       "gpu-cluster",
       "firewall",
       "solar-array",
-      "data-pump",
       "web-app",
       "mesh-node",
       "core"
@@ -40,7 +39,6 @@
       "gpu-cluster",
       "cdn-edge",
       "power-plant",
-      "data-pump",
       "web-app",
       "edge-pop",
       "core"
@@ -72,7 +70,6 @@
     "buildings": [
       "function",
       "inference-endpoint",
-      "data-pump",
       "web-app",
       "mesh-node",
       "core"

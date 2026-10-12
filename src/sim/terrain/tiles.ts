@@ -3,7 +3,6 @@
 // the same map locally.
 //
 // - Dead links (blocked): impassable, unbuildable.
-// - Data wells (resource): walkable, unbuildable. Economy hooks in later.
 // - Cliffs: the high edge of a plateau. Impassable and unbuildable, but you
 //   can see and shoot across them.
 // - Ramps ("gateways"): the only way between height levels.
@@ -15,7 +14,7 @@
 export const TILE_OPEN = 0;
 export const TILE_BLOCKED = 1;
 // 2 was the data swamp (half speed). Removed; the id stays reserved.
-export const TILE_RESOURCE = 3;
+// 3 was the data well. Removed; the id stays reserved.
 export const TILE_CLIFF = 4;
 export const TILE_RAMP = 5;
 
@@ -39,7 +38,6 @@ export interface Terrain {
   starts: TilePoint[];
   /** Top-left tile of the creep nest's 2x2 footprint. */
   nest: TilePoint;
-  resources: TilePoint[];
   /** Places wandering creeps drift between. Each gets its own flow field. */
   roamPoints: TilePoint[];
 }

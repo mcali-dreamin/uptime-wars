@@ -21,10 +21,11 @@ import { dealDamage } from "../src/sim/combat";
 import { content, SETUP, OPENING_ORDER, firstSpot, planBuildOrder } from "./fixtures";
 
 describe("no slowing terrain", () => {
-  it("no map has data swamps (tile 2): ground is open, walls, cliffs, ramps, or wells", () => {
+  it("no map has data swamps (tile 2) or data wells (tile 3): ground is open, walls, cliffs, or ramps", () => {
     for (let k = 0; k < 40; k += 1) {
       const { tiles } = generateTerrain(k * 7919 + 1);
       expect(tiles.includes(2), `seed ${k * 7919 + 1}`).toBe(false);
+      expect(tiles.includes(3), `seed ${k * 7919 + 1}`).toBe(false);
     }
   });
 });
@@ -60,13 +61,6 @@ describe("terrain", () => {
       expect(Math.sqrt(dx * dx + dy * dy), `seed ${seed}`).toBeGreaterThan(4000);
       // There is room to build around the core.
       expect(planBuildOrder(content, { ...SETUP, seed }, OPENING_ORDER)).toHaveLength(OPENING_ORDER.length);
-      // At least two wells near the start.
-      const near = terrain.resources.filter((r) => {
-        const rx = r.col - terrain.starts[0]!.col;
-        const ry = r.row - terrain.starts[0]!.row;
-        return rx * rx + ry * ry <= 15 * 15;
-      });
-      expect(near.length, `seed ${seed}`).toBeGreaterThanOrEqual(2);
       // Plenty of places for creeps to wander between.
       expect(terrain.roamPoints.length, `seed ${seed}`).toBeGreaterThanOrEqual(12);
     }
