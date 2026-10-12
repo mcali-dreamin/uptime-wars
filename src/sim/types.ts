@@ -1,4 +1,5 @@
-import type { ArmorType, Controller } from "./content";
+import type { MatchMode } from "./teams";
+import type { Controller } from "./content";
 import type { Terrain } from "./terrain";
 
 /** Index into world.teams. */
@@ -78,7 +79,6 @@ interface EntityBase {
   hp: number;
   maxHp: number;
   armor: number;
-  armorType: ArmorType;
   radius: number;
   attackCooldown: number;
   targetId: number | null;
@@ -241,9 +241,12 @@ export interface WaveState {
 }
 
 export interface Outcome {
-  /** Every human team when the nest falls; the horde when every human team is down. */
+  /**
+   * Co-op: every human team when the nest falls; the horde when every human
+   * team is down. FFA: the last human team with a core up.
+   */
   winners: TeamId[];
-  reason: "nest-offline" | "all-offline";
+  reason: "nest-offline" | "all-offline" | "last-standing";
   tick: number;
 }
 
@@ -276,6 +279,8 @@ export interface Navigation {
 }
 
 export interface World {
+  /** co-op (humans together vs the horde) or ffa (everyone vs everyone). */
+  mode: MatchMode;
   tick: number;
   seed: number;
   rngState: number;

@@ -36,7 +36,7 @@ export function canResearch(content: Content, team: Team, upgrade: string): stri
   if (team.coreId === -1) return "no core";
   if (team.research) return "already researching";
   if (levelOf(team, upgrade) >= def.maxLevel) return "fully researched";
-  if (team.money < nextLevel(content, team, upgrade).cost) return "not enough compute";
+  if (team.money < nextLevel(content, team, upgrade).cost) return "not enough $";
   return null;
 }
 

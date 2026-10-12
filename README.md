@@ -109,16 +109,19 @@ your towers, spawners and research all slow by the same share.
 
 **Users** are why you're online. They arrive while your core is up and grow
 toward your capacity (the core serves 40; each Web App adds 60), as long as
-you have the compute to serve them. Every hit your buildings take drives some
-away. Numbers live in `src/content/economy.json`.
+you have the compute to serve them. Every hit your core or a Web App takes
+drives some away (towers and racks don't: they're what you put in between).
+Numbers live in `src/content/economy.json`.
 
 The malware nest sits in the middle of the web and you start out toward the
 edge. Waves never stop: each one is bigger, comes sooner, and unlocks nastier
 creeps (worms, then trojans, then ransomware bosses). The top bar previews the next wave: its name, the creeps it can bring (new
 ones marked), and any boss. Every wave leaves the nest
 as packs of random size that wander outward. Nobody tells them where you are,
-but you make **traffic**: crawlers can sense your cores from far away, more
-so as you grow, and packs that sense you march on you. Trouble comes from
+but you make **traffic**: crawlers sense your cores from a radius that grows
+with your buildings, your users, and time online, and packs that sense you
+march on you. Build big and you're found sooner; stay small and you buy time,
+but not forever. Trouble comes from
 whichever side a pack is wandering in from. Your score
 is **uptime**: how long your core stays online. Taking the nest offline ends
 the run early, in your favor, but it's a **fortress**: the nest sits on a
@@ -211,10 +214,16 @@ and either one's traffic draws the horde. A player whose cores are all down
 goes offline and their commands stop, but the match goes on until every player
 is offline (lost) or the nest is (won by all of them).
 
-**Playing co-op.** On the race picker press `H` (or **Play co-op with
-friends**). Send a friend the invite link (it ends in a six-letter code); they
-open it, pick a race, and you're connected. One link per friend, up to three.
-Press **Start match** when everyone's in. The browsers connect directly over
+**Free-for-all.** The same match with `mode: "ffa"`: every team is everyone's
+enemy, there's no shared vision, and the last player with a core up wins. The
+horde is optional; with it, the nest is just one more enemy (taking it down
+ends the waves, not the match). FFA needs at least two players.
+
+**Playing with friends.** On the race picker press `H` (or **Play with
+friends**) and pick **Co-op** or **Free-for-all** (with or without the horde).
+Send a friend the invite link (it ends in a six-letter code); they open it,
+pick a race, and you're connected. One link per friend, up to three. Press
+**Start match** when everyone's in. The browsers connect directly over
 WebRTC (public STUN, no TURN yet, so a few strict corporate or mobile networks
 won't connect).
 

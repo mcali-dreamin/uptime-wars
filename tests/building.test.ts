@@ -40,7 +40,7 @@ describe("building", () => {
     expect(reject("firewall", spot.col, spot.row)).toBe("tile occupied");
     world.teams[0]!.money = 0;
     const other = planBuildOrder(content, SETUP, [[0, "server-rack"], [0, "server-rack"]])[1]!;
-    expect(reject("server-rack", other.col, other.row)).toBe("not enough compute");
+    expect(reject("server-rack", other.col, other.row)).toBe("not enough $");
   });
 
   it("rejects buildings outside the race roster", () => {

@@ -1,17 +1,13 @@
-// Content is data. Races, buildings, units, waves and the damage table all
+// Content is data. Races, buildings, units, waves and the rest all
 // load from JSON today and are shaped so they can later come from WordPress
 // (chubes.net posts) at build time without touching the simulation.
-
-export type AttackType = "brute" | "exploit" | "social";
-export type ArmorType = "container" | "legacy" | "hardened" | "core";
 
 export interface UnitDef {
   name: string;
   description: string;
   hp: number;
+  /** Flat reduction to every hit taken. */
   armor: number;
-  armorType: ArmorType;
-  attackType: AttackType;
   damage: number;
   /** Pixels, measured edge to edge. */
   range: number;
@@ -31,7 +27,6 @@ export interface UnitDef {
 }
 
 export interface BuildingAttack {
-  attackType: AttackType;
   damage: number;
   range: number;
   cooldownTicks: number;
@@ -43,8 +38,8 @@ export interface BuildingDef {
   cost: number;
   buildTicks: number;
   hp: number;
+  /** Flat reduction to every hit taken. */
   armor: number;
-  armorType: ArmorType;
   /** Tiles per side. */
   footprint: number;
   buildable: boolean;
@@ -161,7 +156,11 @@ export interface EconomyDef {
    * your buildings and users. A roaming pack that senses a core usually
    * heads for it (pullChance); otherwise it wanders as before.
    */
-  traffic: { base: number; perBuilding: number; perUser: number; max: number; pullChance: number };
+  /**
+   * How far crawlers sense a base, in px: base + perBuilding·buildings +
+   * perUser·users + perMinute·minutes of uptime, capped at max.
+   */
+  traffic: { base: number; perBuilding: number; perUser: number; perMinute: number; max: number; pullChance: number };
 }
 
 export type UpgradeStat = "unitHp" | "unitDamage" | "towerRange" | "spawnSpeed" | "userCapacity" | "revenue";
@@ -179,8 +178,6 @@ export interface UpgradeDef {
   cost: number;
   researchTicks: number;
 }
-
-export type DamageTable = Record<AttackType, Record<ArmorType, number>>;
 
 /**
  * - blast:  damage every enemy within `radius` of a point.
@@ -207,7 +204,6 @@ export interface AbilityDef {
   radius?: number;
   amount: number;
   perRank: number;
-  attackType?: AttackType;
   durationTicks?: number;
   unit?: string;
 }
@@ -245,7 +241,6 @@ export interface Content {
   buildings: Record<string, BuildingDef>;
   races: Record<string, RaceDef>;
   waves: WavesDef;
-  damage: DamageTable;
   economy: EconomyDef;
   upgrades: Record<string, UpgradeDef>;
   heroes: HeroesDef;

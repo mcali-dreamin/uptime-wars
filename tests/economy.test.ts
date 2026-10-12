@@ -4,12 +4,15 @@ import {
   createWorld,
   queueCommand,
   incomeRate,
+  trafficRadius,
   levelOf,
   multiplier,
   nextLevel,
   userCapacity,
   step,
 } from "../src/sim";
+import { makeContext } from "../src/sim/context";
+import { dealDamage } from "../src/sim/combat";
 import { content, SETUP, firstSpot, planBuildOrder } from "./fixtures";
 
 describe("users", () => {
@@ -174,6 +177,33 @@ describe("compute", () => {
   });
 });
 
+describe("churn", () => {
+  it("only damage to buildings that serve users drives them away", () => {
+    const frozen: typeof content = structuredClone(content);
+    frozen.economy = { ...content.economy, growthPerSecond: 0, minArrivalsPerSecond: 0 };
+    const world = createWorld(frozen, SETUP);
+    world.teams[0]!.users = 40;
+    queueCommand(world, firstSpot("firewall"));
+    while (!world.entities.some((e) => e.defId === "firewall" && e.kind === "building" && e.buildRemaining === 0)) step(world, frozen);
+    const ctx = makeContext(world, frozen);
+    const wall = world.entities.find((e) => e.defId === "firewall")!;
+    const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
+    const creep = { ...core, id: -9, team: 1 } as typeof core;
+    dealDamage(ctx, creep, wall, 120);
+    expect(world.teams[0]!.users).toBe(40);
+    dealDamage(ctx, creep, core, 240);
+    expect(world.teams[0]!.users).toBeLessThan(40);
+  });
+
+  it("a bigger base is sensed from further away", () => {
+    const world = createWorld(content, SETUP);
+    const team = world.teams[0]!;
+    const small = trafficRadius(world, content, team);
+    team.users += 200;
+    expect(trafficRadius(world, content, team)).toBeGreaterThan(small);
+  });
+});
+
 describe("upgrades", () => {
   const research = (world: ReturnType<typeof createWorld>, upgrade: string) => {
     queueCommand(world, { type: "research", tick: world.tick, team: 0, upgrade });
@@ -214,7 +244,7 @@ describe("upgrades", () => {
     world.teams[0]!.upgrades["anycast"] = content.upgrades.anycast!.maxLevel;
     expect(research(world, "anycast")).toEqual(["fully researched"]);
     world.teams[0]!.money = 0;
-    expect(research(world, "premium-tier")).toEqual(["not enough compute"]);
+    expect(research(world, "premium-tier")).toEqual(["not enough $"]);
   });
 
   it("upgrades change unit HP, spawn speed, and user capacity", () => {
