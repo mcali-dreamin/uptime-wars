@@ -67,7 +67,7 @@ const listener: Listener = {
   },
   visible: (p) => renderer.fog.isVisible(p.x, p.y),
 };
-const info = new InfoPanel(session, () => arm());
+const info = new InfoPanel(session, () => arm(), () => invokeSelected());
 const bar = new BuildBar(session, {
   choose: (button) => {
     sound.ui("click");
@@ -247,6 +247,14 @@ function order(point: Point): void {
  * Arm the selection's ground order, so the next left-click gives it: T (or the
  * panel button) for rally / attack-move, F for a plain move.
  */
+/** Run the selected serverless function now (V, or the info card's button). */
+function invokeSelected(): boolean {
+  const entity = selectedEntity(session, selection);
+  if (entity?.kind !== "building" || !content.buildings[entity.defId]!.invoke) return false;
+  session.issue({ type: "invoke", buildingId: entity.id });
+  return true;
+}
+
 function arm(how: "attack" | "move" = "attack"): boolean {
   const next = armed(session, selection, how);
   if (next) select(next);
@@ -374,6 +382,7 @@ const gameInput: GameInput = {
     if (key === "q" && !session.deploying) return selectHero();
     if (key === "t") return arm();
     if (key === "f") return arm("move");
+    if (key === "v") return invokeSelected();
     if (key === "z") {
       // The whole army.
       const ids = allSoldiers(session).map((u) => u.id);

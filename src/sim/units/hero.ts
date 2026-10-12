@@ -56,7 +56,7 @@ export const hero: Behavior = (ctx, unit, def) => {
   if (target) {
     if (edgeDistance(unit, target) <= def.range) {
       if (unit.attackCooldown <= 0) {
-        dealDamage(ctx, unit, target, def.attackType, damage());
+        dealDamage(ctx, unit, target, damage());
         unit.attackCooldown = def.cooldownTicks;
       }
     } else {

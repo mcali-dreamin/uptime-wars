@@ -6,6 +6,8 @@ export function validateContent(content: Content): void {
 
   for (const [id, building] of Object.entries(content.buildings)) {
     if (building.onWell && building.footprint !== 1) errors.push(`building ${id} goes on a well, so it must be 1x1`);
+    if (building.invoke && !content.units[building.invoke.unit]) errors.push(`building ${id} invokes unknown unit ${building.invoke.unit}`);
+    if (building.invoke && building.spawn) errors.push(`building ${id} can't both spawn and invoke`);
     if (building.spawn && !content.units[building.spawn.unit]) {
       errors.push(`building ${id} spawns unknown unit ${building.spawn.unit}`);
     }
@@ -49,7 +51,6 @@ export function validateContent(content: Content): void {
       errors.push(`ability ${id} is a decoy: it needs a known unit, durationTicks, and radius`);
     }
     if ((ability.effect === "blast" || ability.effect === "heal") && !ability.radius) errors.push(`ability ${id} needs a radius`);
-    if ((ability.effect === "blast" || ability.effect === "strike") && !ability.attackType) errors.push(`ability ${id} needs an attackType`);
     if (ability.effect === "strike" && ability.target !== "enemy") errors.push(`ability ${id} strikes, so it targets an enemy`);
     if (ability.target === "self" && ability.range !== 0) errors.push(`ability ${id} targets self, so its range is 0`);
   }

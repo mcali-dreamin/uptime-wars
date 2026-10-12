@@ -19,7 +19,7 @@
       "spawnIntervalMultiplier": 0.85,
       "costMultiplier": 1,
       "unitHpMultiplier": 1,
-      "startingComputeBonus": 0
+      "startingMoneyBonus": 0
     },
     "builder": "deploy-agent",
     "heroes": [
@@ -30,7 +30,7 @@
   },
   "hyperscaler": {
     "name": "Hyperscaler",
-    "specialty": "Rich and tough. +150 compute, units 30% tougher, spawns 15% slower.",
+    "specialty": "Rich and tough. +$150, units 30% tougher, spawns 15% slower.",
     "controller": "human",
     "look": "monolith",
     "core": "core",
@@ -49,13 +49,40 @@
       "spawnIntervalMultiplier": 1.15,
       "costMultiplier": 1,
       "unitHpMultiplier": 1.3,
-      "startingComputeBonus": 150
+      "startingMoneyBonus": 150
     },
     "heroes": [
       "sre",
       "architect",
       "evangelist"
     ]
+  },
+  "serverless": {
+    "name": "Serverless",
+    "specialty": "No standing army. Functions spin up squads when creeps show up, bill you per run, and go cold. Little to defend, but long fights add up.",
+    "controller": "human",
+    "look": "ephemeral",
+    "core": "core",
+    "builder": "deploy-agent",
+    "heroes": [
+      "function-author",
+      "chaos-engineer",
+      "finops"
+    ],
+    "buildings": [
+      "function",
+      "inference-endpoint",
+      "data-pump",
+      "web-app",
+      "mesh-node",
+      "core"
+    ],
+    "modifiers": {
+      "spawnIntervalMultiplier": 1,
+      "costMultiplier": 1,
+      "unitHpMultiplier": 1,
+      "startingMoneyBonus": 50
+    }
   },
   "botnet": {
     "name": "The Botnet",
@@ -67,7 +94,7 @@
       "spawnIntervalMultiplier": 1,
       "costMultiplier": 1,
       "unitHpMultiplier": 1,
-      "startingComputeBonus": 0
+      "startingMoneyBonus": 0
     }
   }
 }

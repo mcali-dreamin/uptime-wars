@@ -10,8 +10,8 @@ export type { MatchSetup } from "./world";
 export { queueCommand } from "./commands";
 export { canPlace, canFound, buildCost, isOccupied, isCore, inNetwork, networkProviders, teamCores } from "./placement";
 export { planWave, previewWave, waveInterval, type WavePreview } from "./waves";
-export { STARTING_COMPUTE, BASE_INCOME } from "./tuning";
-export { incomeRate, trafficRadius, userCapacity } from "./economy";
+export { STARTING_MONEY, BASE_INCOME } from "./tuning";
+export { computeBalance, incomeRate, trafficRadius, userCapacity } from "./economy";
 export { canResearch, levelOf, multiplier, nextLevel } from "./upgrades";
 export { hashWorld, hashTerrain } from "./hash";
 
@@ -33,3 +33,4 @@ export function simulate(
   return world;
 }
 export { fortressGates, fortressSpots } from "./fortress";
+export { invokeBlocker } from "./functions";

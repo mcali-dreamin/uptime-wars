@@ -4,29 +4,27 @@
     "description": "Your base. Serves users, shoots creeps, extends your network. You only go down when every core is down.",
     "cost": 300,
     "buildTicks": 300,
-    "hp": 3000,
+    "hp": 5625,
     "armor": 5,
-    "armorType": "core",
     "footprint": 2,
     "buildable": true,
     "attack": {
-      "attackType": "exploit",
       "damage": 7,
       "range": 170,
       "cooldownTicks": 24
     },
     "sight": 520,
     "userCapacity": 40,
-    "buildRadius": 7
+    "buildRadius": 7,
+    "compute": 80
   },
   "server-rack": {
     "name": "Server Rack",
     "description": "Forks Processes on a timer. They guard the rack, or gather at its rally point.",
     "cost": 60,
     "buildTicks": 60,
-    "hp": 400,
+    "hp": 510,
     "armor": 2,
-    "armorType": "hardened",
     "footprint": 1,
     "buildable": true,
     "spawn": {
@@ -42,9 +40,8 @@
     "description": "Spins up ranged Inference Drones. Expensive, hits hard. They gather at its rally point.",
     "cost": 140,
     "buildTicks": 100,
-    "hp": 350,
+    "hp": 445,
     "armor": 2,
-    "armorType": "hardened",
     "footprint": 1,
     "buildable": true,
     "spawn": {
@@ -60,13 +57,11 @@
     "description": "Defensive tower. Shoots any creep in range.",
     "cost": 90,
     "buildTicks": 80,
-    "hp": 600,
+    "hp": 765,
     "armor": 4,
-    "armorType": "hardened",
     "footprint": 1,
     "buildable": true,
     "attack": {
-      "attackType": "brute",
       "damage": 14,
       "range": 160,
       "cooldownTicks": 14
@@ -75,32 +70,26 @@
   },
   "solar-array": {
     "name": "Solar Array",
-    "description": "A small, steady trickle of compute. Safe, but users pay far better.",
+    "description": "Supplies 60 compute: enough to serve a Web App's worth of users. Cheap and fragile.",
     "cost": 75,
     "buildTicks": 80,
-    "hp": 250,
+    "hp": 320,
     "armor": 1,
-    "armorType": "hardened",
     "footprint": 1,
     "buildable": true,
-    "income": {
-      "amount": 2,
-      "intervalTicks": 20
-    },
-    "sight": 260
+    "sight": 260,
+    "compute": 60
   },
   "malware-nest": {
     "name": "Malware Nest",
     "description": "Where the crawlers come from. Survive what it sends.",
     "cost": 0,
     "buildTicks": 0,
-    "hp": 2500,
+    "hp": 4690,
     "armor": 3,
-    "armorType": "core",
     "footprint": 2,
     "buildable": false,
     "attack": {
-      "attackType": "exploit",
       "damage": 10,
       "range": 150,
       "cooldownTicks": 24
@@ -111,14 +100,12 @@
     "description": "Command and control for the botnet. Guards the gateways up to the nest. Knock them down and push in: every few waves the botnet rebuilds them, tougher.",
     "cost": 0,
     "buildTicks": 0,
-    "hp": 900,
+    "hp": 1150,
     "armor": 2,
-    "armorType": "hardened",
     "footprint": 1,
     "buildable": false,
     "sight": 340,
     "attack": {
-      "attackType": "exploit",
       "damage": 14,
       "range": 210,
       "cooldownTicks": 20
@@ -129,9 +116,8 @@
     "description": "Provisions Load Balancers: slow to spin up, very hard to kill. They gather at its rally point.",
     "cost": 90,
     "buildTicks": 80,
-    "hp": 650,
+    "hp": 830,
     "armor": 3,
-    "armorType": "hardened",
     "footprint": 1,
     "buildable": true,
     "sight": 300,
@@ -147,14 +133,12 @@
     "description": "Long-range tower. Lighter hits, but it reaches creeps far before they reach you.",
     "cost": 110,
     "buildTicks": 90,
-    "hp": 500,
+    "hp": 640,
     "armor": 3,
-    "armorType": "hardened",
     "footprint": 1,
     "buildable": true,
     "sight": 420,
     "attack": {
-      "attackType": "exploit",
       "damage": 9,
       "range": 260,
       "cooldownTicks": 12
@@ -162,28 +146,23 @@
   },
   "power-plant": {
     "name": "Power Plant",
-    "description": "Serious generation for serious infrastructure. Expensive, pays back fast.",
+    "description": "Supplies 150 compute. Expensive, and a big hole in your capacity if it falls.",
     "cost": 160,
     "buildTicks": 120,
-    "hp": 450,
+    "hp": 575,
     "armor": 2,
-    "armorType": "hardened",
     "footprint": 1,
     "buildable": true,
     "sight": 240,
-    "income": {
-      "amount": 5,
-      "intervalTicks": 20
-    }
+    "compute": 150
   },
   "web-app": {
     "name": "Web App",
     "description": "Serves users. More capacity, more revenue, and more to lose when it gets hit.",
     "cost": 100,
     "buildTicks": 80,
-    "hp": 300,
+    "hp": 385,
     "armor": 1,
-    "armorType": "hardened",
     "footprint": 1,
     "buildable": true,
     "sight": 280,
@@ -194,9 +173,8 @@
     "description": "Extends your network a little. Cheap and fragile; build lots.",
     "cost": 40,
     "buildTicks": 40,
-    "hp": 150,
+    "hp": 130,
     "armor": 0,
-    "armorType": "container",
     "footprint": 1,
     "buildable": true,
     "sight": 260,
@@ -207,9 +185,8 @@
     "description": "Extends your network a long way. Armored, and priced like it.",
     "cost": 90,
     "buildTicks": 80,
-    "hp": 500,
+    "hp": 640,
     "armor": 3,
-    "armorType": "hardened",
     "footprint": 1,
     "buildable": true,
     "sight": 360,
@@ -217,19 +194,53 @@
   },
   "data-pump": {
     "name": "Data Pump",
-    "description": "Taps a data well for steady compute. Only goes on a well, and wells are out in the open.",
+    "description": "Taps a data well for 100 compute. Only goes on a well, and wells are out in the open.",
     "cost": 100,
     "buildTicks": 120,
-    "hp": 320,
+    "hp": 410,
     "armor": 1,
-    "armorType": "hardened",
     "footprint": 1,
     "buildable": true,
     "onWell": true,
-    "income": {
-      "amount": 8,
-      "intervalTicks": 20
-    },
-    "sight": 300
+    "sight": 300,
+    "compute": 100
+  },
+  "function": {
+    "name": "Function",
+    "description": "No standing army. When a creep comes near (or you invoke it), it spins up four Lambdas for 20 seconds, then cools down. Each run costs $.",
+    "cost": 60,
+    "buildTicks": 50,
+    "hp": 280,
+    "armor": 1,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 320,
+    "invoke": {
+      "unit": "lambda",
+      "count": 4,
+      "cost": 15,
+      "ttlTicks": 400,
+      "cooldownTicks": 240,
+      "triggerRange": 300
+    }
+  },
+  "inference-endpoint": {
+    "name": "Inference Endpoint",
+    "description": "Spins up three ranged Inference Calls on demand. Costs more per run, hits from range.",
+    "cost": 130,
+    "buildTicks": 80,
+    "hp": 335,
+    "armor": 1,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 340,
+    "invoke": {
+      "unit": "inference-call",
+      "count": 3,
+      "cost": 25,
+      "ttlTicks": 400,
+      "cooldownTicks": 300,
+      "triggerRange": 360
+    }
   }
 }

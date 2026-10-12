@@ -2,14 +2,20 @@
   "startingUsers": 5,
   "growthPerSecond": 0.04,
   "minArrivalsPerSecond": 1,
-  "revenuePerUserPerSecond": 0.1,
+  "revenuePerUserPerSecond": 0.13,
   "damagePerUserLost": 12,
+  "compute": {
+    "perUser": 1,
+    "perUnit": 2,
+    "churnPerSecond": 0.1,
+    "maxOverload": 0.9
+  },
   "traffic": {
     "base": 3500,
     "perBuilding": 200,
     "perUser": 12,
     "perMinute": 700,
     "max": 16000,
-    "pullChance": 0.55
+    "pullChance": 0.85
   }
 }

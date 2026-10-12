@@ -1,6 +1,7 @@
 // Buildings that spawn defenders on a timer.
 
 import type { TickContext } from "./context";
+import { lagging } from "./economy";
 import { sendHome, spawnInterval, spawnUnit } from "./entities";
 import { randomInt } from "./rng";
 import type { Building } from "./types";
@@ -20,6 +21,7 @@ export function tickSpawners(ctx: TickContext): void {
   for (const building of buildings) {
     const spawn = content.buildings[building.defId]!.spawn;
     if (!spawn || building.buildRemaining > 0) continue;
+    if (lagging(world, building.team)) continue;
     building.spawnTimer -= 1;
     if (building.spawnTimer > 0) continue;
     const room = Math.min(spawn.count, spawn.maxAlive - (alive.get(building.id) ?? 0));
