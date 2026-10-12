@@ -402,6 +402,18 @@ body {
   border-color: var(--accent) !important;
 }
 
+#select-box {
+  position: absolute;
+  z-index: 1;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  pointer-events: none;
+}
+
+#select-box[hidden] {
+  display: none;
+}
+
 #hint {
   position: absolute;
   left: 50%;

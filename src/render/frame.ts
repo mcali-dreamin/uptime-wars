@@ -38,6 +38,8 @@ export interface Frame {
   deltaMs: number;
   ghost: Ghost | null;
   selectedId: number | null;
+  /** Everything selected, for highlighting (a group of units, or the one entity). */
+  selectedIds: ReadonlySet<number>;
   /** The team this browser plays. */
   localTeam: TeamId;
   width: number;

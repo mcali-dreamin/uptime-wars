@@ -102,6 +102,8 @@ export function spawnUnit(
     spawnerId: -1,
     moveTo: null,
     foundAt: null,
+    order: null,
+    commanded: false,
     hp,
     maxHp: hp,
     armor: def.armor,
@@ -129,9 +131,9 @@ export function foundCore(world: World, content: Content, teamId: TeamId, col: n
 }
 
 /** Give a guard a new home near `point`, spread out a little so they don't stack. */
-export function sendHome(world: World, unit: Unit, point: Point): void {
-  unit.homeX = point.x + randomInt(world, -RALLY_SPREAD, RALLY_SPREAD);
-  unit.homeY = point.y + randomInt(world, -RALLY_SPREAD, RALLY_SPREAD);
+export function sendHome(world: World, unit: Unit, point: Point, spread = RALLY_SPREAD): void {
+  unit.homeX = point.x + randomInt(world, -spread, spread);
+  unit.homeY = point.y + randomInt(world, -spread, spread);
   if (!bodyFits(world.terrain, unit.homeX, unit.homeY, unit.radius)) {
     unit.homeX = point.x;
     unit.homeY = point.y;

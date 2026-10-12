@@ -101,7 +101,7 @@ export class Renderer {
     this.bannerAge = 0;
   }
 
-  draw(world: World, content: Content, alpha: number, deltaMs: number, ghost: Ghost | null, selectedId: number | null = null): void {
+  draw(world: World, content: Content, alpha: number, deltaMs: number, ghost: Ghost | null, selectedId: number | null = null, selected: readonly number[] = []): void {
     const { width, height } = this.app.screen;
     this.camera.setViewport(width, height);
     this.camera.update(deltaMs);
@@ -115,6 +115,7 @@ export class Renderer {
       deltaMs,
       ghost,
       selectedId,
+      selectedIds: new Set(selected),
       localTeam: this.localTeam,
       width,
       height,

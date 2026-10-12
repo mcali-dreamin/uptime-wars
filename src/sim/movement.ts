@@ -7,12 +7,26 @@ import { TILE } from "./map";
 import { flowField, hasClearPath, moveToward, nextStep } from "./nav";
 import type { Point, Unit, World } from "./types";
 
+/**
+ * Fields kept at once. Each is a full-map array, and player orders can point
+ * anywhere, so the oldest are dropped. Safe for determinism: a field is a
+ * pure function of the terrain and its goal, so recomputing it gives the
+ * same answer.
+ */
+const MAX_FIELDS = 96;
+
 export function goalField(world: World, goalTile: number): Int32Array {
-  let field = world.nav.goals.get(goalTile);
-  if (!field) {
-    field = flowField(world.terrain, [goalTile]);
-    world.nav.goals.set(goalTile, field);
+  const goals = world.nav.goals;
+  let field = goals.get(goalTile);
+  if (field) {
+    // Most recently used goes to the back.
+    goals.delete(goalTile);
+    goals.set(goalTile, field);
+    return field;
   }
+  field = flowField(world.terrain, [goalTile]);
+  goals.set(goalTile, field);
+  if (goals.size > MAX_FIELDS) goals.delete(goals.keys().next().value!);
   return field;
 }
 

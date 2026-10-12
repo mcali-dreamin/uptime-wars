@@ -15,6 +15,11 @@ export const GUARD_RADIUS = 220;
 export const HOME_SLACK = 24;
 /** Units gathering at a rally point spread over this many pixels either way. */
 export const RALLY_SPREAD = 40;
+/** Most units one order can carry (keeps a command small on the wire). */
+export const MAX_ORDER_UNITS = 200;
+/** A group ordered somewhere spreads over this many pixels per unit-ish, capped. */
+export const ORDER_SPREAD_PER_UNIT = 9;
+export const ORDER_SPREAD_MAX = 150;
 /** Roamers amble rather than march. */
 export const ROAM_SPEED = 0.6;
 /** A pack member further than this from its leader catches up first. */

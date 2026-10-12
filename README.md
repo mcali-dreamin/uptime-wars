@@ -29,12 +29,17 @@ npm run dev
   way there, then guard the spot. Right-click is any secondary click: a
   two-finger tap or click on a trackpad, Ctrl-click and Cmd-click work too. Or skip it:
   press `T` (or the button on the info card), then left-click the ground.
+- **Command your army.** Drag a box over your units (Shift adds), click one,
+  double-click to grab every one of its kind on screen, or press `Q` for all of
+  them. Right-click the ground or an enemy to attack-move: they fight whatever
+  they meet, then hold the spot. `F` then click is a plain move that ignores
+  enemies (retreat). Units you've sent stay put when you change a rally.
 - Select your **core** to research upgrades (one at a time): Hardened
   Containers, Exploit Kits, Anycast, Autoscaling, Edge Caching, Premium Tier.
   Tuning lives in `src/content/upgrades.json`.
 - `1`-`5` or click: pick a building. Click near your core (the ring shows your
   build radius) to place it. Shift-click to place several.
-- `WASD` / arrows, drag, or the very edge of the window: pan (`E` toggles edge
+- `WASD` / arrows, middle-drag or Alt-drag, or the very edge of the window: pan (`E` toggles edge
   scroll). Wheel or `+`/`-`: zoom. Click the minimap to jump. `Space` / `H`: back home.
 - Right-click / `Esc`: cancel. `P`: pause. `R`: new map after a match.
 

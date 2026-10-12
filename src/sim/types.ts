@@ -73,6 +73,13 @@ export interface Unit extends EntityBase {
   /** Where a guarding unit returns to when it has nothing to fight. */
   homeX: number;
   homeY: number;
+  /**
+   * A player's order in progress: "move" walks home ignoring enemies,
+   * "attack" walks home fighting whatever it meets. Cleared on arrival.
+   */
+  order: "move" | "attack" | null;
+  /** Ordered by its player at least once: its spawner's rally no longer moves it. */
+  commanded: boolean;
 }
 
 export interface Building extends EntityBase {
@@ -130,6 +137,21 @@ export interface RallyCommand {
   y: number;
 }
 
+/**
+ * Send some of your units somewhere. `attack`: fight whatever they meet on
+ * the way (attack-move); otherwise walk there ignoring enemies. They hold the
+ * spot afterwards.
+ */
+export interface OrderCommand {
+  type: "order";
+  tick: number;
+  team: TeamId;
+  unitIds: number[];
+  x: number;
+  y: number;
+  attack: boolean;
+}
+
 /** Start researching the next level of an upgrade at the core. */
 export interface ResearchCommand {
   type: "research";
@@ -138,7 +160,7 @@ export interface ResearchCommand {
   upgrade: string;
 }
 
-export type Command = BuildCommand | MoveCommand | FoundCommand | RallyCommand | ResearchCommand;
+export type Command = BuildCommand | MoveCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand;
 
 export interface WaveSpawn {
   tick: number;

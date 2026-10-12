@@ -3,7 +3,7 @@
 // selected. Nothing else pops up. The full story lives in the Guide.
 
 import { TICK_RATE, isCore } from "../sim";
-import { groundOrderLabel, selectedEntity, type Selection } from "../game/selection";
+import { armyUnits, groundOrderLabel, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { upgradeOf } from "./build-bar";
 import { buildingCard, unitCard, upgradeCard, type InfoCard } from "./cards";
@@ -36,6 +36,7 @@ export class InfoPanel {
     if (upgrade) return this.show(upgradeCard(content, this.session.team, upgrade));
     if (building) return this.show(buildingCard(content, raceId, building));
 
+    if (selection.kind === "army") return this.showArmy(selection);
     const entity = selectedEntity(this.session, selection);
     if (!entity) return this.show(null);
     if (entity.kind === "building") {
@@ -56,10 +57,37 @@ export class InfoPanel {
   private showAction(selection: Selection): void {
     const label = groundOrderLabel(this.session, selection);
     if (!label) return;
-    const armed = selection.kind === "entity" && selection.armed === true;
+    const armed = (selection.kind === "entity" || selection.kind === "army") && Boolean(selection.armed);
     this.action.hidden = false;
     this.action.textContent = armed ? "Click the ground… (Esc)" : `${label} (T)`;
     this.action.classList.toggle("armed", armed);
+  }
+
+  /** A group of your units: what's in it, and how to send it. */
+  private showArmy(selection: Selection): void {
+    const units = armyUnits(this.session, selection);
+    if (units.length === 0) return this.show(null);
+    const { content } = this.session;
+    if (units.length === 1) {
+      const unit = units[0]!;
+      const card = unitCard(content, unit.defId, unit.hp, unit.maxHp);
+      this.showAction(selection);
+      return this.show({ title: card.title, lines: [...card.lines, "Right-click: attack-move · F: move"] });
+    }
+    const counts = new Map<string, number>();
+    let hp = 0;
+    let maxHp = 0;
+    for (const unit of units) {
+      counts.set(unit.defId, (counts.get(unit.defId) ?? 0) + 1);
+      hp += unit.hp;
+      maxHp += unit.maxHp;
+    }
+    const mix = [...counts].map(([id, n]) => `${n}× ${content.units[id]!.name}`).join(" · ");
+    this.showAction(selection);
+    this.show({
+      title: `${units.length} units`,
+      lines: [mix, `${Math.round((100 * hp) / maxHp)}% health`, "Right-click: attack-move · F: move"],
+    });
   }
 
   private show(card: InfoCard | null): void {

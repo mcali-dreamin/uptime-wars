@@ -8,7 +8,7 @@ import * as THREE from "three";
 const MAX_BOLTS = 600;
 const MAX_PARTICLES = 3000;
 const MAX_BARS = 700;
-const MAX_RINGS = 160;
+const MAX_RINGS = 700;
 
 /** Bolts: short glowing streaks that travel from shooter to target. */
 export class Bolts {
