@@ -1,7 +1,7 @@
 # Uptime Wars
 
 Survival on the open web, in the browser. Every match generates a fresh patch
-of the internet from a seed: dead links, data swamps, data wells, and a
+of the internet from a seed: dead links, data wells, and a
 malware nest somewhere far off-screen. Build around your core, let your racks
 fork defenders, and keep your uptime while packs of crawlers wander the web.
 
@@ -43,7 +43,7 @@ an angled camera. Each height level has its own look: the deep web is violet
 soil, the surface web teal moss with cyan circuit traces, and the backbone
 steel plating. Cliffs are dark rock with glowing fibre strata, and ramps are
 paved gateways with amber chevrons. Dead links are fields of black shards,
-data wells are glowing crystals, and data swamps are glossy pools. Buildings
+data wells are glowing crystals. Buildings
 and units are procedural models in your team's colour; the botnet is spiky
 and red. Software rendering automatically drops shadows and bloom. `?low`
 forces that, `?hq` forces the full look, and `?2d` brings back the flat Pixi

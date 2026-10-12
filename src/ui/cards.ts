@@ -91,7 +91,6 @@ function unitStats(unit: Content["units"][string], hpMultiplier = 1): string {
 export const TERRAIN_GUIDE: GuideEntry[] = [
   { title: "Open ground", description: "Walkable and buildable.", stats: [] },
   { title: "Dead link", description: "Light grey with a bright edge.", stats: ["Impassable", "Can't build", "Blocks line of sight"] },
-  { title: "Data swamp", description: "Dark teal, dotted.", stats: ["Units move at half speed", "Can't build"] },
   { title: "Data well", description: "Glowing blue crystals.", stats: ["Build a Data Pump on one for steady compute", "Two are always a short hop from your start; the rest are scattered across the web", "Walkable, but nothing else can be built on it"] },
   { title: "Height", description: "Three levels: deep web (darkest), surface web, backbone (lightest).", stats: ["Units below can't see up a cliff unless they're right at its foot", "Attacking downhill deals 25% more damage", "Towers follow the same rules"] },
   { title: "Cliff", description: "Near-black band with a bright lip on the drop side.", stats: ["Impassable", "Can't build", "You can see and shoot across it"] },

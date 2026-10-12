@@ -1,6 +1,6 @@
 // Colours shared by every world view, so 2D and 3D read the same.
 
-import { TILE_BLOCKED, TILE_CLIFF, TILE_SLOW, type TeamId, type World } from "../sim";
+import { TILE_BLOCKED, TILE_CLIFF, type TeamId, type World } from "../sim";
 
 /** Player n's default colour (co-op: up to four), and the horde's (always red). */
 export const PLAYER_COLORS = [0x4ade80, 0x60a5fa, 0xc084fc, 0xfb923c] as const;
@@ -30,7 +30,6 @@ export const VALID = 0x4ade80;
 export const INVALID = 0xf87171;
 
 export const FLOOR = [0x0a0f14, 0x17222d, 0x253545] as const;
-export const SWAMP = [0x0f2530, 0x14303b, 0x1a3a46] as const;
 export const DEAD_LINK = 0x3b4a5c;
 export const DEAD_LINK_EDGE = 0x7d8fa3;
 export const CLIFF = 0x070a0e;
@@ -44,8 +43,6 @@ export function tileColor(tile: number, height: number): number {
       return DEAD_LINK;
     case TILE_CLIFF:
       return CLIFF;
-    case TILE_SLOW:
-      return SWAMP[height]!;
     default:
       return FLOOR[height]!;
   }

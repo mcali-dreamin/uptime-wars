@@ -1,7 +1,6 @@
 // Map generation tuning.
 
 export const BLOCK_THRESHOLD = 0.64;
-export const SLOW_THRESHOLD = 0.34;
 export const START_CLEAR_RADIUS = 5;
 export const NEST_CLEAR_RADIUS = 3;
 /** The nest's fortress: a backbone plateau this many tiles in radius... */

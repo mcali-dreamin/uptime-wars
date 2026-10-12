@@ -1,4 +1,4 @@
-// Generate a map from a seed: walls and swamps from noise, nest in the
+// Generate a map from a seed: walls from noise, nest in the
 // middle, starts out toward the edge, everything reachable, then height,
 // wells, and roam points.
 
@@ -12,13 +12,12 @@ import {
   MAX_PLAYERS,
   FORTRESS_RADIUS,
   MOAT_WIDTH,
-  SLOW_THRESHOLD,
   START_CLEAR_RADIUS,
   START_MIN_FROM_NEST,
   START_SPACING,
 } from "./params";
 import { scatterResources, scatterRoamPoints } from "./scatter";
-import { TILE_BLOCKED, TILE_OPEN, TILE_RESOURCE, TILE_SLOW, type Terrain, type TilePoint } from "./tiles";
+import { TILE_BLOCKED, TILE_OPEN, TILE_RESOURCE, type Terrain, type TilePoint } from "./tiles";
 
 export function generateTerrain(seed: number, cols = MAP_COLS, rows = MAP_ROWS): Terrain {
   // Separate stream from the match RNG so terrain never shifts gameplay rolls.
@@ -34,9 +33,7 @@ export function generateTerrain(seed: number, cols = MAP_COLS, rows = MAP_ROWS):
         ? TILE_BLOCKED
         : n > BLOCK_THRESHOLD
           ? TILE_BLOCKED
-          : n < SLOW_THRESHOLD
-            ? TILE_SLOW
-            : TILE_OPEN;
+          : TILE_OPEN;
     }
   }
 
@@ -45,7 +42,7 @@ export function generateTerrain(seed: number, cols = MAP_COLS, rows = MAP_ROWS):
   const nest = { col: Math.floor(cols / 2) - 1, row: Math.floor(rows / 2) - 1 };
   const starts = pickStarts(cols, rows, nest, rng);
   const start = starts[0]!;
-  // The fortress (plateau and moat) is built ground: no dead links or swamps,
+  // The fortress (plateau and moat) is built ground: no dead links,
   // so its rim is a clean cliff that gateways can be cut into anywhere.
   clearDisc(tiles, cols, rows, nest.col + 1, nest.row + 1, FORTRESS_RADIUS + MOAT_WIDTH - 1);
   for (const s of starts) clearDisc(tiles, cols, rows, s.col + 1, s.row + 1, START_CLEAR_RADIUS);

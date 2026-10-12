@@ -3,7 +3,6 @@
 // the same map locally.
 //
 // - Dead links (blocked): impassable, unbuildable.
-// - Data swamps (slow): walkable at half speed, unbuildable.
 // - Data wells (resource): walkable, unbuildable. Economy hooks in later.
 // - Cliffs: the high edge of a plateau. Impassable and unbuildable, but you
 //   can see and shoot across them.
@@ -15,7 +14,7 @@
 
 export const TILE_OPEN = 0;
 export const TILE_BLOCKED = 1;
-export const TILE_SLOW = 2;
+// 2 was the data swamp (half speed). Removed; the id stays reserved.
 export const TILE_RESOURCE = 3;
 export const TILE_CLIFF = 4;
 export const TILE_RAMP = 5;
