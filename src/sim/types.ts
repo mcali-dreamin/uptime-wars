@@ -291,6 +291,10 @@ export type SimEvent =
   | { type: "wave"; wave: number; name: string; packs: number; units: number; boss: boolean }
   /** The botnet put fallen C2 Servers back up. */
   | { type: "fortified"; wave: number; rebuilt: number }
+  /** A Botnet Farm fell: `units` creeps retaliate against (x, y), where `team` hit it from. */
+  | { type: "retaliation"; team: TeamId; x: number; y: number; units: number }
+  /** The botnet rebuilt fallen Botnet Farms. */
+  | { type: "farms-rebuilt"; wave: number; rebuilt: number }
   | { type: "founded"; x: number; y: number }
   | { type: "failover"; team: TeamId; x: number; y: number }
   /** A team went offline while its allies play on. */

@@ -63,6 +63,10 @@ export function validateContent(content: Content): void {
   const fortress = content.waves.fortress;
   if (!content.buildings[fortress.building]?.attack) errors.push(`fortress building ${fortress.building} must be a building that shoots`);
   if (!(fortress.rebuildEvery >= 1)) errors.push("fortress.rebuildEvery must be at least 1");
+  const farm = content.buildings[fortress.farms.building];
+  if (!farm?.spawn) errors.push(`fortress farm ${fortress.farms.building} must be a building that spawns`);
+  else if (farm.footprint !== 2) errors.push(`fortress farm ${fortress.farms.building} must be 2x2`);
+  if (!(fortress.farms.rebuildEvery >= 1)) errors.push("fortress.farms.rebuildEvery must be at least 1");
   if (!content.waves.roster.some((entry) => entry.fromWave <= 1)) errors.push("wave roster needs a unit from wave 1");
   if (errors.length > 0) {
     throw new Error(`Invalid content:\n- ${errors.join("\n- ")}`);

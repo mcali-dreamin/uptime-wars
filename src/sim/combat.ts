@@ -4,6 +4,7 @@ import { creditKill } from "./heroes";
 import { hostile } from "./teams";
 import { GRID_CELL, GRID_STRIDE, type TickContext } from "./context";
 import { regionShield } from "./mechanics";
+import { retaliate } from "./fortress";
 import { loseUsers } from "./economy";
 import { TILE } from "./map";
 import { hasLineOfSight } from "./nav";
@@ -106,6 +107,7 @@ export function dealDamage(
     team: attacker.team,
   });
   if (wasAlive && target.hp <= 0) {
+    if (target.kind === "building" && target.defId === content.waves.fortress.farms.building) retaliate(ctx, attacker);
     world.events.push({ type: "death", id: target.id, x: target.x, y: target.y, team: target.team });
     if (target.kind === "unit") {
       world.teams[attacker.team]!.money += content.units[target.defId]!.bounty;

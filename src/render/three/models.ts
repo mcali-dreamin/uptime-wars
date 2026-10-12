@@ -747,6 +747,25 @@ export class Models {
         anim(piston, { type: "bob", amount: 6, speed: 2.4, base: 28 });
         break;
       }
+      case "botnet-farm": {
+        // A fleshy hive of server pods, glowing vents, and a hatch the bots pour out of.
+        this.shape(g, team, "flesh", "farm-base", () => {
+          const geo = new THREE.CylinderGeometry(40, 46, 14, 7);
+          geo.translate(0, 7, 0);
+          return geo;
+        });
+        for (let i = 0; i < 6; i += 1) {
+          const a = (i / 6) * Math.PI * 2;
+          const pod = this.shape(g, team, "flesh", "farm-pod", () => new THREE.CapsuleGeometry(7, 22, 4, 8), Math.cos(a) * 26, 30, Math.sin(a) * 26);
+          pod.rotation.set(Math.sin(a) * 0.25, 0, -Math.cos(a) * 0.25);
+          this.shape(g, team, "hot", "farm-vent", () => new THREE.SphereGeometry(3, 8, 6), Math.cos(a) * 26, 46, Math.sin(a) * 26);
+        }
+        this.shape(g, team, "flesh", "farm-dome", () => new THREE.SphereGeometry(20, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), 0, 14, 0);
+        const hatch = this.shape(g, team, "hot", "farm-hatch", () => new THREE.TorusGeometry(9, 2, 6, 16), 0, 34, 0);
+        hatch.rotation.x = Math.PI / 2;
+        anim(hatch, { type: "pulse", amount: 0.2, speed: 2 });
+        break;
+      }
       case "c2-server": {
         // A spiked obelisk with a hot eye that watches the gateway.
         this.cyl(g, team, "flesh", 16, 20, 8, 5);

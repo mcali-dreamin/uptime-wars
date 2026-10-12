@@ -3,7 +3,7 @@
 import type { TickContext } from "./context";
 import type { Content } from "./content";
 import { spawnUnit } from "./entities";
-import { fortify } from "./fortress";
+import { farmsDown, fortify, raiseFarms } from "./fortress";
 import { randomInt } from "./rng";
 import type { World } from "./types";
 
@@ -24,7 +24,10 @@ export function tickWaveDirector(ctx: TickContext): void {
 
   if (world.tick >= state.nextWaveTick) {
     const wave = state.nextIndex + 1;
-    const plan = planWave(world, content, wave);
+    // Every farm down shrinks the wave.
+    const down = farmsDown(world, content, team.id);
+    const budgetScale = Math.max(0, 1000 - down * waves.fortress.farms.weakenPermille);
+    const plan = planWave(world, content, wave, budgetScale);
     let at = world.tick;
     let packs = 0;
     for (let i = 0; i < plan.units.length; ) {
@@ -39,6 +42,10 @@ export function tickWaveDirector(ctx: TickContext): void {
     if (wave % waves.fortress.rebuildEvery === 0) {
       const rebuilt = fortify(world, content, team.id, wave);
       if (rebuilt > 0) world.events.push({ type: "fortified", wave, rebuilt });
+    }
+    if (wave % waves.fortress.farms.rebuildEvery === 0) {
+      const rebuilt = raiseFarms(world, content, team.id);
+      if (rebuilt > 0) world.events.push({ type: "farms-rebuilt", wave, rebuilt });
     }
     state.nextIndex = wave;
     state.nextWaveTick = world.tick + waveInterval(content, wave);
@@ -67,13 +74,13 @@ export function waveInterval(content: Content, wave: number): number {
  * What wave n contains. Bosses first, then the rest of the budget spent on
  * randomly chosen unlocked units, then shuffled so packs come out mixed.
  */
-export function planWave(world: World, content: Content, wave: number) {
+export function planWave(world: World, content: Content, wave: number, budgetPermille = 1000) {
   const { budget, roster, bosses } = content.waves;
   // Repeated multiplication, not Math.pow: the spec lets pow be approximate,
   // and two browsers disagreeing on a wave size would desync a match.
   let scale = 1;
   for (let i = 1; i < wave; i += 1) scale *= budget.growth;
-  let points = Math.round(budget.start * scale);
+  let points = Math.round((budget.start * scale * budgetPermille) / 1000);
   const units: string[] = [];
 
   const bossCount = bossesIn(content, wave);

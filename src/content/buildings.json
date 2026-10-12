@@ -111,6 +111,23 @@
       "cooldownTicks": 20
     }
   },
+  "botnet-farm": {
+    "name": "Botnet Farm",
+    "description": "The botnet's barracks. Garrisons the fortress with bots. Destroy one and the botnet sends a retaliation wave straight at you, but every farm down makes every later wave smaller.",
+    "cost": 0,
+    "buildTicks": 0,
+    "hp": 2600,
+    "armor": 3,
+    "footprint": 2,
+    "buildable": false,
+    "sight": 360,
+    "spawn": {
+      "unit": "bot",
+      "intervalTicks": 200,
+      "count": 3,
+      "maxAlive": 6
+    }
+  },
   "hyperscale-rack": {
     "name": "Hyperscale Rack",
     "description": "Provisions Load Balancers: slow to spin up, very hard to kill. They gather at its rally point.",

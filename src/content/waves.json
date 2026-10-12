@@ -74,7 +74,13 @@
   "fortress": {
     "building": "c2-server",
     "rebuildEvery": 5,
-    "hpGrowthPerWave": 0.08
+    "hpGrowthPerWave": 0.08,
+    "farms": {
+      "building": "botnet-farm",
+      "rebuildEvery": 10,
+      "retaliationPermille": 1500,
+      "weakenPermille": 150
+    }
   },
   "names": [
     "Port scan",
