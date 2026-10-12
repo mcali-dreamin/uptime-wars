@@ -204,10 +204,16 @@ and either one's traffic draws the horde. A player whose cores are all down
 goes offline and their commands stop, but the match goes on until every player
 is offline (lost) or the nest is (won by all of them).
 
-**Playing co-op.** On the race picker press `H` (or **Play co-op with
-friends**). Send a friend the invite link (it ends in a six-letter code); they
-open it, pick a race, and you're connected. One link per friend, up to three.
-Press **Start match** when everyone's in. The browsers connect directly over
+**Free-for-all.** The same match with `mode: "ffa"`: every team is everyone's
+enemy, there's no shared vision, and the last player with a core up wins. The
+horde is optional; with it, the nest is just one more enemy (taking it down
+ends the waves, not the match). FFA needs at least two players.
+
+**Playing with friends.** On the race picker press `H` (or **Play with
+friends**) and pick **Co-op** or **Free-for-all** (with or without the horde).
+Send a friend the invite link (it ends in a six-letter code); they open it,
+pick a race, and you're connected. One link per friend, up to three. Press
+**Start match** when everyone's in. The browsers connect directly over
 WebRTC (public STUN, no TURN yet, so a few strict corporate or mobile networks
 won't connect).
 
