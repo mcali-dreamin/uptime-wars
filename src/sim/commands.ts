@@ -7,6 +7,7 @@ import { TILE, footprintCenter } from "./map";
 import { buildCost, canFound, canPlace, isCore } from "./placement";
 import { canResearch, nextLevel } from "./upgrades";
 import { invoke, invokeBlocker } from "./functions";
+import { applyFork } from "./mechanics";
 import { heroOf, learnBlocker, orderCast } from "./heroes";
 import { hostile } from "./teams";
 import { isWalkableTile } from "./terrain";
@@ -53,6 +54,8 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
       ctx.byId.set(building.id, building);
       return null;
     }
+    case "fork":
+      return applyFork(ctx, command);
     case "rally":
       return applyRally(ctx, command);
     case "order":

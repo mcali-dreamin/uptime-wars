@@ -126,6 +126,8 @@ export interface Building extends EntityBase {
   rally: Point | null;
   spawnTimer: number;
   incomeTimer: number;
+  /** The last tick anything hit it (for self-repair). */
+  lastHitTick: number;
 }
 
 export type Entity = Unit | Building;
@@ -228,7 +230,17 @@ export interface InvokeCommand {
   buildingId: number;
 }
 
-export type Command = BuildCommand | MoveCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | AttackCommand | CastCommand | LearnCommand | InvokeCommand;
+/** Copy one of your finished buildings for less (races with a fork mechanic). */
+export interface ForkCommand {
+  type: "fork";
+  tick: number;
+  team: TeamId;
+  sourceId: number;
+  col: number;
+  row: number;
+}
+
+export type Command = ForkCommand | BuildCommand | MoveCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | AttackCommand | CastCommand | LearnCommand | InvokeCommand;
 
 export interface WaveSpawn {
   tick: number;

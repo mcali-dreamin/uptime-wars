@@ -27,7 +27,7 @@ import { Guide } from "./ui/guide";
 import { Hud } from "./ui/hud";
 import { InfoPanel } from "./ui/info-panel";
 import { RacePicker } from "./ui/race-picker";
-import { TICK_RATE, TILE, isCore, loadDefaultContent, type Point } from "./sim";
+import { TICK_RATE, TILE, forkCost, isCore, loadDefaultContent, type Point } from "./sim";
 import type { NetMatch } from "./game/net/lobby";
 import { CoopLobby } from "./ui/coop";
 import { HeroBar, heroUnit } from "./ui/hero-bar";
@@ -42,7 +42,7 @@ const content = loadDefaultContent();
 const session = new Session(content);
 const renderer = new Renderer();
 const hud = new Hud(session);
-const info = new InfoPanel(session, () => arm(), () => invokeSelected());
+const info = new InfoPanel(session, () => arm(), () => invokeSelected(), () => forkSelected());
 const bar = new BuildBar(session, {
   choose: (button) => {
     const current = buttonFor(selection);
@@ -219,6 +219,14 @@ function order(point: Point): void {
  * Arm the selection's ground order, so the next left-click gives it: T (or the
  * panel button) for rally / attack-move, F for a plain move.
  */
+/** Start placing a fork of the selected building (X, or the info card's button). */
+function forkSelected(): boolean {
+  const entity = selectedEntity(session, selection);
+  if (entity?.kind !== "building" || forkCost(session.world, content, session.local, entity) === null) return false;
+  select({ kind: "place", building: entity.defId, fork: entity.id });
+  return true;
+}
+
 /** Run the selected serverless function now (V, or the info card's button). */
 function invokeSelected(): boolean {
   const entity = selectedEntity(session, selection);
@@ -352,6 +360,7 @@ const gameInput: GameInput = {
     if (key === "t") return arm();
     if (key === "f") return arm("move");
     if (key === "v") return invokeSelected();
+    if (key === "x") return forkSelected();
     if (key === "z") {
       // The whole army.
       const ids = allSoldiers(session).map((u) => u.id);

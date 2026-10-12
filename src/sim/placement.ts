@@ -45,6 +45,7 @@ export function canPlace(
   buildingId: string,
   col: number,
   row: number,
+  cost = buildCost(content, world.teams[teamId]!.raceId, buildingId),
 ): string | null {
   const team = world.teams[teamId]!;
   const race = content.races[team.raceId]!;
@@ -62,7 +63,7 @@ export function canPlace(
 
   if (isOccupied(world, col, row, def.footprint)) return "tile occupied";
   if (def.blocks && unitInTheWay(world, col, row, def.footprint)) return "a unit is in the way";
-  if (team.money < buildCost(content, team.raceId, buildingId)) return "not enough $";
+  if (team.money < cost) return "not enough $";
   return null;
 }
 

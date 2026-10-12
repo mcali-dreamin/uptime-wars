@@ -2,7 +2,7 @@
 // the build button you're hovering, what you're placing, or what you have
 // selected. Nothing else pops up. The full story lives in the Guide.
 
-import { TICK_RATE, isCore } from "../sim";
+import { TICK_RATE, forkCost, isCore, regionShield } from "../sim";
 import { armyUnits, groundOrderLabel, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { upgradeOf } from "./build-bar";
@@ -17,6 +17,8 @@ export class InfoPanel {
   private readonly action = $("info-action");
   /** "Invoke (V)" for a serverless function. */
   private readonly invokeButton = $("info-invoke");
+  /** "Fork · $N (X)" for races that can copy a building. */
+  private readonly forkButton = $("info-fork");
   /** Build button under the pointer, or "found" for the deploy button. */
   hoverButton: string | null = null;
   /** Ability under the pointer in the hero's command card. */
@@ -28,7 +30,9 @@ export class InfoPanel {
     private readonly session: Session,
     arm: () => void,
     invoke: () => void = () => {},
+    fork: () => void = () => {},
   ) {
+    this.forkButton.addEventListener("click", () => fork());
     this.action.addEventListener("click", () => arm());
     this.invokeButton.addEventListener("click", () => invoke());
   }
@@ -36,6 +40,7 @@ export class InfoPanel {
   refresh(selection: Selection): void {
     this.action.hidden = true;
     this.invokeButton.hidden = true;
+    this.forkButton.hidden = true;
     const { content } = this.session;
     const raceId = this.session.team.raceId;
     const placing = selection.kind === "place" ? selection.building : selection.kind === "found" ? "found" : null;
@@ -65,6 +70,21 @@ export class InfoPanel {
         this.invokeButton.hidden = false;
         this.invokeButton.textContent = `Invoke now · $${fn.cost} (V)`;
         (this.invokeButton as HTMLButtonElement).disabled = entity.spawnTimer > 0 || this.session.team.money < fn.cost;
+      }
+      const shield = regionShield(this.session.world, content, entity);
+      if (content.races[raceId]!.mechanics?.region && entity.buildRemaining <= 0) {
+        lines.push(shield.neighbors > 0 ? `Region: ${shield.permille / 10}% less damage (${shield.neighbors} nearby)` : "Region: alone, no shield. Build nearby to protect it");
+      }
+      const repair = content.races[raceId]!.mechanics?.repair;
+      if (repair && entity.buildRemaining <= 0 && entity.hp < entity.maxHp) {
+        const quiet = this.session.world.tick - entity.lastHitTick >= repair.quietTicks;
+        lines.push(quiet ? "Repairing itself" : "Repairs once nothing's hitting it");
+      }
+      const price = forkCost(this.session.world, content, this.session.local, entity);
+      if (price !== null) {
+        this.forkButton.hidden = false;
+        this.forkButton.textContent = `Fork · $${price} (X)`;
+        (this.forkButton as HTMLButtonElement).disabled = this.session.team.money < price;
       }
       this.showAction(selection);
       return this.show({ title: card.title, lines });
