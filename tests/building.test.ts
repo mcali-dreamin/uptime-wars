@@ -17,7 +17,7 @@ describe("building", () => {
     const world = createWorld(content, SETUP);
     queueCommand(world, firstSpot("server-rack"));
     step(world, content);
-    expect(world.teams[0]!.compute).toBe(200 - 60);
+    expect(world.teams[0]!.money).toBe(200 - 60);
     expect(world.entities.some((e) => e.kind === "building" && e.defId === "server-rack")).toBe(true);
   });
 
@@ -38,7 +38,7 @@ describe("building", () => {
     expect(reject("server-rack", far.col, far.row)).toMatch(/terrain is not buildable|outside your network/);
     expect(reject("server-rack", spot.col, spot.row)).toBeNull();
     expect(reject("firewall", spot.col, spot.row)).toBe("tile occupied");
-    world.teams[0]!.compute = 0;
+    world.teams[0]!.money = 0;
     const other = planBuildOrder(content, SETUP, [[0, "server-rack"], [0, "server-rack"]])[1]!;
     expect(reject("server-rack", other.col, other.row)).toBe("not enough compute");
   });
@@ -139,7 +139,7 @@ describe("network and redundancy", () => {
 
   it("a finished mesh node lets you build beyond the core's radius; unfinished or destroyed, it doesn't", () => {
     const world = createWorld(content, SETUP);
-    world.teams[0]!.compute = 5000;
+    world.teams[0]!.money = 5000;
     const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
     // A node near the edge of the core's reach.
     const node = openAt(world, core, 5, 6)!;
@@ -171,7 +171,7 @@ describe("network and redundancy", () => {
 
   it("you can build more cores; losing the main one fails over, and you only lose when every core is down", () => {
     const world = createWorld(content, SETUP);
-    world.teams[0]!.compute = 5000;
+    world.teams[0]!.money = 5000;
     const first = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
     // A free 2x2 spot inside the network.
     let site: { col: number; row: number } | null = null;
@@ -204,7 +204,7 @@ describe("network and redundancy", () => {
 
   it("research continues at another core after failover", () => {
     const world = createWorld(content, SETUP);
-    world.teams[0]!.compute = 5000;
+    world.teams[0]!.money = 5000;
     const first = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
     let site: { col: number; row: number } | null = null;
     for (let r = 3; r <= 6 && !site; r++) {

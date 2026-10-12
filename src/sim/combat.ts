@@ -104,7 +104,7 @@ export function dealDamage(
   if (wasAlive && target.hp <= 0) {
     world.events.push({ type: "death", id: target.id, x: target.x, y: target.y, team: target.team });
     if (target.kind === "unit") {
-      world.teams[attacker.team]!.compute += content.units[target.defId]!.bounty;
+      world.teams[attacker.team]!.money += content.units[target.defId]!.bounty;
       creditKill(ctx, target);
     }
   }

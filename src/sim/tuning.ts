@@ -2,7 +2,7 @@
 // waves) lives in src/content/*.json; these are the rules of motion and
 // engagement shared by everything.
 
-export const STARTING_COMPUTE = 200;
+export const STARTING_MONEY = 200;
 /** A trickle so you're never stuck. Users are the real income (see economy.json). */
 export const BASE_INCOME = { amount: 2, intervalTicks: 20 };
 /** Construction starts at this fraction of max hp and fills as it builds. */

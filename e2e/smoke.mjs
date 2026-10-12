@@ -54,6 +54,7 @@ await run("smoke test", async ({ check, open }) => {
 
   // HUD: income, wave preview, the race's build bar.
   check(/^\+[\d.]+\/s$/.test(await page.textContent("#income")), "the HUD shows income");
+  check(/^\d+ \/ \d+/.test(await page.textContent("#compute")), `the HUD shows compute in use / supplied (${await page.textContent("#compute")})`);
   check((await page.textContent("#preview-title")).startsWith("Wave 1"), "the HUD previews the next wave");
   check((await page.$$eval(".build-btn", (b) => b.length)) >= 4, "the build bar shows the race's buildings");
 
@@ -155,7 +156,7 @@ await run("smoke test", async ({ check, open }) => {
 
   // The core's card researches.
   await page.keyboard.press("Escape");
-  await state(() => (window.uptime.session.team.compute += 1000));
+  await state(() => (window.uptime.session.team.money += 1000));
   await click(core);
   check(await waitFor(() => state((id) => window.uptime.selection.id === id, core.id)), "clicking the core selects it");
   // CI renders in software: the command card can take a while to redraw.

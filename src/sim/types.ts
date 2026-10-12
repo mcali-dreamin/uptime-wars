@@ -17,11 +17,14 @@ export interface Team {
   rally: Point | null;
   raceId: string;
   controller: Controller;
-  compute: number;
+  /** $: earned from users, spent on everything. */
+  money: number;
   incomeTimer: number;
   coreId: number;
   /** Users currently served. Integer. */
   users: number;
+  /** Compute overload in permille (0 = within capacity), refreshed once a second. */
+  overload: number;
   peakUsers: number;
   /** Fractions carried between seconds so nothing is lost to rounding. */
   revenueCarry: number;

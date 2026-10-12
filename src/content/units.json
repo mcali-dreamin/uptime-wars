@@ -29,7 +29,8 @@
     "aggro": 220,
     "bounty": 0,
     "size": 8,
-    "sight": 240
+    "sight": 240,
+    "upkeep": 3
   },
   "bot": {
     "name": "Bot",
@@ -121,7 +122,8 @@
     "aggro": 200,
     "bounty": 0,
     "size": 13,
-    "sight": 240
+    "sight": 240,
+    "upkeep": 4
   },
   "maintainer": {
     "name": "Maintainer",

@@ -68,6 +68,15 @@ body {
   cursor: help;
 }
 
+#compute-stat.overloaded #compute {
+  color: #f87171;
+  font-weight: bold;
+}
+
+#compute-stat {
+  cursor: help;
+}
+
 #churn {
   color: #f87171;
   font-size: 0.75rem;

@@ -2,6 +2,7 @@
 // multipliers wherever the stat is used. With nothing researched every
 // multiplier is exactly 1, so upgrades change nothing until you buy them.
 
+import { lagging } from "./economy";
 import type { TickContext } from "./context";
 import type { Content, UpgradeStat } from "./content";
 import type { Team } from "./types";
@@ -35,7 +36,7 @@ export function canResearch(content: Content, team: Team, upgrade: string): stri
   if (team.coreId === -1) return "no core";
   if (team.research) return "already researching";
   if (levelOf(team, upgrade) >= def.maxLevel) return "fully researched";
-  if (team.compute < nextLevel(content, team, upgrade).cost) return "not enough compute";
+  if (team.money < nextLevel(content, team, upgrade).cost) return "not enough compute";
   return null;
 }
 
@@ -48,6 +49,7 @@ export function tickResearch(ctx: TickContext): void {
       team.research = null;
       continue;
     }
+    if (lagging(world, team.id)) continue;
     team.research.remaining -= 1;
     if (team.research.remaining > 0) continue;
     const upgrade = team.research.upgrade;
