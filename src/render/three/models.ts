@@ -90,7 +90,7 @@ export class Models {
   update(t: number): void {
     for (let i = 0; i < this.blinking.length; i += 1) {
       const m = this.blinking[i]!;
-      m.emissiveIntensity = (m.userData.base as number) * (0.6 + 0.4 * Math.sin(t * (m.userData.speed as number) + i * 1.7));
+      m.emissiveIntensity = (m.userData.base as number) * (0.9 + 0.1 * Math.sin(t * (m.userData.speed as number) + i * 1.7));
     }
   }
 
@@ -122,8 +122,8 @@ export class Models {
         material = standard({ color, emissive: color, emissiveIntensity: 0.18, metalness: 0.4, roughness: 0.4 });
         break;
       case "glow": {
-        const m = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 2.2, roughness: 0.3 });
-        m.userData = { base: 2.2, speed: 2.2 };
+        const m = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.2, roughness: 0.3 });
+        m.userData = { base: 1.2, speed: 2.2 };
         this.blinking.push(m);
         material = this.fog.apply(m);
         break;
@@ -138,15 +138,15 @@ export class Models {
         material = standard({ color: 0x2a0b12, emissive: 0x4c0816, emissiveIntensity: 0.5, roughness: 0.55, metalness: 0.1, flatShading: true });
         break;
       case "hot": {
-        const m = new THREE.MeshStandardMaterial({ color: 0xff3b4e, emissive: 0xff1f3d, emissiveIntensity: 2.6, roughness: 0.3 });
-        m.userData = { base: 2.6, speed: 3.1 };
+        const m = new THREE.MeshStandardMaterial({ color: 0xff3b4e, emissive: 0xff1f3d, emissiveIntensity: 1.4, roughness: 0.3 });
+        m.userData = { base: 1.4, speed: 3.1 };
         this.blinking.push(m);
         material = this.fog.apply(m);
         break;
       }
       case "flame": {
-        const m = new THREE.MeshStandardMaterial({ color: 0xffa040, emissive: 0xff7a1a, emissiveIntensity: 3, roughness: 0.4 });
-        m.userData = { base: 3, speed: 9 };
+        const m = new THREE.MeshStandardMaterial({ color: 0xffa040, emissive: 0xff7a1a, emissiveIntensity: 1.6, roughness: 0.4 });
+        m.userData = { base: 1.6, speed: 9 };
         this.blinking.push(m);
         material = this.fog.apply(m);
         break;
@@ -179,7 +179,7 @@ export class Models {
       case "white": {
         // Cool white light, tinted a touch toward the team colour.
         const tint = new THREE.Color(0xffffff).lerp(new THREE.Color(color), 0.25);
-        material = this.fog.apply(new THREE.MeshStandardMaterial({ color: tint, emissive: tint, emissiveIntensity: 1.8, roughness: 0.2 }));
+        material = this.fog.apply(new THREE.MeshStandardMaterial({ color: tint, emissive: tint, emissiveIntensity: 1.0, roughness: 0.2 }));
         break;
       }
     }
@@ -215,7 +215,7 @@ export class Models {
         case "glow": {
           // Clean light: the team colour washed toward white, steady (no blinking).
           const tint = new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.35);
-          return this.fog.apply(new THREE.MeshStandardMaterial({ color: tint, emissive: tint, emissiveIntensity: 2, roughness: 0.2 }));
+          return this.fog.apply(new THREE.MeshStandardMaterial({ color: tint, emissive: tint, emissiveIntensity: 1.1, roughness: 0.2 }));
         }
       }
     }
