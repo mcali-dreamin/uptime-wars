@@ -16,16 +16,6 @@ export const ROAM_POINT_SPACING = 24;
 export const START_MIN_FROM_NEST = 0.6;
 /** Every map has this many starts, so a map is the same whoever plays it. */
 export const MAX_PLAYERS = 4;
-/** A campus per start, this many tiles from it (min, max). */
-export const CAMPUS_RANGE = [13, 19] as const;
-/** Metros: this many, this many tiles from the nest's center (min, max). */
-export const METRO_COUNT = 4;
-export const METRO_RANGE = [22, 40] as const;
-/** No two hubs closer than this, and no hub this close to any start. */
-export const HUB_SPACING = 14;
-export const HUB_START_GAP = 10;
-/** Ground cleared and flattened round each hub. */
-export const HUB_CLEAR_RADIUS = 3;
 /** Starts are at least this fraction of the center-to-corner distance apart (relaxed if the map can't fit them). */
 export const START_SPACING = 0.75;
 /** Height noise thresholds: above HIGH is backbone, above MID is surface web. */

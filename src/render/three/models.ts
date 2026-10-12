@@ -807,23 +807,6 @@ export class Models {
         anim(orb, { type: "spin", speed: 1.5, axis: "y" });
         break;
       }
-      case "campus":
-      case "metro": {
-        // Connected: an uplink mast rising out of the city, in your colour,
-        // with a ring of light round the block. The city itself is terrain.
-        const big = defId === "metro";
-        const h = big ? 110 : 70;
-        const ring = this.shape(g, team, "glow", `hub-ring:${big}`, () => new THREE.TorusGeometry(big ? 62 : 54, 1.4, 6, 48), 0, 4, 0);
-        ring.rotation.x = Math.PI / 2;
-        this.cyl(g, team, "frame", 2.5, 5, h, 6, 0, 0);
-        this.cyl(g, team, "trim", 7, 7, 3, 8, 0, h * 0.55);
-        const beacon = this.shape(g, team, "glow", `hub-beacon:${big}`, () => new THREE.OctahedronGeometry(big ? 9 : 7), 0, h + 8, 0);
-        anim(beacon, { type: "spin", speed: 1.2, axis: "y" });
-        const wave = this.shape(g, team, "glow", `hub-wave:${big}`, () => new THREE.TorusGeometry(big ? 18 : 13, 0.8, 6, 32), 0, h + 8, 0);
-        wave.rotation.x = Math.PI / 2;
-        anim(wave, { type: "pulse", amount: 0.35, speed: 2 });
-        break;
-      }
       case "malware-nest": {
         this.shape(g, team, "flesh", "nest", () => {
           const geo = new THREE.IcosahedronGeometry(36, 1);

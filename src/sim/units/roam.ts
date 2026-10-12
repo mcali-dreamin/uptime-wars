@@ -4,7 +4,6 @@
 // it sensed traffic from (marching). Each pack decides from where it stands;
 // there is no shared knowledge of where anyone lives.
 
-import { hubBuilding } from "../hubs";
 import type { TickContext } from "../context";
 import { trafficRadius } from "../economy";
 import { TILE } from "../map";
@@ -59,8 +58,8 @@ function wander(ctx: TickContext, unit: Unit, leader: Unit | undefined, speed: n
 }
 
 /**
- * Where a pack goes next: usually toward the nearest core or connected hub
- * whose traffic it can sense, otherwise drifting outward from the nest.
+ * Where a pack goes next: usually toward the nearest core whose traffic it
+ * can sense, otherwise drifting outward from the nest.
  */
 function pickDestination(ctx: TickContext, unit: Unit): Destination {
   const { world, content } = ctx;
@@ -71,9 +70,7 @@ function pickDestination(ctx: TickContext, unit: Unit): Destination {
       if (!hostile(world, team.id, unit.team)) continue;
       const radius = trafficRadius(world, content, team);
       if (radius <= 0) continue;
-      // Crawlers sense your cores, and the hubs you've connected.
-      const targets = [...teamCores(world, content, team), ...connectedHubs(world, team.id)];
-      for (const core of targets) {
+      for (const core of teamCores(world, content, team)) {
         const d = distance(unit, core);
         if (d <= radius && d < bestGap) {
           best = { x: core.x, y: core.y };
@@ -112,15 +109,4 @@ function stepToward(world: World, unit: Unit, destination: Destination): Point |
   if (distance(unit, destination) <= SENSED_ARRIVAL) return null;
   const tile = Math.floor(destination.y / TILE) * terrain.cols + Math.floor(destination.x / TILE);
   return nextStep(terrain, goalField(world, tile), unit.x, unit.y) ?? destination;
-}
-
-/** A team's connected user hubs. */
-function connectedHubs(world: World, team: number) {
-  const out = [];
-  for (let i = 0; i < world.terrain.hubs.length; i += 1) {
-    if (world.hubs[i]!.owner !== team) continue;
-    const hub = hubBuilding(world, world.terrain.hubs[i]!);
-    if (hub) out.push(hub);
-  }
-  return out;
 }

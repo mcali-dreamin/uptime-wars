@@ -9,12 +9,6 @@ import { raiseTerrain } from "./elevation";
 import { bfs, clearDisc } from "./grid";
 import {
   BLOCK_THRESHOLD,
-  CAMPUS_RANGE,
-  HUB_CLEAR_RADIUS,
-  HUB_SPACING,
-  HUB_START_GAP,
-  METRO_COUNT,
-  METRO_RANGE,
   MAX_PLAYERS,
   FORTRESS_RADIUS,
   MOAT_WIDTH,
@@ -23,7 +17,7 @@ import {
   START_SPACING,
 } from "./params";
 import { scatterRoamPoints } from "./scatter";
-import { TILE_BLOCKED, TILE_OPEN, type HubSpot, type Terrain, type TilePoint } from "./tiles";
+import { TILE_BLOCKED, TILE_OPEN, type Terrain, type TilePoint } from "./tiles";
 
 export function generateTerrain(seed: number, cols = MAP_COLS, rows = MAP_ROWS): Terrain {
   // Separate stream from the match RNG so terrain never shifts gameplay rolls.
@@ -70,14 +64,12 @@ export function generateTerrain(seed: number, cols = MAP_COLS, rows = MAP_ROWS):
     if (tiles[i] !== TILE_BLOCKED && dist[i]! < 0) tiles[i] = TILE_BLOCKED;
   }
 
-  const hubs = placeHubs(tiles, cols, rows, dist, starts, nest, rng);
-
-  const heights = raiseTerrain(tiles, cols, rows, starts, nest, noiseSeed, rng, hubs);
+  const heights = raiseTerrain(tiles, cols, rows, starts, nest, noiseSeed, rng);
 
   dist = bfs(tiles, cols, rows, start);
   const roamPoints = scatterRoamPoints(tiles, cols, rows, dist, starts, rng);
 
-  return { cols, rows, tiles, heights, starts, nest, hubs, roamPoints };
+  return { cols, rows, tiles, heights, starts, nest, roamPoints };
 }
 
 /**
@@ -126,47 +118,4 @@ function carveCorridor(tiles: Uint8Array, cols: number, rows: number, from: Tile
       }
     }
   }
-}
-
-/**
- * User hubs: a campus a short hop from every start, and a few metros out
- * toward the nest (but clear of its fortress). Each is on reachable ground,
- * spaced from the others and from every start, and cleared round so its
- * 2x2 footprint is always open.
- */
-function placeHubs(
-  tiles: Uint8Array,
-  cols: number,
-  rows: number,
-  dist: Int32Array,
-  starts: TilePoint[],
-  nest: TilePoint,
-  rng: { rngState: number },
-): HubSpot[] {
-  const hubs: HubSpot[] = [];
-  const d2 = (a: TilePoint, b: TilePoint) => (a.col - b.col) * (a.col - b.col) + (a.row - b.row) * (a.row - b.row);
-  const fortress = FORTRESS_RADIUS + MOAT_WIDTH + HUB_CLEAR_RADIUS + 2;
-  const nestCenter = { col: nest.col + 1, row: nest.row + 1 };
-  const ok = (spot: TilePoint) => {
-    if (spot.col < 3 || spot.row < 3 || spot.col > cols - 5 || spot.row > rows - 5) return false;
-    for (let r = spot.row; r < spot.row + 2; r += 1) {
-      for (let c = spot.col; c < spot.col + 2; c += 1) if (dist[r * cols + c]! < 0) return false;
-    }
-    if (d2(spot, nestCenter) < fortress * fortress) return false;
-    if (!starts.every((s) => d2(spot, s) >= (START_CLEAR_RADIUS + HUB_START_GAP) * (START_CLEAR_RADIUS + HUB_START_GAP))) return false;
-    return hubs.every((h) => d2(spot, h) >= HUB_SPACING * HUB_SPACING);
-  };
-  const near = (center: TilePoint, [min, max]: readonly [number, number], size: HubSpot["size"]) => {
-    for (let attempt = 0; attempt < 600; attempt += 1) {
-      const spot = { col: center.col + randomInt(rng, -max, max), row: center.row + randomInt(rng, -max, max), size };
-      const d = d2(spot, center);
-      if (d < min * min || d > max * max || !ok(spot)) continue;
-      hubs.push(spot);
-      return;
-    }
-  };
-  for (const start of starts) near(start, CAMPUS_RANGE, "campus");
-  for (let i = 0; i < METRO_COUNT; i += 1) near(nestCenter, METRO_RANGE, "metro");
-  for (const hub of hubs) clearDisc(tiles, cols, rows, hub.col + 1, hub.row + 1, HUB_CLEAR_RADIUS);
-  return hubs;
 }

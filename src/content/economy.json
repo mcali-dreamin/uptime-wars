@@ -17,13 +17,5 @@
     "perMinute": 700,
     "max": 16000,
     "pullChance": 0.85
-  },
-  "hubs": {
-    "reconnectTicks": 900,
-    "contestRadius": 288,
-    "guards": {
-      "campus": 1,
-      "metro": 3
-    }
   }
 }

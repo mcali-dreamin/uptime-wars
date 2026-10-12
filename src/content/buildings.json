@@ -158,7 +158,7 @@
   },
   "web-app": {
     "name": "Web App",
-    "description": "Serves users at home. Only two per player: real growth is out at the hubs.",
+    "description": "Serves users. More capacity, more revenue, and more to lose when it gets hit.",
     "cost": 100,
     "buildTicks": 80,
     "hp": 385,
@@ -166,8 +166,7 @@
     "footprint": 1,
     "buildable": true,
     "sight": 280,
-    "userCapacity": 60,
-    "maxPerTeam": 2
+    "userCapacity": 60
   },
   "mesh-node": {
     "name": "Mesh Node",
@@ -230,30 +229,6 @@
       "cooldownTicks": 300,
       "triggerRange": 360
     }
-  },
-  "campus": {
-    "name": "Campus",
-    "description": "Where users live: a campus a short hop from your start, squatted by the botnet. Clear its C2 Server, bring your network within reach, and hold the ground for room for 150 users.",
-    "cost": 0,
-    "buildTicks": 0,
-    "hp": 800,
-    "armor": 2,
-    "footprint": 2,
-    "buildable": false,
-    "sight": 280,
-    "userCapacity": 150
-  },
-  "metro": {
-    "name": "Metro",
-    "description": "A whole metro area of users out toward the nest, held by three C2 Servers. Clear them and hold the ground for room for 400 users.",
-    "cost": 0,
-    "buildTicks": 0,
-    "hp": 1600,
-    "armor": 3,
-    "footprint": 2,
-    "buildable": false,
-    "sight": 320,
-    "userCapacity": 400
   },
   "garden-wall": {
     "name": "Wall",
