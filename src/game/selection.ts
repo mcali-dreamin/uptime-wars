@@ -2,7 +2,7 @@
 // it. Every "what does clicking here do?" question is answered in this file,
 // so the input code, the cursor, the hint line, and the info panel agree.
 
-import { TILE, TILE_RESOURCE, buildCost, canFound, canPlace, isCore, tileAt, type Content, type Entity, type Point, type Unit } from "../sim";
+import { TILE, TILE_RESOURCE, buildCost, canFound, canPlace, hostile, isCore, tileAt, type Content, type Entity, type Point, type Unit } from "../sim";
 import type { Order, Session } from "./session";
 
 export type Selection =
@@ -22,7 +22,9 @@ export type Selection =
   /** Placing a building from the build bar. */
   | { kind: "place"; building: string }
   /** Choosing where the core goes. */
-  | { kind: "found" };
+  | { kind: "found" }
+  /** Aiming a hero ability: the next click picks its point or enemy. */
+  | { kind: "cast"; ability: string };
 
 export const NOTHING: Selection = { kind: "none" };
 
@@ -34,7 +36,7 @@ export function groundOrderLabel(session: Session, selection: Selection): string
   }
   const entity = selectedEntity(session, selection);
   if (!entity) return null;
-  if (entity.kind === "unit") return entity.mode === "builder" ? "Walk here" : null;
+  if (entity.kind === "unit") return entity.mode === "builder" || entity.mode === "hero" ? "Move here" : null;
   if (isCore(session.content, session.team, entity)) return "Set global rally";
   return session.content.buildings[entity.defId]!.spawn ? "Set rally" : null;
 }
@@ -96,6 +98,27 @@ export function allSoldiers(session: Session): Unit[] {
 /** The ids a selection highlights. */
 export function selectedIds(selection: Selection): number[] {
   return selection.kind === "army" ? selection.ids : selection.kind === "entity" ? [selection.id] : [];
+}
+
+/** An enemy the local player can see under a world point, if any. Units first: they're what you aim at. */
+export function enemyAt(session: Session, point: Point, visible: (p: Point) => boolean): Entity | undefined {
+  let best: Entity | undefined;
+  let bestD = Infinity;
+  for (const entity of session.world.entities) {
+    if (entity.hp <= 0 || !hostile(session.world, entity.team, session.local)) continue;
+    if (!visible(entity)) continue;
+    const reach = entity.kind === "building" ? (entity.footprint * TILE) / 2 + 6 : entity.radius + 14;
+    const dx = point.x - entity.x;
+    const dy = point.y - entity.y;
+    const d = dx * dx + dy * dy;
+    if (d > reach * reach) continue;
+    const score = d + (entity.kind === "building" ? 1e6 : 0);
+    if (score < bestD) {
+      best = entity;
+      bestD = score;
+    }
+  }
+  return best;
 }
 
 /** Your own unit or building under a world point, if any. */

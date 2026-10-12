@@ -17,6 +17,10 @@ export class InfoPanel {
   private readonly action = $("info-action");
   /** Build button under the pointer, or "found" for the deploy button. */
   hoverButton: string | null = null;
+  /** Ability under the pointer in the hero's command card. */
+  hoverAbility: string | null = null;
+  /** Set once the hero bar exists, to describe abilities. */
+  describeAbility: ((id: string) => InfoCard) | null = null;
 
   constructor(
     private readonly session: Session,
@@ -32,6 +36,9 @@ export class InfoPanel {
     const placing = selection.kind === "place" ? selection.building : selection.kind === "found" ? "found" : null;
     const building = this.hoverButton ?? placing;
     if (building === "found") return this.show({ title: "Deploy core", lines: ["Your agent walks there and becomes it"] });
+    const aiming = selection.kind === "cast" ? selection.ability : null;
+    const ability = this.hoverAbility ?? aiming;
+    if (ability && this.describeAbility) return this.show(this.describeAbility(ability));
     const upgrade = upgradeOf(this.hoverButton);
     if (upgrade) return this.show(upgradeCard(content, this.session.team, upgrade));
     if (building) return this.show(buildingCard(content, raceId, building));

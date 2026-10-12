@@ -97,6 +97,7 @@ export class World2D implements WorldView {
         continue;
       }
       g.circle(x, y, entity.radius).fill({ color, alpha: 0.85 });
+      if (entity.mode === "hero") g.circle(x, y, entity.radius + 6).stroke({ width: 2.5, color: HIGHLIGHT, alpha: 0.9 });
       if (entity.hp < entity.maxHp) {
         drawHealth(g, x - entity.radius, y - entity.radius - 6, entity.radius * 2, entity.hp / entity.maxHp);
       }

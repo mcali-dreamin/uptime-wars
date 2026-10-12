@@ -29,6 +29,29 @@ export function validateContent(content: Content): void {
   for (const [id, upgrade] of Object.entries(content.upgrades)) {
     if (upgrade.maxLevel < 1 || upgrade.cost <= 0 || upgrade.researchTicks <= 0) errors.push(`upgrade ${id} needs maxLevel, cost, and researchTicks > 0`);
   }
+  for (const [id, race] of Object.entries(content.races)) {
+    for (const hero of race.heroes ?? []) {
+      if (!content.units[hero]) errors.push(`race ${id} has unknown hero unit ${hero}`);
+      if (!content.heroes.heroes[hero]) errors.push(`race ${id} hero ${hero} has no entry in heroes.json`);
+    }
+  }
+  for (const [id, hero] of Object.entries(content.heroes.heroes)) {
+    if (hero.abilities.length > 4) errors.push(`hero ${id} has more than 4 abilities (hotkeys 1-4)`);
+    for (const ability of hero.abilities) if (!content.heroes.abilities[ability]) errors.push(`hero ${id} has unknown ability ${ability}`);
+  }
+  for (const [id, ability] of Object.entries(content.heroes.abilities)) {
+    if (ability.effect === "summon" && (!ability.unit || !content.units[ability.unit] || !ability.durationTicks || ability.amount < 1)) {
+      errors.push(`ability ${id} summons: it needs a known unit, durationTicks, and amount >= 1`);
+    }
+    if (ability.effect === "buff" && (!ability.durationTicks || ability.amount <= 0)) errors.push(`ability ${id} buffs: it needs durationTicks and amount > 0`);
+    if (ability.effect === "decoy" && (!ability.unit || !content.units[ability.unit] || !ability.durationTicks || !ability.radius)) {
+      errors.push(`ability ${id} is a decoy: it needs a known unit, durationTicks, and radius`);
+    }
+    if ((ability.effect === "blast" || ability.effect === "heal") && !ability.radius) errors.push(`ability ${id} needs a radius`);
+    if ((ability.effect === "blast" || ability.effect === "strike") && !ability.attackType) errors.push(`ability ${id} needs an attackType`);
+    if (ability.effect === "strike" && ability.target !== "enemy") errors.push(`ability ${id} strikes, so it targets an enemy`);
+    if (ability.target === "self" && ability.range !== 0) errors.push(`ability ${id} targets self, so its range is 0`);
+  }
   if (!content.units[content.waves.bosses.unit]) errors.push(`wave boss is unknown unit ${content.waves.bosses.unit}`);
   const fortress = content.waves.fortress;
   if (!content.buildings[fortress.building]?.attack) errors.push(`fortress building ${fortress.building} must be a building that shoots`);

@@ -8,6 +8,7 @@ import {
   allSoldiers,
   armed,
   armyUnits,
+  enemyAt,
   groundOrder,
   isSoldier,
   leftClickOrders,
@@ -20,7 +21,7 @@ import {
 } from "./game/selection";
 import { Session } from "./game/session";
 import { setLocalColor } from "./render/palette";
-import { BuildBar, FOUND_BUTTON, type BarMode } from "./ui/build-bar";
+import { BuildBar, FOUND_BUTTON, aimingButton, type BarMode } from "./ui/build-bar";
 import { $ } from "./ui/dom";
 import { Guide } from "./ui/guide";
 import { Hud } from "./ui/hud";
@@ -29,6 +30,8 @@ import { RacePicker } from "./ui/race-picker";
 import { TICK_RATE, TILE, isCore, loadDefaultContent, type Point } from "./sim";
 import type { NetMatch } from "./game/net/lobby";
 import { CoopLobby } from "./ui/coop";
+import { HeroBar, heroUnit } from "./ui/hero-bar";
+import { castBlocker } from "./sim/heroes";
 
 const STEP_MS = 1000 / TICK_RATE;
 /** Two clicks on the same unit this close together select all of its kind on screen. */
@@ -53,6 +56,17 @@ const bar = new BuildBar(session, {
   research: (upgrade) => research(upgrade),
   guide: () => guide.toggle(),
 });
+const heroBar = new HeroBar(session, {
+  select: () => selectHero(),
+  cast: (ability) => cast(ability),
+  learn: (ability) => session.issue({ type: "learn", ability }),
+  hover: (ability) => {
+    info.hoverAbility = ability;
+    info.refresh(selection);
+  },
+});
+bar.hero = heroBar;
+info.describeAbility = (id) => heroBar.describe(id);
 const guide = new Guide(session);
 const picker = new RacePicker(session, startMatch, () => void coop.hostGame(), applyColor);
 const coop = new CoopLobby(session, startNetMatch, () => picker.show());
@@ -96,13 +110,68 @@ function fallback(): Selection {
   return builder ? { kind: "entity", id: builder.id } : NOTHING;
 }
 
+/** The hero is selected: the command card shows its abilities. */
+function heroSelected(): boolean {
+  const hero = heroUnit(session);
+  return hero !== undefined && ((selection.kind === "entity" && selection.id === hero.id) || selection.kind === "cast");
+}
+
+/** Q: select the hero; Q again (or clicking its card again) centres on it. */
+function selectHero(): boolean {
+  const hero = heroUnit(session);
+  if (!hero) {
+    const state = session.team.hero;
+    if (state?.respawnAt != null) renderer.showBanner("Your hero is respawning");
+    return state !== null;
+  }
+  if (selection.kind === "entity" && selection.id === hero.id) renderer.camera.centerOn(hero.x, hero.y);
+  select({ kind: "entity", id: hero.id });
+  return true;
+}
+
+/**
+ * Use an ability: self abilities go at once; point and enemy abilities
+ * enter aiming, and the next click picks where or who.
+ */
+function cast(ability: string): void {
+  const reason = castBlocker(session.world, content, session.team, ability);
+  if (reason) {
+    renderer.showBanner(reason === "not learned" ? `Learn ${content.heroes.abilities[ability]!.name} first (Shift+number or +)` : reason === "on cooldown" ? "Not ready yet" : reason);
+    return;
+  }
+  const def = content.heroes.abilities[ability]!;
+  const hero = heroUnit(session)!;
+  if (def.target === "self") {
+    session.issue({ type: "cast", ability, x: hero.x, y: hero.y, targetId: null });
+    renderer.ping(hero.x, hero.y);
+    return;
+  }
+  select({ kind: "cast", ability });
+}
+
+/** The click that finishes aiming. */
+function aimAt(ability: string, point: Point): void {
+  const def = content.heroes.abilities[ability]!;
+  const hero = heroUnit(session);
+  if (!hero) return select(NOTHING);
+  if (def.target === "enemy") {
+    const target = enemyAt(session, point, (p) => renderer.fog.isVisible(p.x, p.y));
+    if (!target) return renderer.showBanner(`${def.name} needs an enemy`);
+    session.issue({ type: "cast", ability, x: target.x, y: target.y, targetId: target.id });
+  } else {
+    session.issue({ type: "cast", ability, x: point.x, y: point.y, targetId: null });
+  }
+  renderer.ping(point.x, point.y);
+  select({ kind: "entity", id: hero.id });
+}
+
 /** The core is selected: the command card shows research. */
 function coreSelected(): boolean {
   return selection.kind === "entity" && isCore(content, session.team, session.entity(selection.id));
 }
 
 function barMode(): BarMode {
-  return session.deploying ? "deploy" : coreSelected() ? "research" : "build";
+  return session.deploying ? "deploy" : heroSelected() ? "hero" : coreSelected() ? "research" : "build";
 }
 
 function research(upgrade: string): void {
@@ -110,7 +179,7 @@ function research(upgrade: string): void {
 }
 
 function buttonFor(s: Selection): string | null {
-  return s.kind === "found" ? FOUND_BUTTON : s.kind === "place" ? s.building : null;
+  return s.kind === "found" ? FOUND_BUTTON : s.kind === "place" ? s.building : s.kind === "cast" ? aimingButton(s.ability) : null;
 }
 
 function select(next: Selection): void {
@@ -128,7 +197,9 @@ function refreshPointer(): void {
     ? ""
     : placement
       ? "copy"
-      : ownEntityAt(session, pointer)
+      : selection.kind === "cast"
+        ? "crosshair"
+        : ownEntityAt(session, pointer)
         ? "pointer"
         : groundOrder(session, selection, pointer)
           ? "crosshair"
@@ -198,10 +269,15 @@ const gameInput: GameInput = {
       if (!shift) select(NOTHING);
       return;
     }
+    if (selection.kind === "cast") return aimAt(selection.ability, point);
     // Armed: the click is the order, even on top of one of your buildings.
     if (isArmed()) return order(point);
     const drawn = entityId === null ? undefined : session.entity(entityId);
-    const own = (drawn && drawn.team === session.team.id ? drawn : undefined) ?? ownEntityAt(session, point);
+    // Clicking the ground inside one of your buildings selects it, even if a
+    // tall unit (your hero) is drawn in front of it.
+    const footprint = ownEntityAt(session, point);
+    const own =
+      footprint?.kind === "building" ? footprint : (drawn && drawn.team === session.team.id ? drawn : undefined) ?? footprint;
     if (isSoldier(session, own)) {
       const now = performance.now();
       const double = lastUnitClick.id === own.id && now - lastUnitClick.at < DOUBLE_CLICK_MS;
@@ -222,6 +298,20 @@ const gameInput: GameInput = {
 
   rightClick(point) {
     if (selection.kind === "place" || selection.kind === "found") return select(fallback());
+    if (selection.kind === "cast") {
+      const hero = heroUnit(session);
+      return select(hero ? { kind: "entity", id: hero.id } : NOTHING);
+    }
+    // Hero selected and an enemy under the pointer: attack it.
+    const hero = heroUnit(session);
+    if (hero && selection.kind === "entity" && selection.id === hero.id) {
+      const enemy = enemyAt(session, point, (p) => renderer.fog.isVisible(p.x, p.y));
+      if (enemy) {
+        session.issue({ type: "attack", targetId: enemy.id });
+        renderer.ping(enemy.x, enemy.y);
+        return;
+      }
+    }
     // Nothing selected while deploying: right-click still walks the agent.
     if (selection.kind === "none" && session.builder()) select(fallback());
     order(point);
@@ -239,18 +329,21 @@ const gameInput: GameInput = {
     refreshPointer();
   },
 
-  key(key) {
+  key(key, event) {
     if (picker.key(key)) return true;
     if (guide.key(key)) return true;
     if (key === "g") return guide.show(), true;
     if (key === "escape") {
-      // Esc backs out one step: an armed order first, then the selection.
-      select(isArmed() ? disarmed(selection) : session.deploying ? fallback() : NOTHING);
+      // Esc backs out one step: aiming or an armed order first, then the selection.
+      const hero = heroUnit(session);
+      if (selection.kind === "cast") select(hero ? { kind: "entity", id: hero.id } : NOTHING);
+      else select(isArmed() ? disarmed(selection) : session.deploying ? fallback() : NOTHING);
       return true;
     }
+    if (key === "q" && !session.deploying) return selectHero();
     if (key === "t") return arm();
     if (key === "f") return arm("move");
-    if (key === "q") {
+    if (key === "z") {
       // The whole army.
       const ids = allSoldiers(session).map((u) => u.id);
       if (ids.length === 0) return renderer.showBanner("No units yet"), true;
@@ -272,6 +365,15 @@ const gameInput: GameInput = {
       if (key === "c" && session.builder()) return select({ kind: "found" }), true;
       return false;
     }
+    if (heroSelected()) {
+      // Number keys cast; Shift+number learns (event.code, since Shift turns 1 into !).
+      const digit = /^Digit([1-4])$/.exec(event.code)?.[1];
+      const ability = digit ? heroBar.abilities()[Number(digit) - 1] : undefined;
+      if (!ability) return false;
+      if (event.shiftKey) session.issue({ type: "learn", ability });
+      else cast(ability);
+      return true;
+    }
     if (coreSelected()) {
       const upgrade = Object.keys(content.upgrades)[Number(key) - 1];
       if (upgrade) return research(upgrade), true;
@@ -291,9 +393,9 @@ function applyColor(): void {
   document.documentElement.style.setProperty("--accent", `#${session.color.hex.toString(16).padStart(6, "0")}`);
 }
 
-function startMatch(raceId: string): void {
+function startMatch(raceId: string, heroId?: string): void {
   applyColor();
-  session.start(raceId);
+  session.start(raceId, heroId);
   resetMatch();
 }
 
@@ -351,6 +453,9 @@ renderer.app.ticker.add((ticker) => {
         if (event.type === "offline") {
           renderer.showBanner(event.team === session.local ? "You're offline · your allies play on" : `Player ${event.team + 1} is offline`);
         }
+        if (event.type === "hero-level" && event.team === session.local) renderer.showBanner(`Level ${event.level} · skill point ready (Q)`);
+        if (event.type === "hero-down" && event.team === session.local) renderer.showBanner("Your hero is down");
+        if (event.type === "hero-up" && event.team === session.local) renderer.showBanner("Your hero is back");
         if (event.type === "researched" && event.team === session.team.id) {
           renderer.showBanner(`${content.upgrades[event.upgrade]!.name} ${event.level}`);
         }
@@ -373,9 +478,11 @@ renderer.app.ticker.add((ticker) => {
     if (alive.length === 0) select(fallback());
     else if (alive.length !== selection.ids.length) select({ ...selection, ids: alive.map((u) => u.id) });
   }
+  if (selection.kind === "cast" && !heroUnit(session)) select(NOTHING);
 
   bar.update(barMode(), buttonFor(selection));
   const selectedId = selection.kind === "entity" ? selection.id : null;
   renderer.draw(world, content, paused ? 1 : accumulator / STEP_MS, ticker.deltaMS, placement, selectedId, selectedIds(selection));
   hud.update(selection, paused);
+  heroBar.update();
 });

@@ -120,7 +120,7 @@ export class CoopLobby {
     if (!lobby || lobby.ready.length === 0) return;
     this.hosted?.cancel();
     this.hosted = null;
-    const match = lobby.start(this.session.raceId, (Math.random() * 2 ** 31) | 0);
+    const match = lobby.start(this.session.raceId, (Math.random() * 2 ** 31) | 0, this.session.heroFor(this.session.raceId));
     lobby.onLeave = (team) => this.onLeave(team);
     this.hide();
     this.onStart(match);
@@ -159,7 +159,7 @@ export class CoopLobby {
     this.session.pick(race);
     ($("coop-race") as HTMLSelectElement).disabled = true;
     link.onClose = () => this.status("The host left.");
-    joinHost(this.session.content, link, race, (match) => {
+    joinHost(this.session.content, link, race, this.session.heroFor(race), (match) => {
       link.onClose = () => this.onLeave(0);
       this.hide();
       this.onStart(match);

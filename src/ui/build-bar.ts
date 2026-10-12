@@ -4,16 +4,18 @@
 // - deploy:   "Deploy core"
 // - build:    the race's buildings
 // - research: the core is selected, so its upgrades
+// - hero:     the hero is selected, so its abilities (see hero-bar.ts)
 
 import { affordable } from "../game/selection";
 import type { Session } from "../game/session";
 import { buildCost, canResearch, levelOf, nextLevel } from "../sim";
 import { $ } from "./dom";
+import type { HeroBar } from "./hero-bar";
 
 export const FOUND_BUTTON = "found";
 const UPGRADE_PREFIX = "upgrade:";
 
-export type BarMode = "deploy" | "build" | "research";
+export type BarMode = "deploy" | "build" | "research" | "hero";
 
 export interface BuildBarEvents {
   choose(button: string): void;
@@ -23,12 +25,19 @@ export interface BuildBarEvents {
 }
 
 export const upgradeButton = (id: string) => UPGRADE_PREFIX + id;
+const AIM_PREFIX = "aim:";
+/** The "selected" button while aiming an ability. */
+export const aimingButton = (ability: string) => AIM_PREFIX + ability;
+const aimingOf = (button: string | null) => (button?.startsWith(AIM_PREFIX) ? button.slice(AIM_PREFIX.length) : null);
 export const upgradeOf = (button: string | null) =>
   button?.startsWith(UPGRADE_PREFIX) ? button.slice(UPGRADE_PREFIX.length) : null;
 
 export class BuildBar {
   private readonly root = $("build-bar");
   private mode: BarMode | null = null;
+
+  /** Set once the hero bar exists (it renders the hero mode's buttons). */
+  hero: HeroBar | null = null;
 
   constructor(
     private readonly session: Session,
@@ -38,6 +47,7 @@ export class BuildBar {
   /** Rebuild when the mode changes; refresh state every frame. */
   update(mode: BarMode, selected: string | null): void {
     if (mode !== this.mode) this.render(mode);
+    if (mode === "hero") return this.hero?.refresh(this.root, aimingOf(selected));
     const { content, team } = this.session;
     for (const button of this.root.querySelectorAll<HTMLButtonElement>(".build-btn")) {
       const id = button.dataset.building!;
@@ -65,8 +75,11 @@ export class BuildBar {
   private render(mode: BarMode): void {
     this.mode = mode;
     const { race, content } = this.session;
-    this.root.replaceChildren(label(mode === "research" ? "Core · research" : race.name));
-    if (mode === "deploy") {
+    const heroName = this.session.team.heroId ? content.units[this.session.team.heroId]!.name : "Hero";
+    this.root.replaceChildren(label(mode === "research" ? "Core · research" : mode === "hero" ? heroName : race.name));
+    if (mode === "hero") {
+      this.root.append(...(this.hero?.buttons() ?? []));
+    } else if (mode === "deploy") {
       this.root.append(this.button(FOUND_BUTTON, "Deploy core", "C"));
     } else if (mode === "build") {
       race.buildings.forEach((id, index) => {

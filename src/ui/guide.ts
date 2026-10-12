@@ -5,7 +5,7 @@ import type { Session } from "../game/session";
 import { TERRAIN_GUIDE, buildingDetail, unitDetail, upgradeDetail, type GuideEntry } from "./cards";
 import { $ } from "./dom";
 
-type Tab = "controls" | "buildings" | "upgrades" | "creeps" | "terrain" | "races";
+type Tab = "controls" | "heroes" | "buildings" | "upgrades" | "creeps" | "terrain" | "races";
 
 const TABS: [Tab, string][] = [
   ["controls", "Controls"],
@@ -14,6 +14,7 @@ const TABS: [Tab, string][] = [
   ["creeps", "Creeps"],
   ["terrain", "Terrain"],
   ["races", "Races"],
+  ["heroes", "Heroes"],
 ];
 
 const CONTROLS: [string, string][] = [
@@ -21,8 +22,9 @@ const CONTROLS: [string, string][] = [
   ["Build", "Number keys or click a button, then click inside your network (the green rings). Shift-click to place several."],
   ["Network", "Cores, Mesh Nodes (Open Source) and Edge PoPs (Hyperscaler) each extend where you can build. Build outward to reach ramps and wells."],
   ["Redundancy", "Build more cores inside your network. If your main core falls the next takes over; you only go down when every core is down."],
-  ["Select", "Click one of your buildings or units. Drag a box to select units; Shift adds to the group. Double-click a unit: every one of its kind on screen. Q: your whole army."],
+  ["Select", "Click one of your buildings or units. Drag a box to select units; Shift adds to the group. Double-click a unit: every one of its kind on screen. Z: your whole army. Q: your hero."],
   ["Army", "With units selected, right-click the ground (or an enemy) to attack-move: they fight whatever they meet on the way, then hold the spot. F then click: a plain move that ignores enemies, for retreating. T then click works like right-click. Units you've sent stay put when you change a rally."],
+  ["Hero", "Right-click to move or attack, 1-4 to cast, Shift+1-4 to learn. Full rundown in the Heroes tab."],
   ["Research", "Select your core: the bar shows upgrades. Click one (or press its number) to research it. One at a time."],
   ["Rally", "With a spawner selected, right-click the ground to send its units there. With the core selected, right-click sets the rally for every spawner that doesn't have its own. No right button? Press T (or the button on the info card), then click the ground. Ctrl-click, Cmd-click and two-finger taps count as right-clicks too."],
   ["Camera", "WASD / arrows, the window edge, or drag with the middle button or Alt held to pan. Wheel or +/- to zoom. Click the minimap to jump. Space: back home."],
@@ -113,6 +115,34 @@ export class Guide {
       }
       case "terrain":
         return TERRAIN_GUIDE.map(entry);
+      case "heroes": {
+        const h = content.heroes;
+        const rules = entry({
+          title: "How heroes work",
+          description: "You lead one hero, picked with your race. Select it with Q or its card (Q again centres on it).",
+          stats: [
+            "Right-click the ground to move, or an enemy to attack it (T then click also moves)",
+            "1-4 cast abilities; area and targeted ones then want a click (right-click or Esc cancels)",
+            `Kills within ${h.xpRange}px of your hero give it XP; every level is a skill point (Shift+1-4, or the +)`,
+            `Basic abilities have 3 ranks, a rank every ${h.levelsPerRank} levels; the ultimate opens at level 6. Max level ${h.maxLevel}`,
+            "A fallen hero comes back at your core, later the higher its level",
+          ],
+        });
+        const heroes = this.session.playable.flatMap((raceId) =>
+          (content.races[raceId]!.heroes ?? []).map((heroId) => {
+            const unit = content.units[heroId]!;
+            return entry({
+              title: `${unit.name} · ${content.races[raceId]!.name}`,
+              description: unit.description,
+              stats: h.heroes[heroId]!.abilities.map((id, i) => {
+                const a = h.abilities[id]!;
+                return `${i + 1}. ${a.name}${a.maxRank === 1 ? " (ultimate)" : ""}: ${a.description}`;
+              }),
+            });
+          }),
+        );
+        return [rules, ...heroes];
+      }
       case "races":
         return this.session.playable.map((id) => {
           const race = content.races[id]!;

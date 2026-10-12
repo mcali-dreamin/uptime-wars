@@ -2,6 +2,7 @@
 // the core.
 
 import { foundCore } from "../entities";
+import { spawnHero } from "../heroes";
 import { distance, walkTo } from "../movement";
 import { canFound } from "../placement";
 import { FOUND_REACH, MOVE_REACH } from "../tuning";
@@ -30,4 +31,5 @@ export const builder: Behavior = (ctx, unit, def) => {
   unit.hp = 0;
   world.teams[unit.team]!.builderId = -1;
   world.events.push({ type: "founded", x: core.x, y: core.y });
+  spawnHero(ctx, world.teams[unit.team]!, core);
 };
