@@ -47,7 +47,7 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
       const reason = canPlace(world, content, command.team, command.building, command.col, command.row);
       if (reason) return reason;
       const team = world.teams[command.team]!;
-      team.compute -= buildCost(content, team.raceId, command.building);
+      team.money -= buildCost(content, team.raceId, command.building);
       const building = placeBuilding(world, content, team.id, command.building, command.col, command.row, false);
       ctx.byId.set(building.id, building);
       return null;
@@ -61,7 +61,7 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
       const reason = canResearch(content, team, command.upgrade);
       if (reason) return reason;
       const next = nextLevel(content, team, command.upgrade);
-      team.compute -= next.cost;
+      team.money -= next.cost;
       team.research = { upgrade: command.upgrade, remaining: next.ticks };
       return null;
     }

@@ -19,7 +19,7 @@
       "spawnIntervalMultiplier": 0.85,
       "costMultiplier": 1,
       "unitHpMultiplier": 1,
-      "startingComputeBonus": 0
+      "startingMoneyBonus": 0
     },
     "builder": "deploy-agent",
     "heroes": [
@@ -30,7 +30,7 @@
   },
   "hyperscaler": {
     "name": "Hyperscaler",
-    "specialty": "Rich and tough. +150 compute, units 30% tougher, spawns 15% slower.",
+    "specialty": "Rich and tough. +$150, units 30% tougher, spawns 15% slower.",
     "controller": "human",
     "look": "monolith",
     "core": "core",
@@ -49,7 +49,7 @@
       "spawnIntervalMultiplier": 1.15,
       "costMultiplier": 1,
       "unitHpMultiplier": 1.3,
-      "startingComputeBonus": 150
+      "startingMoneyBonus": 150
     },
     "heroes": [
       "sre",
@@ -67,7 +67,7 @@
       "spawnIntervalMultiplier": 1,
       "costMultiplier": 1,
       "unitHpMultiplier": 1,
-      "startingComputeBonus": 0
+      "startingMoneyBonus": 0
     }
   }
 }

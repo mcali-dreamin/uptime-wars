@@ -29,7 +29,9 @@ const CONTROLS: [string, string][] = [
   ["Rally", "With a spawner selected, right-click the ground to send its units there. With the core selected, right-click sets the rally for every spawner that doesn't have its own. No right button? Press T (or the button on the info card), then click the ground. Ctrl-click, Cmd-click and two-finger taps count as right-clicks too."],
   ["Camera", "WASD / arrows, the window edge, or drag with the middle button or Alt held to pan. Wheel or +/- to zoom. Click the minimap to jump. Space: back home."],
   ["Other", "Esc: deselect · P: pause · E: edge scroll on/off · G: this guide · R: new match after an outage"],
-  ["Users", "Users are your income. They arrive while your core is up and grow toward your capacity (core + Web Apps), and every user pays compute each second, far more than Solar Arrays or Power Plants. But every hit your core or a Web App takes drives some away (the red −N by Users); towers and racks are what you put in between. And a bigger base makes more traffic: crawlers sense you from further away the more you build and the more users you have, and the longer you're online. Hover the +/s next to Compute to see where your income comes from."],
+  ["$", "Money. Users pay it every second, and everything is bought with it: buildings, research, kills pay bounties in it. Hover the +/s next to $ to see where it comes from."],
+  ["Users", "Users are your income. They arrive while your core is up and grow toward your capacity (core + Web Apps), as long as you have the compute to serve them. Every hit your core or a Web App takes drives some away (the red −N by Users); towers and racks are what you put in between. And a bigger base makes more traffic: crawlers sense you from further away the more you build, the more users you have, and the longer you're online."],
+  ["Compute", "Capacity, not money. Your core, Solar Arrays, Power Plants and Data Pumps supply it; every user and unit uses some (shown as in use / supplied). It can go over. The further over you are, the worse it gets: no new users arrive and some leave each second, and your towers, spawners and research all run slower by the same share (shown as % slow). Build generators to grow."],
   ["Co-op", "On the race picker press H. Send each friend an invite link, paste back the reply code they give you, then Start. Everyone runs the same match; you see what your allies see, and the match goes on until every player is offline. Co-op can't pause."],
   ["Goal", "Waves never stop. Your score is uptime: how long your core stays online. Peak users is your bragging right. Or end it: the Malware Nest sits on a fortified plateau in the middle of the web, its gateways guarded by C2 Servers. Push up a ramp, take the nest offline, and you win. Every few waves the botnet rebuilds fallen C2 Servers, tougher."],
 ];
@@ -110,7 +112,7 @@ export class Guide {
           const detail = unitDetail(content, id);
           const from = content.waves.roster.find((r) => r.unit === id)?.fromWave ?? content.waves.bosses.fromWave;
           const bounty = content.units[id]!.bounty;
-          return entry({ ...detail, stats: [...detail.stats, `Bounty: ${bounty} compute per kill`, `First seen: wave ${from}`] });
+          return entry({ ...detail, stats: [...detail.stats, `Bounty: $${bounty} per kill`, `First seen: wave ${from}`] });
         });
       }
       case "terrain":

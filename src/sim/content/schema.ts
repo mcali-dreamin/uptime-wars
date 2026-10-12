@@ -20,6 +20,8 @@ export interface UnitDef {
   bounty: number;
   /** Radius in pixels. */
   size: number;
+  /** Compute this unit uses while alive (default: economy.compute.perUnit). */
+  upkeep?: number;
   /** How far this unit reveals the fog for its owner, in pixels. */
   sight?: number;
 }
@@ -46,7 +48,10 @@ export interface BuildingDef {
   /** Spawns `count` units every interval, keeping at most `maxAlive` of its own alive. */
   spawn?: { unit: string; intervalTicks: number; count: number; maxAlive: number };
   attack?: BuildingAttack;
+  /** $ paid out on a timer. */
   income?: { amount: number; intervalTicks: number };
+  /** Compute this building supplies once finished: what keeps users and units running. */
+  compute?: number;
   /** Users this building can serve. Your total capacity caps your user count. */
   userCapacity?: number;
   /** Only buildable on a data well: every footprint tile must be one. */
@@ -85,8 +90,8 @@ export interface RaceDef {
     spawnIntervalMultiplier: number;
     costMultiplier: number;
     unitHpMultiplier: number;
-    /** Extra compute at the start of the match. */
-    startingComputeBonus: number;
+    /** Extra $ at the start of the match. */
+    startingMoneyBonus: number;
   };
 }
 
@@ -134,8 +139,16 @@ export interface EconomyDef {
   growthPerSecond: number;
   /** ...but at least this many, while there's room. */
   minArrivalsPerSecond: number;
-  /** Compute per user per second. */
+  /** $ per user per second. */
   revenuePerUserPerSecond: number;
+  /**
+   * Compute is capacity, not money: buildings supply it, users and units use
+   * it. Over capacity, the overload (the share of demand you can't serve)
+   * scales the trouble: no new users, `churnPerSecond` x overload of them
+   * leave each second, and your timers (attacks, spawns, research) slow by
+   * the overload.
+   */
+  compute: { perUser: number; perUnit: number; churnPerSecond: number; maxOverload: number };
   /** One user leaves for every this much damage your buildings take. */
   damagePerUserLost: number;
   /**
