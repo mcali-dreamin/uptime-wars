@@ -58,6 +58,8 @@ interface Shown {
   lastX: number;
   lastY: number;
   holo: boolean;
+  /** Top of the model (buildings), measured once, for health bars. */
+  top?: number;
 }
 
 export class World3D implements WorldView {
@@ -320,7 +322,7 @@ export class World3D implements WorldView {
       const building = entity.buildRemaining > 0;
       if (building !== s.holo) this.setHologram(s, building);
       s.object.scale.y = building ? Math.max(0.08, entity.hp / entity.maxHp) : 1;
-      const top = BUILDING_TOP[entity.defId] ?? 50;
+      const top = s.top ?? BUILDING_TOP[entity.defId] ?? 50;
       const selected = frame.selectedId === entity.id;
       if (entity.hp < entity.maxHp || selected) {
         this.bars.add(at.x, floor + top * s.object.scale.y + 12, at.y, entity.footprint * TILE * 0.8, entity.hp / entity.maxHp);
@@ -356,6 +358,7 @@ export class World3D implements WorldView {
       lastX: entity.x,
       lastY: entity.y,
       holo: false,
+      top: entity.kind === "building" ? new THREE.Box3().setFromObject(object).max.y : undefined,
     };
   }
 
