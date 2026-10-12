@@ -1,10 +1,10 @@
 // How the map looks. Three height levels read as three floor shades (the
 // higher, the lighter); cliffs are dark with a bright lip on the drop side;
 // ramps are striped; dead links are light slabs with a bright outline;
-// swamps are stippled teal; data wells are blue diamonds.
+// data wells are blue diamonds.
 
 import type { Graphics } from "pixi.js";
-import { TILE_BLOCKED, TILE_CLIFF, TILE_RAMP, TILE_SLOW, type Terrain } from "../../sim";
+import { TILE_BLOCKED, TILE_CLIFF, TILE_RAMP, type Terrain } from "../../sim";
 import { CLIFF_LIP, DEAD_LINK_EDGE, RAMP_STRIPE, WELL, tileColor } from "../palette";
 
 /**
@@ -75,16 +75,6 @@ export function drawTerrainDetail(g: Graphics, terrain: Terrain, cell: number): 
   }
   g.stroke({ width: 2, color: RAMP_STRIPE, alpha: 0.9 });
 
-  // Swamps: stipple.
-  for (let row = 0; row < rows; row += 1) {
-    for (let col = 0; col < cols; col += 1) {
-      if (at(col, row) !== TILE_SLOW) continue;
-      const x = col * cell;
-      const y = row * cell;
-      g.circle(x + cell * 0.3, y + cell * 0.35, 1.5).circle(x + cell * 0.7, y + cell * 0.7, 1.5);
-    }
-  }
-  g.fill({ color: 0x2b6f80, alpha: 0.8 });
 }
 
 export function drawWells(g: Graphics, terrain: Terrain, cell: number): void {

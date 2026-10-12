@@ -8,13 +8,13 @@
 //   cyan circuit traces, the backbone steel plating. Cliffs are dark rock
 //   with glowing fibre strata; ramps are paved gateways with amber chevrons.
 // - Dead links are fields of broken black shards, data wells are glowing
-//   crystal clusters, data swamps are glossy rippling pools.
+//   crystal clusters.
 //
 // Everything is drawn from the terrain alone, so it is a pure function of
 // the seed, like the map itself.
 
 import * as THREE from "three";
-import { TILE, TILE_BLOCKED, TILE_CLIFF, TILE_OPEN, TILE_RAMP, TILE_RESOURCE, TILE_SLOW, type Terrain } from "../../sim";
+import { TILE, TILE_BLOCKED, TILE_CLIFF, TILE_OPEN, TILE_RAMP, TILE_RESOURCE, type Terrain } from "../../sim";
 import type { FogTexture } from "./fog3d";
 
 /** Height of one level step, in world units (a tile is 48). */
@@ -147,7 +147,7 @@ export class Terrain3D {
             normal[k] = normals[v * 3]!;
             normal[k + 1] = normals[v * 3 + 1]!;
             normal[k + 2] = normals[v * 3 + 2]!;
-            // Kind weights from the tile(s) this vertex touches: swamp, ramp, dead ground.
+            // Kind weights from the tile(s) this vertex touches: (unused), ramp, dead ground.
             kind.set(kindAround(terrain, vx, vy), k);
           }
         }
@@ -279,7 +279,7 @@ export class Terrain3D {
     const p = new THREE.Vector3();
     const up = new THREE.Vector3(0, 1, 0);
     for (const kind of kinds) {
-      const spots = tilesOf(terrain, (t, i) => (t === TILE_OPEN || t === TILE_SLOW) && terrain.heights[i] === kind.level && hash01(i, 11 + kind.level) < kind.chance && t !== TILE_SLOW);
+      const spots = tilesOf(terrain, (t, i) => t === TILE_OPEN && terrain.heights[i] === kind.level && hash01(i, 11 + kind.level) < kind.chance);
       const mesh = new THREE.InstancedMesh(kind.geometry, kind.material, spots.length);
       spots.forEach((i, n) => {
         const col = i % terrain.cols;
@@ -347,13 +347,12 @@ function vertexHeight(tiles: Uint8Array, heights: Uint8Array, touched: number[])
   return floorTop(level) - STEP / 2;
 }
 
-/** Swamp / ramp / dead-ground weights for a vertex: the share of touching tiles of each kind. */
+/** (unused) / ramp / dead-ground weights for a vertex: the share of touching tiles of each kind. */
 function kindAround(terrain: Terrain, vx: number, vy: number): [number, number, number] {
   const { cols, rows, tiles } = terrain;
   const cs = vx % SUB === 0 ? [vx / SUB - 1, vx / SUB] : [Math.floor(vx / SUB)];
   const rs = vy % SUB === 0 ? [vy / SUB - 1, vy / SUB] : [Math.floor(vy / SUB)];
   let n = 0;
-  let swamp = 0;
   let ramp = 0;
   let dead = 0;
   for (const r of rs) {
@@ -361,12 +360,11 @@ function kindAround(terrain: Terrain, vx: number, vy: number): [number, number, 
       if (c < 0 || r < 0 || c >= cols || r >= rows) continue;
       const t = tiles[r * cols + c];
       n += 1;
-      if (t === TILE_SLOW) swamp += 1;
       if (t === TILE_RAMP) ramp += 1;
       if (t === TILE_BLOCKED) dead += 1;
     }
   }
-  return n === 0 ? [0, 0, 0] : [swamp / n, ramp / n, dead / n];
+  return n === 0 ? [0, 0, 0] : [0, ramp / n, dead / n];
 }
 
 function tilesOf(terrain: Terrain, test: (tile: number, index: number) => boolean): number[] {
@@ -520,8 +518,6 @@ const GROUND_COLOR = /* glsl */ `
     // Ramps: paved gateway.
     vec3 paving = vec3(0.3, 0.26, 0.2) * (0.85 + 0.3 * vnoise(xz * 0.2));
     col = mix(col, paving, vKind.y);
-    // Data swamps: dark glossy teal.
-    col = mix(col, vec3(0.02, 0.1, 0.12), vKind.x);
     // Dead ground under the shards.
     col = mix(col, vec3(0.06, 0.055, 0.065), vKind.z * 0.8);
     // Cliffs: dark rock, by slope.
@@ -538,7 +534,7 @@ const GROUND_EMISSIVE = /* glsl */ `
   {
     vec2 xz = vFogWorld.xz;
     float flat_ = 1.0 - gTerrainSteep;
-    float tr = traces(xz) * flat_ * (1.0 - vKind.y) * (1.0 - vKind.z) * (1.0 - vKind.x);
+    float tr = traces(xz) * flat_ * (1.0 - vKind.y) * (1.0 - vKind.z);
     float strength = gTerrainLevel < 0.5 ? 0.22 : gTerrainLevel < 1.5 ? 0.3 : 0.16;
     totalEmissiveRadiance += traceColor(gTerrainLevel) * tr * strength;
     // Fibre strata in cliff faces.
@@ -547,9 +543,6 @@ const GROUND_EMISSIVE = /* glsl */ `
     // Ramp chevrons.
     float chev = step(0.6, fract((xz.x + xz.y) / 32.0));
     totalEmissiveRadiance += vec3(1.0, 0.65, 0.2) * chev * vKind.y * 0.18;
-    // Swamp ripples.
-    float ripple = 0.5 + 0.5 * sin(length(fract(xz / 140.0) - 0.5) * 60.0 - uTime * 1.6);
-    totalEmissiveRadiance += vec3(0.05, 0.45, 0.5) * ripple * vKind.x * 0.25;
   }
 `;
 
@@ -560,6 +553,5 @@ function patchGround(shader: THREE.WebGLProgramParametersWithUniforms): void {
   shader.fragmentShader = shader.fragmentShader
     .replace("#include <common>", `#include <common>\n${groundFragmentHead}\nfloat gTerrainSteep = 0.0; float gTerrainLevel = 0.0;`)
     .replace("#include <color_fragment>", `#include <color_fragment>\n${GROUND_COLOR}`)
-    .replace("#include <roughnessmap_fragment>", "#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.12, vKind.x);")
     .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>\n${GROUND_EMISSIVE}`);
 }

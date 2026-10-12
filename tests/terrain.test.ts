@@ -9,6 +9,7 @@ import {
   type Entity,
   flowField,
   createWorld,
+  generateTerrain,
   hashTerrain,
   queueCommand,
   TILE,
@@ -18,6 +19,15 @@ import {
 import { makeContext } from "../src/sim/context";
 import { dealDamage } from "../src/sim/combat";
 import { content, SETUP, OPENING_ORDER, firstSpot, planBuildOrder } from "./fixtures";
+
+describe("no slowing terrain", () => {
+  it("no map has data swamps (tile 2): ground is open, walls, cliffs, ramps, or wells", () => {
+    for (let k = 0; k < 40; k += 1) {
+      const { tiles } = generateTerrain(k * 7919 + 1);
+      expect(tiles.includes(2), `seed ${k * 7919 + 1}`).toBe(false);
+    }
+  });
+});
 
 describe("terrain", () => {
   const SEEDS = Array.from({ length: 12 }, (_, i) => i * 7919 + 1);

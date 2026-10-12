@@ -7,7 +7,7 @@
 // Integer costs and a fixed neighbor order keep it deterministic.
 
 import { TILE } from "./map";
-import { TILE_BLOCKED, TILE_SLOW, isWalkableTile, tileAt, type Terrain } from "./terrain";
+import { TILE_BLOCKED, isWalkableTile, tileAt, type Terrain } from "./terrain";
 
 const ORTHOGONAL = 10;
 const DIAGONAL = 14;
@@ -54,7 +54,7 @@ export function flowField(terrain: Terrain, goals: number[]): Int32Array {
       // neighbor back into this tile.
       if (!canStep(terrain, col, row, dc, dr)) continue;
       const n = (row + dr) * cols + (col + dc);
-      const cost = d + (tileAt(terrain, col, row) === TILE_SLOW ? step * 2 : step);
+      const cost = d + step;
       if (dist[n] === UNREACHABLE || cost < dist[n]!) {
         dist[n] = cost;
         heap.push(cost, n);
@@ -104,10 +104,6 @@ export function bodyFits(terrain: Terrain, x: number, y: number, r: number): boo
     isWalkablePoint(terrain, x, y + e) &&
     isWalkablePoint(terrain, x, y - e)
   );
-}
-
-export function isSlowPoint(terrain: Terrain, x: number, y: number): boolean {
-  return tileAt(terrain, Math.floor(x / TILE), Math.floor(y / TILE)) === TILE_SLOW;
 }
 
 /** True when no blocked tile lies on the segment. Samples every quarter tile. */
@@ -175,7 +171,7 @@ export function moveToward(
   const dy = ty - mover.y;
   const length = Math.sqrt(dx * dx + dy * dy);
   if (length <= 0) return;
-  const step = Math.min(length, isSlowPoint(terrain, mover.x, mover.y) ? stride / 2 : stride);
+  const step = Math.min(length, stride);
   const nx = mover.x + (dx / length) * step;
   const ny = mover.y + (dy / length) * step;
   const r = mover.radius;

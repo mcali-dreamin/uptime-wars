@@ -16,7 +16,7 @@ import {
   RAMP_SPACING,
   START_CLEAR_RADIUS,
 } from "./params";
-import { TILE_CLIFF, TILE_OPEN, TILE_RAMP, TILE_SLOW, walls, type TilePoint } from "./tiles";
+import { TILE_CLIFF, TILE_OPEN, TILE_RAMP, walls, type TilePoint } from "./tiles";
 
 /**
  * Give the map height: levels from a slow noise layer, cliffs on the high
@@ -46,7 +46,7 @@ export function raiseTerrain(
   raiseFortress(heights, cols, rows, nest);
 
   // Cliffs: a walkable tile next to a lower walkable tile is the cliff edge.
-  const ground = (t: number | undefined) => t === TILE_OPEN || t === TILE_SLOW;
+  const ground = (t: number | undefined) => t === TILE_OPEN;
   const cliffs: number[] = [];
   for (let i = 0; i < tiles.length; i += 1) {
     if (!ground(tiles[i])) continue;
@@ -194,7 +194,7 @@ function isSlope(tiles: Uint8Array, heights: Uint8Array, i: number, cols: number
   const col = i % cols;
   const row = Math.floor(i / cols);
   const open = (c: number, r: number) =>
-    c >= 0 && r >= 0 && c < cols && r < rows && (tiles[r * cols + c] === TILE_OPEN || tiles[r * cols + c] === TILE_SLOW);
+    c >= 0 && r >= 0 && c < cols && r < rows && tiles[r * cols + c] === TILE_OPEN;
   const h = heights[i]!;
   const pairs = [
     [col, row - 1, col, row + 1],
