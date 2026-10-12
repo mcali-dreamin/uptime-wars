@@ -68,8 +68,20 @@ await run(
       return { host, guest };
     };
 
-    // Copy-paste signalling: the handshake is the part that differs.
+    // Copy-paste signalling (the handshake is the part that differs), then a
+    // quick free-for-all without the horde: the host's rules reach the guest.
     const paste = await connect(false);
+    await paste.host.check('input[name="coop-mode"][value="ffa"]');
+    check(await paste.host.$eval("#coop-horde-row", (el) => !el.hidden), "FFA offers to leave the horde out");
+    await paste.host.uncheck("#coop-horde");
+    await paste.host.click("#coop-start");
+    const rules = (page) => page.evaluate(() => ({ mode: window.uptime.world.mode, races: window.uptime.world.teams.map((t) => t.raceId).join() }));
+    const ffa = await waitFor(async () => {
+      const [h, g] = [await rules(paste.host), await rules(paste.guest)];
+      return h.mode === "ffa" && g.mode === "ffa" && h.races === g.races ? h : null;
+    }, 60000);
+    check(ffa && !ffa.races.includes("botnet"), `both browsers start the same free-for-all, no horde (${ffa?.races})`);
+    check(await waitFor(async () => (await paste.guest.textContent("#status")).includes("Free-for-all"), 30000), "the HUD says it's a free-for-all");
     await paste.host.context().close();
     await paste.guest.context().close();
 

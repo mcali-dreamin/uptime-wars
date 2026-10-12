@@ -59,7 +59,7 @@ export class Hud {
         : waiting.length > 0
           ? `Waiting for ${waiting.map((team) => `Player ${team + 1}`).join(", ")}…`
           : this.session.net
-            ? `Co-op · you're Player ${this.session.local + 1}`
+            ? `${world.mode === "ffa" ? "Free-for-all" : "Co-op"} · you're Player ${this.session.local + 1}`
             : "";
       this.status.className = "";
     }
@@ -151,8 +151,19 @@ export class Hud {
     const { world } = this.session;
     const outcome = world.outcome!;
     const won = outcome.winners.includes(this.session.local);
-    // Co-op: your uptime ends when you go offline, even if your allies played on.
+    // Your uptime ends when you go offline, even if others played on.
     const uptime = clock((this.session.team.downTick ?? outcome.tick) / TICK_RATE);
+    if (world.mode === "ffa") {
+      const winner = outcome.reason === "last-standing" ? outcome.winners[0]! : null;
+      const summary = won
+        ? `LAST CORE STANDING - you outlasted everyone. Uptime ${uptime}.`
+        : winner !== null
+          ? `OUTAGE - Player ${winner + 1} is the last core standing. You lasted ${uptime}.`
+          : `OUTAGE - the horde took everyone down. You lasted ${uptime}.`;
+      this.status.textContent = `${summary} Press R to pick a race for a new web. [${hashWorld(world)}]`;
+      this.status.className = won ? "won" : "lost";
+      return won ? "VICTORY · last core standing" : winner !== null ? `DEFEAT · Player ${winner + 1} wins` : "OUTAGE · the horde wins";
+    }
     const summary = won
       ? `NEST OFFLINE - you took down the botnet at ${uptime}.`
       : this.session.deploying
