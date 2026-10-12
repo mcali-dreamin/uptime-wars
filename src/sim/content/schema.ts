@@ -59,6 +59,8 @@ export interface BuildingDef {
   invoke?: { unit: string; count: number; cost: number; ttlTicks: number; cooldownTicks: number; triggerRange: number };
   /** Compute this building supplies once finished: what keeps users and units running. */
   compute?: number;
+  /** Blocks movement for everyone, like terrain (walls). Not line of sight: you can shoot over it. */
+  blocks?: boolean;
   /** Users this building can serve. Your total capacity caps your user count. */
   userCapacity?: number;
   /** Only buildable on a data well: every footprint tile must be one. */

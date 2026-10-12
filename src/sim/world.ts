@@ -23,6 +23,7 @@ import { footprintCenter } from "./map";
 import { teamCores } from "./placement";
 import { hordeTeam, humanTeams, type MatchMode } from "./teams";
 import { tickFunctions } from "./functions";
+import { syncWalls } from "./walls";
 import { tickSpawners } from "./spawners";
 import { MAX_PLAYERS, generateTerrain } from "./terrain";
 import { BASE_INCOME, STARTING_MONEY } from "./tuning";
@@ -126,6 +127,8 @@ export function step(world: World, content: Content): void {
 
   const ctx = makeContext(world, content);
   applyCommands(ctx);
+  // A wall placed this tick blocks from this tick.
+  syncWalls(world, content);
   ctx.grid = buildGrid(world.entities);
   tickCooldowns(ctx);
   tickIncome(ctx);
@@ -142,6 +145,8 @@ export function step(world: World, content: Content): void {
   checkOutcome(ctx);
 
   world.entities = world.entities.filter((entity) => entity.hp > 0);
+  // A wall that fell this tick opens up for the next.
+  syncWalls(world, content);
   world.tick += 1;
 }
 
