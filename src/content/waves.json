@@ -46,6 +46,36 @@
       "cost": 14,
       "fromWave": 3,
       "weight": 2
+    },
+    {
+      "unit": "scanner",
+      "cost": 6,
+      "fromWave": 3,
+      "weight": 1
+    },
+    {
+      "unit": "phisher",
+      "cost": 6,
+      "fromWave": 4,
+      "weight": 3
+    },
+    {
+      "unit": "ddos",
+      "cost": 2,
+      "fromWave": 5,
+      "weight": 3
+    },
+    {
+      "unit": "cryptominer",
+      "cost": 10,
+      "fromWave": 7,
+      "weight": 2
+    },
+    {
+      "unit": "brute-forcer",
+      "cost": 16,
+      "fromWave": 9,
+      "weight": 2
     }
   ],
   "bosses": {

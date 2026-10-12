@@ -5,6 +5,7 @@ import type { Content } from "./content";
 import { TILE, footprintCenter } from "./map";
 import { TILE_OPEN, tileAt } from "./terrain";
 import type { Building, Entity, Team, TeamId, World } from "./types";
+import { unitInTheWay } from "./walls";
 
 export function buildCost(content: Content, raceId: string, buildingId: string): number {
   return Math.round(content.buildings[buildingId]!.cost * content.races[raceId]!.modifiers.costMultiplier);
@@ -39,6 +40,7 @@ export function canPlace(
   buildingId: string,
   col: number,
   row: number,
+  cost = buildCost(content, world.teams[teamId]!.raceId, buildingId),
 ): string | null {
   const team = world.teams[teamId]!;
   const race = content.races[team.raceId]!;
@@ -51,7 +53,8 @@ export function canPlace(
   if (!inNetwork(world, content, teamId, center.x, center.y)) return "outside your network";
 
   if (isOccupied(world, col, row, def.footprint)) return "tile occupied";
-  if (team.money < buildCost(content, team.raceId, buildingId)) return "not enough $";
+  if (def.blocks && unitInTheWay(world, col, row, def.footprint)) return "a unit is in the way";
+  if (team.money < cost) return "not enough $";
   return null;
 }
 

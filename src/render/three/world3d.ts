@@ -505,6 +505,12 @@ export class World3D implements WorldView {
       this.rings.add(wave.x, ground(wave.x, wave.y), wave.y, wave.radius * (0.3 + 0.7 * k), wave.color, 1 - k);
     }
 
+    // Jammed buildings: a red ring that flickers like static.
+    for (const e of world.entities) {
+      if (e.kind !== "building" || e.jammedUntil === undefined || world.tick >= e.jammedUntil || !frame.shows(e, e.x, e.y)) continue;
+      const flicker = 0.5 + 0.5 * Math.abs(Math.sin(t * 23 + e.id));
+      this.rings.add(e.x, ground(e.x, e.y), e.y, (e.footprint * TILE) / 2 + 14, 0xf87171, flicker);
+    }
     for (const ping of frame.pings) {
       const k = ping.age / PING_MS;
       this.rings.add(ping.x, ground(ping.x, ping.y), ping.y, 30 * (1 - k) + 6, HIGHLIGHT, 1 - k);

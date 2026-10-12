@@ -159,7 +159,9 @@ export function incomeRate(world: World, content: TickContext["content"], team: 
 export function loseUsers(ctx: TickContext, team: Team, damage: number, defId: string): void {
   if (team.controller !== "human" || team.users <= 0) return;
   if (!ctx.content.buildings[defId]?.userCapacity) return;
-  team.churnCarry += damage / ctx.content.economy.damagePerUserLost;
+  const loyalty = ctx.content.races[team.raceId]?.mechanics?.loyalty;
+  const share = loyalty ? loyalty.churnPermille / 1000 : 1;
+  team.churnCarry += (damage * share) / ctx.content.economy.damagePerUserLost;
   const lost = Math.floor(team.churnCarry);
   if (lost <= 0) return;
   team.churnCarry -= lost;

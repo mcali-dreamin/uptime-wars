@@ -14,6 +14,8 @@
 // - ephemeral (Serverless): wireframe and smoked glass, as if only half
 //   there. Functions are drawn as holograms while cold and turn solid while
 //   their units are running (see world3d).
+// - garden (Walled Garden): glossy white ceramic, rose-gold trim, and neat
+//   trimmed hedges on top. Pristine, rounded, a little smug.
 // The botnet is none of these: organic, spiky, red. Moving parts are tagged so the
 // view can animate them.
 
@@ -30,10 +32,10 @@ export type Anim =
 
 type Mat =
   | "body" | "frame" | "trim" | "glow" | "screen" | "solar" | "flesh" | "hot" | "flame" | "dark"
-  | "copper" | "rust" | "cable" | "glass" | "chrome" | "white";
+  | "copper" | "rust" | "cable" | "glass" | "chrome" | "white" | "hedge";
 
 /** A race's look (see RaceDef.look), or "default" for the botnet and anything without one. */
-export type Look = "scrappy" | "monolith" | "ephemeral" | "default";
+export type Look = "scrappy" | "monolith" | "ephemeral" | "garden" | "default";
 
 export class Models {
   private readonly templates = new Map<string, THREE.Group>();
@@ -179,6 +181,9 @@ export class Models {
       case "chrome":
         material = standard({ color: 0xe2e8f0, metalness: 1, roughness: 0.12 });
         break;
+      case "hedge":
+        material = standard({ color: 0x2f6b3a, metalness: 0, roughness: 0.95, flatShading: true });
+        break;
       case "white": {
         // Cool white light, tinted a touch toward the team colour.
         const tint = new THREE.Color(0xffffff).lerp(new THREE.Color(color), 0.25);
@@ -205,6 +210,16 @@ export class Models {
           return standard({ color: 0x9a6232, metalness: 0.85, roughness: 0.5 });
         case "dark":
           return standard({ color: 0x17120f, metalness: 0.2, roughness: 0.9 });
+      }
+    }
+    if (look === "garden") {
+      switch (kind) {
+        case "body":
+          return standard({ color: 0xf1f5f9, metalness: 0.1, roughness: 0.22 });
+        case "frame":
+          return standard({ color: 0xd8a7a0, metalness: 0.9, roughness: 0.3 });
+        case "dark":
+          return standard({ color: 0x3f3a3c, metalness: 0.2, roughness: 0.5 });
       }
     }
     if (look === "ephemeral") {
@@ -278,6 +293,18 @@ export class Models {
       }
       return;
     }
+    if (this.look === "garden") {
+      // Walls carry their own hedge; everything else gets a trimmed hedge on top.
+      if (isUnit || defId === "garden-wall") return;
+      this.box(g, team, "hedge", Math.max(8, w * 0.7), 5, Math.max(8, d * 0.7), 0, h, 0);
+      if (w > 30) {
+        for (const [cx, cz] of [[1, 1], [-1, -1]] as const) {
+          this.cyl(g, team, "frame", 2.5, 3, 4, 8, cx * (w / 2 + 4), 0, cz * (d / 2 + 4));
+          this.shape(g, team, "hedge", "topiary", () => new THREE.SphereGeometry(5, 8, 6), cx * (w / 2 + 4), 9, cz * (d / 2 + 4));
+        }
+      }
+      return;
+    }
     if (this.look === "ephemeral") {
       if (isUnit) return;
       // A wireframe cage round the whole thing, with floating corner nodes.
@@ -321,6 +348,7 @@ export class Models {
   private lookBuilding(defId: string, team: number): THREE.Group | null {
     if (this.look === "default") return null;
     if (this.look === "ephemeral") return this.ephemeralBuilding(defId, team);
+    if (this.look === "garden") return this.gardenBuilding(defId, team);
     const g = new THREE.Group();
     const scrappy = this.look === "scrappy";
     switch (defId) {
@@ -420,7 +448,7 @@ export class Models {
   }
 
   private lookUnit(defId: string, team: number, r: number): THREE.Group | null {
-    if (this.look === "default" || this.look === "ephemeral") return null;
+    if (this.look === "default" || this.look === "ephemeral" || this.look === "garden") return null;
     const g = new THREE.Group();
     const scrappy = this.look === "scrappy";
     switch (defId) {
@@ -462,6 +490,39 @@ export class Models {
           return g;
         }
         return null;
+    }
+    return null;
+  }
+
+  /** Walled Garden: rounded white ceramic, inside its own little walls. */
+  private gardenBuilding(defId: string, team: number): THREE.Group | null {
+    const g = new THREE.Group();
+    switch (defId) {
+      case "core": {
+        // A rounded white tower in a walled courtyard ringed by hedge.
+        this.cyl(g, team, "frame", 46, 48, 3, 32);
+        for (let i = 0; i < 12; i += 1) {
+          const a = (i / 12) * Math.PI * 2;
+          this.box(g, team, "hedge", 14, 7, 5, Math.cos(a) * 40, 3, Math.sin(a) * 40).rotation.y = -a + Math.PI / 2;
+        }
+        this.shape(g, team, "body", "garden-tower", () => new THREE.CapsuleGeometry(20, 52, 8, 24), 0, 50, 0);
+        this.cyl(g, team, "frame", 21, 21, 2, 32, 0, 50);
+        const logo = this.shape(g, team, "glow", "garden-logo", () => new THREE.SphereGeometry(7, 16, 12), 0, 104, 0);
+        anim(logo, { type: "bob", amount: 3, speed: 1.2, base: 104 });
+        return g;
+      }
+      case "web-app": {
+        // A glossy tablet on a rose-gold stand.
+        this.cyl(g, team, "frame", 12, 14, 3, 24);
+        this.cyl(g, team, "frame", 1.6, 2, 18, 12, 0, 3);
+        const tablet = new THREE.Group();
+        tablet.position.y = 40;
+        tablet.rotation.x = -0.25;
+        this.box(tablet, team, "body", 34, 24, 3, 0, -12, 0);
+        this.box(tablet, team, "screen", 30, 20, 0.6, 0, -10, 1.8);
+        g.add(tablet);
+        return g;
+      }
     }
     return null;
   }
@@ -680,6 +741,45 @@ export class Models {
         anim(halo, { type: "pulse", amount: 0.2, speed: 3 });
         break;
       }
+      case "garden-wall": {
+        // A full-tile white wall with a rose-gold cap and a hedge on top, so
+        // walls side by side read as one long wall.
+        this.box(g, team, "body", 48, 30, 48);
+        this.box(g, team, "frame", 49, 2, 49, 0, 30);
+        this.box(g, team, "hedge", 44, 9, 44, 0, 32);
+        break;
+      }
+      case "app-review": {
+        // A slim white lighthouse with a rose-gold lantern that sweeps the field.
+        this.cyl(g, team, "frame", 16, 18, 4, 24);
+        this.cyl(g, team, "body", 8, 13, 58, 24, 0, 4);
+        this.cyl(g, team, "frame", 10, 10, 3, 24, 0, 62);
+        const lamp = new THREE.Group();
+        lamp.position.y = 65;
+        this.cyl(lamp, team, "glow", 6, 6, 9, 16);
+        this.box(lamp, team, "white", 22, 2, 2, 0, 4, 0);
+        anim(lamp, { type: "spin", speed: 1.6, axis: "y" });
+        g.add(lamp);
+        this.shape(g, team, "frame", "ar-dome", () => new THREE.SphereGeometry(7, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), 0, 74, 0);
+        break;
+      }
+      case "flagship-store": {
+        // A glass-fronted white cube with a glowing logo over the door.
+        this.box(g, team, "frame", 44, 3, 44);
+        this.box(g, team, "body", 38, 30, 38, 0, 3);
+        this.box(g, team, "screen", 30, 20, 0.8, 0, 5, 19.5);
+        this.shape(g, team, "glow", "fs-logo", () => new THREE.SphereGeometry(4, 12, 8), 0, 30, 20);
+        break;
+      }
+      case "private-cloud": {
+        // A white dome on a plinth, like a cloud you're not allowed into.
+        this.cyl(g, team, "frame", 20, 22, 4, 24);
+        this.shape(g, team, "body", "pc-dome", () => new THREE.SphereGeometry(18, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), 0, 4, 0);
+        this.cyl(g, team, "glow", 18.5, 18.5, 1.5, 32, 0, 5);
+        const lock = this.shape(g, team, "frame", "pc-lock", () => new THREE.TorusGeometry(4, 1.2, 8, 16, Math.PI), 0, 24, 0);
+        lock.rotation.z = 0;
+        break;
+      }
       case "function": {
         // A floating cube with a lambda-ish chevron inside, over a small pad.
         this.cyl(g, team, "dark", 14, 16, 3, 6);
@@ -803,6 +903,50 @@ export class Models {
         }
         break;
       }
+      case "scanner": {
+        // A floating eye with a sweeping beam.
+        const eye = new THREE.Group();
+        eye.position.y = r * 2.2;
+        this.shape(eye, team, "flesh", `scan:${r}`, () => new THREE.SphereGeometry(r * 0.7, 10, 8));
+        this.shape(eye, team, "hot", `scan-iris:${r}`, () => new THREE.SphereGeometry(r * 0.3, 8, 6), 0, 0, r * 0.55);
+        const beam = this.shape(eye, team, "hot", `scan-beam:${r}`, () => new THREE.ConeGeometry(r * 0.6, r * 3, 8, 1, true).rotateX(Math.PI / 2).translate(0, 0, r * 2.2));
+        beam.scale.set(1, 0.3, 1);
+        anim(eye, { type: "spin", speed: 2.5, axis: "y" });
+        g.add(eye);
+        break;
+      }
+      case "phisher": {
+        // A hooked, hunched thing trailing a glowing lure.
+        this.shape(g, team, "flesh", `phish:${r}`, () => new THREE.ConeGeometry(r * 0.7, r * 1.8, 5), 0, r * 0.9, 0).rotation.x = 0.4;
+        this.cyl(g, team, "flesh", r * 0.06, r * 0.06, r * 1.6, 4, 0, r * 1.4, r * 0.4).rotation.x = 0.9;
+        const lure = this.shape(g, team, "hot", `phish-lure:${r}`, () => new THREE.SphereGeometry(r * 0.25, 8, 6), 0, r * 1.9, r * 1.4);
+        anim(lure, { type: "pulse", amount: 0.3, speed: 6 });
+        break;
+      }
+      case "ddos": {
+        // A tiny buzzing cube: they come in swarms.
+        const cube = this.shape(g, team, "hot", `ddos:${r}`, () => new THREE.BoxGeometry(r * 1.1, r * 1.1, r * 1.1), 0, r * 1.2, 0);
+        anim(cube, { type: "spin", speed: 8, axis: "y" });
+        this.shape(g, team, "flesh", `ddos-shell:${r}`, () => new THREE.OctahedronGeometry(r * 0.9, 0), 0, r * 1.2, 0);
+        break;
+      }
+      case "cryptominer": {
+        // A tick-like body with a drill, and a coin glowing on its back.
+        this.shape(g, team, "flesh", `miner:${r}`, () => new THREE.SphereGeometry(r * 0.8, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), 0, r * 0.2, 0);
+        const drill = this.shape(g, team, "hot", `miner-drill:${r}`, () => new THREE.ConeGeometry(r * 0.25, r * 0.9, 6).rotateX(Math.PI / 2), 0, r * 0.4, r * 0.9);
+        anim(drill, { type: "spin", speed: 12, axis: "z" });
+        const coin = this.shape(g, team, "flame", `miner-coin:${r}`, () => new THREE.CylinderGeometry(r * 0.35, r * 0.35, r * 0.1, 16).rotateX(Math.PI / 2), 0, r * 1.2, -r * 0.1);
+        anim(coin, { type: "spin", speed: 3, axis: "y" });
+        break;
+      }
+      case "brute-forcer": {
+        // A hulking ram: armoured hump and a battering head.
+        this.box(g, team, "flesh", r * 1.4, r * 1.1, r * 1.8, 0, r * 0.2);
+        this.shape(g, team, "flesh", `brute-hump:${r}`, () => new THREE.SphereGeometry(r * 0.8, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), 0, r * 1.3, -r * 0.2);
+        this.box(g, team, "hot", r * 1.2, r * 0.8, r * 0.5, 0, r * 0.4, r * 1.1);
+        for (const x of [-1, 1]) this.shape(g, team, "flesh", `brute-horn:${r}`, () => new THREE.ConeGeometry(r * 0.15, r * 0.8, 5).rotateX(Math.PI / 2), x * r * 0.45, r * 0.9, r * 1.5);
+        break;
+      }
       case "trojan": {
         // A gift you shouldn't open: a box with a hot ribbon.
         this.box(g, team, "flesh", r * 1.6, r * 1.3, r * 1.6);
@@ -910,6 +1054,49 @@ export class Models {
       }
 
       // --- decoys --------------------------------------------------------
+      case "moderator": {
+        // A tidy white figure with a rose-gold visor and a ban hammer.
+        this.shape(g, team, "body", `mod:${r}`, () => new THREE.CapsuleGeometry(r * 0.5, r * 0.9, 4, 10), 0, r * 1, 0);
+        this.box(g, team, "glow", r * 0.8, r * 0.18, 0.5, 0, r * 1.45, r * 0.45);
+        this.cyl(g, team, "frame", r * 0.08, r * 0.08, r * 1.3, 6, r * 0.65, r * 0.6);
+        this.box(g, team, "frame", r * 0.5, r * 0.3, r * 0.3, r * 0.65, r * 1.9);
+        break;
+      }
+      case "platform-owner": {
+        // Broad, black turtleneck, standing on a little white podium.
+        this.cyl(g, team, "body", r * 1.1, r * 1.2, r * 0.3, 20);
+        this.shape(g, team, "dark", `po-body:${r}`, () => new THREE.CapsuleGeometry(r * 0.65, r * 1.0, 4, 12), 0, r * 1.25, 0);
+        this.shape(g, team, "body", `po-head:${r}`, () => new THREE.SphereGeometry(r * 0.42, 12, 8), 0, r * 2.35, 0);
+        this.cyl(g, team, "glow", r * 1.3, r * 1.3, r * 0.08, 24, 0, r * 0.32);
+        break;
+      }
+      case "compliance-officer": {
+        // Clipboard in hand, a floating seal of approval.
+        this.cyl(g, team, "body", r * 0.45, r * 0.75, r * 1.9, 12);
+        this.shape(g, team, "body", `co-head:${r}`, () => new THREE.SphereGeometry(r * 0.4, 12, 8), 0, r * 2.2, 0);
+        this.box(g, team, "frame", r * 0.6, r * 0.8, r * 0.08, r * 0.5, r * 1.1, r * 0.4);
+        const seal = this.shape(g, team, "glow", `co-seal:${r}`, () => new THREE.TorusGeometry(r * 0.3, r * 0.08, 6, 16), 0, r * 3, 0);
+        anim(seal, { type: "spin", speed: 2, axis: "y" });
+        break;
+      }
+      case "brand-ambassador": {
+        // Bright, upright, with a halo of floating app icons.
+        this.cyl(g, team, "body", r * 0.5, r * 0.7, r * 1.8, 14);
+        this.shape(g, team, "body", `ba-head:${r}`, () => new THREE.SphereGeometry(r * 0.4, 12, 8), 0, r * 2.1, 0);
+        const icons = new THREE.Group();
+        icons.position.y = r * 2.9;
+        for (const [x, z] of [[r * 0.8, 0], [-r * 0.4, r * 0.7], [-r * 0.4, -r * 0.7]] as const) this.box(icons, team, "glow", r * 0.32, r * 0.32, r * 0.08, x, 0, z);
+        anim(icons, { type: "spin", speed: 1.4, axis: "y" });
+        g.add(icons);
+        break;
+      }
+      case "terms-of-service": {
+        // A tall scroll of small print.
+        this.cyl(g, team, "body", r * 0.35, r * 0.35, r * 2.6, 14);
+        this.box(g, team, "body", r * 1.4, r * 2.2, r * 0.1, r * 0.7, r * 0.2, 0);
+        for (let i = 0; i < 6; i += 1) this.box(g, team, "dark", r * 1.1, r * 0.06, r * 0.12, r * 0.7, r * 0.5 + i * r * 0.32, 0.1);
+        break;
+      }
       case "lambda": {
         // A fast little wedge, low and leaning forward, with a glowing spine.
         this.shape(g, team, "body", `lambda:${r}`, () => new THREE.ConeGeometry(r * 0.75, r * 1.9, 4).rotateX(Math.PI / 2), 0, r * 0.8, 0);

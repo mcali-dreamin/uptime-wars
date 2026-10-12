@@ -16,10 +16,12 @@ import { PACK_SPREAD, REROUTE_TICKS, ROAM_SPEED, SENSED_ARRIVAL } from "../tunin
 import type { Point, Unit, World } from "../types";
 import type { Behavior } from "./index";
 import { engage } from "./engage";
+import { tickScanner } from "../roles";
 
 type Destination = number | Point;
 
 export const roam: Behavior = (ctx, unit, def, state) => {
+  if (def.role?.kind === "scanner") tickScanner(ctx, unit, def.role);
   if (engage(ctx, unit, def)) return;
   // Aimless packs amble; packs that sensed traffic march.
   const marching = typeof ctx.world.waves.packs[unit.packId] === "object";

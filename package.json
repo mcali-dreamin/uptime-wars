@@ -1,7 +1,7 @@
 {
   "name": "uptime-wars",
   "private": true,
-  "version": "0.35.0",
+  "version": "0.37.0",
   "description": "Tech-themed castle defense. Build compute, auto-spawn processes, keep your core online.",
   "type": "module",
   "scripts": {
@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit && tsc -p zero",
     "test": "vitest run",
+    "balance": "vitest run --config vitest.lab.config.ts --reporter=verbose",
     "publish:spacefast": "npm run build && npx -y spacefast publish dist --space spc_de286293390947f7beb1d37d7205b6e5",
     "e2e": "node e2e/smoke.mjs dist && node e2e/coop.mjs dist"
   },

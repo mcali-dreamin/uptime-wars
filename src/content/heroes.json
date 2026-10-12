@@ -111,6 +111,42 @@
         "reserved-capacity",
         "spot-fleet"
       ]
+    },
+    "platform-owner": {
+      "hpPerLevel": 60,
+      "damagePerLevel": 3,
+      "respawnTicks": 400,
+      "respawnPerLevel": 60,
+      "abilities": [
+        "delist",
+        "lockdown",
+        "walled-off",
+        "sherlocked"
+      ]
+    },
+    "compliance-officer": {
+      "hpPerLevel": 40,
+      "damagePerLevel": 3,
+      "respawnTicks": 400,
+      "respawnPerLevel": 60,
+      "abilities": [
+        "audit",
+        "policy-update",
+        "terms-of-service",
+        "mandatory-update"
+      ]
+    },
+    "brand-ambassador": {
+      "hpPerLevel": 40,
+      "damagePerLevel": 3,
+      "respawnTicks": 400,
+      "respawnPerLevel": 60,
+      "abilities": [
+        "launch-event",
+        "loyalty-program",
+        "featured-app",
+        "one-more-thing"
+      ]
     }
   },
   "abilities": {
@@ -586,6 +622,162 @@
       "durationTicks": 600,
       "maxRank": 1,
       "perRank": 0
+    },
+    "delist": {
+      "name": "Delist",
+      "description": "Removed from the store. One heavy hit.",
+      "effect": "strike",
+      "target": "enemy",
+      "unlockLevel": 1,
+      "cooldownTicks": 180,
+      "range": 90,
+      "amount": 150,
+      "maxRank": 3,
+      "perRank": 70
+    },
+    "lockdown": {
+      "name": "Lockdown",
+      "description": "Everything around you gets locked out at once.",
+      "effect": "blast",
+      "target": "self",
+      "unlockLevel": 1,
+      "cooldownTicks": 340,
+      "range": 0,
+      "radius": 150,
+      "amount": 85,
+      "maxRank": 3,
+      "perRank": 40
+    },
+    "walled-off": {
+      "name": "Walled Off",
+      "description": "Inside the garden everything's fine: heals your units and buildings nearby.",
+      "effect": "heal",
+      "target": "self",
+      "unlockLevel": 1,
+      "cooldownTicks": 460,
+      "range": 0,
+      "radius": 260,
+      "amount": 160,
+      "maxRank": 3,
+      "perRank": 75
+    },
+    "sherlocked": {
+      "name": "Sherlocked",
+      "description": "Ship their feature as your own. Enormous damage to one target.",
+      "effect": "strike",
+      "target": "enemy",
+      "unlockLevel": 6,
+      "cooldownTicks": 1200,
+      "range": 420,
+      "amount": 460,
+      "maxRank": 1,
+      "perRank": 90
+    },
+    "audit": {
+      "name": "Audit",
+      "description": "Find the violation. Damage to one target.",
+      "effect": "strike",
+      "target": "enemy",
+      "unlockLevel": 1,
+      "cooldownTicks": 170,
+      "range": 390,
+      "amount": 120,
+      "maxRank": 3,
+      "perRank": 60
+    },
+    "policy-update": {
+      "name": "Policy Update",
+      "description": "New rules, effective immediately, for everyone in an area.",
+      "effect": "blast",
+      "target": "point",
+      "unlockLevel": 1,
+      "cooldownTicks": 220,
+      "range": 380,
+      "radius": 120,
+      "amount": 65,
+      "maxRank": 3,
+      "perRank": 35
+    },
+    "terms-of-service": {
+      "name": "Terms of Service",
+      "description": "Drop a wall of legalese. Creeps nearby go for it instead.",
+      "effect": "decoy",
+      "target": "point",
+      "unlockLevel": 1,
+      "cooldownTicks": 500,
+      "range": 320,
+      "radius": 280,
+      "amount": 340,
+      "durationTicks": 220,
+      "unit": "terms-of-service",
+      "maxRank": 3,
+      "perRank": 150
+    },
+    "mandatory-update": {
+      "name": "Mandatory Update",
+      "description": "Restart required. Huge damage in a wide area.",
+      "effect": "blast",
+      "target": "point",
+      "unlockLevel": 6,
+      "cooldownTicks": 1500,
+      "range": 420,
+      "radius": 230,
+      "amount": 300,
+      "maxRank": 1,
+      "perRank": 50
+    },
+    "launch-event": {
+      "name": "Launch Event",
+      "description": "The crowd goes wild. Your units hit 30% harder for a while.",
+      "effect": "buff",
+      "target": "self",
+      "unlockLevel": 1,
+      "cooldownTicks": 640,
+      "range": 0,
+      "amount": 0.3,
+      "durationTicks": 260,
+      "maxRank": 3,
+      "perRank": 0.07
+    },
+    "loyalty-program": {
+      "name": "Loyalty Program",
+      "description": "Look after the faithful: a big heal for everything nearby.",
+      "effect": "heal",
+      "target": "self",
+      "unlockLevel": 1,
+      "cooldownTicks": 540,
+      "range": 0,
+      "radius": 320,
+      "amount": 170,
+      "maxRank": 3,
+      "perRank": 80
+    },
+    "featured-app": {
+      "name": "Featured App",
+      "description": "Editor's choice: two Moderators fight beside you for a while.",
+      "effect": "summon",
+      "target": "self",
+      "unlockLevel": 1,
+      "cooldownTicks": 700,
+      "range": 0,
+      "amount": 2,
+      "unit": "moderator",
+      "durationTicks": 500,
+      "maxRank": 3,
+      "perRank": 1
+    },
+    "one-more-thing": {
+      "name": "One More Thing",
+      "description": "The reveal. All your units hit 50% harder for a while.",
+      "effect": "buff",
+      "target": "self",
+      "unlockLevel": 6,
+      "cooldownTicks": 1400,
+      "range": 0,
+      "amount": 0.5,
+      "durationTicks": 320,
+      "maxRank": 1,
+      "perRank": 0.05
     }
   },
   "skillPointsPerLevel": 1,
