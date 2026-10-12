@@ -63,8 +63,6 @@ export interface BuildingDef {
   blocks?: boolean;
   /** Users this building can serve. Your total capacity caps your user count. */
   userCapacity?: number;
-  /** Only buildable on a data well: every footprint tile must be one. */
-  onWell?: boolean;
   /** Tiles around this building (once finished) where you may build. */
   buildRadius?: number;
 }

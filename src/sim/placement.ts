@@ -3,7 +3,7 @@
 
 import type { Content } from "./content";
 import { TILE, footprintCenter } from "./map";
-import { TILE_OPEN, TILE_RESOURCE, tileAt } from "./terrain";
+import { TILE_OPEN, tileAt } from "./terrain";
 import type { Building, Entity, Team, TeamId, World } from "./types";
 import { unitInTheWay } from "./walls";
 
@@ -23,18 +23,13 @@ export function isOccupied(world: World, col: number, row: number, footprint: nu
   );
 }
 
-/** Every footprint tile is of this kind: open ground for most buildings, a data well for pumps. */
-function footprintIs(world: World, col: number, row: number, footprint: number, tile: number): boolean {
+function footprintIsOpen(world: World, col: number, row: number, footprint: number): boolean {
   for (let r = row; r < row + footprint; r += 1) {
     for (let c = col; c < col + footprint; c += 1) {
-      if (tileAt(world.terrain, c, r) !== tile) return false;
+      if (tileAt(world.terrain, c, r) !== TILE_OPEN) return false;
     }
   }
   return true;
-}
-
-function footprintIsOpen(world: World, col: number, row: number, footprint: number): boolean {
-  return footprintIs(world, col, row, footprint, TILE_OPEN);
 }
 
 /** Why a building can't go here, or null when it can. */
@@ -51,11 +46,7 @@ export function canPlace(
   const race = content.races[team.raceId]!;
   const def = content.buildings[buildingId];
   if (!def || !race.buildings.includes(buildingId)) return "not in this race's roster";
-  if (def.onWell) {
-    if (!footprintIs(world, col, row, def.footprint, TILE_RESOURCE)) return "needs a data well";
-  } else if (!footprintIsOpen(world, col, row, def.footprint)) {
-    return "terrain is not buildable";
-  }
+  if (!footprintIsOpen(world, col, row, def.footprint)) return "terrain is not buildable";
 
   if (team.coreId === -1) return "no core";
   const center = footprintCenter(col, row, def.footprint);
