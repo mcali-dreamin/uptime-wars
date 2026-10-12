@@ -10,13 +10,15 @@
     <div id="app">
       <header id="hud">
         <div class="stat"><span class="label">Uptime</span><span id="uptime">0:00</span></div>
-        <div class="stat"><span class="label">Compute</span><span><span id="compute">0</span> <small id="income"></small></span></div>
+        <div class="stat"><span class="label">$</span><span><span id="money">0</span> <small id="income"></small></span></div>
+        <div class="stat" id="compute-stat"><span class="label">Compute</span><span id="compute">0</span></div>
         <div class="stat"><span class="label">Users</span><span><span id="users">0</span> <small id="churn"></small></span></div>
         <div class="stat"><span class="label">Core</span><span id="core">0</span></div>
         <div class="stat"><span class="label">Wave</span><span id="wave">0</span></div>
         <div class="stat"><span class="label">Next wave</span><span id="next-wave">-</span></div>
         <div class="stat preview"><span class="label" id="preview-title"></span><span id="preview-creeps"></span></div>
         <div id="status"></div>
+        <button id="sound" type="button" title="Sound: on / effects only / off (M)">Sound: on</button>
       </header>
       <div id="stage">
         <section id="race-picker" hidden>
@@ -42,6 +44,7 @@
           <strong id="info-title"></strong>
           <ul id="info-lines"></ul>
           <button id="info-action" type="button" hidden></button>
+          <button id="info-invoke" class="info-button" type="button" hidden></button>
         </aside>
         <section id="guide" hidden>
           <div class="guide-window">

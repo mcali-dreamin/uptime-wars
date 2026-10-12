@@ -38,7 +38,8 @@ export function groundOrderLabel(session: Session, selection: Selection): string
   if (!entity) return null;
   if (entity.kind === "unit") return entity.mode === "builder" || entity.mode === "hero" ? "Move here" : null;
   if (isCore(session.content, session.team, entity)) return "Set global rally";
-  return session.content.buildings[entity.defId]!.spawn ? "Set rally" : null;
+  const def = session.content.buildings[entity.defId]!;
+  return def.spawn || def.invoke ? "Set rally" : null;
 }
 
 /** The order for right-clicking (or, for the deploy agent, clicking) the ground at `point`. */
@@ -182,5 +183,5 @@ export function placementAt(
 }
 
 export function affordable(session: Session, building: string): boolean {
-  return session.team.compute >= buildCost(session.content, session.team.raceId, building);
+  return session.team.money >= buildCost(session.content, session.team.raceId, building);
 }

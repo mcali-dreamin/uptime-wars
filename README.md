@@ -16,7 +16,7 @@ npm run dev
 
 - Pick a race first. **Open Source Collective** is cheap and fast: it forks
   swarms and its spawners run 15% quicker. **Hyperscaler** has deep pockets and
-  heavy iron: +150 starting compute, 30% tougher units, slower spawners, and its
+  heavy iron: +$150 to start, 30% tougher units, slower spawners, and its
   own roster (Load Balancer tanks, long-range CDN Edge towers, Power Plants).
 - You start with a **deploy agent**, already selected. Click (or right-click)
   the ground to walk it and scout through the fog. Press `C` (or the button) and
@@ -82,6 +82,13 @@ attacks an enemy, `1`-`4` cast, `Shift`+`1`-`4` (or the `+`) learn.
 Heroes and abilities are JSON (`src/content/heroes.json`). An ability is one
 of six effects: blast, strike, heal, decoy, summon, or buff.
 
+**Sound.** Everything you hear is synthesised in the browser with Web Audio
+(`src/audio/`): no audio files. Combat is positional and only plays for what
+you can see, and busy sounds are rate-limited. Waves, bosses, your core
+under attack, casts, and level-ups each have their own cue. The music is a
+generative ambient loop that picks up when enemies close in on your base.
+`M` (or the button in the top bar) cycles sound on, effects only, or off.
+
 **Height** matters. The web has three levels (deep web, surface web,
 backbone). Cliffs separate them and ramps are the only way between. From below
 you can't see up a cliff unless you're at its foot, and attacking downhill
@@ -90,13 +97,21 @@ deals 25% more damage. Hold a ramp and you hold the plateau.
 **Network and redundancy.** You can build anywhere inside your network:
 within reach of a core (7 tiles) or a network building. Open Source builds
 cheap, fragile Mesh Nodes (reach 4); Hyperscaler builds armored Edge PoPs
-(reach 7). Cores are buildable too (300 compute). If your main core falls, the
+(reach 7). Cores are buildable too ($300). If your main core falls, the
 next takes over, and you only go down when every core is down.
 
+**$ and compute** are two different things. **$** is money: users pay it
+every second, and everything (buildings, research) is bought with it.
+**Compute** is capacity: your core (80), Solar Arrays (60) and Power Plants
+(150) supply it, and every user (1) and unit (about 2) uses it.
+The HUD shows it as in use / supplied. It can go over, and the further over
+you are the worse it gets: no new users arrive, users leave in proportion, and
+your towers, spawners and research all slow by the same share.
+
 **Users** are why you're online. They arrive while your core is up and grow
-toward your capacity (the core serves 40; each Web App adds 60). Every user
-pays compute each second, and every hit your core or a Web App takes drives
-some away (towers and racks don't: they're what you put in between).
+toward your capacity (the core serves 40; each Web App adds 60), as long as
+you have the compute to serve them. Every hit your core or a Web App takes
+drives some away (towers and racks don't: they're what you put in between).
 Numbers live in `src/content/economy.json`.
 
 The malware nest sits in the middle of the web and you start out toward the
@@ -195,7 +210,7 @@ if any creep ever targets something beyond its sight.
 **Co-op is in the sim.** A match is 1 to 4 human teams plus the horde
 (`races: ["open-source", "hyperscaler", "botnet"]`). Every map has four
 starts, so the map is the same whoever plays it. Humans are allies: they never
-target each other and share vision. Each has its own base, compute, and race,
+target each other and share vision. Each has its own base, $, and race,
 and either one's traffic draws the horde. A player whose cores are all down
 goes offline and their commands stop, but the match goes on until every player
 is offline (lost) or the nest is (won by all of them).

@@ -83,7 +83,7 @@ describe("co-op play", () => {
   it("allies never shoot each other, even standing in each other's base; both fight the horde", () => {
     const world = createWorld(content, COOP);
     for (const command of planBuildOrder(content, COOP, OPENING_ORDER)) queueCommand(world, command);
-    world.teams[1]!.compute += 1000;
+    world.teams[1]!.money += 1000;
     for (const command of planBuildOrder(content, COOP, [[1, "hyperscale-rack"], [1, "hyperscale-rack"], [1, "cdn-edge"]], 4, 1)) {
       queueCommand(world, command);
     }

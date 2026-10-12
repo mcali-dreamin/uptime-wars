@@ -5,7 +5,7 @@ import { content, SETUP, firstSpot } from "./fixtures";
 /** A world with a few guards out of a rack, and a spot on open ground some way off. */
 function withGuards(count = 4): { world: World; guards: Unit[]; spot: { x: number; y: number } } {
   const world = createWorld(content, SETUP);
-  world.teams[0]!.compute = 10_000;
+  world.teams[0]!.money = 10_000;
   queueCommand(world, firstSpot("server-rack"));
   queueCommand(world, firstSpot("server-rack", 1));
   const guards = () => world.entities.filter((e): e is Unit => e.kind === "unit" && e.team === 0 && e.mode === "guard");

@@ -20,6 +20,8 @@ export interface UnitDef {
   bounty: number;
   /** Radius in pixels. */
   size: number;
+  /** Compute this unit uses while alive (default: economy.compute.perUnit). */
+  upkeep?: number;
   /** How far this unit reveals the fog for its owner, in pixels. */
   sight?: number;
 }
@@ -46,7 +48,17 @@ export interface BuildingDef {
   /** Spawns `count` units every interval, keeping at most `maxAlive` of its own alive. */
   spawn?: { unit: string; intervalTicks: number; count: number; maxAlive: number };
   attack?: BuildingAttack;
+  /** $ paid out on a timer. */
   income?: { amount: number; intervalTicks: number };
+  /**
+   * Serverless: no standing army. Each invocation costs `cost` $ and
+   * spins up `count` units that live `ttlTicks`, then go cold. Fires on its own
+   * when an enemy comes within `triggerRange` (an event), or when you invoke
+   * it; then not again for `cooldownTicks`.
+   */
+  invoke?: { unit: string; count: number; cost: number; ttlTicks: number; cooldownTicks: number; triggerRange: number };
+  /** Compute this building supplies once finished: what keeps users and units running. */
+  compute?: number;
   /** Users this building can serve. Your total capacity caps your user count. */
   userCapacity?: number;
   /** Tiles around this building (once finished) where you may build. */
@@ -55,8 +67,8 @@ export interface BuildingDef {
 
 export type Controller = "human" | "wave-director";
 
-export type RaceLook = "scrappy" | "monolith";
-export const RACE_LOOKS: readonly RaceLook[] = ["scrappy", "monolith"];
+export type RaceLook = "scrappy" | "monolith" | "ephemeral";
+export const RACE_LOOKS: readonly RaceLook[] = ["scrappy", "monolith", "ephemeral"];
 
 export interface RaceDef {
   name: string;
@@ -73,7 +85,8 @@ export interface RaceDef {
   /**
    * How the race's hardware looks, whatever it builds (render-only): "scrappy"
    * is cobbled-together copper and mismatched panels, "monolith" is glass,
-   * chrome, and clean white light. Every playable race needs one.
+   * chrome, and clean white light; "ephemeral" is wireframe that only turns
+   * solid while it's running. Every playable race needs one.
    */
   look?: RaceLook;
   /** Hero units this race can field (see HeroesDef); the player picks one. */
@@ -83,8 +96,8 @@ export interface RaceDef {
     spawnIntervalMultiplier: number;
     costMultiplier: number;
     unitHpMultiplier: number;
-    /** Extra compute at the start of the match. */
-    startingComputeBonus: number;
+    /** Extra $ at the start of the match. */
+    startingMoneyBonus: number;
   };
 }
 
@@ -132,8 +145,16 @@ export interface EconomyDef {
   growthPerSecond: number;
   /** ...but at least this many, while there's room. */
   minArrivalsPerSecond: number;
-  /** Compute per user per second. */
+  /** $ per user per second. */
   revenuePerUserPerSecond: number;
+  /**
+   * Compute is capacity, not money: buildings supply it, users and units use
+   * it. Over capacity, the overload (the share of demand you can't serve)
+   * scales the trouble: no new users, `churnPerSecond` x overload of them
+   * leave each second, and your timers (attacks, spawns, research) slow by
+   * the overload.
+   */
+  compute: { perUser: number; perUnit: number; churnPerSecond: number; maxOverload: number };
   /** One user leaves for every this much damage your buildings take. */
   damagePerUserLost: number;
   /**

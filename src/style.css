@@ -68,6 +68,15 @@ body {
   cursor: help;
 }
 
+#compute-stat.overloaded #compute {
+  color: #f87171;
+  font-weight: bold;
+}
+
+#compute-stat {
+  cursor: help;
+}
+
 #churn {
   color: #f87171;
   font-size: 0.75rem;
@@ -176,7 +185,8 @@ body {
   font-size: 0.85rem;
 }
 
-#info-action {
+#info-action,
+#info-invoke {
   pointer-events: auto;
   margin-top: 0.4rem;
   padding: 0.25rem 0.6rem;
@@ -188,11 +198,13 @@ body {
   cursor: pointer;
 }
 
+#info-invoke:hover,
 #info-action:hover,
 #info-action.armed {
   border-color: var(--accent);
 }
 
+#info-invoke[hidden],
 #info-action[hidden] {
   display: none;
 }
@@ -661,6 +673,20 @@ body {
   background: var(--accent);
 }
 
+#sound {
+  padding: 0.25rem 0.6rem;
+  background: var(--panel);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+#sound:hover {
+  color: var(--text);
+  border-color: var(--accent);
 .coop-mode {
   display: flex;
   flex-direction: column;

@@ -29,6 +29,8 @@ import { InfoPanel } from "./ui/info-panel";
 import { RacePicker } from "./ui/race-picker";
 import { TICK_RATE, TILE, isCore, loadDefaultContent, type Point } from "./sim";
 import type { NetMatch } from "./game/net/lobby";
+import { Director, tension, type Listener } from "./audio/cues";
+import { SoundEngine, type SoundMode } from "./audio/engine";
 import { CoopLobby } from "./ui/coop";
 import { HeroBar, heroUnit } from "./ui/hero-bar";
 import { castBlocker } from "./sim/heroes";
@@ -42,9 +44,33 @@ const content = loadDefaultContent();
 const session = new Session(content);
 const renderer = new Renderer();
 const hud = new Hud(session);
-const info = new InfoPanel(session, () => arm());
+const sound = new SoundEngine();
+const director = new Director(content);
+const soundButton = $("sound");
+const SOUND_LABEL: Record<SoundMode, string> = { on: "Sound: on", sfx: "Sound: effects", off: "Sound: off" };
+soundButton.textContent = SOUND_LABEL[sound.mode];
+function cycleSound(): void {
+  soundButton.textContent = SOUND_LABEL[sound.cycle()];
+  renderer.showBanner(SOUND_LABEL[sound.mode]);
+}
+soundButton.addEventListener("click", () => cycleSound());
+// Browsers allow audio only after a gesture: start it on the first one.
+for (const type of ["pointerdown", "keydown"] as const) window.addEventListener(type, () => sound.unlock(), { capture: true });
+/** Where the player is looking, for positional sound. */
+const listener: Listener = {
+  get center() {
+    return { x: renderer.camera.x, y: renderer.camera.y };
+  },
+  get span() {
+    const v = renderer.camera.view(0);
+    return v.right - v.left;
+  },
+  visible: (p) => renderer.fog.isVisible(p.x, p.y),
+};
+const info = new InfoPanel(session, () => arm(), () => invokeSelected());
 const bar = new BuildBar(session, {
   choose: (button) => {
+    sound.ui("click");
     const current = buttonFor(selection);
     if (current === button) return select(fallback());
     select(button === FOUND_BUTTON ? { kind: "found" } : { kind: "place", building: button });
@@ -87,6 +113,7 @@ let announced = false;
 if (new URLSearchParams(location.search).has("debug")) {
   Object.assign(window, {
     uptime: {
+      sound,
       get world() {
         return session.world;
       },
@@ -211,6 +238,7 @@ function order(point: Point): void {
   if (!next) return;
   session.issue(next);
   renderer.ping(point.x, point.y);
+  sound.ui("order");
   // An armed order is one-shot: back to the plain selection.
   select(disarmed(selection));
 }
@@ -219,6 +247,14 @@ function order(point: Point): void {
  * Arm the selection's ground order, so the next left-click gives it: T (or the
  * panel button) for rally / attack-move, F for a plain move.
  */
+/** Run the selected serverless function now (V, or the info card's button). */
+function invokeSelected(): boolean {
+  const entity = selectedEntity(session, selection);
+  if (entity?.kind !== "building" || !content.buildings[entity.defId]!.invoke) return false;
+  session.issue({ type: "invoke", buildingId: entity.id });
+  return true;
+}
+
 function arm(how: "attack" | "move" = "attack"): boolean {
   const next = armed(session, selection, how);
   if (next) select(next);
@@ -264,6 +300,7 @@ const gameInput: GameInput = {
     if (placement) {
       if (!placement.valid) return;
       session.issue(placement.order);
+      sound.ui("place");
       renderer.ping(point.x, point.y);
       if (selection.kind === "found") return select(fallback());
       if (!shift) select(NOTHING);
@@ -330,6 +367,8 @@ const gameInput: GameInput = {
   },
 
   key(key, event) {
+    // M works anywhere, menus included.
+    if (key === "m") return cycleSound(), true;
     if (picker.key(key)) return true;
     if (guide.key(key)) return true;
     if (key === "g") return guide.show(), true;
@@ -343,6 +382,7 @@ const gameInput: GameInput = {
     if (key === "q" && !session.deploying) return selectHero();
     if (key === "t") return arm();
     if (key === "f") return arm("move");
+    if (key === "v") return invokeSelected();
     if (key === "z") {
       // The whole army.
       const ids = allSoldiers(session).map((u) => u.id);
@@ -405,6 +445,7 @@ function startNetMatch(match: NetMatch): void {
 }
 
 function resetMatch(): void {
+  director.reset();
   renderer.localTeam = session.local;
   // After the team is known: in co-op your colour paints your own slot.
   applyColor();
@@ -448,6 +489,7 @@ renderer.app.ticker.add((ticker) => {
         break;
       }
       renderer.collectEvents(world);
+      for (const cue of director.cues(world, world.events, session.local, listener, performance.now() / 1000)) sound.play(cue);
       for (const event of world.events) {
         if (event.type === "failover" && event.team === session.team.id) renderer.showBanner("Core lost · failover");
         if (event.type === "offline") {
@@ -489,5 +531,6 @@ renderer.app.ticker.add((ticker) => {
   const selectedId = selection.kind === "entity" ? selection.id : null;
   renderer.draw(world, content, paused ? 1 : accumulator / STEP_MS, ticker.deltaMS, placement, selectedId, selectedIds(selection));
   hud.update(selection, paused);
+  sound.setTension(tension(world, session.local, content));
   heroBar.update();
 });
