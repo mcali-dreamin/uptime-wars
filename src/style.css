@@ -675,4 +675,17 @@ body {
 #sound:hover {
   color: var(--text);
   border-color: var(--accent);
+.coop-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.coop-mode label {
+  cursor: pointer;
+}
+
+.coop-mode label[hidden] {
+  display: none;
 }
