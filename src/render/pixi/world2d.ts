@@ -9,7 +9,7 @@ import type { Fog } from "../fog";
 import { PING_MS, SHOT_TTL_MS, type Frame, type WorldView } from "../frame";
 import { HIGHLIGHT, INVALID, VALID, teamColor } from "../palette";
 import { drawBuilder, drawGlyph, drawHealth } from "./glyphs";
-import { drawTerrainBase, drawTerrainDetail } from "./terrain-art";
+import { drawHubs, drawTerrainBase, drawTerrainDetail } from "./terrain-art";
 
 /** How far outside the camera (world px) things still get drawn. */
 const CULL_MARGIN = 64;
@@ -33,6 +33,7 @@ export class World2D implements WorldView {
     g.clear();
     drawTerrainBase(g, terrain, TILE);
     drawTerrainDetail(g, terrain, TILE);
+    drawHubs(g, terrain, TILE);
     g.rect(0, 0, terrain.cols * TILE, terrain.rows * TILE).stroke({ width: 2, color: 0x243142 });
   }
 

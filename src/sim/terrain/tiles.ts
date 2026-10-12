@@ -23,6 +23,15 @@ export interface TilePoint {
   row: number;
 }
 
+/**
+ * Where users live: a neutral spot on the map (2x2) that any player can
+ * connect by bringing their network within reach. Small hubs ("campus") sit a
+ * short hop from each start; large ones ("metro") toward the nest.
+ */
+export interface HubSpot extends TilePoint {
+  size: "campus" | "metro";
+}
+
 export interface Terrain {
   cols: number;
   rows: number;
@@ -38,6 +47,8 @@ export interface Terrain {
   starts: TilePoint[];
   /** Top-left tile of the creep nest's 2x2 footprint. */
   nest: TilePoint;
+  /** User hubs: neutral spots players connect for user room. */
+  hubs: HubSpot[];
   /** Places wandering creeps drift between. Each gets its own flow field. */
   roamPoints: TilePoint[];
 }

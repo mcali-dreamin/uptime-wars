@@ -114,6 +114,15 @@ you have the compute to serve them. Every hit your core or a Web App takes
 drives some away (towers and racks don't: they're what you put in between).
 Numbers live in `src/content/economy.json`.
 
+**Hubs** are where users live: neutral city blocks on the map, a **Campus**
+a short hop from every start and a few bigger **Metros** out toward the nest.
+Bring your network within reach of one and it connects, adding user room
+(+80 / +200) that you then need the compute to serve. Crawlers sense your
+connected hubs like a core, hits on a hub drive its users away, and a hub
+knocked offline can't be reconnected for 45 seconds (cut off from your
+network, it can be retaken at once). In co-op or free-for-all, whoever
+connects a hub first holds it.
+
 The malware nest sits in the middle of the web and you start out toward the
 edge. Waves never stop: each one is bigger, comes sooner, and unlocks nastier
 creeps (worms, then trojans, then ransomware bosses). The top bar previews the next wave: its name, the creeps it can bring (new

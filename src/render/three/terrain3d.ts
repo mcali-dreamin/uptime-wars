@@ -64,6 +64,7 @@ export class Terrain3D {
     this.buildGround(terrain);
     this.buildShards(terrain);
     this.buildDoodads(terrain);
+    this.buildHubs(terrain);
     this.buildVoid(terrain);
   }
 
@@ -272,6 +273,53 @@ export class Terrain3D {
       mesh.receiveShadow = true;
       this.add(mesh, kind.geometry, kind.material);
     }
+  }
+
+  /**
+   * User hubs: a pad with a cluster of small, dim towers with lit windows,
+   * where users live. Neutral grey; whoever connects one lights an uplink on
+   * top (the hub building, see models.ts). Metros are bigger and taller.
+   */
+  private buildHubs(terrain: Terrain): void {
+    const pad = this.fog.apply(new THREE.MeshStandardMaterial({ color: 0x1f2630, roughness: 0.85, metalness: 0.2 }));
+    const tower = this.fog.apply(new THREE.MeshStandardMaterial({ color: 0x38414d, roughness: 0.6, metalness: 0.4 }));
+    const windows = this.fog.apply(new THREE.MeshStandardMaterial({ color: 0xfde68a, emissive: 0xfbbf24, emissiveIntensity: 0.55, roughness: 0.5 }));
+    const box = new THREE.BoxGeometry(1, 1, 1);
+    box.translate(0, 0.5, 0);
+    const towers: THREE.Matrix4[] = [];
+    const lights: THREE.Matrix4[] = [];
+    const pads: THREE.Matrix4[] = [];
+    terrain.hubs.forEach((hub, n) => {
+      const cx = (hub.col + 1) * TILE;
+      const cz = (hub.row + 1) * TILE;
+      const y = this.floorAt(cx, cz);
+      const metro = hub.size === "metro";
+      const span = metro ? 2.9 * TILE : 2.6 * TILE;
+      pads.push(new THREE.Matrix4().makeScale(span, 3, span).setPosition(cx, y, cz));
+      const count = metro ? 9 : 6;
+      for (let k = 0; k < count; k += 1) {
+        const a = hash01(n * 31 + k, 41);
+        const b = hash01(n * 31 + k, 42);
+        // Ring the middle, leaving room for the uplink.
+        const ox = (a - 0.5) * span * 0.85;
+        const oz = (b - 0.5) * span * 0.85;
+        if (Math.abs(ox) < 14 && Math.abs(oz) < 14) continue;
+        const w = 10 + hash01(n * 31 + k, 43) * 10;
+        const h = (metro ? 28 : 16) + hash01(n * 31 + k, 44) * (metro ? 50 : 22);
+        towers.push(new THREE.Matrix4().makeScale(w, h, w).setPosition(cx + ox, y + 3, cz + oz));
+        for (let f = 0; f < Math.floor(h / 9); f += 1) {
+          lights.push(new THREE.Matrix4().makeScale(w + 0.6, 1.4, w + 0.6).setPosition(cx + ox, y + 8 + f * 9, cz + oz));
+        }
+      }
+    });
+    for (const [material, matrices, shadow] of [[pad, pads, false], [tower, towers, true], [windows, lights, false]] as const) {
+      const mesh = new THREE.InstancedMesh(box, material, matrices.length);
+      matrices.forEach((m, i) => mesh.setMatrixAt(i, m));
+      mesh.castShadow = shadow;
+      mesh.receiveShadow = true;
+      this.add(mesh, material);
+    }
+    this.disposables.push(box);
   }
 
   /** Beyond the map: a dark void with a faint grid, so the edge reads as an edge. */

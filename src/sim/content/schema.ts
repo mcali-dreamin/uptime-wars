@@ -155,6 +155,8 @@ export interface EconomyDef {
    * the overload.
    */
   compute: { perUser: number; perUnit: number; churnPerSecond: number; maxOverload: number };
+  /** User hubs (campus, metro): after one is knocked offline, it can't be reconnected for this long. */
+  hubs: { reconnectTicks: number };
   /** One user leaves for every this much damage your buildings take. */
   damagePerUserLost: number;
   /**
