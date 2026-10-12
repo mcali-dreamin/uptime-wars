@@ -129,3 +129,59 @@ describe("user hubs", () => {
     expect(run()).toBe(run());
   });
 });
+
+describe("user hubs in co-op", () => {
+  const COOP = { seed: SETUP.seed, races: ["open-source", "open-source", "botnet"], startWithCore: true };
+  const FFA = { ...COOP, races: ["open-source", "open-source"], mode: "ffa" as const };
+  const base = (world: World, team: number) => {
+    const t = world.teams[team]!;
+    const room = userCapacity(world, content, t);
+    return room;
+  };
+
+  it("a hub's room is split between online allies, and adds up to the whole hub", () => {
+    const world = createWorld(content, COOP);
+    const before = [base(world, 0), base(world, 1)];
+    reach(world, 0, 0);
+    second(world);
+    expect(world.hubs[0]!.owner).toBe(0);
+    const total = content.buildings[world.terrain.hubs[0]!.size]!.userCapacity!;
+    const gained = [base(world, 0) - before[0]!, base(world, 1) - before[1]!];
+    expect(gained[0]! + gained[1]!).toBe(total);
+    expect(Math.abs(gained[0]! - gained[1]!)).toBeLessThanOrEqual(1);
+  });
+
+  it("an ally who goes down stops sharing; the rest get the whole hub", () => {
+    const world = createWorld(content, COOP);
+    const before = base(world, 0);
+    reach(world, 0, 0);
+    second(world);
+    world.entities.find((e) => e.id === world.teams[1]!.coreId)!.hp = 0;
+    second(world);
+    const total = content.buildings[world.terrain.hubs[0]!.size]!.userCapacity!;
+    expect(base(world, 0) - before).toBe(total);
+  });
+
+  it("cut off from its holder, it passes to an ally who still reaches it", () => {
+    const world = createWorld(content, COOP);
+    const mine = reach(world, 0, 0);
+    second(world);
+    const hub = hubBuilding(world, world.terrain.hubs[0]!)!;
+    reach(world, 0, 1);
+    mine.hp = 0;
+    second(world);
+    expect(world.hubs[0]!.owner).toBe(1);
+    expect(hubBuilding(world, world.terrain.hubs[0]!)?.id).toBe(hub.id);
+    expect(world.events.some((e) => e.type === "hub" && e.state === "cut-off")).toBe(false);
+  });
+
+  it("in free-for-all the holder keeps all of it", () => {
+    const world = createWorld(content, FFA);
+    const before = [base(world, 0), base(world, 1)];
+    reach(world, 0, 0);
+    second(world);
+    const total = content.buildings[world.terrain.hubs[0]!.size]!.userCapacity!;
+    expect(base(world, 0) - before[0]!).toBe(total);
+    expect(base(world, 1)).toBe(before[1]);
+  });
+});

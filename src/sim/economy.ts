@@ -6,6 +6,7 @@
 // it gets (see overload).
 
 import type { TickContext } from "./context";
+import { HUB_KINDS, hubUserRoom } from "./hubs";
 import { TICK_RATE } from "./map";
 import type { Team, World } from "./types";
 import { multiplier } from "./upgrades";
@@ -91,8 +92,11 @@ export function userCapacity(world: World, content: TickContext["content"], team
   let capacity = 0;
   for (const entity of world.entities) {
     if (entity.kind !== "building" || entity.team !== team.id || entity.hp <= 0 || entity.buildRemaining > 0) continue;
+    // Hubs are counted below: in co-op their room is shared.
+    if (HUB_KINDS.includes(entity.defId)) continue;
     capacity += content.buildings[entity.defId]!.userCapacity ?? 0;
   }
+  capacity += hubUserRoom(world, content, team);
   return Math.floor(capacity * multiplier(content, team, "userCapacity"));
 }
 

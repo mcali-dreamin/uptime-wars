@@ -120,8 +120,10 @@ Bring your network within reach of one and it connects, adding user room
 (+80 / +200) that you then need the compute to serve. Crawlers sense your
 connected hubs like a core, hits on a hub drive its users away, and a hub
 knocked offline can't be reconnected for 45 seconds (cut off from your
-network, it can be retaken at once). In co-op or free-for-all, whoever
-connects a hub first holds it.
+network, it can be retaken at once). In free-for-all, whoever connects a
+hub first holds it. In co-op a hub is the team's: its room is split evenly
+between the allies who are online, and it stays connected while any ally's
+network reaches it.
 
 The malware nest sits in the middle of the web and you start out toward the
 edge. The botnet never stops, and its pressure comes in two forms.
