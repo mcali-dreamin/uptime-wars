@@ -32,6 +32,7 @@ export function applyCommands(ctx: TickContext): void {
     const command = world.commands.shift()!;
     const reason = applyCommand(ctx, command);
     if (reason) world.events.push({ type: "rejected", command, reason });
+    else world.log.push(command);
   }
 }
 

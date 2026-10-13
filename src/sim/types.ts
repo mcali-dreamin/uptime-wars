@@ -373,4 +373,10 @@ export interface World {
   waves: WaveState;
   outcome: Outcome | null;
   events: SimEvent[];
+  /**
+   * Every command that took effect, in the order it did. With the seed and
+   * setup it replays the match exactly (see simulate). Like events, it isn't
+   * part of the state hash.
+   */
+  log: Command[];
 }

@@ -704,3 +704,13 @@ body {
 .coop-mode label[hidden] {
   display: none;
 }
+
+#stats-row {
+  color: var(--muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+#stats-row[hidden] {
+  display: none;
+}
