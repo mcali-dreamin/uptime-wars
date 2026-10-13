@@ -18,6 +18,11 @@ import type { Behavior } from "./index";
 import { engage } from "./engage";
 import { tickScanner } from "../roles";
 import { terrainFor } from "../walls";
+import { isWalkableTile } from "../terrain";
+
+/** Flanking: packs further than this from their target swing out by up to FLANK_PUSH px. */
+const FLANK_MIN_DISTANCE = 1400;
+const FLANK_PUSH = 900;
 
 type Destination = number | Point;
 
@@ -48,11 +53,27 @@ function wander(ctx: TickContext, unit: Unit, leader: Unit | undefined, speed: n
   // offset spreads packs out so they don't all reroute on the same tick.
   const rethink =
     typeof destination === "number" && leader === unit && (world.tick + unit.packId * 37) % REROUTE_TICKS === 0;
+  // A pack closing on a base takes its flanking waypoint first.
+  const flank = world.waves.approach?.[unit.packId];
+  if (flank && typeof destination === "object") {
+    const step = stepToward(world, unit, flank);
+    if (step) {
+      moveToward(terrain, unit, step.x, step.y, speed);
+      return;
+    }
+    // Reached it (the leader decides for the pack): straight in from here.
+    if (leader === unit || !leader) delete world.waves.approach![unit.packId];
+  }
   let waypoint = destination === undefined || rethink ? null : stepToward(world, unit, destination);
   if (!waypoint) {
     // Arrived, or new pack: decide where to go next.
     destination = pickDestination(ctx, unit);
     world.waves.packs[unit.packId] = destination;
+    if (world.waves.approach) delete world.waves.approach[unit.packId];
+    if (typeof destination === "object") {
+      const side = flankFor(world, unit, destination);
+      if (side) (world.waves.approach ??= {})[unit.packId] = side;
+    }
     waypoint = stepToward(world, unit, destination);
   }
   if (waypoint) moveToward(terrain, unit, waypoint.x, waypoint.y, speed);
@@ -98,6 +119,36 @@ function pickRoamPoint(world: World): number {
     if (roll <= 0) return i;
   }
   return weights.length - 1;
+}
+
+/**
+ * Packs don't all take the shortest road in. Two packs in three swing out to
+ * one side or the other (by pack id): a waypoint part of the way there,
+ * pushed sideways, on walkable ground. The rest come straight. Null when it
+ * goes straight, or there's no ground to swing through.
+ */
+function flankFor(world: World, unit: Unit, target: Point): Point | null {
+  const side = (unit.packId % 3) - 1;
+  if (side === 0) return null;
+  const dx = target.x - unit.x;
+  const dy = target.y - unit.y;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  if (length < FLANK_MIN_DISTANCE) return null;
+  const push = Math.min(FLANK_PUSH, length * 0.4) * side;
+  const ax = unit.x + dx * 0.6 - (dy / length) * push;
+  const ay = unit.y + dy * 0.6 + (dx / length) * push;
+  const { terrain } = terrainFor(world, unit.team);
+  const col = Math.floor(ax / TILE);
+  const row = Math.floor(ay / TILE);
+  for (let r = 0; r <= 4; r += 1) {
+    for (let dr = -r; dr <= r; dr += 1) {
+      for (let dc = -r; dc <= r; dc += 1) {
+        if (Math.max(Math.abs(dc), Math.abs(dr)) !== r || !isWalkableTile(terrain, col + dc, row + dr)) continue;
+        return { x: (col + dc + 0.5) * TILE, y: (row + dr + 0.5) * TILE };
+      }
+    }
+  }
+  return null;
 }
 
 /** Next waypoint toward the destination; null on arrival. */

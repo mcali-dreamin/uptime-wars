@@ -41,3 +41,4 @@ export { earnedPerks, raceMechanics, raceModifiers, tierBlocker, tierDef, tierOf
 export { traitsFor } from "./traits";
 export { bonus, centerOf, slotOf, upgradeName, upgradesAt } from "./upgrades";
 export { buildingMaxHp } from "./entities";
+export { infectionSites, liveNodes } from "./spread";
