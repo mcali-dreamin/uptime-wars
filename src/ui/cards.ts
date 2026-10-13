@@ -116,6 +116,7 @@ const STAT_TEXT: Record<string, string> = {
   spawnSpeed: "spawn speed",
   userCapacity: "user capacity",
   revenue: "revenue per user",
+  buildRadius: "core reach (tiles)",
   tier: "core tier",
   unitArmor: "unit armor",
   buildingArmor: "building armor",
@@ -125,7 +126,7 @@ const STAT_TEXT: Record<string, string> = {
 
 /** "+15% tower damage" or "+1 building armor" per level. */
 function effectText(def: { stat: string; perLevel: number }): string {
-  const flat = def.stat === "unitArmor" || def.stat === "buildingArmor";
+  const flat = def.stat === "unitArmor" || def.stat === "buildingArmor" || def.stat === "buildRadius";
   return `${flat ? `+${def.perLevel}` : `+${Math.round(def.perLevel * 100)}%`} ${STAT_TEXT[def.stat]} per level`;
 }
 

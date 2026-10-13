@@ -3,6 +3,8 @@ import {
   canPlace,
   canResearch,
   computeBalance,
+  coreReachBonus,
+  reachOf,
   createWorld,
   hashWorld,
   inNetwork,
@@ -124,5 +126,30 @@ describe("core tiers", () => {
     advance(a);
     advance(b);
     expect(hashWorld(a)).toBe(hashWorld(b));
+  });
+});
+
+describe("core reach composes", () => {
+  const wg = () => createWorld(content, { seed: 1234, races: ["walled-garden", "botnet"], startWithCore: true });
+  const reachTiles = (w: World) => reachOf(w, content, core0(w) as never) / TILE;
+
+  it("Walled Garden's cores reach 3 tiles further than everyone else's", () => {
+    expect(reachTiles(createWorld(content, SETUP))).toBe(content.buildings.core!.buildRadius!);
+    expect(reachTiles(wg())).toBe(content.buildings.core!.buildRadius! + 3);
+  });
+
+  it("tier, race, perks and research add up", () => {
+    const w = wg();
+    const team = w.teams[0]!;
+    const base = content.buildings.core!.buildRadius!;
+    team.upgrades[TIER] = 2;
+    expect(coreReachBonus(content, team)).toBe(tiers[2]!.buildRadius + 3);
+    expect(reachTiles(w)).toBe(base + tiers[2]!.buildRadius + 3);
+    // A perk can set it, and research can add to it: same formula, no special cases.
+    const perkContent = structuredClone(content);
+    perkContent.races["walled-garden"]!.tierPerks![1] = { name: "x", description: "x", modifiers: { buildRadiusBonus: 5 } };
+    perkContent.upgrades["reach"] = { name: "Reach", description: "", stat: "buildRadius", perLevel: 1, maxLevel: 2, cost: 1, researchTicks: 1 };
+    team.upgrades["reach"] = 2;
+    expect(coreReachBonus(perkContent, team)).toBe(tiers[2]!.buildRadius + 5 + 2);
   });
 });

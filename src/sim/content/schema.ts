@@ -164,6 +164,8 @@ export interface RaceDef {
     unitHpMultiplier: number;
     /** Extra $ at the start of the match. */
     startingMoneyBonus: number;
+    /** Extra tiles of reach on every core (default 0). Tier perks can change it. */
+    buildRadiusBonus?: number;
     /** Function (invoke) cooldowns and run costs scale by these (default 1). */
     invokeCooldownMultiplier?: number;
     invokeCostMultiplier?: number;
@@ -278,7 +280,8 @@ export type UpgradeStat =
   | "userCapacity"
   | "revenue"
   | "tier"
-  | "trait";
+  | "trait"
+  | "buildRadius";
 
 /**
  * A unit trait, unlocked by a "trait" upgrade. All optional; they stack.

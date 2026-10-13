@@ -36,7 +36,7 @@ export { fortressGates, fortressSpots } from "./fortress";
 export { invokeBlocker, invokeCost } from "./functions";
 export { forkBlocker, forkCost, regionShield } from "./mechanics";
 export { isJammed } from "./roles";
-export { reachOf } from "./placement";
+export { coreReachBonus, reachOf } from "./placement";
 export { earnedPerks, raceMechanics, raceModifiers, tierBlocker, tierDef, tierOf, tierUpgrade } from "./tiers";
 export { traitsFor } from "./traits";
 export { bonus, centerOf, slotOf, upgradeName, upgradesAt } from "./upgrades";
