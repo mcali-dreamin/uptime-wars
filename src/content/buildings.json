@@ -50,7 +50,8 @@
       "count": 1,
       "maxAlive": 4
     },
-    "sight": 300
+    "sight": 300,
+    "tier": 1
   },
   "firewall": {
     "name": "Firewall",
@@ -183,7 +184,12 @@
     "footprint": 1,
     "buildable": true,
     "sight": 280,
-    "userCapacity": 60
+    "userCapacity": 60,
+    "limitPerTier": [
+      2,
+      4,
+      6
+    ]
   },
   "mesh-node": {
     "name": "Mesh Node",
@@ -208,19 +214,6 @@
     "buildable": true,
     "sight": 360,
     "buildRadius": 7
-  },
-  "data-pump": {
-    "name": "Data Pump",
-    "description": "Taps a data well for 100 compute. Only goes on a well, and wells are out in the open.",
-    "cost": 100,
-    "buildTicks": 120,
-    "hp": 410,
-    "armor": 1,
-    "footprint": 1,
-    "buildable": true,
-    "onWell": true,
-    "sight": 300,
-    "compute": 100
   },
   "function": {
     "name": "Function",
@@ -258,7 +251,8 @@
       "ttlTicks": 400,
       "cooldownTicks": 300,
       "triggerRange": 360
-    }
+    },
+    "tier": 1
   },
   "garden-wall": {
     "name": "Wall",
@@ -286,7 +280,8 @@
       "range": 230,
       "cooldownTicks": 20
     },
-    "sight": 380
+    "sight": 380,
+    "tier": 1
   },
   "flagship-store": {
     "name": "Flagship Store",
@@ -316,5 +311,179 @@
     "buildable": true,
     "sight": 240,
     "compute": 110
+  },
+  "monorepo": {
+    "name": "Monorepo",
+    "description": "Compiles a Kernel: slow and enormous, it mends every unit and building near it. Needs a Region.",
+    "cost": 320,
+    "buildTicks": 160,
+    "hp": 900,
+    "armor": 3,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 300,
+    "spawn": {
+      "unit": "kernel",
+      "intervalTicks": 600,
+      "count": 1,
+      "maxAlive": 2
+    },
+    "tier": 2
+  },
+  "edge-fleet": {
+    "name": "Edge Fleet",
+    "description": "Pushes out CDN Swarms three at a time: fast raiders. Needs a Data Center.",
+    "cost": 150,
+    "buildTicks": 100,
+    "hp": 560,
+    "armor": 2,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 300,
+    "spawn": {
+      "unit": "cdn-swarm",
+      "intervalTicks": 260,
+      "count": 3,
+      "maxAlive": 6
+    },
+    "tier": 1
+  },
+  "mainframe-bay": {
+    "name": "Mainframe Bay",
+    "description": "Rolls out Mainframes: siege iron that tears buildings apart. Needs a Region.",
+    "cost": 340,
+    "buildTicks": 180,
+    "hp": 1100,
+    "armor": 4,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 300,
+    "spawn": {
+      "unit": "mainframe",
+      "intervalTicks": 700,
+      "count": 1,
+      "maxAlive": 2
+    },
+    "tier": 2
+  },
+  "state-machine": {
+    "name": "State Machine",
+    "description": "Runs a Step Function workflow: two tough ranged units at once, on demand. Needs a Region.",
+    "cost": 260,
+    "buildTicks": 120,
+    "hp": 520,
+    "armor": 2,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 360,
+    "invoke": {
+      "unit": "step-function",
+      "count": 2,
+      "cost": 45,
+      "ttlTicks": 500,
+      "cooldownTicks": 360,
+      "triggerRange": 380
+    },
+    "tier": 2
+  },
+  "trust-safety": {
+    "name": "Trust & Safety",
+    "description": "Trains Gatekeepers: heavy melee that holds a wall gap. Needs a Data Center.",
+    "cost": 160,
+    "buildTicks": 100,
+    "hp": 820,
+    "armor": 3,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 300,
+    "spawn": {
+      "unit": "gatekeeper",
+      "intervalTicks": 300,
+      "count": 1,
+      "maxAlive": 4
+    },
+    "tier": 1
+  },
+  "legal-dept": {
+    "name": "Legal Department",
+    "description": "Retains a Legal Team: ranged, and whatever it hits slows to half speed. Needs a Region.",
+    "cost": 280,
+    "buildTicks": 140,
+    "hp": 760,
+    "armor": 3,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 300,
+    "spawn": {
+      "unit": "legal-team",
+      "intervalTicks": 420,
+      "count": 1,
+      "maxAlive": 3
+    },
+    "tier": 2
+  },
+  "ci-server": {
+    "name": "CI Server",
+    "description": "Where your army gets better: weapons, armor, and Open Source's unit traits. Select it to research.",
+    "cost": 150,
+    "buildTicks": 100,
+    "hp": 700,
+    "armor": 2,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 280,
+    "limitPerTier": [
+      1,
+      1,
+      1
+    ]
+  },
+  "rnd-lab": {
+    "name": "R&D Lab",
+    "description": "Where your army gets better: weapons, armor, and Hyperscaler's unit traits. Select it to research.",
+    "cost": 150,
+    "buildTicks": 100,
+    "hp": 700,
+    "armor": 2,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 280,
+    "limitPerTier": [
+      1,
+      1,
+      1
+    ]
+  },
+  "build-pipeline": {
+    "name": "Build Pipeline",
+    "description": "Where your army gets better: weapons, armor, and Serverless's unit traits. Select it to research.",
+    "cost": 150,
+    "buildTicks": 100,
+    "hp": 700,
+    "armor": 2,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 280,
+    "limitPerTier": [
+      1,
+      1,
+      1
+    ]
+  },
+  "design-studio": {
+    "name": "Design Studio",
+    "description": "Where your army gets better: weapons, armor, and Walled Garden's unit traits. Select it to research.",
+    "cost": 150,
+    "buildTicks": 100,
+    "hp": 700,
+    "armor": 2,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 280,
+    "limitPerTier": [
+      1,
+      1,
+      1
+    ]
   }
 }

@@ -2,7 +2,7 @@
 // it. Every "what does clicking here do?" question is answered in this file,
 // so the input code, the cursor, the hint line, and the info panel agree.
 
-import { TILE, TILE_RESOURCE, buildCost, canFound, canPlace, forkBlocker, hostile, isCore, tileAt, type Content, type Entity, type Point, type Unit } from "../sim";
+import { TILE, buildCost, canFound, canPlace, forkBlocker, hostile, isCore, tierBlocker, type Content, type Entity, type Point, type Unit } from "../sim";
 import type { Order, Session } from "./session";
 
 export type Selection =
@@ -168,13 +168,8 @@ export function placementAt(
   }
   if (selection.kind === "place") {
     const def = content.buildings[selection.building]!;
-    let col = Math.floor(point.x / TILE);
-    let row = Math.floor(point.y / TILE);
-    // Pumps snap onto a well next to the pointer: wells are one tile, hard to hit.
-    if (def.onWell) {
-      const well = nearbyWell(session, col, row);
-      if (well) ({ col, row } = well);
-    }
+    const col = Math.floor(point.x / TILE);
+    const row = Math.floor(point.y / TILE);
     if (selection.fork !== undefined) {
       const source = session.entity(selection.fork);
       const valid = forkBlocker(session.world, content, session.local, source?.kind === "building" ? source : undefined, col, row) === null;
@@ -193,16 +188,10 @@ export function placementAt(
   return null;
 }
 
-/** The data well at or right next to a tile, if any. */
-function nearbyWell(session: Session, col: number, row: number): { col: number; row: number } | null {
-  const { terrain } = session.world;
-  if (tileAt(terrain, col, row) === TILE_RESOURCE) return { col, row };
-  for (let dr = -1; dr <= 1; dr += 1) {
-    for (let dc = -1; dc <= 1; dc += 1) {
-      if (tileAt(terrain, col + dc, row + dr) === TILE_RESOURCE) return { col: col + dc, row: row + dr };
-    }
-  }
-  return null;
+/** Why your core tier keeps you from building this right now, or null. */
+export function tierLock(session: Session, building: string): string | null {
+  const have = session.world.entities.filter((e) => e.kind === "building" && e.team === session.local && e.defId === building && e.hp > 0).length;
+  return tierBlocker(session.content, session.team, building, have);
 }
 
 export function affordable(session: Session, building: string): boolean {

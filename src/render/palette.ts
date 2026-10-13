@@ -35,7 +35,6 @@ export const DEAD_LINK_EDGE = 0x7d8fa3;
 export const CLIFF = 0x070a0e;
 export const CLIFF_LIP = 0x9fb3c8;
 export const RAMP_STRIPE = 0x2f4254;
-export const WELL = 0x38bdf8;
 
 export function tileColor(tile: number, height: number): number {
   switch (tile) {

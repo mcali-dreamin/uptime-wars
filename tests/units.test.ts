@@ -121,10 +121,12 @@ describe("rally points", () => {
 });
 
 describe("creeps", () => {
-  it("each wave leaves the nest in the middle as random-sized packs", () => {
+  it("an incident leaves the nest in the middle as random-sized packs", () => {
     const world = createWorld(content, SETUP);
     const nest = world.entities.find((e) => e.id === world.teams[1]!.coreId)!;
-    while (world.tick <= content.waves.firstWaveTicks + 40) step(world, content);
+    // Just the incident: no background traffic muddying the packs.
+    world.waves.nextTrickleTick = 1e9;
+    while (world.tick <= content.waves.firstIncidentTicks + 40) step(world, content);
     const creeps = world.entities.filter((e) => e.kind === "unit" && e.team === 1);
     expect(creeps.length).toBeGreaterThan(0);
     const packs = new Map<number, number>();

@@ -10,6 +10,7 @@ import { TICK_RATE } from "./map";
 import type { Team, World } from "./types";
 import { multiplier } from "./upgrades";
 import { BASE_INCOME, CONSTRUCTION_START_HP } from "./tuning";
+import { raceMechanics, tierDef } from "./tiers";
 
 export function tickCooldowns(ctx: TickContext): void {
   const { world } = ctx;
@@ -31,6 +32,8 @@ export function computeBalance(world: World, content: TickContext["content"], te
       units += content.units[entity.defId]!.upkeep ?? per.perUnit;
     }
   }
+  // A higher core tier supplies more, as long as a core is up.
+  if (team.coreId !== -1 && team.downTick === null) supply += tierDef(content, team).compute;
   return { supply, demand: team.users * per.perUser + units };
 }
 
@@ -159,7 +162,7 @@ export function incomeRate(world: World, content: TickContext["content"], team: 
 export function loseUsers(ctx: TickContext, team: Team, damage: number, defId: string): void {
   if (team.controller !== "human" || team.users <= 0) return;
   if (!ctx.content.buildings[defId]?.userCapacity) return;
-  const loyalty = ctx.content.races[team.raceId]?.mechanics?.loyalty;
+  const loyalty = raceMechanics(ctx.content, team).loyalty;
   const share = loyalty ? loyalty.churnPermille / 1000 : 1;
   team.churnCarry += (damage * share) / ctx.content.economy.damagePerUserLost;
   const lost = Math.floor(team.churnCarry);
@@ -181,5 +184,6 @@ export function trafficRadius(world: World, content: TickContext["content"], tea
     if (entity.kind === "building" && entity.team === team.id && entity.hp > 0) buildings += 1;
   }
   const minutes = Math.floor(world.tick / (TICK_RATE * 60));
-  return Math.min(t.max, t.base + t.perBuilding * buildings + t.perUser * team.users + t.perMinute * minutes);
+  const grown = tierDef(content, team).traffic;
+  return Math.min(t.max, t.base + grown + t.perBuilding * buildings + t.perUser * team.users + t.perMinute * minutes);
 }

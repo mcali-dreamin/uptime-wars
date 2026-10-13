@@ -29,10 +29,11 @@ import { tickSpawners } from "./spawners";
 import { MAX_PLAYERS, generateTerrain } from "./terrain";
 import { BASE_INCOME, STARTING_MONEY } from "./tuning";
 import type { TeamId, World } from "./types";
-import { tickUnits } from "./units";
+import { tickHealers, tickUnits } from "./units";
 import { tickResearch } from "./upgrades";
 import { spawnHero, tickHeroes } from "./heroes";
 import { tickWaveDirector } from "./waves";
+import { tickTaunts } from "./traits";
 
 export interface MatchSetup {
   seed: number;
@@ -65,7 +66,9 @@ export function createWorld(content: Content, setup: MatchSetup): World {
     commands: [],
     waves: {
       nextIndex: 0,
-      nextWaveTick: content.waves.graceTicks,
+      nextWaveTick: content.waves.graceTicks + content.waves.firstIncidentTicks - content.waves.firstWaveTicks,
+      nextTrickleTick: content.waves.graceTicks,
+      trickleSince: -1,
       pending: [],
       nextPackId: 1,
       packs: {},
@@ -119,6 +122,7 @@ function makeTeam(content: Content, id: TeamId, raceId: string, heroId: string |
     churnCarry: 0,
     upgrades: {},
     research: null,
+    labResearch: null,
     downTick: null,
     heroId: heroId ?? race.heroes?.[0] ?? null,
     hero: null,
@@ -146,6 +150,8 @@ export function step(world: World, content: Content): void {
   tickUnits(ctx);
   // Last, so a building that finishes this tick starts working next tick.
   tickRepair(ctx);
+  tickHealers(ctx);
+  tickTaunts(ctx);
   tickConstruction(ctx);
   checkOutcome(ctx);
 
@@ -184,6 +190,7 @@ function checkOutcome(ctx: TickContext): void {
     if (!alive) {
       team.downTick = world.tick;
       team.research = null;
+      team.labResearch = null;
       if (team.controller === "human") world.events.push({ type: "offline", team: team.id });
     }
   }

@@ -81,11 +81,6 @@ export function drawGlyph(g: Graphics, defId: string, x: number, y: number, size
       g.moveTo(x - s, y - s * 0.35).lineTo(x + s, y - s * 0.35).stroke({ width: 1.5, color, alpha });
       g.circle(x - s * 0.7, y - s * 0.55, 1.5).fill({ color, alpha });
       break;
-    case "data-pump":
-      g.moveTo(x - s, y + s).lineTo(x, y - s).lineTo(x + s, y + s).stroke({ width: 2, color, alpha });
-      g.moveTo(x - s * 0.5, y).lineTo(x + s * 0.5, y).stroke({ width: 2, color, alpha });
-      g.circle(x, y - s * 0.2, 2.5).fill({ color, alpha });
-      break;
     case "solar-array":
       g.circle(x, y, s * 0.8).stroke({ width: 2, color, alpha });
       break;

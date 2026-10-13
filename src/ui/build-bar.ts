@@ -3,19 +3,20 @@
 //
 // - deploy:   "Deploy core"
 // - build:    the race's buildings
-// - research: the core is selected, so its upgrades
+// - research: the core is selected, so its upgrades (the race and its base)
+// - armory:   the upgrade center is selected, so its army upgrades and traits
 // - hero:     the hero is selected, so its abilities (see hero-bar.ts)
 
-import { affordable } from "../game/selection";
+import { affordable, tierLock } from "../game/selection";
 import type { Session } from "../game/session";
-import { buildCost, canResearch, levelOf, nextLevel } from "../sim";
+import { buildCost, canResearch, levelOf, nextLevel, slotOf, tierOf, upgradeName, upgradesAt } from "../sim";
 import { $ } from "./dom";
 import type { HeroBar } from "./hero-bar";
 
 export const FOUND_BUTTON = "found";
 const UPGRADE_PREFIX = "upgrade:";
 
-export type BarMode = "deploy" | "build" | "research" | "hero";
+export type BarMode = "deploy" | "build" | "research" | "armory" | "hero";
 
 export interface BuildBarEvents {
   choose(button: string): void;
@@ -53,16 +54,25 @@ export class BuildBar {
       const id = button.dataset.building!;
       const upgrade = upgradeOf(id);
       if (upgrade) {
-        const researching = team.research?.upgrade === upgrade;
-        button.disabled = !researching && canResearch(content, team, upgrade) !== null;
+        const slot = team[slotOf(content, upgrade)];
+        const researching = slot?.upgrade === upgrade;
+        button.disabled = !researching && canResearch(content, team, upgrade, this.session.world) !== null;
         button.classList.toggle("researching", researching);
         const detail = button.querySelector("small")!;
         detail.textContent = this.upgradeDetail(upgrade);
-        const progress = researching ? 1 - team.research!.remaining / nextLevel(content, team, upgrade).ticks : 0;
+        const progress = researching ? 1 - slot!.remaining / nextLevel(content, team, upgrade).ticks : 0;
         button.style.setProperty("--progress", String(progress));
         continue;
       }
-      button.disabled = id !== FOUND_BUTTON && !affordable(this.session, id);
+      const locked = id === FOUND_BUTTON ? null : tierLock(this.session, id);
+      button.disabled = id !== FOUND_BUTTON && (locked !== null || !affordable(this.session, id));
+      button.classList.toggle("locked", locked !== null);
+      const index = this.session.race.buildings.indexOf(id);
+      if (index >= 0) {
+        const detail = button.querySelector("small")!;
+        const text = locked ? `${index + 1} · ${locked}` : `${index + 1} · ${buildCost(content, team.raceId, id)}`;
+        if (detail.textContent !== text) detail.textContent = text;
+      }
       button.classList.toggle("selected", id === selected);
     }
   }
@@ -76,7 +86,8 @@ export class BuildBar {
     this.mode = mode;
     const { race, content } = this.session;
     const heroName = this.session.team.heroId ? content.units[this.session.team.heroId]!.name : "Hero";
-    this.root.replaceChildren(label(mode === "research" ? "Core · research" : mode === "hero" ? heroName : race.name));
+    const center = race.center ? content.buildings[race.center]!.name : "Upgrade center";
+    this.root.replaceChildren(label(mode === "research" ? "Core · race & base" : mode === "armory" ? `${center} · army` : mode === "hero" ? heroName : race.name));
     if (mode === "hero") {
       this.root.append(...(this.hero?.buttons() ?? []));
     } else if (mode === "deploy") {
@@ -87,8 +98,8 @@ export class BuildBar {
         this.root.append(this.button(id, content.buildings[id]!.name, `${index + 1} · ${cost}`));
       });
     } else {
-      for (const id of Object.keys(content.upgrades)) {
-        const button = this.button(upgradeButton(id), content.upgrades[id]!.name, this.upgradeDetail(id));
+      for (const id of this.upgrades(mode)) {
+        const button = this.button(upgradeButton(id), upgradeName(content, this.session.team.raceId, id), this.upgradeDetail(id));
         button.classList.add("upgrade-btn");
         this.root.append(button);
       }
@@ -100,13 +111,30 @@ export class BuildBar {
     this.root.append(guide);
   }
 
+  /** The upgrades the core (research) or upgrade center (armory) offers this race, in order. */
+  upgrades(mode: BarMode): string[] {
+    return upgradesAt(this.session.content, this.session.team, mode === "armory" ? "center" : "core");
+  }
+
   private upgradeDetail(upgrade: string): string {
     const { content, team } = this.session;
     const def = content.upgrades[upgrade]!;
     const level = levelOf(team, upgrade);
-    const index = Object.keys(content.upgrades).indexOf(upgrade) + 1;
-    if (level >= def.maxLevel) return `${index} · max`;
-    if (team.research?.upgrade === upgrade) return `${index} · researching`;
+    const index = this.upgrades(def.at === "center" ? "armory" : "research").indexOf(upgrade) + 1;
+    const slot = team[slotOf(content, upgrade)];
+    if (def.stat === "tier") {
+      const tiers = content.economy.tiers;
+      if (level >= def.maxLevel) return `${index} · ${tiers[level]!.name}`;
+      if (slot?.upgrade === upgrade) return `${index} · building ${tiers[level + 1]!.name}`;
+      return `${index} · → ${tiers[level + 1]!.name} · ${nextLevel(content, team, upgrade).cost}`;
+    }
+    if (level >= def.maxLevel) return `${index} · ${def.stat === "trait" ? "done" : "max"}`;
+    if (slot?.upgrade === upgrade) return `${index} · researching`;
+    const needs = def.tiers?.[level];
+    if (needs !== undefined && tierOf(content, team) < needs) {
+      return `${index} · needs ${content.economy.tiers[needs]!.name}`;
+    }
+    if (def.stat === "trait") return `${index} · trait · ${nextLevel(content, team, upgrade).cost}`;
     return `${index} · Lv ${level}/${def.maxLevel} · ${nextLevel(content, team, upgrade).cost}`;
   }
 

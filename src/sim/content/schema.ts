@@ -26,6 +26,12 @@ export interface UnitDef {
   role?: CreepRole;
   /** How far this unit reveals the fog for its owner, in pixels. */
   sight?: number;
+  /** Mends allied units and buildings within `radius` px by `perSecond` hp each second (itself included). */
+  heal?: { perSecond: number; radius: number };
+  /** Multiplies its damage against buildings. */
+  siege?: number;
+  /** Enemy units it hits act at half speed for this many ticks. */
+  slowTicks?: number;
 }
 
 /**
@@ -84,8 +90,10 @@ export interface BuildingDef {
   blocks?: boolean;
   /** Users this building can serve. Your total capacity caps your user count. */
   userCapacity?: number;
-  /** Only buildable on a data well: every footprint tile must be one. */
-  onWell?: boolean;
+  /** Needs this core tier (index into economy.tiers; 0 = from the start). */
+  tier?: number;
+  /** At most this many per player, by core tier (counting ones under construction). */
+  limitPerTier?: number[];
   /** Tiles around this building (once finished) where you may build. */
   buildRadius?: number;
 }
@@ -94,6 +102,13 @@ export type Controller = "human" | "wave-director";
 
 export type RaceLook = "scrappy" | "monolith" | "ephemeral" | "garden";
 export const RACE_LOOKS: readonly RaceLook[] = ["scrappy", "monolith", "ephemeral", "garden"];
+
+export interface TierPerk {
+  name: string;
+  description: string;
+  mechanics?: { [K in keyof NonNullable<RaceDef["mechanics"]>]?: Partial<NonNullable<NonNullable<RaceDef["mechanics"]>[K]>> };
+  modifiers?: Partial<RaceDef["modifiers"]>;
+}
 
 export interface RaceDef {
   name: string;
@@ -132,26 +147,54 @@ export interface RaceDef {
     region?: { radiusTiles: number; perNeighborPermille: number; maxPermille: number };
     /** Users leave at this share of the usual rate when your buildings are hit (permille). */
     loyalty?: { churnPermille: number };
+    /** Melee attackers hitting one of `buildings` take `damage` back per blow. */
+    thorns?: { damage: number; buildings: string[] };
   };
+  /**
+   * Fixed perks per core tier (index = tier; 0 is unused). Each overrides
+   * parts of `mechanics` (field by field within a mechanic) and `modifiers`
+   * from that tier on, on top of the tiers below it.
+   */
+  tierPerks?: (TierPerk | null)[];
+  /** The race's upgrade center: the building that researches its army upgrades and traits. */
+  center?: string;
   modifiers: {
     spawnIntervalMultiplier: number;
     costMultiplier: number;
     unitHpMultiplier: number;
     /** Extra $ at the start of the match. */
     startingMoneyBonus: number;
+    /** Function (invoke) cooldowns and run costs scale by these (default 1). */
+    invokeCooldownMultiplier?: number;
+    invokeCostMultiplier?: number;
   };
 }
 
 /**
- * Endless waves, generated rather than listed. Wave n gets a point budget
- * that grows every wave and spends it on whatever the roster has unlocked by
- * then; bosses join on a cadence; every creep gets tougher as waves go on.
+ * The horde's pressure has two parts.
+ *
+ * - Background traffic (`trickle`): a small pack leaves the nest every
+ *   `everyTicks`, spending `start + perMinute * minutes` points (minutes since
+ *   it began). Always something out there.
+ * - Incidents (the numbered, named "waves"): big surges on a timer. Incident n
+ *   gets a point budget that grows every incident and spends it on whatever
+ *   the roster has unlocked by then; bosses only come with incidents; every
+ *   creep gets tougher as incidents go on.
+ *
+ * Both scale with the players still online, x(1 + k * (n - 1)): the trickle
+ * strongly (it spreads out over everyone), incidents gently (each one lands
+ * on whichever base it finds first).
+ * "Wave" in the fields below means incident.
  */
 export interface WavesDef {
-  /** First wave comes this long after your core goes online... */
+  /** Background traffic starts this long after your core goes online... */
   firstWaveTicks: number;
-  /** ...or this long after the match starts, whichever is sooner. */
+  /** ...the first incident this long after it... */
+  firstIncidentTicks: number;
+  /** ...or each this long after the match starts (plus the gap between the two), whichever is sooner. */
   graceTicks: number;
+  trickle: { everyTicks: number; start: number; perMinute: number; maxPack: number };
+  players: { trickle: number; incident: number };
   spawnSpacingTicks: number;
   /** Each wave is shuffled and cut into packs of this many units. */
   packSize: { min: number; max: number };
@@ -220,12 +263,71 @@ export interface EconomyDef {
    * perUser·users + perMinute·minutes of uptime, capped at max.
    */
   traffic: { base: number; perBuilding: number; perUser: number; perMinute: number; max: number; pullChance: number };
+  /**
+   * Core tech tiers, researched at the core (the "tier" upgrade; its level is
+   * the tier). Each tier adds `compute` to your supply, `buildRadius` tiles to
+   * every core's reach, multiplies core hp by `coreHp`, and adds `traffic` px
+   * to how far crawlers sense you. Buildings gate on it with `tier` and
+   * `limitPerTier`.
+   */
+  tiers: { name: string; compute: number; buildRadius: number; coreHp: number; traffic: number }[];
 }
 
-export type UpgradeStat = "unitHp" | "unitDamage" | "towerRange" | "spawnSpeed" | "userCapacity" | "revenue";
+/**
+ * "tier" is the core's tech tier (see EconomyDef.tiers): no multiplier, its level is the tier.
+ * "buildingArmor" / "unitArmor" add perLevel flat armor per level.
+ * "trait" unlocks a unit trait (see TraitDef) for `unit`.
+ */
+export type UpgradeStat =
+  | "unitHp"
+  | "unitDamage"
+  | "unitArmor"
+  | "towerRange"
+  | "towerDamage"
+  | "buildingHp"
+  | "buildingArmor"
+  | "spawnSpeed"
+  | "userCapacity"
+  | "revenue"
+  | "tier"
+  | "trait";
 
 /**
- * Researched at the core, one at a time. Level n costs cost * n and takes
+ * A unit trait, unlocked by a "trait" upgrade. All optional; they stack.
+ * - speed / range: multipliers.
+ * - crit: every `every`-th hit does `mult` damage.
+ * - splash / chain: each hit also deals `share` of its damage to every
+ *   enemy (splash) or the nearest other enemy (chain) within `radius` of the target.
+ * - taunt: once a second, creeps within `radius` switch to attacking it.
+ * - split: on death it splits into `count` of itself at `hpShare` hp (once).
+ * - healMult: multiplies its heal.
+ * - revive: the first ally that falls in its heal radius comes back at
+ *   `hpShare` hp; then it waits `cooldownTicks`.
+ * - squad: its function / spawner keeps (and bursts) this many more.
+ * - burstMult: its function bursts this many times as many.
+ * - disarmTicks / stunTicks: an enemy unit it hits can't attack / can't act.
+ * - holdArmor: extra armor while it holds its post (home, no order).
+ */
+export interface TraitDef {
+  speed?: number;
+  range?: number;
+  crit?: { every: number; mult: number };
+  splash?: { share: number; radius: number };
+  chain?: { share: number; radius: number };
+  taunt?: { radius: number };
+  split?: { count: number; hpShare: number };
+  healMult?: number;
+  revive?: { cooldownTicks: number; hpShare: number };
+  squad?: number;
+  burstMult?: number;
+  disarmTicks?: number;
+  stunTicks?: number;
+  holdArmor?: number;
+}
+
+/**
+ * Researched at the core (the race and its base) or at the race's upgrade
+ * center (its army), one at a time at each. Level n costs cost * n and takes
  * researchTicks * n; each level adds perLevel to the stat's multiplier.
  */
 export interface UpgradeDef {
@@ -236,6 +338,17 @@ export interface UpgradeDef {
   maxLevel: number;
   cost: number;
   researchTicks: number;
+  /** Where it's researched (default "core"). */
+  at?: "core" | "center";
+  /** Only these races can research it (default: every race). */
+  races?: string[];
+  /** Core tier needed for each level (index = level - 1). */
+  tiers?: number[];
+  /** What each race calls it (same effect). */
+  names?: Record<string, string>;
+  /** "trait" upgrades: the unit it changes, and how. */
+  unit?: string;
+  trait?: TraitDef;
 }
 
 /**

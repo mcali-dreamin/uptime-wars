@@ -3,9 +3,10 @@
 
 import type { Content } from "./content";
 import { TILE, footprintCenter } from "./map";
-import { TILE_OPEN, TILE_RESOURCE, tileAt } from "./terrain";
+import { TILE_OPEN, tileAt } from "./terrain";
 import type { Building, Entity, Team, TeamId, World } from "./types";
 import { unitInTheWay } from "./walls";
+import { tierBlocker, tierDef } from "./tiers";
 
 export function buildCost(content: Content, raceId: string, buildingId: string): number {
   return Math.round(content.buildings[buildingId]!.cost * content.races[raceId]!.modifiers.costMultiplier);
@@ -23,18 +24,13 @@ export function isOccupied(world: World, col: number, row: number, footprint: nu
   );
 }
 
-/** Every footprint tile is of this kind: open ground for most buildings, a data well for pumps. */
-function footprintIs(world: World, col: number, row: number, footprint: number, tile: number): boolean {
+function footprintIsOpen(world: World, col: number, row: number, footprint: number): boolean {
   for (let r = row; r < row + footprint; r += 1) {
     for (let c = col; c < col + footprint; c += 1) {
-      if (tileAt(world.terrain, c, r) !== tile) return false;
+      if (tileAt(world.terrain, c, r) !== TILE_OPEN) return false;
     }
   }
   return true;
-}
-
-function footprintIsOpen(world: World, col: number, row: number, footprint: number): boolean {
-  return footprintIs(world, col, row, footprint, TILE_OPEN);
 }
 
 /** Why a building can't go here, or null when it can. */
@@ -51,17 +47,16 @@ export function canPlace(
   const race = content.races[team.raceId]!;
   const def = content.buildings[buildingId];
   if (!def || !race.buildings.includes(buildingId)) return "not in this race's roster";
-  if (def.onWell) {
-    if (!footprintIs(world, col, row, def.footprint, TILE_RESOURCE)) return "needs a data well";
-  } else if (!footprintIsOpen(world, col, row, def.footprint)) {
-    return "terrain is not buildable";
-  }
+  if (!footprintIsOpen(world, col, row, def.footprint)) return "terrain is not buildable";
 
   if (team.coreId === -1) return "no core";
   const center = footprintCenter(col, row, def.footprint);
   if (!inNetwork(world, content, teamId, center.x, center.y)) return "outside your network";
 
   if (isOccupied(world, col, row, def.footprint)) return "tile occupied";
+  const have = world.entities.filter((e) => e.kind === "building" && e.team === teamId && e.defId === buildingId && e.hp > 0).length;
+  const locked = tierBlocker(content, team, buildingId, have);
+  if (locked) return locked;
   if (def.blocks && unitInTheWay(world, col, row, def.footprint)) return "a unit is in the way";
   if (team.money < cost) return "not enough $";
   return null;
@@ -94,10 +89,17 @@ export function networkProviders(world: World, content: Content, teamId: TeamId)
   );
 }
 
+/** How far (px) a network building lets its team build: cores reach further at higher tiers. */
+export function reachOf(world: World, content: Content, provider: Building): number {
+  const team = world.teams[provider.team];
+  const bonus = team && isCore(content, team, provider) ? tierDef(content, team).buildRadius : 0;
+  return (content.buildings[provider.defId]!.buildRadius! + bonus) * TILE;
+}
+
 /** Whether a point is inside any of the team's build radii. */
 export function inNetwork(world: World, content: Content, teamId: TeamId, x: number, y: number): boolean {
   return networkProviders(world, content, teamId).some((provider) => {
-    const reach = content.buildings[provider.defId]!.buildRadius! * TILE;
+    const reach = reachOf(world, content, provider);
     const dx = x - provider.x;
     const dy = y - provider.y;
     return dx * dx + dy * dy <= reach * reach;

@@ -27,8 +27,10 @@ import { Guide } from "./ui/guide";
 import { Hud } from "./ui/hud";
 import { InfoPanel } from "./ui/info-panel";
 import { RacePicker } from "./ui/race-picker";
-import { TICK_RATE, TILE, forkCost, isCore, loadDefaultContent, type Point } from "./sim";
+import { upgradeName, TICK_RATE, TILE, forkCost, isCore, loadDefaultContent, type Point } from "./sim";
 import type { NetMatch } from "./game/net/lobby";
+import { Director, tension, type Listener } from "./audio/cues";
+import { SoundEngine, type SoundMode } from "./audio/engine";
 import { CoopLobby } from "./ui/coop";
 import { HeroBar, heroUnit } from "./ui/hero-bar";
 import { castBlocker } from "./sim/heroes";
@@ -42,9 +44,33 @@ const content = loadDefaultContent();
 const session = new Session(content);
 const renderer = new Renderer();
 const hud = new Hud(session);
+const sound = new SoundEngine();
+const director = new Director(content);
+const soundButton = $("sound");
+const SOUND_LABEL: Record<SoundMode, string> = { on: "Sound: on", sfx: "Sound: effects", off: "Sound: off" };
+soundButton.textContent = SOUND_LABEL[sound.mode];
+function cycleSound(): void {
+  soundButton.textContent = SOUND_LABEL[sound.cycle()];
+  renderer.showBanner(SOUND_LABEL[sound.mode]);
+}
+soundButton.addEventListener("click", () => cycleSound());
+// Browsers allow audio only after a gesture: start it on the first one.
+for (const type of ["pointerdown", "keydown"] as const) window.addEventListener(type, () => sound.unlock(), { capture: true });
+/** Where the player is looking, for positional sound. */
+const listener: Listener = {
+  get center() {
+    return { x: renderer.camera.x, y: renderer.camera.y };
+  },
+  get span() {
+    const v = renderer.camera.view(0);
+    return v.right - v.left;
+  },
+  visible: (p) => renderer.fog.isVisible(p.x, p.y),
+};
 const info = new InfoPanel(session, () => arm(), () => invokeSelected(), () => forkSelected());
 const bar = new BuildBar(session, {
   choose: (button) => {
+    sound.ui("click");
     const current = buttonFor(selection);
     if (current === button) return select(fallback());
     select(button === FOUND_BUTTON ? { kind: "found" } : { kind: "place", building: button });
@@ -87,6 +113,7 @@ let announced = false;
 if (new URLSearchParams(location.search).has("debug")) {
   Object.assign(window, {
     uptime: {
+      sound,
       get world() {
         return session.world;
       },
@@ -170,8 +197,14 @@ function coreSelected(): boolean {
   return selection.kind === "entity" && isCore(content, session.team, session.entity(selection.id));
 }
 
+/** Your upgrade center is selected: the command card shows army research. */
+function centerSelected(): boolean {
+  const entity = selection.kind === "entity" ? session.entity(selection.id) : undefined;
+  return entity?.kind === "building" && entity.team === session.local && entity.defId === session.race.center;
+}
+
 function barMode(): BarMode {
-  return session.deploying ? "deploy" : heroSelected() ? "hero" : coreSelected() ? "research" : "build";
+  return session.deploying ? "deploy" : heroSelected() ? "hero" : coreSelected() ? "research" : centerSelected() ? "armory" : "build";
 }
 
 function research(upgrade: string): void {
@@ -211,6 +244,7 @@ function order(point: Point): void {
   if (!next) return;
   session.issue(next);
   renderer.ping(point.x, point.y);
+  sound.ui("order");
   // An armed order is one-shot: back to the plain selection.
   select(disarmed(selection));
 }
@@ -280,6 +314,7 @@ const gameInput: GameInput = {
     if (placement) {
       if (!placement.valid) return;
       session.issue(placement.order);
+      sound.ui("place");
       renderer.ping(point.x, point.y);
       if (selection.kind === "found") return select(fallback());
       if (!shift) select(NOTHING);
@@ -346,6 +381,8 @@ const gameInput: GameInput = {
   },
 
   key(key, event) {
+    // M works anywhere, menus included.
+    if (key === "m") return cycleSound(), true;
     if (picker.key(key)) return true;
     if (guide.key(key)) return true;
     if (key === "g") return guide.show(), true;
@@ -392,8 +429,8 @@ const gameInput: GameInput = {
       else cast(ability);
       return true;
     }
-    if (coreSelected()) {
-      const upgrade = Object.keys(content.upgrades)[Number(key) - 1];
+    if (coreSelected() || centerSelected()) {
+      const upgrade = bar.upgrades(barMode())[Number(key) - 1];
       if (upgrade) return research(upgrade), true;
       return false;
     }
@@ -423,6 +460,7 @@ function startNetMatch(match: NetMatch): void {
 }
 
 function resetMatch(): void {
+  director.reset();
   renderer.localTeam = session.local;
   // After the team is known: in co-op your colour paints your own slot.
   applyColor();
@@ -466,6 +504,7 @@ renderer.app.ticker.add((ticker) => {
         break;
       }
       renderer.collectEvents(world);
+      for (const cue of director.cues(world, world.events, session.local, listener, performance.now() / 1000)) sound.play(cue);
       for (const event of world.events) {
         if (event.type === "failover" && event.team === session.team.id) renderer.showBanner("Core lost · failover");
         if (event.type === "offline") {
@@ -480,7 +519,15 @@ renderer.app.ticker.add((ticker) => {
         if (event.type === "hero-down" && event.team === session.local) renderer.showBanner("Your hero is down");
         if (event.type === "hero-up" && event.team === session.local) renderer.showBanner("Your hero is back");
         if (event.type === "researched" && event.team === session.team.id) {
-          renderer.showBanner(`${content.upgrades[event.upgrade]!.name} ${event.level}`);
+          const def = content.upgrades[event.upgrade]!;
+          const perk = def.stat === "tier" ? content.races[session.team.raceId]?.tierPerks?.[event.level] : undefined;
+          renderer.showBanner(
+            def.stat === "tier"
+              ? `${content.economy.tiers[event.level]!.name} online${perk ? ` · ${perk.name}` : ""}`
+              : def.stat === "trait"
+                ? `${upgradeName(content, session.team.raceId, event.upgrade)} unlocked`
+                : `${upgradeName(content, session.team.raceId, event.upgrade)} ${event.level}`,
+          );
         }
       }
       accumulator -= STEP_MS;
@@ -507,5 +554,6 @@ renderer.app.ticker.add((ticker) => {
   const selectedId = selection.kind === "entity" ? selection.id : null;
   renderer.draw(world, content, paused ? 1 : accumulator / STEP_MS, ticker.deltaMS, placement, selectedId, selectedIds(selection));
   hud.update(selection, paused);
+  sound.setTension(tension(world, session.local, content));
   heroBar.update();
 });

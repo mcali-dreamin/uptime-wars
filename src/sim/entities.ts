@@ -9,6 +9,16 @@ import type { Terrain } from "./terrain";
 import { CONSTRUCTION_START_HP, RALLY_SPREAD } from "./tuning";
 import type { Building, Point, Team, TeamId, Unit, World } from "./types";
 import { multiplier } from "./upgrades";
+import { raceModifiers, tierDef } from "./tiers";
+
+/** A building's max hp: Building HP research toughens all of them, and a core grows with its team's tier. */
+export function buildingMaxHp(world: World, content: Content, teamId: TeamId, defId: string): number {
+  const team = world.teams[teamId];
+  const base = content.buildings[defId]!.hp;
+  if (!team) return base;
+  const core = content.races[team.raceId]?.core === defId ? tierDef(content, team).coreHp : 1;
+  return Math.round(base * core * multiplier(content, team, "buildingHp"));
+}
 
 export function placeBuilding(
   world: World,
@@ -32,8 +42,8 @@ export function placeBuilding(
     col,
     row,
     footprint: def.footprint,
-    maxHp: def.hp,
-    hp: instant ? def.hp : def.hp * CONSTRUCTION_START_HP,
+    maxHp: buildingMaxHp(world, content, team, defId),
+    hp: (instant ? 1 : CONSTRUCTION_START_HP) * buildingMaxHp(world, content, team, defId),
     armor: def.armor,
     radius: (def.footprint * TILE) / 2,
     attackCooldown: 0,
@@ -52,7 +62,7 @@ export function placeBuilding(
 export function spawnInterval(content: Content, team: Team | undefined, defId: string): number {
   const spawn = content.buildings[defId]?.spawn;
   if (!spawn) return 0;
-  const race = team ? content.races[team.raceId]!.modifiers.spawnIntervalMultiplier : 1;
+  const race = team ? raceModifiers(content, team).spawnIntervalMultiplier : 1;
   return Math.max(1, Math.round((spawn.intervalTicks * race) / multiplier(content, team, "spawnSpeed")));
 }
 
@@ -84,9 +94,9 @@ export function spawnUnit(
 ): Unit {
   const { world, content } = ctx;
   const def = content.units[unitId]!;
-  const race = content.races[world.teams[team]!.raceId]!;
+  const modifiers = raceModifiers(content, world.teams[team]!);
   const upgraded = multiplier(content, world.teams[team]!, "unitHp");
-  const hp = Math.round(def.hp * race.modifiers.unitHpMultiplier * hpMultiplier * upgraded);
+  const hp = Math.round(def.hp * modifiers.unitHpMultiplier * hpMultiplier * upgraded);
   const spot = walkableSpot(world.terrain, x, y, def.size, from);
   const unit: Unit = {
     kind: "unit",
@@ -116,7 +126,7 @@ export function spawnUnit(
   return unit;
 }
 
-/** Put a team's core on the map. Starts the wave clock if it was a player's. */
+/** Put a team's core on the map. Starts the horde's clocks if it was a player's. */
 export function foundCore(world: World, content: Content, teamId: TeamId, col: number, row: number): Building {
   const team = world.teams[teamId]!;
   const core = placeBuilding(world, content, teamId, content.races[team.raceId]!.core, col, row, true);
@@ -124,7 +134,9 @@ export function foundCore(world: World, content: Content, teamId: TeamId, col: n
   if (team.controller === "human") {
     team.users = content.economy.startingUsers;
     team.peakUsers = team.users;
-    world.waves.nextWaveTick = Math.min(world.waves.nextWaveTick, world.tick + content.waves.firstWaveTicks);
+    const { waves } = world;
+    waves.nextTrickleTick = Math.min(waves.nextTrickleTick, world.tick + content.waves.firstWaveTicks);
+    waves.nextWaveTick = Math.min(waves.nextWaveTick, world.tick + content.waves.firstIncidentTicks);
   }
   return core;
 }

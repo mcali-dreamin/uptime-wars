@@ -10,7 +10,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
-import { TILE, isCore, networkProviders, type Content, type Entity, type Point, type SimEvent, type World } from "../../sim";
+import { reachOf, TILE, isCore, tierOf, networkProviders, type Content, type Entity, type Point, type SimEvent, type World } from "../../sim";
 import { PING_MS, SHOT_TTL_MS, type Frame, type WorldView } from "../frame";
 import { HIGHLIGHT, INVALID, VALID, teamColor } from "../palette";
 import { Bars, Bolts, Particles, Rings } from "./effects";
@@ -28,6 +28,16 @@ const FOV = 40;
 /** Rough top of each building model, for health bars. */
 const BUILDING_TOP: Record<string, number> = {
   core: 116,
+  monorepo: 60,
+  "ci-server": 56,
+  "rnd-lab": 40,
+  "build-pipeline": 36,
+  "design-studio": 40,
+  "edge-fleet": 52,
+  "mainframe-bay": 50,
+  "state-machine": 44,
+  "trust-safety": 44,
+  "legal-dept": 42,
   "malware-nest": 70,
   "c2-server": 76,
   "botnet-farm": 64,
@@ -41,7 +51,6 @@ const BUILDING_TOP: Record<string, number> = {
   "web-app": 72,
   "mesh-node": 48,
   "edge-pop": 50,
-  "data-pump": 74,
 };
 /** Turn rate for units changing heading, per second. */
 const TURN = 10;
@@ -326,7 +335,10 @@ export class World3D implements WorldView {
       const cold = frame.content.buildings[entity.defId]?.invoke !== undefined && !running.has(entity.id);
       const building = entity.buildRemaining > 0;
       if ((building || cold) !== s.holo) this.setHologram(s, building || cold);
-      s.object.scale.y = building ? Math.max(0.08, entity.hp / entity.maxHp) : 1;
+      // A core grows with its team's tier: Data Center, then Region.
+      const owner = frame.world.teams[entity.team];
+      const grow = owner && isCore(frame.content, owner, entity) ? 1 + 0.18 * tierOf(frame.content, owner) : 1;
+      s.object.scale.set(grow, building ? Math.max(0.08, entity.hp / entity.maxHp) * grow : grow, grow);
       const top = s.top ?? BUILDING_TOP[entity.defId] ?? 50;
       const selected = frame.selectedId === entity.id;
       if (entity.hp < entity.maxHp || selected) {
@@ -479,7 +491,7 @@ export class World3D implements WorldView {
 
     if (frame.ghost) {
       for (const provider of networkProviders(world, content, frame.localTeam)) {
-        const reach = content.buildings[provider.defId]!.buildRadius! * TILE;
+        const reach = reachOf(world, content, provider);
         this.thinRings.add(provider.x, ground(provider.x, provider.y), provider.y, reach, VALID, 0.45);
       }
       const g = frame.ghost;

@@ -34,6 +34,8 @@ export interface Team {
   upgrades: Record<string, number>;
   /** What the core is researching right now, if anything. */
   research: { upgrade: string; remaining: number } | null;
+  /** What the upgrade center is researching right now, if anything. */
+  labResearch: { upgrade: string; remaining: number } | null;
   /**
    * The tick this team went offline (every core, or the builder before one),
    * else null. An offline team is out: its commands are ignored, but its
@@ -113,6 +115,15 @@ export interface Unit extends EntityBase {
   commanded: boolean;
   /** Serverless units go cold at this tick (absent: they don't). */
   expiresAt?: number;
+  /** Slowed (a Legal Team hit it): acts every other tick until this tick. */
+  slowedUntil?: number;
+  /** Disarmed (can move, can't attack) / stunned (can't act) until this tick. */
+  disarmedUntil?: number;
+  stunnedUntil?: number;
+  /** Trait bookkeeping: hits landed (crit), revive ready at, and a split child (doesn't split again). */
+  hits?: number;
+  reviveAt?: number;
+  forked?: boolean;
   /** Scanners: what they spotted and when, until they report it. */
   spotted?: { tick: number; x: number; y: number; team: TeamId };
   /** Scanners: already reported, nothing more to do. */
@@ -260,6 +271,9 @@ export interface WaveState {
   /** Waves sent so far. The next wave is nextIndex + 1. */
   nextIndex: number;
   nextWaveTick: number;
+  /** When the next background-traffic pack leaves, and when the trickle began (-1: not yet). */
+  nextTrickleTick: number;
+  trickleSince: number;
   /** Units scheduled to enter, sorted by tick. */
   pending: WaveSpawn[];
   nextPackId: number;
@@ -281,7 +295,7 @@ export interface Outcome {
 /** Transient, render-only. Not part of the simulation state or its hash. */
 export type SimEvent =
   | { type: "shot"; from: number; to: number; x1: number; y1: number; x2: number; y2: number; team: TeamId }
-  | { type: "death"; id: number; x: number; y: number; team: TeamId }
+  | { type: "death"; id: number; x: number; y: number; team: TeamId; kind: Entity["kind"]; defId: string }
   /** A function ran: `units` spun up. `auto`: an enemy triggered it. */
   | { type: "invoked"; buildingId: number; team: TeamId; units: number; auto: boolean }
   /** A scanner got away with it: `packs` horde packs now march on (x, y). */
@@ -303,6 +317,7 @@ export type SimEvent =
   | { type: "hero-level"; team: TeamId; level: number }
   | { type: "hero-down"; team: TeamId; respawnAt: number }
   | { type: "hero-up"; team: TeamId; x: number; y: number }
+  | { type: "revived"; id: number; x: number; y: number; team: TeamId }
   | { type: "researched"; team: TeamId; upgrade: string; level: number }
   | { type: "rejected"; command: Command; reason: string };
 

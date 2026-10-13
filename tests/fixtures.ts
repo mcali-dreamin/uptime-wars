@@ -14,7 +14,7 @@ export const OPENING_ORDER: [number, string][] = [
   [1, "server-rack"],
   [200, "firewall"],
   [400, "solar-array"],
-  [700, "gpu-cluster"],
+  [700, "firewall"],
   [1000, "firewall"],
   [1300, "server-rack"],
 ];

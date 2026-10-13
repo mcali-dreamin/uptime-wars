@@ -55,7 +55,9 @@ export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
 
   const gap = edgeDistance(unit, target);
   if (gap <= def.range) {
-    if (unit.attackCooldown <= 0) {
+    // Disarmed: in its face, but can't swing.
+    const disarmed = unit.disarmedUntil !== undefined && world.tick < unit.disarmedUntil;
+    if (unit.attackCooldown <= 0 && !disarmed) {
       const team = world.teams[unit.team]!;
       const damage = def.damage * multiplier(ctx.content, team, "unitDamage") * buffMultiplier(team, world.tick);
       roleHit(ctx, unit, def, target, damage);

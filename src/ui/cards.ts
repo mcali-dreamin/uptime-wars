@@ -4,7 +4,7 @@
 // Two sizes: a compact card for the on-screen panel (a name and a line or
 // two of numbers) and full detail for the Guide.
 
-import { TICK_RATE, levelOf, nextLevel, type Content, type Team } from "../sim";
+import { upgradeName, TICK_RATE, levelOf, nextLevel, type Content, type Team } from "../sim";
 
 export interface InfoCard {
   title: string;
@@ -30,11 +30,11 @@ export function buildingCard(content: Content, raceId: string, buildingId: strin
   if (def.attack) does.push(`tower · ${def.attack.damage} dmg · range ${def.attack.range}`);
   if (def.income) does.push(`+$${def.income.amount} / ${seconds(def.income.intervalTicks)}`);
   if (def.compute) does.push(`+${def.compute} compute`);
-  if (def.onWell) does.push("on a data well");
   if (def.userCapacity) does.push(`+${def.userCapacity} users`);
   if (def.buildRadius) does.push(`network ${def.buildRadius}`);
+  if (def.limitPerTier) does.push(`max ${def.limitPerTier.join(" / ")} by core tier`);
   const lines = [does.join(" · ") || `${def.hp} HP`];
-  if (def.buildable) lines.push(`$${Math.round(def.cost * race.modifiers.costMultiplier)}`);
+  if (def.buildable) lines.push(`$${Math.round(def.cost * race.modifiers.costMultiplier)}${def.tier ? ` · needs ${content.economy.tiers[def.tier]!.name}` : ""}`);
   return { title: def.name, lines };
 }
 
@@ -76,7 +76,6 @@ export function buildingDetail(content: Content, raceId: string, buildingId: str
   }
   if (def.income) stats.push(`+$${def.income.amount} every ${seconds(def.income.intervalTicks)}`);
   if (def.compute) stats.push(`Supplies ${def.compute} compute: room for ${def.compute} more users, or about ${Math.floor(def.compute / content.economy.compute.perUnit)} more units`);
-  if (def.onWell) stats.push("Only on a data well inside your network. Wells sit out past your core's reach: extend your network to claim one");
   if (def.userCapacity) {
     const perSecond = def.userCapacity * content.economy.revenuePerUserPerSecond;
     stats.push(`Serves up to ${def.userCapacity} users (up to +$${+perSecond.toFixed(1)}/s when full, if you have the compute to serve them)`);
@@ -105,7 +104,6 @@ function unitStats(unit: Content["units"][string], hpMultiplier = 1): string {
 export const TERRAIN_GUIDE: GuideEntry[] = [
   { title: "Open ground", description: "Walkable and buildable.", stats: [] },
   { title: "Dead link", description: "Light grey with a bright edge.", stats: ["Impassable", "Can't build", "Blocks line of sight"] },
-  { title: "Data well", description: "Glowing blue crystals.", stats: ["Build a Data Pump on one for 100 compute", "Two are always a short hop from your start; the rest are scattered across the web", "Walkable, but nothing else can be built on it"] },
   { title: "Height", description: "Three levels: deep web (darkest), surface web, backbone (lightest).", stats: ["Units below can't see up a cliff unless they're right at its foot", "Attacking downhill deals 25% more damage", "Towers follow the same rules"] },
   { title: "Cliff", description: "Near-black band with a bright lip on the drop side.", stats: ["Impassable", "Can't build", "You can see and shoot across it"] },
   { title: "Ramp", description: "Striped gap in a cliff.", stats: ["The only way up or down", "Hold the ramp, hold the plateau"] },
@@ -118,23 +116,95 @@ const STAT_TEXT: Record<string, string> = {
   spawnSpeed: "spawn speed",
   userCapacity: "user capacity",
   revenue: "revenue per user",
+  tier: "core tier",
+  unitArmor: "unit armor",
+  buildingArmor: "building armor",
+  buildingHp: "building HP",
+  towerDamage: "tower damage",
 };
+
+/** "+15% tower damage" or "+1 building armor" per level. */
+function effectText(def: { stat: string; perLevel: number }): string {
+  const flat = def.stat === "unitArmor" || def.stat === "buildingArmor";
+  return `${flat ? `+${def.perLevel}` : `+${Math.round(def.perLevel * 100)}%`} ${STAT_TEXT[def.stat]} per level`;
+}
+
+/** What reaching a core tier gives, as one line. */
+function tierLine(content: Content, tier: number, raceId?: string): string {
+  const t = content.economy.tiers[tier]!;
+  const roster = raceId ? content.races[raceId]!.buildings : Object.keys(content.buildings);
+  const unlocks = roster.filter((id) => content.buildings[id]!.tier === tier).map((id) => content.buildings[id]!.name);
+  const apps = content.buildings["web-app"]?.limitPerTier?.[tier];
+  return [
+    apps !== undefined ? `${apps} Web Apps` : "",
+    unlocks.length ? `unlocks ${unlocks.join(", ")}` : "",
+    `+${t.compute} compute`,
+    `+${t.buildRadius} core reach`,
+    `core ${Math.round(t.coreHp * 100)}% HP`,
+    `crawlers sense you ${t.traffic}px further`,
+  ].filter(Boolean).join(" · ");
+}
 
 export function upgradeCard(content: Content, team: Team, upgrade: string): InfoCard {
   const def = content.upgrades[upgrade]!;
   const level = levelOf(team, upgrade);
-  const effect = `+${Math.round(def.perLevel * 100)}% ${STAT_TEXT[def.stat]} per level`;
-  if (level >= def.maxLevel) return { title: def.name, lines: [effect, "Fully researched"] };
+  if (def.stat === "tier") {
+    const tiers = content.economy.tiers;
+    if (level >= def.maxLevel) return { title: tiers[level]!.name, lines: ["Top tier"] };
+    const next = nextLevel(content, team, upgrade);
+    const perk = content.races[team.raceId]?.tierPerks?.[level + 1];
+    return {
+      title: `Upgrade to ${tiers[level + 1]!.name}`,
+      lines: [
+        tierLine(content, level + 1, team.raceId),
+        ...(perk ? [`Perk · ${perk.name}: ${perk.description}`] : []),
+        `$${next.cost} · ${seconds(next.ticks)} · uses the core's research`,
+      ],
+    };
+  }
+  const name = upgradeName(content, team.raceId, upgrade);
+  const needs = def.tiers?.[level];
+  const gate = needs ? ` · needs ${content.economy.tiers[needs]!.name}` : "";
+  if (def.stat === "trait") {
+    const unit = content.units[def.unit!]!.name;
+    if (level >= 1) return { title: name, lines: [def.description, `${unit} trait · researched`] };
+    return { title: name, lines: [def.description, `${unit} trait · $${def.cost} · ${seconds(def.researchTicks)}${gate}`] };
+  }
+  const effect = effectText(def);
+  if (level >= def.maxLevel) return { title: name, lines: [effect, "Fully researched"] };
   const next = nextLevel(content, team, upgrade);
-  return { title: `${def.name} ${next.level}`, lines: [effect, `$${next.cost} · ${seconds(next.ticks)}`] };
+  return { title: `${name} ${next.level}`, lines: [effect, `$${next.cost} · ${seconds(next.ticks)}${gate}`] };
 }
 
-export function upgradeDetail(content: Content, upgrade: string): GuideEntry {
+export function upgradeDetail(content: Content, upgrade: string, raceId?: string): GuideEntry {
   const def = content.upgrades[upgrade]!;
+  const where = def.at === "center" ? "Upgrade center" : "Core";
+  if (def.stat === "trait") {
+    const needs = def.tiers?.[0];
+    return {
+      title: raceId ? upgradeName(content, raceId, upgrade) : def.name,
+      description: def.description,
+      stats: [`${content.units[def.unit!]!.name} trait · ${where}`, `Costs $${def.cost}${needs ? ` · needs ${content.economy.tiers[needs]!.name}` : ""}`],
+    };
+  }
+  if (def.stat === "tier") {
+    const costs = Array.from({ length: def.maxLevel }, (_, i) => `${def.cost * (i + 1)}`).join(" / ");
+    return {
+      title: def.name,
+      description: def.description,
+      stats: [...content.economy.tiers.slice(1).map((t, i) => `${t.name}: ${tierLine(content, i + 1)}`), `Costs $${costs}`],
+    };
+  }
   const costs = Array.from({ length: def.maxLevel }, (_, i) => `${def.cost * (i + 1)}`).join(" / ");
   return {
-    title: def.name,
+    title: raceId ? upgradeName(content, raceId, upgrade) : def.name,
     description: def.description,
-    stats: [`+${Math.round(def.perLevel * 100)}% ${STAT_TEXT[def.stat]} per level, ${def.maxLevel} levels`, `Costs $${costs}`],
+    stats: [`${effectText(def)}, ${def.maxLevel} levels · ${where}`, `Costs $${costs}`],
   };
+}
+
+/** A race's tier perks, one line each ("Data Center · Community: Forks cost 35%..."). */
+export function perkLines(content: Content, raceId: string): string[] {
+  const perks = content.races[raceId]?.tierPerks ?? [];
+  return perks.flatMap((perk, tier) => (perk && tier > 0 ? [`${content.economy.tiers[tier]!.name} · ${perk.name}: ${perk.description}`] : []));
 }

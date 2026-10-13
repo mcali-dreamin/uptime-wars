@@ -96,7 +96,7 @@ export class Renderer {
       }
       if (event.type === "farms-rebuilt") this.showBanner(`The botnet rebuilt ${event.rebuilt} Botnet Farm${event.rebuilt > 1 ? "s" : ""}`);
       if (event.type === "fortified") this.showBanner(`The botnet rebuilt ${event.rebuilt} C2 Server${event.rebuilt > 1 ? "s" : ""}`);
-      if (event.type === "wave") this.showBanner(`Wave ${event.wave} · ${event.name}${event.boss ? " · BOSS" : ""}`);
+      if (event.type === "wave") this.showBanner(`Incident ${event.wave} · ${event.name}${event.boss ? " · BOSS" : ""}`);
     }
   }
 

@@ -8,7 +8,9 @@ import { nearestEnemy } from "./combat";
 import type { TickContext } from "./context";
 import { sendHome, spawnUnit } from "./entities";
 import { randomInt } from "./rng";
-import type { Building, Unit } from "./types";
+import type { Building, Team, Unit } from "./types";
+import { raceModifiers } from "./tiers";
+import { traitsFor } from "./traits";
 
 /** Why this function can't run right now, or null if it can. */
 export function invokeBlocker(ctx: TickContext, building: Building): string | null {
@@ -19,8 +21,13 @@ export function invokeBlocker(ctx: TickContext, building: Building): string | nu
   if (building.jammedUntil !== undefined && ctx.world.tick < building.jammedUntil) return "jammed";
   const team = ctx.world.teams[building.team]!;
   if (team.downTick !== null) return "offline";
-  if (team.money < def.cost) return "not enough $";
+  if (team.money < invokeCost(ctx.content, team, def.cost)) return "not enough $";
   return null;
+}
+
+/** What one run costs this team (a race perk can make it cheaper). */
+export function invokeCost(content: TickContext["content"], team: Team, base: number): number {
+  return Math.max(0, Math.round(base * (raceModifiers(content, team).invokeCostMultiplier ?? 1)));
 }
 
 /** Run a function: pay, spin up its units, start its cooldown. Call only when invokeBlocker is null. */
@@ -28,10 +35,12 @@ export function invoke(ctx: TickContext, building: Building, auto: boolean): Uni
   const { world, content } = ctx;
   const def = content.buildings[building.defId]!.invoke!;
   const team = world.teams[building.team]!;
-  team.money -= def.cost;
-  building.spawnTimer = def.cooldownTicks;
+  team.money -= invokeCost(content, team, def.cost);
+  building.spawnTimer = Math.max(1, Math.round(def.cooldownTicks * (raceModifiers(content, team).invokeCooldownMultiplier ?? 1)));
   const units: Unit[] = [];
-  for (let i = 0; i < def.count; i += 1) {
+  const t = traitsFor(content, team, def.unit);
+  const count = Math.round(def.count * (t.burstMult ?? 1)) + (t.squad ?? 0);
+  for (let i = 0; i < count; i += 1) {
     const x = building.x + randomInt(world, -20, 20);
     const y = building.y + building.radius + 10 + randomInt(world, 0, 8);
     const unit = spawnUnit(ctx, building.team, def.unit, building, x, y, "guard");

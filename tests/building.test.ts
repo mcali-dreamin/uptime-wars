@@ -55,17 +55,19 @@ describe("building", () => {
 describe("builder start", () => {
   const BUILDER_SETUP = { seed: 1234, races: ["open-source", "botnet"] as [string, string] };
 
-  it("you start with a deploy agent and no core, and the clock is on grace time", () => {
+  it("you start with a deploy agent and no core, and the horde's clocks are on grace time", () => {
     const world = createWorld(content, BUILDER_SETUP);
     expect(world.teams[0]!.coreId).toBe(-1);
     const builder = world.entities.find((e) => e.id === world.teams[0]!.builderId);
     expect(builder).toMatchObject({ kind: "unit", mode: "builder", defId: "deploy-agent" });
-    expect(world.waves.nextWaveTick).toBe(content.waves.graceTicks);
+    const { graceTicks, firstWaveTicks, firstIncidentTicks } = content.waves;
+    expect(world.waves.nextTrickleTick).toBe(graceTicks);
+    expect(world.waves.nextWaveTick).toBe(graceTicks + firstIncidentTicks - firstWaveTicks);
     // The nest still has its core.
     expect(world.teams[1]!.coreId).not.toBe(-1);
   });
 
-  it("the builder walks to the chosen site, becomes the core, and starts the wave clock", () => {
+  it("the builder walks to the chosen site, becomes the core, and starts the horde's clocks", () => {
     const world = createWorld(content, BUILDER_SETUP);
     const start = world.terrain.starts[0]!;
     // Pick a valid site a few tiles away from where the builder stands.
@@ -86,7 +88,10 @@ describe("builder start", () => {
     expect(core).toMatchObject({ kind: "building", defId: "core", col: site!.col, row: site!.row });
     expect(world.teams[0]!.builderId).toBe(-1);
     expect(world.entities.some((e) => e.kind === "unit" && e.mode === "builder")).toBe(false);
-    expect(world.waves.nextWaveTick).toBe(Math.min(content.waves.graceTicks, world.tick - 1 + content.waves.firstWaveTicks));
+    const founded = world.tick - 1;
+    const { graceTicks, firstWaveTicks, firstIncidentTicks } = content.waves;
+    expect(world.waves.nextTrickleTick).toBe(Math.min(graceTicks, founded + firstWaveTicks));
+    expect(world.waves.nextWaveTick).toBe(Math.min(graceTicks + firstIncidentTicks - firstWaveTicks, founded + firstIncidentTicks));
   });
 
   it("rejects founding on blocked terrain, and nothing can be built before the core", () => {
@@ -107,9 +112,12 @@ describe("builder start", () => {
     expect(world.outcome).toMatchObject({ winners: [1], reason: "all-offline" });
   });
 
-  it("the first wave arrives at the end of grace time even if you never found", () => {
+  it("traffic, then the first incident, come at the end of grace time even if you never found", () => {
     const world = createWorld(content, BUILDER_SETUP);
     while (world.tick <= content.waves.graceTicks) step(world, content);
+    expect(world.waves.trickleSince).toBe(content.waves.graceTicks);
+    expect(world.waves.nextIndex).toBe(0);
+    while (world.tick <= world.waves.nextWaveTick && world.waves.nextIndex === 0) step(world, content);
     expect(world.waves.nextIndex).toBe(1);
   });
 });

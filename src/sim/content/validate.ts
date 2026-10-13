@@ -10,7 +10,6 @@ export function validateContent(content: Content): void {
   }
 
   for (const [id, building] of Object.entries(content.buildings)) {
-    if (building.onWell && building.footprint !== 1) errors.push(`building ${id} goes on a well, so it must be 1x1`);
     if (building.invoke && !content.units[building.invoke.unit]) errors.push(`building ${id} invokes unknown unit ${building.invoke.unit}`);
     if (building.invoke && building.spawn) errors.push(`building ${id} can't both spawn and invoke`);
     if (building.spawn && !content.units[building.spawn.unit]) {
@@ -68,6 +67,33 @@ export function validateContent(content: Content): void {
   else if (farm.footprint !== 2) errors.push(`fortress farm ${fortress.farms.building} must be 2x2`);
   if (!(fortress.farms.rebuildEvery >= 1)) errors.push("fortress.farms.rebuildEvery must be at least 1");
   if (!content.waves.roster.some((entry) => entry.fromWave <= 1)) errors.push("wave roster needs a unit from wave 1");
+  const tierUpgrades = Object.entries(content.upgrades).filter(([, u]) => u.stat === "tier");
+  if (tierUpgrades.length > 1) errors.push("only one upgrade can be the core tier");
+  const tiers = content.economy.tiers ?? [];
+  if (tierUpgrades[0] && tiers.length !== tierUpgrades[0][1].maxLevel + 1) errors.push("economy.tiers needs one entry per core tier (maxLevel + 1)");
+  for (const [id, b] of Object.entries(content.buildings)) {
+    if (b.tier !== undefined && !tiers[b.tier]) errors.push(`building ${id} needs tier ${b.tier}, which doesn't exist`);
+    if (b.limitPerTier && b.limitPerTier.length !== tiers.length) errors.push(`building ${id} limitPerTier needs one entry per tier`);
+  }
+  for (const [id, race] of Object.entries(content.races)) {
+    const perks = race.tierPerks;
+    if (perks && perks.length !== tiers.length) errors.push(`race ${id} tierPerks needs one entry per tier`);
+    for (const perk of perks ?? []) {
+      for (const wall of perk?.mechanics?.thorns?.buildings ?? []) if (!content.buildings[wall]) errors.push(`race ${id} thorns on unknown building ${wall}`);
+    }
+  }
+  for (const [id, unit] of Object.entries(content.units)) {
+    if (unit.heal && (unit.heal.perSecond <= 0 || unit.heal.radius <= 0)) errors.push(`unit ${id} heal needs perSecond and radius > 0`);
+  }
+  for (const [id, race] of Object.entries(content.races)) {
+    if (race.center && !content.buildings[race.center]?.buildable) errors.push(`race ${id} has unknown upgrade center ${race.center}`);
+    if (race.center && !race.buildings.includes(race.center)) errors.push(`race ${id} can't build its upgrade center ${race.center}`);
+  }
+  for (const [id, up] of Object.entries(content.upgrades)) {
+    if (up.stat === "trait" && (!up.unit || !content.units[up.unit] || !up.trait)) errors.push(`trait ${id} needs a known unit and a trait`);
+    if (up.tiers && up.tiers.length !== up.maxLevel) errors.push(`upgrade ${id} tiers needs one entry per level`);
+    for (const r of up.races ?? []) if (!content.races[r]) errors.push(`upgrade ${id} names unknown race ${r}`);
+  }
   if (errors.length > 0) {
     throw new Error(`Invalid content:\n- ${errors.join("\n- ")}`);
   }

@@ -1,7 +1,7 @@
 # Uptime Wars
 
 Survival on the open web, in the browser. Every match generates a fresh patch
-of the internet from a seed: dead links, data wells, and a
+of the internet from a seed: dead links and a
 malware nest somewhere far off-screen. Build around your core, let your racks
 fork defenders, and keep your uptime while packs of crawlers wander the web.
 
@@ -34,9 +34,32 @@ npm run dev
   them. Right-click the ground or an enemy to attack-move: they fight whatever
   they meet, then hold the spot. `F` then click is a plain move that ignores
   enemies (retreat). Units you've sent stay put when you change a rally.
-- Select your **core** to research upgrades (one at a time): Hardened
-  Containers, Exploit Kits, Anycast, Autoscaling, Edge Caching, Premium Tier.
-  Tuning lives in `src/content/upgrades.json`.
+- **Every race fields three units of its own, one per core tier**, and earns a
+  fixed perk at Data Center and at Region (see the Guide's Races tab):
+  Open Source (Process, Inference Drone, Kernel; cheaper forks, faster
+  repair), Hyperscaler (Load Balancer, CDN Swarm, Mainframe; stronger region
+  shield, tougher units), Serverless (Lambda, Inference Call, Step Function;
+  faster cooldowns, cheaper runs), Walled Garden (Moderator, Gatekeeper, Legal
+  Team; walls hit back, near-zero churn). Perks live in `races.json` →
+  `tierPerks`.
+- **Grow your core.** The first research, **Upgrade core**, takes it from
+  Core to **Data Center** ($400) to **Region** ($800). Each tier hosts more Web
+  Apps (2, then 4, then 6), unlocks stronger buildings (GPU Cluster, Inference
+  Endpoint, App Review need a Data Center), adds compute, widens your cores'
+  build radius, and toughens them. A bigger base also draws crawlers from
+  further away. Tiers live in `economy.json` → `tiers`; gates are `tier` and
+  `limitPerTier` on a building.
+- **Two places research**, one thing at a time each. Your **core** upgrades
+  the race and its base: core tier, building armor and HP, tower damage and
+  range, users and revenue. Your race's **upgrade center** (Open Source: CI
+  Server, Hyperscaler: R&D Lab, Serverless: Build Pipeline, Walled Garden:
+  Design Studio; one per player) upgrades the army: weapons, unit armor, unit
+  HP, spawn speed in three levels (Core, Data Center, Region), and **three
+  unit traits only your race has**, one per unit, unlocked with that unit's
+  tier: Fork on Exit, Open Weights, Self-Hosting; Sticky Sessions, Edge
+  Routing, Batch Jobs; Provisioned Concurrency, Batching, Parallel State;
+  Shadowban, Hold the Line, Cease and Desist. Each race names the shared
+  upgrades its own way. Tuning lives in `src/content/upgrades.json`.
 - `1`-`5` or click: pick a building. Click near your core (the ring shows your
   build radius) to place it. Shift-click to place several.
 - `WASD` / arrows, middle-drag or Alt-drag, or the very edge of the window: pan (`E` toggles edge
@@ -47,8 +70,7 @@ npm run dev
 an angled camera. Each height level has its own look: the deep web is violet
 soil, the surface web teal moss with cyan circuit traces, and the backbone
 steel plating. Cliffs are dark rock with glowing fibre strata, and ramps are
-paved gateways with amber chevrons. Dead links are fields of black shards,
-data wells are glowing crystals. Buildings
+paved gateways with amber chevrons. Dead links are fields of black shards. Buildings
 and units are procedural models in your team's colour; the botnet is spiky
 and red. Software rendering automatically drops shadows and bloom. `?low`
 forces that, `?hq` forces the full look, and `?2d` brings back the flat Pixi
@@ -83,6 +105,13 @@ attacks an enemy, `1`-`4` cast, `Shift`+`1`-`4` (or the `+`) learn.
 Heroes and abilities are JSON (`src/content/heroes.json`). An ability is one
 of six effects: blast, strike, heal, decoy, summon, or buff.
 
+**Sound.** Everything you hear is synthesised in the browser with Web Audio
+(`src/audio/`): no audio files. Combat is positional and only plays for what
+you can see, and busy sounds are rate-limited. Waves, bosses, your core
+under attack, casts, and level-ups each have their own cue. The music is a
+generative ambient loop that picks up when enemies close in on your base.
+`M` (or the button in the top bar) cycles sound on, effects only, or off.
+
 **Height** matters. The web has three levels (deep web, surface web,
 backbone). Cliffs separate them and ramps are the only way between. From below
 you can't see up a cliff unless you're at its foot, and attacking downhill
@@ -94,15 +123,10 @@ cheap, fragile Mesh Nodes (reach 4); Hyperscaler builds armored Edge PoPs
 (reach 7). Cores are buildable too ($300). If your main core falls, the
 next takes over, and you only go down when every core is down.
 
-**Data wells** are glowing crystals scattered across the web. Build a **Data
-Pump** on one (both races, $100) for 100 compute, more than a Solar Array. No well is inside your core's starting reach, though the nearest two
-are always a short hop out, so your first pump means extending your network
-toward it. Pumps sit out in the open, where wandering packs find them.
-
 **$ and compute** are two different things. **$** is money: users pay it
 every second, and everything (buildings, research) is bought with it.
-**Compute** is capacity: your core (80), Solar Arrays (60), Power Plants (150)
-and Data Pumps (100) supply it, and every user (1) and unit (about 2) uses it.
+**Compute** is capacity: your core (80), Solar Arrays (60) and Power Plants
+(150) supply it, and every user (1) and unit (about 2) uses it.
 The HUD shows it as in use / supplied. It can go over, and the further over
 you are the worse it gets: no new users arrive, users leave in proportion, and
 your towers, spawners and research all slow by the same share.
@@ -114,9 +138,17 @@ drives some away (towers and racks don't: they're what you put in between).
 Numbers live in `src/content/economy.json`.
 
 The malware nest sits in the middle of the web and you start out toward the
-edge. Waves never stop: each one is bigger, comes sooner, and unlocks nastier
-creeps (worms, then trojans, then ransomware bosses). The top bar previews the next wave: its name, the creeps it can bring (new
-ones marked), and any boss. Every wave leaves the nest
+edge. The botnet never stops, and its pressure comes in two forms.
+**Background traffic** is a small pack leaving the nest every 8 seconds,
+growing as the match goes on, so there's always something out there.
+**Incidents** (Port scan, Worm outbreak, DDoS, Ransomware...) are big surges
+every couple of minutes. Each one is bigger and comes sooner, unlocks nastier
+creeps (worms, then trojans), and bosses (ransomware) only come with
+incidents. In co-op every player still online adds pressure: the trickle
+scales strongly, since it spreads over everyone, and incidents gently,
+since each lands on one base. The top bar counts down to the next incident
+and previews it: its name, the creeps it can bring (new ones marked), and
+any boss. Every pack leaves the nest
 as packs of random size that wander outward. Nobody tells them where you are,
 but you make **traffic**: crawlers sense your cores from a radius that grows
 with your buildings, your users, and time online, and packs that sense you
@@ -126,7 +158,7 @@ whichever side a pack is wandering in from. Your score
 is **uptime**: how long your core stays online. Taking the nest offline ends
 the run early, in your favor, but it's a **fortress**: the nest sits on a
 backbone plateau ringed by cliffs, every ramp up is guarded by a C2 Server,
-and more ring the nest itself. Every 5 waves the botnet rebuilds the ones you
+and more ring the nest itself. Every 2 incidents the botnet rebuilds the ones you
 knocked down, tougher (`waves.json` → `fortress`). Where they stand is a pure
 function of the seed. Hover anything (buttons, buildings, units, terrain) to see what it does.
 Add `?debug` to the URL to expose live state as `window.uptime`.
@@ -260,12 +292,12 @@ Direction: survival on a procedurally generated open web.
 - [x] Builder start: scout with a deploy agent and choose where your core goes
 - [x] Fog of war
 - [x] Users: capacity, revenue, and churn from damage
-- [x] Data wells feed the economy
 - [x] Wandering creep packs that only attack what they see
-- [x] Endless escalating waves from a nest in the middle; uptime score
+- [x] Endless escalating pressure from a nest in the middle (background traffic + incidents); uptime score
 - [x] Elevation: plateaus, cliffs, ramps; high-ground sight and damage
 - [x] Rally points: per spawner, with a global default on the core
 - [x] Upgrades researched at the core
+- [x] Core tech tiers: Core, Data Center, Region
 - [x] Network expansion (per race) and redundant cores
 - [x] Heroes: three per race, levels, skill points, four abilities each
 - [x] Race selection: Open Source Collective, Hyperscaler

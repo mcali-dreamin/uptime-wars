@@ -214,19 +214,19 @@ describe("upgrades", () => {
   it("research costs compute, takes time, then raises the level", () => {
     const world = createWorld(content, SETUP);
     world.teams[0]!.money = 1000;
-    const def = content.upgrades["exploit-kits"]!;
-    expect(research(world, "exploit-kits")).toEqual([]);
-    expect(world.teams[0]!.research).toMatchObject({ upgrade: "exploit-kits" });
-    expect(levelOf(world.teams[0]!, "exploit-kits")).toBe(0);
+    const def = content.upgrades["tower-damage"]!;
+    expect(research(world, "tower-damage")).toEqual([]);
+    expect(world.teams[0]!.research).toMatchObject({ upgrade: "tower-damage" });
+    expect(levelOf(world.teams[0]!, "tower-damage")).toBe(0);
     let done = false;
     for (let i = 0; i < def.researchTicks + 5 && !done; i++) {
       step(world, content);
       done = world.events.some((e) => e.type === "researched");
     }
     expect(done).toBe(true);
-    expect(levelOf(world.teams[0]!, "exploit-kits")).toBe(1);
+    expect(levelOf(world.teams[0]!, "tower-damage")).toBe(1);
     expect(world.teams[0]!.research).toBeNull();
-    expect(multiplier(content, world.teams[0]!, "unitDamage")).toBeCloseTo(1 + def.perLevel);
+    expect(multiplier(content, world.teams[0]!, "towerDamage")).toBeCloseTo(1 + def.perLevel);
   });
 
   it("level n costs cost * n", () => {
@@ -239,7 +239,7 @@ describe("upgrades", () => {
     const world = createWorld(content, SETUP);
     world.teams[0]!.money = 5000;
     expect(research(world, "anycast")).toEqual([]);
-    expect(research(world, "autoscaling")).toEqual(["already researching"]);
+    expect(research(world, "edge-caching")).toEqual(["already researching"]);
     world.teams[0]!.research = null;
     world.teams[0]!.upgrades["anycast"] = content.upgrades.anycast!.maxLevel;
     expect(research(world, "anycast")).toEqual(["fully researched"]);

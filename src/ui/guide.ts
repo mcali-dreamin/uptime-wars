@@ -2,8 +2,9 @@
 // the build bar or with G; pauses the match while open.
 
 import type { Session } from "../game/session";
-import { TERRAIN_GUIDE, buildingDetail, unitDetail, upgradeDetail, type GuideEntry } from "./cards";
+import { TERRAIN_GUIDE, perkLines, buildingDetail, unitDetail, upgradeDetail, type GuideEntry } from "./cards";
 import { $ } from "./dom";
+import { upgradesAt } from "../sim";
 
 type Tab = "controls" | "heroes" | "buildings" | "upgrades" | "creeps" | "terrain" | "races";
 
@@ -20,24 +21,25 @@ const TABS: [Tab, string][] = [
 const CONTROLS: [string, string][] = [
   ["Start", "Your deploy agent starts selected. Click the ground to walk it, then press C and click to deploy your core."],
   ["Build", "Number keys or click a button, then click inside your network (the green rings). Shift-click to place several."],
-  ["Network", "Cores, Mesh Nodes (Open Source) and Edge PoPs (Hyperscaler) each extend where you can build. Build outward to reach ramps and wells."],
+  ["Network", "Cores, Mesh Nodes (Open Source) and Edge PoPs (Hyperscaler) each extend where you can build. Build outward to hold ramps and push toward the nest."],
   ["Redundancy", "Build more cores inside your network. If your main core falls the next takes over; you only go down when every core is down."],
   ["Select", "Click one of your buildings or units. Drag a box to select units; Shift adds to the group. Double-click a unit: every one of its kind on screen. Z: your whole army. Q: your hero."],
   ["Army", "With units selected, right-click the ground (or an enemy) to attack-move: they fight whatever they meet on the way, then hold the spot. F then click: a plain move that ignores enemies, for retreating. T then click works like right-click. Units you've sent stay put when you change a rally."],
   ["Hero", "Right-click to move or attack, 1-4 to cast, Shift+1-4 to learn. Full rundown in the Heroes tab."],
-  ["Research", "Select your core: the bar shows upgrades. Click one (or press its number) to research it. One at a time."],
+  ["Research", "Two places research, one thing at a time each. Your core upgrades the race and its base: core tier, building armor and HP, tower damage and range, users and revenue. Your upgrade center (CI Server, R&D Lab, Build Pipeline, Design Studio: one per player) upgrades the army: weapons, unit armor, unit HP, spawn speed, and your race's unit traits, one per unit, unlocked by core tier. Select either and click an upgrade (or press its number)."],
+  ["Core tiers", "The first research, Upgrade core, grows your core: Core, then Data Center, then Region. Each tier hosts more Web Apps (2, 4, 6), unlocks stronger buildings, supplies more compute, reaches further, and makes your cores tougher. But a bigger base draws crawlers from further away, and while the core upgrades it can't research anything else."],
   ["Walls", "Walled Garden: Walls block every path, for creeps and your own units alike, so leave yourself a way out. Towers and ranged units shoot over them. Creeps that can't get round a wall tear into it. Users of a Walled Garden are loyal: they leave 60% slower when you're hit."],
   ["Fork", "Open Source: select one of your finished buildings (not the core) and press X (or Fork on its card), then click to place a copy for half its price, built in less than half the time. Open Source buildings also repair themselves once nothing has hit them for 5 seconds."],
   ["Region", "Hyperscaler: each finished building of yours within 3 tiles makes a building take 8% less damage, up to 40%. Pack your base into regions; a lone building gets no shield. The building's card shows its shield."],
   ["Functions", "Serverless has no racks. A Function (or Inference Endpoint) spins up a squad when a creep comes near, for 20 seconds, then cools down. Each run costs $: no $, no run. Their units only use compute while running. Select one and press V (or its Invoke button) to run it now. Their rally point works like a rack's."],
   ["Rally", "With a spawner selected, right-click the ground to send its units there. With the core selected, right-click sets the rally for every spawner that doesn't have its own. No right button? Press T (or the button on the info card), then click the ground. Ctrl-click, Cmd-click and two-finger taps count as right-clicks too."],
   ["Camera", "WASD / arrows, the window edge, or drag with the middle button or Alt held to pan. Wheel or +/- to zoom. Click the minimap to jump. Space: back home."],
-  ["Other", "Esc: deselect · P: pause · E: edge scroll on/off · G: this guide · R: new match after an outage"],
+  ["Other", "M: sound on / effects only / off · Esc: deselect · P: pause · E: edge scroll on/off · G: this guide · R: new match after an outage"],
   ["$", "Money. Users pay it every second, and everything is bought with it: buildings, research, kills pay bounties in it. Hover the +/s next to $ to see where it comes from."],
   ["Users", "Users are your income. They arrive while your core is up and grow toward your capacity (core + Web Apps), as long as you have the compute to serve them. Every hit your core or a Web App takes drives some away (the red −N by Users); towers and racks are what you put in between. And a bigger base makes more traffic: crawlers sense you from further away the more you build, the more users you have, and the longer you're online."],
-  ["Compute", "Capacity, not money. Your core, Solar Arrays, Power Plants and Data Pumps supply it; every user and unit uses some (shown as in use / supplied). It can go over. The further over you are, the worse it gets: no new users arrive and some leave each second, and your towers, spawners and research all run slower by the same share (shown as % slow). Build generators to grow."],
+  ["Compute", "Capacity, not money. Your core, Solar Arrays and Power Plants supply it; every user and unit uses some (shown as in use / supplied). It can go over. The further over you are, the worse it gets: no new users arrive and some leave each second, and your towers, spawners and research all run slower by the same share (shown as % slow). Build generators to grow."],
   ["Co-op", "On the race picker press H. Send each friend an invite link, paste back the reply code they give you, then Start. Everyone runs the same match; you see what your allies see, and the match goes on until every player is offline. Co-op can't pause."],
-  ["Goal", "Waves never stop. Your score is uptime: how long your core stays online. Peak users is your bragging right. Or end it: the Malware Nest sits on a fortified plateau in the middle of the web, its gateways guarded by C2 Servers. Push up a ramp, take the nest offline, and you win. Every few waves the botnet rebuilds fallen C2 Servers, tougher. Inside, Botnet Farms garrison the fortress. Destroy one and it sends a retaliation wave straight at you (a hornet's nest), but every farm down makes every later wave 15% smaller, until the botnet rebuilds them."],
+  ["Goal", "The botnet never stops. Small packs of background traffic leave the nest every few seconds, more as the match goes on; every few minutes an incident (DDoS, Worm outbreak, Ransomware...) sends a big surge, and bosses only come with incidents. The top bar counts down to the next one and shows what it brings. In co-op the pressure grows with every player still online. Your score is uptime: how long your core stays online. Peak users is your bragging right. Or end it: the Malware Nest sits on a fortified plateau in the middle of the web, its gateways guarded by C2 Servers. Push up a ramp, take the nest offline, and you win. Every few waves the botnet rebuilds fallen C2 Servers, tougher. Inside, Botnet Farms garrison the fortress. Destroy one and it sends a retaliation wave straight at you (a hornet's nest), but every farm down makes every later incident 15% smaller, until the botnet rebuilds them."],
 ];
 
 export class Guide {
@@ -109,14 +111,16 @@ export class Guide {
         return [race.core, ...race.buildings].map((id) => entry(buildingDetail(content, raceId, id)));
       }
       case "upgrades":
-        return Object.keys(content.upgrades).map((id) => entry(upgradeDetail(content, id)));
+        return [...upgradesAt(content, this.session.team, "core"), ...upgradesAt(content, this.session.team, "center")].map((id) =>
+          entry(upgradeDetail(content, id, raceId)),
+        );
       case "creeps": {
         const ids = [...content.waves.roster.map((r) => r.unit), content.waves.bosses.unit];
         return [...new Set(ids)].map((id) => {
           const detail = unitDetail(content, id);
           const from = content.waves.roster.find((r) => r.unit === id)?.fromWave ?? content.waves.bosses.fromWave;
           const bounty = content.units[id]!.bounty;
-          return entry({ ...detail, stats: [...detail.stats, `Bounty: $${bounty} per kill`, `First seen: wave ${from}`] });
+          return entry({ ...detail, stats: [...detail.stats, `Bounty: $${bounty} per kill`, `First seen: incident ${from}`] });
         });
       }
       case "terrain":
@@ -153,7 +157,7 @@ export class Guide {
         return this.session.playable.map((id) => {
           const race = content.races[id]!;
           const roster = race.buildings.map((b) => content.buildings[b]!.name).join(", ");
-          return entry({ title: race.name, description: race.specialty, stats: [roster] });
+          return entry({ title: race.name, description: race.specialty, stats: [roster, ...perkLines(content, id)] });
         });
     }
   }

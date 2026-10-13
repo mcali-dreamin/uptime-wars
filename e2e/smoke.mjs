@@ -52,10 +52,20 @@ await run("smoke test", async ({ check, open }) => {
   await click(await home());
   check(await waitFor(() => state(() => window.uptime.session.core() !== undefined), 60000), "C + click founds the core");
 
+  // Sound: the first click unlocked audio, founding played its cue, M cycles on / effects / off.
+  check(await waitFor(() => state(() => window.uptime.sound.running)), "audio starts after the first click");
+  check(await waitFor(() => state(() => (window.uptime.sound.played.get("founded") ?? 0) > 0)), "founding the core plays a sound");
+  const modes = [];
+  for (let i = 0; i < 3; i++) {
+    await page.keyboard.press("m");
+    modes.push(await page.textContent("#sound"));
+  }
+  check(modes.join() === "Sound: effects,Sound: off,Sound: on", `M cycles the sound mode (${modes.join(" → ")})`);
+
   // HUD: income, wave preview, the race's build bar.
   check(/^\+[\d.]+\/s$/.test(await page.textContent("#income")), "the HUD shows income");
   check(/^\d+ \/ \d+/.test(await page.textContent("#compute")), `the HUD shows compute in use / supplied (${await page.textContent("#compute")})`);
-  check((await page.textContent("#preview-title")).startsWith("Wave 1"), "the HUD previews the next wave");
+  check((await page.textContent("#preview-title")).startsWith("Incident 1"), "the HUD previews the next incident");
   check((await page.$$eval(".build-btn", (b) => b.length)) >= 4, "the build bar shows the race's buildings");
 
   // Build a spawner with a number key and a click, then select it.
@@ -174,6 +184,27 @@ await run("smoke test", async ({ check, open }) => {
   // CI renders in software: the command card can take a while to redraw.
   await page.click(".upgrade-btn:not([disabled])", { timeout: 60000 });
   check(await waitFor(() => state(() => window.uptime.session.team.research !== null)), "the core's card starts research");
+
+  // The upgrade center: build it, select it, and its card researches the army at the same time.
+  await page.keyboard.press("Escape");
+  await state(() => (window.uptime.session.team.money += 2000));
+  const centerId = await state(() => window.uptime.session.race.center);
+  const centerKey = await state((id) => String(window.uptime.session.race.buildings.indexOf(id) + 1), centerId);
+  const lab = await openNear(core.x, core.y, 3, 7);
+  await page.keyboard.press(centerKey);
+  await click(lab);
+  const labId = await waitFor(
+    () => state((id) => window.uptime.world.entities.find((e) => e.defId === id && e.buildRemaining <= 0)?.id, centerId),
+    120000,
+  );
+  check(Boolean(labId), `a number key + click builds the upgrade center (${centerId})`);
+  await click(lab);
+  check(await waitFor(() => state((id) => window.uptime.selection.id === id, labId)), "clicking the upgrade center selects it");
+  await page.click(".upgrade-btn:not([disabled])", { timeout: 60000 });
+  check(
+    await waitFor(() => state(() => window.uptime.session.team.labResearch !== null && window.uptime.session.team.research !== null)),
+    "its card starts army research alongside the core's",
+  );
 
   // The Guide opens, pauses the match, and closes.
   await page.keyboard.press("g");

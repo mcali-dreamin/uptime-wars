@@ -8,9 +8,10 @@
     "buildings": [
       "server-rack",
       "gpu-cluster",
+      "monorepo",
       "firewall",
       "solar-array",
-      "data-pump",
+      "ci-server",
       "web-app",
       "mesh-node",
       "core"
@@ -36,7 +37,29 @@
       "maintainer",
       "bdfl",
       "bug-hunter"
-    ]
+    ],
+    "tierPerks": [
+      null,
+      {
+        "name": "Community",
+        "description": "Forks cost 35% instead of half.",
+        "mechanics": {
+          "fork": {
+            "costPermille": 350
+          }
+        }
+      },
+      {
+        "name": "Upstream",
+        "description": "Buildings repair twice as fast.",
+        "mechanics": {
+          "repair": {
+            "permillePerSecond": 30
+          }
+        }
+      }
+    ],
+    "center": "ci-server"
   },
   "hyperscaler": {
     "name": "Hyperscaler",
@@ -47,10 +70,11 @@
     "builder": "deploy-agent",
     "buildings": [
       "hyperscale-rack",
-      "gpu-cluster",
+      "edge-fleet",
+      "mainframe-bay",
       "cdn-edge",
       "power-plant",
-      "data-pump",
+      "rnd-lab",
       "web-app",
       "edge-pop",
       "core"
@@ -72,7 +96,27 @@
       "sre",
       "architect",
       "evangelist"
-    ]
+    ],
+    "tierPerks": [
+      null,
+      {
+        "name": "Availability Zones",
+        "description": "Regions shield up to 55% instead of 40%.",
+        "mechanics": {
+          "region": {
+            "maxPermille": 550
+          }
+        }
+      },
+      {
+        "name": "Global Footprint",
+        "description": "Units 50% tougher instead of 30%.",
+        "modifiers": {
+          "unitHpMultiplier": 1.5
+        }
+      }
+    ],
+    "center": "rnd-lab"
   },
   "serverless": {
     "name": "Serverless",
@@ -89,7 +133,8 @@
     "buildings": [
       "function",
       "inference-endpoint",
-      "data-pump",
+      "state-machine",
+      "build-pipeline",
       "web-app",
       "mesh-node",
       "core"
@@ -99,7 +144,25 @@
       "costMultiplier": 1,
       "unitHpMultiplier": 1,
       "startingMoneyBonus": 50
-    }
+    },
+    "tierPerks": [
+      null,
+      {
+        "name": "Warm Starts",
+        "description": "Functions cool down 30% faster.",
+        "modifiers": {
+          "invokeCooldownMultiplier": 0.7
+        }
+      },
+      {
+        "name": "Reserved Capacity",
+        "description": "Every run costs 40% less.",
+        "modifiers": {
+          "invokeCostMultiplier": 0.6
+        }
+      }
+    ],
+    "center": "build-pipeline"
   },
   "walled-garden": {
     "name": "Walled Garden",
@@ -111,9 +174,11 @@
     "buildings": [
       "garden-wall",
       "flagship-store",
+      "trust-safety",
+      "legal-dept",
       "app-review",
       "private-cloud",
-      "data-pump",
+      "design-studio",
       "web-app",
       "core"
     ],
@@ -132,7 +197,32 @@
       "platform-owner",
       "compliance-officer",
       "brand-ambassador"
-    ]
+    ],
+    "tierPerks": [
+      null,
+      {
+        "name": "Hardened Walls",
+        "description": "Walls hit back: melee attackers take 12 damage per blow.",
+        "mechanics": {
+          "thorns": {
+            "damage": 12,
+            "buildings": [
+              "garden-wall"
+            ]
+          }
+        }
+      },
+      {
+        "name": "Ecosystem Lock-in",
+        "description": "Users leave at 15% of the usual rate when you're hit (was 40%).",
+        "mechanics": {
+          "loyalty": {
+            "churnPermille": 150
+          }
+        }
+      }
+    ],
+    "center": "design-studio"
   },
   "botnet": {
     "name": "The Botnet",
