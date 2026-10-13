@@ -3,7 +3,7 @@
 // against the horde) or free-for-all (everyone against everyone). From then on the links
 // carry lockstep turns (see lockstep.ts).
 
-import { MAX_PLAYERS, createWorld, type Content, type MatchMode, type TeamId, type World } from "../../sim";
+import { MAX_PLAYERS, createWorld, type Content, type MapLayout, type MatchMode, type TeamId, type World } from "../../sim";
 import { Lockstep, type LockstepMessage } from "./lockstep";
 import type { PeerLink } from "./rtc";
 
@@ -11,13 +11,15 @@ const HORDE_RACE = "botnet";
 
 type LobbyMessage =
   | { t: "hello"; race: string; hero?: string }
-  | { t: "start"; seed: number; races: string[]; heroes: (string | undefined)[]; you: TeamId; mode?: MatchMode }
+  | { t: "start"; seed: number; races: string[]; heroes: (string | undefined)[]; you: TeamId; mode?: MatchMode; layout?: MapLayout }
   | LockstepMessage;
 
 /** How the host set the match up. FFA can drop the horde; co-op always has it. */
 export interface MatchRules {
   mode: MatchMode;
   horde: boolean;
+  /** Map layout; the host's `?map=` picks it. */
+  layout?: MapLayout;
 }
 
 export const COOP: MatchRules = { mode: "coop", horde: true };
@@ -90,8 +92,9 @@ export class HostLobby {
     this.guests.splice(0, this.guests.length, ...this.ready);
     const races = [hostRace, ...this.guests.map((guest) => guest.race!), ...(horde ? [HORDE_RACE] : [])];
     const heroes = [hostHero, ...this.guests.map((guest) => guest.hero)];
-    for (const [i, guest] of this.guests.entries()) guest.link.send({ t: "start", seed, races, heroes, you: i + 1, mode } satisfies LobbyMessage);
-    const world = createWorld(this.content, { seed, races, heroes, mode });
+    const layout = rules.layout ?? "noise";
+    for (const [i, guest] of this.guests.entries()) guest.link.send({ t: "start", seed, races, heroes, you: i + 1, mode, layout } satisfies LobbyMessage);
+    const world = createWorld(this.content, { seed, races, heroes, mode, layout });
     this.lockstep = new Lockstep(world, this.content, {
       local: 0,
       host: true,
@@ -117,7 +120,7 @@ export function joinHost(content: Content, link: PeerLink, race: string, hero: s
   link.onMessage = (raw) => {
     const message = raw as LobbyMessage;
     if (message.t !== "start") return;
-    const world = createWorld(content, { seed: message.seed, races: message.races, heroes: message.heroes ?? [], mode: message.mode ?? "coop" });
+    const world = createWorld(content, { seed: message.seed, races: message.races, heroes: message.heroes ?? [], mode: message.mode ?? "coop", layout: message.layout ?? "noise" });
     const lockstep = new Lockstep(world, content, { local: message.you, host: false, send: (m) => link.send(m) });
     link.onMessage = (next) => {
       const m = next as LobbyMessage;

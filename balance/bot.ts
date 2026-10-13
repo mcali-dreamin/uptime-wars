@@ -34,6 +34,8 @@ export interface BotOptions {
   minutes: number;
   /** Play the hero (learn and cast). Off = the hero only auto-fights. */
   hero: boolean;
+  /** Map layout (default noise). */
+  layout?: "noise" | "routes";
 }
 
 export interface BotResult {
@@ -53,7 +55,7 @@ const DECIDE_EVERY = 20;
 const SKIP = new Set(["core", "mesh-node", "edge-pop", "garden-wall"]);
 
 export function playMatch(content: Content, race: string, seed: number, heroId: string, options: BotOptions): BotResult {
-  const world = createWorld(content, { seed, races: [race, "botnet"], heroes: [heroId], startWithCore: true });
+  const world = createWorld(content, { seed, races: [race, "botnet"], heroes: [heroId], startWithCore: true, layout: options.layout });
   const team = world.teams[0]!;
   const tier = tierUpgrade(content)!;
   const rotation = content.races[race]!.buildings.filter((b) => !SKIP.has(b));
