@@ -107,7 +107,8 @@ export class RacePicker {
   }
 
   private pick(id: string): void {
-    if (this.session.content.races[id]!.heroes?.length) return this.showHeroes(id);
+    // One hero per race: no choice to make, so no step. (More than one brings the step back.)
+    if ((this.session.content.races[id]!.heroes?.length ?? 0) > 1) return this.showHeroes(id);
     this.root.hidden = true;
     this.open = false;
     this.onPick(id);

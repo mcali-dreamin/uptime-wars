@@ -19,6 +19,11 @@ export function tickCooldowns(ctx: TickContext): void {
   }
 }
 
+/** Compute a unit uses while alive. */
+export function unitUpkeep(content: TickContext["content"], unitId: string): number {
+  return content.units[unitId]!.upkeep ?? content.economy.compute.perUnit;
+}
+
 /** Compute supplied and used by a team right now. Integers; pure. */
 export function computeBalance(world: World, content: TickContext["content"], team: Team): { supply: number; demand: number } {
   const per = content.economy.compute;
@@ -29,7 +34,7 @@ export function computeBalance(world: World, content: TickContext["content"], te
     if (entity.kind === "building") {
       if (entity.buildRemaining <= 0) supply += content.buildings[entity.defId]!.compute ?? 0;
     } else if (entity.mode !== "builder") {
-      units += content.units[entity.defId]!.upkeep ?? per.perUnit;
+      units += unitUpkeep(content, entity.defId);
     }
   }
   // A higher core tier supplies more, as long as a core is up.

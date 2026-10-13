@@ -34,9 +34,7 @@
     },
     "builder": "deploy-agent",
     "heroes": [
-      "maintainer",
-      "bdfl",
-      "bug-hunter"
+      "maintainer"
     ],
     "tierPerks": [
       null,
@@ -93,9 +91,7 @@
       "startingMoneyBonus": 150
     },
     "heroes": [
-      "sre",
-      "architect",
-      "evangelist"
+      "sre"
     ],
     "tierPerks": [
       null,
@@ -126,9 +122,7 @@
     "core": "core",
     "builder": "deploy-agent",
     "heroes": [
-      "function-author",
-      "chaos-engineer",
-      "finops"
+      "function-author"
     ],
     "buildings": [
       "function",
@@ -197,9 +191,7 @@
       "buildRadiusBonus": 3
     },
     "heroes": [
-      "platform-owner",
-      "compliance-officer",
-      "brand-ambassador"
+      "platform-owner"
     ],
     "tierPerks": [
       null,

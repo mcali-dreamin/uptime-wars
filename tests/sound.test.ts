@@ -35,7 +35,7 @@ describe("sound director", () => {
       { type: "wave", wave: 8, name: "y", packs: 2, units: 10, boss: true },
       { type: "founded", x: 0, y: 0 },
       { type: "hero-level", team: 0, level: 2 },
-      { type: "cast", team: 0, ability: "fuzzing", x: here.center.x, y: here.center.y, radius: 110, targetId: null },
+      { type: "cast", team: 0, ability: "event-storm", x: here.center.x, y: here.center.y, radius: 110, targetId: null },
     ];
     expect(director.cues(world, events, 0, here, 0).map((c) => c.name)).toEqual(["wave", "boss", "founded", "level-up", "cast-blast"]);
   });
