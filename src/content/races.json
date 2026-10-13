@@ -166,7 +166,7 @@
   },
   "walled-garden": {
     "name": "Walled Garden",
-    "specialty": "Builds real walls that block every path; towers and Moderators fire over them. Users are loyal: they leave 60% slower when you're hit. No network nodes: you build around your cores, nowhere else.",
+    "specialty": "Builds real walls that block every path; towers and Moderators fire over them. Users are loyal: they leave 60% slower when you're hit. No network nodes, but its cores reach 3 tiles further: you build around your cores, nowhere else.",
     "controller": "human",
     "look": "garden",
     "core": "core",
@@ -191,7 +191,8 @@
       "spawnIntervalMultiplier": 1,
       "costMultiplier": 1,
       "unitHpMultiplier": 1.1,
-      "startingMoneyBonus": 0
+      "startingMoneyBonus": 0,
+      "buildRadiusBonus": 3
     },
     "heroes": [
       "platform-owner",
