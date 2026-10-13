@@ -159,12 +159,13 @@ export function tickHeroes(ctx: TickContext): void {
     if (state.unitId !== -1) {
       const hero = ctx.byId.get(state.unitId);
       if (!hero || hero.hp <= 0) {
+        const fellAt = hero ?? { x: 0, y: 0 };
         const def = content.heroes.heroes[team.heroId!]!;
         state.unitId = -1;
         state.respawnAt = world.tick + def.respawnTicks + def.respawnPerLevel * (state.level - 1);
         state.focusId = null;
         state.cast = null;
-        world.events.push({ type: "hero-down", team: team.id, respawnAt: state.respawnAt });
+        world.events.push({ type: "hero-down", team: team.id, respawnAt: state.respawnAt, x: fellAt.x, y: fellAt.y });
       }
     }
     if (state.unitId === -1 && state.respawnAt !== null && world.tick >= state.respawnAt && team.downTick === null) {

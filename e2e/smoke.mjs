@@ -62,6 +62,17 @@ await run("smoke test", async ({ check, open }) => {
   check(modes.join() === "Sound: effects,Sound: off,Sound: on", `M cycles the sound mode (${modes.join(" → ")})`);
 
   // HUD: income, wave preview, the race's build bar.
+  // Alerts: an off-screen hit on your core raises one, and Space jumps the camera to it.
+  const alerted = await state(() => {
+    const u = window.uptime;
+    const core = u.session.core();
+    u.renderer.camera.centerOn(core.x + 3000, core.y);
+    u.alerts.update(u.world, [{ type: "shot", from: 999, to: core.id, x1: 0, y1: 0, x2: core.x, y2: core.y, team: 1 }], u.session.local, performance.now() / 1000, () => false);
+    return u.alerts.recent.length;
+  });
+  check(alerted > 0, "an off-screen hit on your core raises an alert");
+  await page.keyboard.press("Space");
+  check(await waitFor(() => state(() => Math.abs(window.uptime.renderer.camera.x - window.uptime.session.core().x) < 50)), "Space jumps the camera to the alert");
   check(/^\+[\d.]+\/s$/.test(await page.textContent("#income")), "the HUD shows income");
   check(/^\d+ \/ \d+/.test(await page.textContent("#compute")), `the HUD shows compute in use / supplied (${await page.textContent("#compute")})`);
   check((await page.textContent("#preview-title")).startsWith("Incident 1"), "the HUD previews the next incident");

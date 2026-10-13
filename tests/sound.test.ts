@@ -44,7 +44,7 @@ describe("sound director", () => {
     const { world, director, here } = setup();
     const events: SimEvent[] = [
       { type: "hero-level", team: 1, level: 2 },
-      { type: "hero-down", team: 1, respawnAt: 9 },
+      { type: "hero-down", team: 1, respawnAt: 9, x: 0, y: 0 },
       { type: "researched", team: 1, upgrade: "x", level: 1 },
     ];
     expect(director.cues(world, events, 0, here, 0)).toEqual([]);
