@@ -1,7 +1,7 @@
 {
   "name": "uptime-wars",
   "private": true,
-  "version": "0.45.0",
+  "version": "0.46.0",
   "description": "Tech-themed castle defense. Build compute, auto-spawn processes, keep your core online.",
   "type": "module",
   "scripts": {
