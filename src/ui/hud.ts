@@ -103,11 +103,18 @@ export class Hud {
     }
     const { supply, demand } = computeBalance(world, content, team);
     const over = team.overload > 0;
-    this.compute.textContent = over ? `${demand} / ${supply} · ${Math.round(team.overload / 10)}% slow` : `${demand} / ${supply}`;
+    const capped = team.capped === true;
+    this.compute.textContent = over
+      ? `${demand} / ${supply} · ${Math.round(team.overload / 10)}% slow`
+      : capped
+        ? `${demand} / ${supply} · army cap`
+        : `${demand} / ${supply}`;
     this.computeStat.classList.toggle("overloaded", over);
     this.computeStat.title =
       `In use / supplied. Each user uses ${content.economy.compute.perUser}, each unit about ${content.economy.compute.perUnit}. ` +
-      "Over capacity, users stop arriving and start leaving, and your towers, spawners and research slow down, the further over the worse. Build generators for more.";
+      "Compute is also your army cap: a spawner only adds a unit if its upkeep fits in what's free, so more spawners reinforce faster but never field more. " +
+      "Generators are limited per core tier: tech up the core to raise the cap. " +
+      "Over capacity (users growing past it), users stop arriving and start leaving, and your towers, spawners and research slow down.";
   }
 
   /** What the next wave brings: its name, its creeps (new ones marked), and any boss. */

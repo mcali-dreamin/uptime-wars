@@ -82,7 +82,8 @@ stand (the nest and its C2 Servers) show, dimmed, on the map and the minimap.
 Fog hides movement: you only see creeps within sight of your agent, units, and
 buildings. `?reveal` in the URL turns the fog off.
 
-**Heroes.** After your race, pick one of its three heroes. It appears at
+**Heroes.** Each race has one hero (kept to one while the core loop gets
+its depth; the picker step comes back if a race gets more). It appears at
 your core when the core comes online and is the one unit you command
 directly: `Q` selects it (again to centre on it), right-click moves it or
 attacks an enemy, `1`-`4` cast, `Shift`+`1`-`4` (or the `+`) learn.
@@ -97,14 +98,19 @@ attacks an enemy, `1`-`4` cast, `Shift`+`1`-`4` (or the `+`) learn.
 | Race | Hero | Plays as |
 | --- | --- | --- |
 | Open Source | Maintainer | ranged support: Code Review, Hotfix, Fork Bomb, ult Release Day |
-| Open Source | Benevolent Dictator | melee bruiser: Veto, Merge Conflict, Flame War, ult Rewrite It in Rust |
-| Open Source | Bug Bounty Hunter | ranged assassin: Fuzzing, Honeypot, Patch Tuesday, ult Zero-day |
 | Hyperscaler | Site Reliability Engineer | tank: Rate Limit, Runbook, Canary Deploy, ult Autoscale |
-| Hyperscaler | Solutions Architect | ranged nuker: Vendor Lock-in, Capacity Plan, SLA, ult Region Outage |
-| Hyperscaler | Developer Evangelist | support: Keynote, Free Tier, Black Friday, ult Acquisition |
+| Serverless | Function Author | caster: Cold Start, Fan-Out, Retry Backoff, ult Event Storm |
+| Walled Garden | Platform Owner | enforcer: Delist, Lockdown, Walled Off, ult Sherlocked |
 
 Heroes and abilities are JSON (`src/content/heroes.json`). An ability is one
 of six effects: blast, strike, heal, decoy, summon, or buff.
+
+**Army cap.** Compute caps your army: every unit uses some, and a spawner
+only adds one if it fits in what's free. Users use compute too, so a bigger
+army costs you users (income). Generators are limited per core tier (Solar
+Arrays 2 / 4 / 7, and so on), so the way to a bigger army is teching up the
+core, not building more spawners. More spawners reinforce faster; they
+don't field more.
 
 **Sound.** Everything you hear is synthesised in the browser with Web Audio
 (`src/audio/`): no audio files. Combat is positional and only plays for what
@@ -300,7 +306,8 @@ Direction: survival on a procedurally generated open web.
 - [x] Upgrades researched at the core
 - [x] Core tech tiers: Core, Data Center, Region
 - [x] Network expansion (per race) and redundant cores
-- [x] Heroes: three per race, levels, skill points, four abilities each
+- [x] Heroes: one per race, levels, skill points, four abilities each
+- [x] Compute is the army cap; generators are limited per core tier
 - [x] Race selection: Open Source Collective, Hyperscaler
 - More races: Hacker crew, State actor / APT
 - Content from WordPress, saves and leaderboards via Spacefast Zero

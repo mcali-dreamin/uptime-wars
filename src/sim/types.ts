@@ -26,6 +26,8 @@ export interface Team {
   users: number;
   /** Compute overload in permille (0 = within capacity), refreshed once a second. */
   overload: number;
+  /** A spawner of this team was held back by the compute cap this tick. */
+  capped?: boolean;
   peakUsers: number;
   /** Fractions carried between seconds so nothing is lost to rounding. */
   revenueCarry: number;

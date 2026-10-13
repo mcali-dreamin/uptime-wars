@@ -27,10 +27,9 @@ await run("smoke test", async ({ check, open }) => {
   await page.click('.color-swatch[data-color="purple"]');
   check(await state(() => window.uptime.session.color.id === "purple"), "a colour swatch picks the colour");
   await page.keyboard.press("1");
-  // The race's heroes come next: take the second.
-  const heroes = await waitFor(() => page.$$eval(".hero-card", (c) => (c.length ? c.map((x) => x.dataset.hero) : null)));
-  check(heroes?.length >= 3, `picking a race offers its heroes (${heroes?.join(", ")})`);
-  await page.keyboard.press("2");
+  // One hero per race: picking the race starts the match, no hero step.
+  check(await waitFor(() => state(() => window.uptime.session.builder() !== undefined)), "picking a race starts the match");
+  const heroes = [await state(() => window.uptime.content.races[window.uptime.session.raceId].heroes[0])];
 
   // Deploy: the agent starts selected; a click walks it; C + click founds the core.
   const agent = await home();
@@ -118,7 +117,7 @@ await run("smoke test", async ({ check, open }) => {
     const h = window.uptime.world.entities.find((e) => e.id === t.hero?.unitId);
     return h && { id: h.id, defId: h.defId, x: h.x, y: h.y };
   });
-  check(hero?.defId === heroes[1], `the hero you picked is on the field (${hero?.defId})`);
+  check(hero?.defId === heroes[0], `the race's hero is on the field (${hero?.defId})`);
   await page.keyboard.press("q");
   check(await waitFor(() => state((id) => window.uptime.selection.id === id, hero.id)), "Q selects the hero");
   const abilities = await waitFor(() => page.$$eval(".ability-btn", (b) => (b.length === 4 ? b.map((x) => x.dataset.ability) : null)), 60000);
