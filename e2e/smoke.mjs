@@ -73,7 +73,7 @@ await run("smoke test", async ({ check, open }) => {
   await page.keyboard.press("1");
   await click(spot);
   const spawner = await waitFor(() =>
-    state(() => window.uptime.world.entities.find((e) => e.kind === "building" && window.uptime.content.buildings[e.defId].spawn)?.id),
+    state(() => window.uptime.world.entities.find((e) => e.kind === "building" && e.team === window.uptime.session.local && window.uptime.content.buildings[e.defId].spawn)?.id),
   );
   check(Boolean(spawner), "a number key + click places a spawner");
   await click(spot);
