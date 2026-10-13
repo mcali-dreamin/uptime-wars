@@ -1,6 +1,10 @@
 {
-  "firstWaveTicks": 600,
-  "firstIncidentTicks": 2400,
+  "firstWaveTicks": 1200,
+  "firstIncidentTicks": 1200,
+  "opening": {
+    "budget": 28,
+    "entryDistance": 720
+  },
   "graceTicks": 3600,
   "trickle": {
     "everyTicks": 160,

@@ -5,6 +5,9 @@ import { groundOrderLabel, leftClickOrders, selectedEntity, type Selection } fro
 import type { Session } from "../game/session";
 import { $ } from "./dom";
 
+/** Later incidents show the big countdown for their last this-many seconds. */
+const COUNTDOWN_LAST = 15;
+
 export function clock(totalSeconds: number): string {
   const s = Math.floor(totalSeconds);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -29,6 +32,9 @@ export class Hud {
   private readonly wave = $("wave");
   private readonly nextWave = $("next-wave");
   private readonly status = $("status");
+  private readonly countdown = $("countdown");
+  private readonly countdownLabel = $("countdown-label");
+  private readonly countdownTime = $("countdown-time");
   private readonly hint = $("hint");
   private readonly previewTitle = $("preview-title");
   private readonly previewCreeps = $("preview-creeps");
@@ -55,6 +61,7 @@ export class Hud {
     this.wave.textContent = String(world.waves.nextIndex);
     this.nextWave.textContent = `${Math.max(0, Math.ceil((world.waves.nextWaveTick - world.tick) / TICK_RATE))}s`;
     this.updatePreview(world.waves.nextIndex + 1);
+    this.updateCountdown();
     if (!world.outcome) {
       const waiting = this.session.waitingOn().filter((team) => team !== this.session.local);
       this.status.textContent = paused
@@ -138,6 +145,24 @@ export class Hud {
       parts.push(boss);
     }
     this.previewCreeps.replaceChildren(...parts.flatMap((part, i) => (i === 0 ? [part] : [document.createTextNode(" · "), part])));
+  }
+
+  /**
+   * The clock you play against, big and centred: the whole run-up to the
+   * first incident once your core is online, and the last seconds before
+   * every one after it.
+   */
+  private updateCountdown(): void {
+    const { world } = this.session;
+    const left = Math.max(0, Math.ceil((world.waves.nextWaveTick - world.tick) / TICK_RATE));
+    const first = world.waves.nextIndex === 0;
+    const show = !world.outcome && !this.session.deploying && left > 0 && (first ? left <= 90 : left <= COUNTDOWN_LAST);
+    this.countdown.hidden = !show;
+    if (!show) return;
+    const next = previewWave(this.session.content, world.waves.nextIndex + 1);
+    this.countdownLabel.textContent = first ? `${next.name} hits your base in` : `Incident ${next.wave} · ${next.name} in`;
+    this.countdownTime.textContent = clock(left);
+    this.countdown.classList.toggle("urgent", left <= 10);
   }
 
   /** One line telling the player what they can do right now. */

@@ -279,6 +279,9 @@ export interface WaveSpawn {
   packId: number;
   /** Wave number (1-based), which sets how tough the creep is. */
   wave: number;
+  /** Where it enters (default: the nest), and a base it marches on (default: it wanders). */
+  at?: Point;
+  target?: Point;
   /** Comes out of this infected node (entity id) instead of the nest, if it still stands. */
   from?: number;
   /** An infector, heading to build a node on this site (top-left tile). */
@@ -322,7 +325,7 @@ export type SimEvent =
   | { type: "reported"; team: TeamId; x: number; y: number; packs: number }
   /** A short-lived unit's time ran out (not a kill: no bounty). */
   | { type: "expired"; id: number; x: number; y: number; team: TeamId }
-  | { type: "wave"; wave: number; name: string; packs: number; units: number; boss: boolean }
+  | { type: "wave"; wave: number; name: string; packs: number; units: number; boss: boolean; entries?: { team: TeamId; x: number; y: number }[] }
   /** The botnet put fallen C2 Servers back up. */
   | { type: "fortified"; wave: number; rebuilt: number }
   /** A Botnet Farm fell: `units` creeps retaliate against (x, y), where `team` hit it from. */

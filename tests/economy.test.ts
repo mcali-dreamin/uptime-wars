@@ -28,6 +28,8 @@ describe("users", () => {
 
   it("users grow toward capacity and never past it", () => {
     const world = createWorld(content, SETUP);
+    // Nobody attacking: hits drive users away, which isn't what this is about.
+    world.waves.nextWaveTick = world.waves.nextTrickleTick = 1e9;
     expect(world.teams[0]!.users).toBe(econ.startingUsers);
     let last = world.teams[0]!.users;
     for (let s = 0; s < 120; s++) {
@@ -57,6 +59,7 @@ describe("users", () => {
   it("a Web App raises capacity", () => {
     const world = createWorld(content, SETUP);
     world.teams[0]!.money = 1000;
+    world.waves.nextWaveTick = world.waves.nextTrickleTick = 1e9;
     // Room for the users needs compute to serve them: a Web App and a generator.
     for (const command of planBuildOrder(content, SETUP, [[0, "web-app"], [0, "solar-array"]])) queueCommand(world, command);
     for (let i = 0; i < 20 * 150; i++) step(world, content);

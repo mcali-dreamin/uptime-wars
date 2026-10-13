@@ -7,10 +7,13 @@ import type { TickContext } from "./context";
 import type { Content } from "./content";
 import { spawnUnit } from "./entities";
 import { farmsDown, fortify, raiseFarms } from "./fortress";
+import { TILE } from "./map";
+import { goalField } from "./movement";
+import { ORTHOGONAL, UNREACHABLE, bodyFits } from "./nav";
 import { randomInt } from "./rng";
 import { liveNodes, sendInfectors } from "./spread";
 import { humanTeams } from "./teams";
-import type { World } from "./types";
+import type { Building, Point, TeamId, World } from "./types";
 
 /**
  * The horde is not special: it is a team whose controller is the wave
@@ -42,7 +45,10 @@ export function tickWaveDirector(ctx: TickContext): void {
     // Every farm down shrinks the wave.
     const down = farmsDown(world, content, team.id);
     const budgetScale = Math.max(0, 1000 - down * waves.fortress.farms.weakenPermille);
-    const plan = planWave(world, content, wave, budgetScale);
+    // The opening incident lands at each player's door, smaller.
+    const entries = wave === 1 && waves.opening ? openingEntries(ctx) : [];
+    const scale = entries.length > 0 ? Math.round((waves.opening!.budget * 1000) / waves.budget.start) : budgetScale;
+    const plan = planWave(world, content, wave, scale);
     let at = world.tick;
     let packs = 0;
     // The botnet's spread: some packs come out of its infected nodes instead of the nest.
@@ -50,14 +56,26 @@ export function tickWaveDirector(ctx: TickContext): void {
     for (let i = 0; i < plan.units.length; ) {
       const size = randomInt(world, waves.packSize.min, waves.packSize.max);
       const packId = state.nextPackId++;
+      const entry = entries[packs % Math.max(1, entries.length)];
       packs += 1;
-      const fromNode = nodes.length > 0 && randomInt(world, 1, 1000) <= waves.spread.sharePermille;
+      const fromNode = entry === undefined && nodes.length > 0 && randomInt(world, 1, 1000) <= waves.spread.sharePermille;
       const from = fromNode ? nodes[randomInt(world, 0, nodes.length - 1)]!.id : undefined;
-      for (const unit of plan.units.slice(i, i + size)) state.pending.push(from === undefined ? { tick: at, unit, packId, wave } : { tick: at, unit, packId, wave, from });
+      for (const unit of plan.units.slice(i, i + size)) {
+        const spawn = { tick: at, unit, packId, wave };
+        state.pending.push(entry ? { ...spawn, at: entry.at, target: entry.core } : from === undefined ? spawn : { ...spawn, from });
+      }
       i += size;
       at += waves.spawnSpacingTicks;
     }
-    world.events.push({ type: "wave", wave, name: plan.name, packs, units: plan.units.length, boss: plan.bosses > 0 });
+    world.events.push({
+      type: "wave",
+      wave,
+      name: plan.name,
+      packs,
+      units: plan.units.length,
+      boss: plan.bosses > 0,
+      ...(entries.length ? { entries: entries.map((e) => ({ team: e.team, x: e.at.x, y: e.at.y })) } : {}),
+    });
     sendInfectors(ctx, team.id, wave);
     if (wave % waves.fortress.rebuildEvery === 0) {
       const rebuilt = fortify(world, content, team.id, wave);
@@ -75,15 +93,18 @@ export function tickWaveDirector(ctx: TickContext): void {
   for (const entity of world.entities) if (entity.kind === "unit" && entity.team === team.id) alive += 1;
   while (state.pending.length > 0 && state.pending[0]!.tick <= world.tick && alive < waves.maxAlive) {
     const spawn = state.pending.shift()!;
-    // Out of its node if that still stands, else the nest.
+    // At its door (the opening), out of its node if that still stands, else the nest.
     const node = spawn.from === undefined ? undefined : ctx.byId.get(spawn.from);
-    const source = node && node.hp > 0 ? node : nest;
-    const x = source.x + randomInt(world, -60, 60);
-    const y = source.y + randomInt(world, -60, 60);
+    const source = spawn.at ?? (node && node.hp > 0 ? node : nest);
+    const spread = spawn.at ? 40 : 60;
+    const x = source.x + randomInt(world, -spread, spread);
+    const y = source.y + randomInt(world, -spread, spread);
     const hp = 1 + waves.hpGrowthPerWave * (spawn.wave - 1);
     const unit = spawnUnit(ctx, team.id, spawn.unit, source, x, y, spawn.infect ? "infector" : "roam", hp);
     unit.packId = spawn.packId;
     if (spawn.infect) unit.foundAt = { ...spawn.infect };
+    // Marching on a base: no wandering first.
+    if (spawn.target && state.packs[spawn.packId] === undefined) state.packs[spawn.packId] = { x: spawn.target.x, y: spawn.target.y };
     alive += 1;
   }
 }
@@ -131,6 +152,51 @@ function planTrickle(world: World, content: Content): string[] {
     points -= pick.cost;
   }
   return units;
+}
+
+/**
+ * Where the opening incident comes in for each player online with a core: on
+ * the line from the core toward the nest, `entryDistance` out, on open ground
+ * the core can be reached from. Pure function of the world; sqrt only.
+ */
+export function openingEntries(ctx: TickContext): { team: TeamId; at: Point; core: Point }[] {
+  const { world, content } = ctx;
+  const { terrain } = world;
+  const distance = content.waves.opening!.entryDistance;
+  const nest = ctx.byId.get(world.teams.find((t) => t.controller === "wave-director")?.coreId ?? -1);
+  const out: { team: TeamId; at: Point; core: Point }[] = [];
+  for (const team of humanTeams(world)) {
+    if (team.downTick !== null) continue;
+    const core = ctx.byId.get(team.coreId) as Building | undefined;
+    if (!core || core.hp <= 0 || !nest) continue;
+    const dx = nest.x - core.x;
+    const dy = nest.y - core.y;
+    const length = Math.sqrt(dx * dx + dy * dy) || 1;
+    const field = goalField(world, Math.floor(core.y / TILE) * terrain.cols + Math.floor(core.x / TILE));
+    let found: Point | null = null;
+    // Walk back toward the core until there's open ground with a short way in.
+    for (let d = distance; d >= TILE * 4 && !found; d -= TILE) {
+      const cx = Math.floor((core.x + (dx / length) * d) / TILE);
+      const cy = Math.floor((core.y + (dy / length) * d) / TILE);
+      for (let r = 0; r <= 3 && !found; r += 1) {
+        for (let oy = -r; oy <= r && !found; oy += 1) {
+          for (let ox = -r; ox <= r && !found; ox += 1) {
+            if (Math.max(Math.abs(ox), Math.abs(oy)) !== r) continue;
+            const col = cx + ox;
+            const row = cy + oy;
+            if (col < 0 || row < 0 || col >= terrain.cols || row >= terrain.rows) continue;
+            const cost = field[row * terrain.cols + col]!;
+            // Reachable, and by a fairly direct walk: no entry behind a cliff they'd have to go round.
+            if (cost === UNREACHABLE || (cost * TILE) / ORTHOGONAL > d * 1.25) continue;
+            const p = { x: (col + 0.5) * TILE, y: (row + 0.5) * TILE };
+            if (bodyFits(terrain, p.x, p.y, 12)) found = p;
+          }
+        }
+      }
+    }
+    out.push({ team: team.id, at: found ?? { x: nest.x, y: nest.y }, core: { x: core.x, y: core.y } });
+  }
+  return out;
 }
 
 /** Ticks between wave n and wave n + 1. */

@@ -195,6 +195,12 @@ export interface WavesDef {
   firstWaveTicks: number;
   /** ...the first incident this long after it... */
   firstIncidentTicks: number;
+  /**
+   * The first incident is the opening fight: a small one (`budget` points)
+   * that comes out of the fog `entryDistance` px from each player's core,
+   * toward the nest, and marches straight in. So the countdown means something.
+   */
+  opening?: { budget: number; entryDistance: number };
   /** ...or each this long after the match starts (plus the gap between the two), whichever is sooner. */
   graceTicks: number;
   trickle: { everyTicks: number; start: number; perMinute: number; maxPack: number };
