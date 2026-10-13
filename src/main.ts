@@ -123,6 +123,7 @@ if (new URLSearchParams(location.search).has("debug")) {
   Object.assign(window, {
     uptime: {
       sound,
+      alerts,
       get world() {
         return session.world;
       },
