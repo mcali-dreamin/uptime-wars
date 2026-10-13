@@ -29,6 +29,10 @@ const FOV = 40;
 const BUILDING_TOP: Record<string, number> = {
   core: 116,
   monorepo: 60,
+  "ci-server": 56,
+  "rnd-lab": 40,
+  "build-pipeline": 36,
+  "design-studio": 40,
   "edge-fleet": 52,
   "mainframe-bay": 50,
   "state-machine": 44,

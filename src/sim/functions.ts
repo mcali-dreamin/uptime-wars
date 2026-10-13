@@ -10,6 +10,7 @@ import { sendHome, spawnUnit } from "./entities";
 import { randomInt } from "./rng";
 import type { Building, Team, Unit } from "./types";
 import { raceModifiers } from "./tiers";
+import { traitsFor } from "./traits";
 
 /** Why this function can't run right now, or null if it can. */
 export function invokeBlocker(ctx: TickContext, building: Building): string | null {
@@ -37,7 +38,9 @@ export function invoke(ctx: TickContext, building: Building, auto: boolean): Uni
   team.money -= invokeCost(content, team, def.cost);
   building.spawnTimer = Math.max(1, Math.round(def.cooldownTicks * (raceModifiers(content, team).invokeCooldownMultiplier ?? 1)));
   const units: Unit[] = [];
-  for (let i = 0; i < def.count; i += 1) {
+  const t = traitsFor(content, team, def.unit);
+  const count = Math.round(def.count * (t.burstMult ?? 1)) + (t.squad ?? 0);
+  for (let i = 0; i < count; i += 1) {
     const x = building.x + randomInt(world, -20, 20);
     const y = building.y + building.radius + 10 + randomInt(world, 0, 8);
     const unit = spawnUnit(ctx, building.team, def.unit, building, x, y, "guard");

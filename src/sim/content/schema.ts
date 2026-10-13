@@ -156,6 +156,8 @@ export interface RaceDef {
    * from that tier on, on top of the tiers below it.
    */
   tierPerks?: (TierPerk | null)[];
+  /** The race's upgrade center: the building that researches its army upgrades and traits. */
+  center?: string;
   modifiers: {
     spawnIntervalMultiplier: number;
     costMultiplier: number;
@@ -259,11 +261,61 @@ export interface EconomyDef {
   tiers: { name: string; compute: number; buildRadius: number; coreHp: number; traffic: number }[];
 }
 
-/** "tier" is the core's tech tier (see EconomyDef.tiers): no multiplier, its level is the tier. */
-export type UpgradeStat = "unitHp" | "unitDamage" | "towerRange" | "spawnSpeed" | "userCapacity" | "revenue" | "tier";
+/**
+ * "tier" is the core's tech tier (see EconomyDef.tiers): no multiplier, its level is the tier.
+ * "buildingArmor" / "unitArmor" add perLevel flat armor per level.
+ * "trait" unlocks a unit trait (see TraitDef) for `unit`.
+ */
+export type UpgradeStat =
+  | "unitHp"
+  | "unitDamage"
+  | "unitArmor"
+  | "towerRange"
+  | "towerDamage"
+  | "buildingHp"
+  | "buildingArmor"
+  | "spawnSpeed"
+  | "userCapacity"
+  | "revenue"
+  | "tier"
+  | "trait";
 
 /**
- * Researched at the core, one at a time. Level n costs cost * n and takes
+ * A unit trait, unlocked by a "trait" upgrade. All optional; they stack.
+ * - speed / range: multipliers.
+ * - crit: every `every`-th hit does `mult` damage.
+ * - splash / chain: each hit also deals `share` of its damage to every
+ *   enemy (splash) or the nearest other enemy (chain) within `radius` of the target.
+ * - taunt: once a second, creeps within `radius` switch to attacking it.
+ * - split: on death it splits into `count` of itself at `hpShare` hp (once).
+ * - healMult: multiplies its heal.
+ * - revive: the first ally that falls in its heal radius comes back at
+ *   `hpShare` hp; then it waits `cooldownTicks`.
+ * - squad: its function / spawner keeps (and bursts) this many more.
+ * - burstMult: its function bursts this many times as many.
+ * - disarmTicks / stunTicks: an enemy unit it hits can't attack / can't act.
+ * - holdArmor: extra armor while it holds its post (home, no order).
+ */
+export interface TraitDef {
+  speed?: number;
+  range?: number;
+  crit?: { every: number; mult: number };
+  splash?: { share: number; radius: number };
+  chain?: { share: number; radius: number };
+  taunt?: { radius: number };
+  split?: { count: number; hpShare: number };
+  healMult?: number;
+  revive?: { cooldownTicks: number; hpShare: number };
+  squad?: number;
+  burstMult?: number;
+  disarmTicks?: number;
+  stunTicks?: number;
+  holdArmor?: number;
+}
+
+/**
+ * Researched at the core (the race and its base) or at the race's upgrade
+ * center (its army), one at a time at each. Level n costs cost * n and takes
  * researchTicks * n; each level adds perLevel to the stat's multiplier.
  */
 export interface UpgradeDef {
@@ -274,6 +326,17 @@ export interface UpgradeDef {
   maxLevel: number;
   cost: number;
   researchTicks: number;
+  /** Where it's researched (default "core"). */
+  at?: "core" | "center";
+  /** Only these races can research it (default: every race). */
+  races?: string[];
+  /** Core tier needed for each level (index = level - 1). */
+  tiers?: number[];
+  /** What each race calls it (same effect). */
+  names?: Record<string, string>;
+  /** "trait" upgrades: the unit it changes, and how. */
+  unit?: string;
+  trait?: TraitDef;
 }
 
 /**
