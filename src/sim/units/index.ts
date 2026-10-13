@@ -21,6 +21,7 @@ import { guard } from "./guard";
 import { roam } from "./roam";
 import { TICK_RATE } from "../map";
 import { hostile } from "../teams";
+import { effectiveDef, traitsFor } from "../traits";
 
 /** Shared, per-tick facts that more than one unit needs. */
 export interface UnitTickState {
@@ -40,13 +41,14 @@ export function tickHealers(ctx: TickContext): void {
     if (healer.kind !== "unit" || healer.hp <= 0) continue;
     const heal = content.units[healer.defId]!.heal;
     if (!heal) continue;
+    const amount = heal.perSecond * (traitsFor(content, world.teams[healer.team], healer.defId).healMult ?? 1);
     const r2 = heal.radius * heal.radius;
     for (const other of world.entities) {
       if (other.hp <= 0 || other.hp >= other.maxHp || hostile(world, other.team, healer.team)) continue;
       if (other.kind === "building" && other.buildRemaining > 0) continue;
       const dx = other.x - healer.x;
       const dy = other.y - healer.y;
-      if (dx * dx + dy * dy <= r2) other.hp = Math.min(other.maxHp, other.hp + heal.perSecond);
+      if (dx * dx + dy * dy <= r2) other.hp = Math.min(other.maxHp, other.hp + amount);
     }
   }
 }
@@ -62,8 +64,9 @@ export function tickUnits(ctx: TickContext): void {
   }
   for (const unit of world.entities) {
     if (unit.kind !== "unit" || unit.hp <= 0) continue;
-    // Slowed: half speed, half attack rate.
+    // Stunned: does nothing. Slowed: half speed, half attack rate.
+    if (unit.stunnedUntil !== undefined && world.tick < unit.stunnedUntil) continue;
     if (unit.slowedUntil !== undefined && world.tick < unit.slowedUntil && world.tick % 2 === 1) continue;
-    BEHAVIORS[unit.mode](ctx, unit, content.units[unit.defId]!, state);
+    BEHAVIORS[unit.mode](ctx, unit, effectiveDef(content, world.teams[unit.team], unit, content.units[unit.defId]!), state);
   }
 }

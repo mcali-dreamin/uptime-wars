@@ -185,6 +185,27 @@ await run("smoke test", async ({ check, open }) => {
   await page.click(".upgrade-btn:not([disabled])", { timeout: 60000 });
   check(await waitFor(() => state(() => window.uptime.session.team.research !== null)), "the core's card starts research");
 
+  // The upgrade center: build it, select it, and its card researches the army at the same time.
+  await page.keyboard.press("Escape");
+  await state(() => (window.uptime.session.team.money += 2000));
+  const centerId = await state(() => window.uptime.session.race.center);
+  const centerKey = await state((id) => String(window.uptime.session.race.buildings.indexOf(id) + 1), centerId);
+  const lab = await openNear(core.x, core.y, 3, 7);
+  await page.keyboard.press(centerKey);
+  await click(lab);
+  const labId = await waitFor(
+    () => state((id) => window.uptime.world.entities.find((e) => e.defId === id && e.buildRemaining <= 0)?.id, centerId),
+    120000,
+  );
+  check(Boolean(labId), `a number key + click builds the upgrade center (${centerId})`);
+  await click(lab);
+  check(await waitFor(() => state((id) => window.uptime.selection.id === id, labId)), "clicking the upgrade center selects it");
+  await page.click(".upgrade-btn:not([disabled])", { timeout: 60000 });
+  check(
+    await waitFor(() => state(() => window.uptime.session.team.labResearch !== null && window.uptime.session.team.research !== null)),
+    "its card starts army research alongside the core's",
+  );
+
   // The Guide opens, pauses the match, and closes.
   await page.keyboard.press("g");
   const t0 = await state(() => window.uptime.world.tick);

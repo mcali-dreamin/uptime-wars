@@ -27,7 +27,7 @@ import { Guide } from "./ui/guide";
 import { Hud } from "./ui/hud";
 import { InfoPanel } from "./ui/info-panel";
 import { RacePicker } from "./ui/race-picker";
-import { TICK_RATE, TILE, forkCost, isCore, loadDefaultContent, type Point } from "./sim";
+import { upgradeName, TICK_RATE, TILE, forkCost, isCore, loadDefaultContent, type Point } from "./sim";
 import type { NetMatch } from "./game/net/lobby";
 import { Director, tension, type Listener } from "./audio/cues";
 import { SoundEngine, type SoundMode } from "./audio/engine";
@@ -197,8 +197,14 @@ function coreSelected(): boolean {
   return selection.kind === "entity" && isCore(content, session.team, session.entity(selection.id));
 }
 
+/** Your upgrade center is selected: the command card shows army research. */
+function centerSelected(): boolean {
+  const entity = selection.kind === "entity" ? session.entity(selection.id) : undefined;
+  return entity?.kind === "building" && entity.team === session.local && entity.defId === session.race.center;
+}
+
 function barMode(): BarMode {
-  return session.deploying ? "deploy" : heroSelected() ? "hero" : coreSelected() ? "research" : "build";
+  return session.deploying ? "deploy" : heroSelected() ? "hero" : coreSelected() ? "research" : centerSelected() ? "armory" : "build";
 }
 
 function research(upgrade: string): void {
@@ -423,8 +429,8 @@ const gameInput: GameInput = {
       else cast(ability);
       return true;
     }
-    if (coreSelected()) {
-      const upgrade = Object.keys(content.upgrades)[Number(key) - 1];
+    if (coreSelected() || centerSelected()) {
+      const upgrade = bar.upgrades(barMode())[Number(key) - 1];
       if (upgrade) return research(upgrade), true;
       return false;
     }
@@ -518,7 +524,9 @@ renderer.app.ticker.add((ticker) => {
           renderer.showBanner(
             def.stat === "tier"
               ? `${content.economy.tiers[event.level]!.name} online${perk ? ` · ${perk.name}` : ""}`
-              : `${def.name} ${event.level}`,
+              : def.stat === "trait"
+                ? `${upgradeName(content, session.team.raceId, event.upgrade)} unlocked`
+                : `${upgradeName(content, session.team.raceId, event.upgrade)} ${event.level}`,
           );
         }
       }

@@ -81,6 +81,15 @@ export function validateContent(content: Content): void {
   for (const [id, unit] of Object.entries(content.units)) {
     if (unit.heal && (unit.heal.perSecond <= 0 || unit.heal.radius <= 0)) errors.push(`unit ${id} heal needs perSecond and radius > 0`);
   }
+  for (const [id, race] of Object.entries(content.races)) {
+    if (race.center && !content.buildings[race.center]?.buildable) errors.push(`race ${id} has unknown upgrade center ${race.center}`);
+    if (race.center && !race.buildings.includes(race.center)) errors.push(`race ${id} can't build its upgrade center ${race.center}`);
+  }
+  for (const [id, up] of Object.entries(content.upgrades)) {
+    if (up.stat === "trait" && (!up.unit || !content.units[up.unit] || !up.trait)) errors.push(`trait ${id} needs a known unit and a trait`);
+    if (up.tiers && up.tiers.length !== up.maxLevel) errors.push(`upgrade ${id} tiers needs one entry per level`);
+    for (const r of up.races ?? []) if (!content.races[r]) errors.push(`upgrade ${id} names unknown race ${r}`);
+  }
   if (errors.length > 0) {
     throw new Error(`Invalid content:\n- ${errors.join("\n- ")}`);
   }

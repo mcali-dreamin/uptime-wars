@@ -807,6 +807,38 @@ export class Models {
         anim(orb, { type: "spin", speed: 1.5, axis: "y" });
         break;
       }
+      case "ci-server": {
+        // A rack of build runners with a status light that never stops blinking.
+        this.box(g, team, "frame", 42, 4, 42);
+        this.box(g, team, "body", 30, 40, 26, 0, 4);
+        for (let i = 0; i < 4; i += 1) this.box(g, team, i % 2 ? "glow" : "trim", 24, 2, 1.2, 0, 10 + i * 8, 13.6);
+        const light = this.shape(g, team, "glow", "ci-light", () => new THREE.SphereGeometry(4, 10, 8), 0, 50, 0);
+        anim(light, { type: "pulse", amount: 0.35, speed: 5 });
+        break;
+      }
+      case "rnd-lab": {
+        // A glass dome over a plinth, with a spinning test rig inside.
+        this.cyl(g, team, "frame", 20, 22, 6, 24);
+        this.shape(g, team, "screen", "rnd-dome", () => new THREE.SphereGeometry(17, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), 0, 6, 0);
+        const rig = this.shape(g, team, "glow", "rnd-rig", () => new THREE.TorusKnotGeometry(5, 1.4, 48, 8), 0, 16, 0);
+        anim(rig, { type: "spin", speed: 1.5, axis: "y" });
+        break;
+      }
+      case "build-pipeline": {
+        // A row of stages joined by a glowing conveyor.
+        this.box(g, team, "dark", 44, 3, 20);
+        for (const x of [-14, 0, 14]) this.box(g, team, "body", 10, 18 + (x + 14) / 2, 14, x, 3);
+        const belt = this.box(g, team, "glow", 42, 1.5, 3, 0, 8, 8.5);
+        anim(belt, { type: "pulse", amount: 0.1, speed: 3 });
+        break;
+      }
+      case "design-studio": {
+        // A white pavilion with a big rounded window and a lit logo.
+        this.box(g, team, "frame", 42, 3, 42);
+        this.shape(g, team, "body", "ds-hall", () => new THREE.CapsuleGeometry(14, 14, 6, 16).rotateZ(Math.PI / 2), 0, 18, 0);
+        this.shape(g, team, "glow", "ds-logo", () => new THREE.TorusGeometry(5, 1.2, 8, 20), 0, 34, 0);
+        break;
+      }
       case "monorepo": {
         // One huge repository: a long slab of stacked layers with a glowing build light.
         this.box(g, team, "frame", 44, 4, 44);

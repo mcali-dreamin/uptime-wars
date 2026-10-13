@@ -55,7 +55,7 @@ describe("core tiers", () => {
     team0(world).money += 100_000;
     queueCommand(world, { type: "research", tick: world.tick, team: 0, upgrade: TIER });
     step(world, content);
-    expect(canResearch(content, team0(world), "hardened-containers")).toBe("already researching");
+    expect(canResearch(content, team0(world), "anycast")).toBe("already researching");
     advance(world);
     expect(tierOf(content, team0(world))).toBe(1);
     advance(world);

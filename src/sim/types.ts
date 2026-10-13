@@ -34,6 +34,8 @@ export interface Team {
   upgrades: Record<string, number>;
   /** What the core is researching right now, if anything. */
   research: { upgrade: string; remaining: number } | null;
+  /** What the upgrade center is researching right now, if anything. */
+  labResearch: { upgrade: string; remaining: number } | null;
   /**
    * The tick this team went offline (every core, or the builder before one),
    * else null. An offline team is out: its commands are ignored, but its
@@ -115,6 +117,13 @@ export interface Unit extends EntityBase {
   expiresAt?: number;
   /** Slowed (a Legal Team hit it): acts every other tick until this tick. */
   slowedUntil?: number;
+  /** Disarmed (can move, can't attack) / stunned (can't act) until this tick. */
+  disarmedUntil?: number;
+  stunnedUntil?: number;
+  /** Trait bookkeeping: hits landed (crit), revive ready at, and a split child (doesn't split again). */
+  hits?: number;
+  reviveAt?: number;
+  forked?: boolean;
   /** Scanners: what they spotted and when, until they report it. */
   spotted?: { tick: number; x: number; y: number; team: TeamId };
   /** Scanners: already reported, nothing more to do. */
@@ -304,6 +313,7 @@ export type SimEvent =
   | { type: "hero-level"; team: TeamId; level: number }
   | { type: "hero-down"; team: TeamId; respawnAt: number }
   | { type: "hero-up"; team: TeamId; x: number; y: number }
+  | { type: "revived"; id: number; x: number; y: number; team: TeamId }
   | { type: "researched"; team: TeamId; upgrade: string; level: number }
   | { type: "rejected"; command: Command; reason: string };
 

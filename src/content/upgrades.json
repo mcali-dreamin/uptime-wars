@@ -8,23 +8,59 @@
     "cost": 400,
     "researchTicks": 900
   },
-  "hardened-containers": {
-    "name": "Hardened Containers",
-    "description": "Your units spawn tougher.",
-    "stat": "unitHp",
-    "perLevel": 0.15,
+  "building-armor": {
+    "name": "Building Armor",
+    "description": "Every building of yours shrugs off more of each hit.",
+    "stat": "buildingArmor",
+    "perLevel": 1,
     "maxLevel": 3,
     "cost": 100,
-    "researchTicks": 400
+    "researchTicks": 400,
+    "tiers": [
+      0,
+      1,
+      2
+    ],
+    "names": {
+      "open-source": "Patch Backlog",
+      "hyperscaler": "SOC 2",
+      "serverless": "Least Privilege",
+      "walled-garden": "Gatekept"
+    }
   },
-  "exploit-kits": {
-    "name": "Exploit Kits",
-    "description": "Your units hit harder.",
-    "stat": "unitDamage",
+  "building-hp": {
+    "name": "Building HP",
+    "description": "Every building of yours, the cores too, stands 15% tougher.",
+    "stat": "buildingHp",
+    "perLevel": 0.15,
+    "maxLevel": 3,
+    "cost": 120,
+    "researchTicks": 450,
+    "tiers": [
+      0,
+      1,
+      2
+    ],
+    "names": {
+      "open-source": "Battle-Tested",
+      "hyperscaler": "Redundant Power",
+      "serverless": "Multi-AZ",
+      "walled-garden": "Fortified Campus"
+    }
+  },
+  "tower-damage": {
+    "name": "Tower Damage",
+    "description": "Towers, and the core, hit harder.",
+    "stat": "towerDamage",
     "perLevel": 0.15,
     "maxLevel": 3,
     "cost": 110,
-    "researchTicks": 400
+    "researchTicks": 400,
+    "tiers": [
+      0,
+      1,
+      2
+    ]
   },
   "anycast": {
     "name": "Anycast",
@@ -33,15 +69,6 @@
     "perLevel": 0.12,
     "maxLevel": 2,
     "cost": 120,
-    "researchTicks": 500
-  },
-  "autoscaling": {
-    "name": "Autoscaling",
-    "description": "Spawners work faster.",
-    "stat": "spawnSpeed",
-    "perLevel": 0.12,
-    "maxLevel": 2,
-    "cost": 130,
     "researchTicks": 500
   },
   "edge-caching": {
@@ -61,5 +88,326 @@
     "maxLevel": 2,
     "cost": 150,
     "researchTicks": 600
+  },
+  "exploit-kits": {
+    "name": "Weapons",
+    "description": "Your units hit harder.",
+    "stat": "unitDamage",
+    "perLevel": 0.12,
+    "maxLevel": 3,
+    "cost": 110,
+    "researchTicks": 400,
+    "at": "center",
+    "tiers": [
+      0,
+      1,
+      2
+    ],
+    "names": {
+      "open-source": "Exploit Kits",
+      "hyperscaler": "Custom Silicon",
+      "serverless": "Hot Paths",
+      "walled-garden": "Enforcement"
+    }
+  },
+  "unit-armor": {
+    "name": "Unit Armor",
+    "description": "Your units take less from each hit.",
+    "stat": "unitArmor",
+    "perLevel": 1,
+    "maxLevel": 3,
+    "cost": 110,
+    "researchTicks": 400,
+    "at": "center",
+    "tiers": [
+      0,
+      1,
+      2
+    ],
+    "names": {
+      "open-source": "Sandboxing",
+      "hyperscaler": "Hardware Isolation",
+      "serverless": "Isolated Runtimes",
+      "walled-garden": "Code Signing"
+    }
+  },
+  "hardened-containers": {
+    "name": "Hardened Containers",
+    "description": "Your units spawn tougher.",
+    "stat": "unitHp",
+    "perLevel": 0.15,
+    "maxLevel": 3,
+    "cost": 100,
+    "researchTicks": 400,
+    "at": "center"
+  },
+  "autoscaling": {
+    "name": "Autoscaling",
+    "description": "Spawners work faster.",
+    "stat": "spawnSpeed",
+    "perLevel": 0.12,
+    "maxLevel": 2,
+    "cost": 130,
+    "researchTicks": 500,
+    "at": "center"
+  },
+  "fork-on-exit": {
+    "name": "Fork on Exit",
+    "description": "Processes split into two small Processes when they die.",
+    "stat": "trait",
+    "perLevel": 0,
+    "maxLevel": 1,
+    "cost": 150,
+    "researchTicks": 500,
+    "at": "center",
+    "races": [
+      "open-source"
+    ],
+    "tiers": [
+      0
+    ],
+    "unit": "process",
+    "trait": {
+      "split": {
+        "count": 2,
+        "hpShare": 0.4
+      }
+    }
+  },
+  "open-weights": {
+    "name": "Open Weights",
+    "description": "Inference Drones shoot 40% further.",
+    "stat": "trait",
+    "perLevel": 0,
+    "maxLevel": 1,
+    "cost": 200,
+    "researchTicks": 600,
+    "at": "center",
+    "races": [
+      "open-source"
+    ],
+    "tiers": [
+      1
+    ],
+    "unit": "inference-drone",
+    "trait": {
+      "range": 1.4
+    }
+  },
+  "self-hosting": {
+    "name": "Self-Hosting",
+    "description": "Kernels heal twice as much, and bring back the first ally that falls near them (every 30 s).",
+    "stat": "trait",
+    "perLevel": 0,
+    "maxLevel": 1,
+    "cost": 300,
+    "researchTicks": 800,
+    "at": "center",
+    "races": [
+      "open-source"
+    ],
+    "tiers": [
+      2
+    ],
+    "unit": "kernel",
+    "trait": {
+      "healMult": 2,
+      "revive": {
+        "cooldownTicks": 600,
+        "hpShare": 0.5
+      }
+    }
+  },
+  "sticky-sessions": {
+    "name": "Sticky Sessions",
+    "description": "Load Balancers taunt: creeps nearby drop what they're doing and hit them instead.",
+    "stat": "trait",
+    "perLevel": 0,
+    "maxLevel": 1,
+    "cost": 150,
+    "researchTicks": 500,
+    "at": "center",
+    "races": [
+      "hyperscaler"
+    ],
+    "tiers": [
+      0
+    ],
+    "unit": "load-balancer",
+    "trait": {
+      "taunt": {
+        "radius": 160
+      }
+    }
+  },
+  "edge-routing": {
+    "name": "Edge Routing",
+    "description": "CDN Swarms move 35% faster, and every third hit lands double.",
+    "stat": "trait",
+    "perLevel": 0,
+    "maxLevel": 1,
+    "cost": 200,
+    "researchTicks": 600,
+    "at": "center",
+    "races": [
+      "hyperscaler"
+    ],
+    "tiers": [
+      1
+    ],
+    "unit": "cdn-swarm",
+    "trait": {
+      "speed": 1.35,
+      "crit": {
+        "every": 3,
+        "mult": 2
+      }
+    }
+  },
+  "batch-jobs": {
+    "name": "Batch Jobs",
+    "description": "Mainframe hits splash: half damage to everything close to the target.",
+    "stat": "trait",
+    "perLevel": 0,
+    "maxLevel": 1,
+    "cost": 300,
+    "researchTicks": 800,
+    "at": "center",
+    "races": [
+      "hyperscaler"
+    ],
+    "tiers": [
+      2
+    ],
+    "unit": "mainframe",
+    "trait": {
+      "splash": {
+        "share": 0.5,
+        "radius": 70
+      }
+    }
+  },
+  "provisioned-concurrency": {
+    "name": "Provisioned Concurrency",
+    "description": "Functions keep or burst two more Lambdas.",
+    "stat": "trait",
+    "perLevel": 0,
+    "maxLevel": 1,
+    "cost": 150,
+    "researchTicks": 500,
+    "at": "center",
+    "races": [
+      "serverless"
+    ],
+    "tiers": [
+      0
+    ],
+    "unit": "lambda",
+    "trait": {
+      "squad": 2
+    }
+  },
+  "batching": {
+    "name": "Batching",
+    "description": "Inference Call shots chain to a second enemy for 60%.",
+    "stat": "trait",
+    "perLevel": 0,
+    "maxLevel": 1,
+    "cost": 200,
+    "researchTicks": 600,
+    "at": "center",
+    "races": [
+      "serverless"
+    ],
+    "tiers": [
+      1
+    ],
+    "unit": "inference-call",
+    "trait": {
+      "chain": {
+        "share": 0.6,
+        "radius": 140
+      }
+    }
+  },
+  "parallel-state": {
+    "name": "Parallel State",
+    "description": "State Machine bursts are twice as big.",
+    "stat": "trait",
+    "perLevel": 0,
+    "maxLevel": 1,
+    "cost": 300,
+    "researchTicks": 800,
+    "at": "center",
+    "races": [
+      "serverless"
+    ],
+    "tiers": [
+      2
+    ],
+    "unit": "step-function",
+    "trait": {
+      "burstMult": 2
+    }
+  },
+  "shadowban": {
+    "name": "Shadowban",
+    "description": "Moderator hits stop an enemy attacking for 2 seconds.",
+    "stat": "trait",
+    "perLevel": 0,
+    "maxLevel": 1,
+    "cost": 150,
+    "researchTicks": 500,
+    "at": "center",
+    "races": [
+      "walled-garden"
+    ],
+    "tiers": [
+      0
+    ],
+    "unit": "moderator",
+    "trait": {
+      "disarmTicks": 40
+    }
+  },
+  "hold-the-line": {
+    "name": "Hold the Line",
+    "description": "Gatekeepers holding their post take 5 less from every hit.",
+    "stat": "trait",
+    "perLevel": 0,
+    "maxLevel": 1,
+    "cost": 200,
+    "researchTicks": 600,
+    "at": "center",
+    "races": [
+      "walled-garden"
+    ],
+    "tiers": [
+      1
+    ],
+    "unit": "gatekeeper",
+    "trait": {
+      "holdArmor": 5
+    }
+  },
+  "cease-and-desist": {
+    "name": "Cease and Desist",
+    "description": "Legal Team hits stun enemies for 1.5 seconds.",
+    "stat": "trait",
+    "perLevel": 0,
+    "maxLevel": 1,
+    "cost": 300,
+    "researchTicks": 800,
+    "at": "center",
+    "races": [
+      "walled-garden"
+    ],
+    "tiers": [
+      2
+    ],
+    "unit": "legal-team",
+    "trait": {
+      "stunTicks": 30
+    }
   }
 }
