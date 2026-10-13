@@ -10,17 +10,29 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
-import { reachOf, TILE, isCore, tierOf, networkProviders, type Content, type Entity, type Point, type SimEvent, type World } from "../../sim";
+import { TILE, isCore, tierOf, type Content, type Entity, type Point, type SimEvent, type World } from "../../sim";
 import { PING_MS, SHOT_TTL_MS, type Frame, type WorldView } from "../frame";
 import { HIGHLIGHT, INVALID, VALID, teamColor } from "../palette";
 import { Bars, Bolts, Particles, Rings } from "./effects";
 import { FogTexture } from "./fog3d";
 import { Models, animate } from "./models";
 import { Terrain3D } from "./terrain3d";
+import { NetworkOverlay } from "./network3d";
 
 /** Camera distance at zoom 1, pitch above the horizon, and field of view. */
 /** Gold underfoot marks heroes. */
 const HERO_RING = 0xfacc15;
+/** Heroes are drawn this much bigger than their footprint suggests. */
+const HERO_SCALE = 1.35;
+
+let beaconGeometry: THREE.BufferGeometry | null = null;
+let beaconMaterial: THREE.Material | null = null;
+function heroBeaconGeometry(): THREE.BufferGeometry {
+  return (beaconGeometry ??= new THREE.OctahedronGeometry(1));
+}
+function heroBeaconMaterial(): THREE.Material {
+  return (beaconMaterial ??= new THREE.MeshBasicMaterial({ color: 0xfde047, toneMapped: false }));
+}
 const SHOCKWAVE_S = 0.6;
 const DISTANCE = 1000;
 const PITCH = (56 * Math.PI) / 180;
@@ -82,7 +94,8 @@ export class World3D implements WorldView {
   private readonly composer: EffectComposer | null;
   private readonly bloom: UnrealBloomPass | null;
   private readonly fogTexture = new FogTexture();
-  private readonly terrain3d = new Terrain3D(this.fogTexture);
+  private readonly network = new NetworkOverlay();
+  private readonly terrain3d = new Terrain3D(this.fogTexture, this.network);
   private readonly models = new Models(this.fogTexture);
   private readonly bolts = new Bolts();
   private readonly particles = new Particles();
@@ -183,6 +196,7 @@ export class World3D implements WorldView {
     this.deaths.length = 0;
     this.fogTexture.setTerrain(world.terrain);
     this.terrain3d.build(world.terrain);
+    this.network.setWorld(world);
   }
 
   event(event: SimEvent): void {
@@ -326,8 +340,11 @@ export class World3D implements WorldView {
         s.lastX = at.x;
         s.lastY = at.y;
         s.object.rotation.y = s.heading;
-        if (entity.hp < entity.maxHp || frame.selectedIds.has(entity.id)) {
-          this.bars.add(at.x, floor + s.size * 3.4, at.y, Math.max(16, s.size * 2.4), entity.hp / entity.maxHp);
+        // A hero's bar is always up, above its beacon.
+        const hero = entity.mode === "hero";
+        if (hero || entity.hp < entity.maxHp || frame.selectedIds.has(entity.id)) {
+          const y = hero ? s.size * 5.6 : s.size * 3.4;
+          this.bars.add(at.x, floor + y, at.y, Math.max(16, s.size * (hero ? 3 : 2.4)), entity.hp / entity.maxHp);
         }
         continue;
       }
@@ -365,6 +382,18 @@ export class World3D implements WorldView {
     object.traverse((node) => {
       if ((node as THREE.Mesh).isMesh) node.userData.material = (node as THREE.Mesh).material;
     });
+    // Heroes stand out: a size bigger than their army, with a gold beacon overhead.
+    if (entity.kind === "unit" && entity.mode === "hero") {
+      object.scale.setScalar(HERO_SCALE);
+      const beacon = new THREE.Group();
+      beacon.position.y = size * 3.3;
+      beacon.userData.anim = { type: "bob", amount: 2, speed: 2.2, base: size * 3.3 };
+      const gem = new THREE.Mesh(heroBeaconGeometry(), heroBeaconMaterial());
+      gem.scale.set(size * 0.32, size * 0.5, size * 0.32);
+      gem.userData.anim = { type: "spin", speed: 2, axis: "y" };
+      beacon.add(gem);
+      object.add(beacon);
+    }
     return {
       object,
       kind: entity.kind,
@@ -490,11 +519,9 @@ export class World3D implements WorldView {
       }
     }
 
+    // Your network is drawn on the ground itself (see NetworkOverlay), brighter while placing.
+    this.network.update(world, content, frame.localTeam, teamColor(world, frame.localTeam), frame.ghost !== null);
     if (frame.ghost) {
-      for (const provider of networkProviders(world, content, frame.localTeam)) {
-        const reach = reachOf(world, content, provider);
-        this.thinRings.add(provider.x, ground(provider.x, provider.y), provider.y, reach, VALID, 0.45);
-      }
       const g = frame.ghost;
       const size = g.footprint * TILE;
       const cx = g.col * TILE + size / 2;
@@ -513,7 +540,9 @@ export class World3D implements WorldView {
       if (entity.kind !== "unit" || entity.mode !== "hero" || entity.hp <= 0) continue;
       const at = frame.position(entity);
       if (!frame.shows(entity, at.x, at.y)) continue;
-      this.thinRings.add(at.x, ground(at.x, at.y), at.y, entity.radius + 14, HERO_RING, 0.8);
+      const pulse = 0.75 + 0.25 * Math.sin(t * 3);
+      this.rings.add(at.x, ground(at.x, at.y), at.y, entity.radius + 16, HERO_RING, pulse);
+      this.thinRings.add(at.x, ground(at.x, at.y), at.y, entity.radius + 26 + Math.sin(t * 3) * 2, HERO_RING, 0.5 * pulse);
     }
     for (const wave of this.shockwaves) {
       const k = wave.age / SHOCKWAVE_S;

@@ -52,6 +52,9 @@ export class Minimap {
       if (entity.kind === "building") {
         const size = Math.max(3, entity.footprint * TILE * s);
         g.rect(entity.x * s - size / 2, entity.y * s - size / 2, size, size).fill({ color });
+      } else if (entity.mode === "hero") {
+        // Heroes: a gold-ringed dot you can find at a glance.
+        g.circle(entity.x * s, entity.y * s, 3.5).fill({ color }).stroke({ width: 1.5, color: 0xfacc15 });
       } else {
         g.rect(entity.x * s - 1, entity.y * s - 1, 2, 2).fill({ color });
       }
