@@ -121,6 +121,12 @@ export interface Unit extends EntityBase {
   commanded: boolean;
   /** Serverless units go cold at this tick (absent: they don't). */
   expiresAt?: number;
+  /** The last enemy that hit it, and when: creeps turn on whatever is shooting them. */
+  provokedBy?: number;
+  provokedAt?: number;
+  /** Taunted (Sticky Sessions): goes for this unit, whatever else is shooting, until tauntedUntil. */
+  tauntedBy?: number;
+  tauntedUntil?: number;
   /** Slowed (a Legal Team hit it): acts every other tick until this tick. */
   slowedUntil?: number;
   /** Disarmed (can move, can't attack) / stunned (can't act) until this tick. */

@@ -32,11 +32,6 @@ export function roleTargets(ctx: TickContext, role: CreepRole | undefined): ((e:
   }
 }
 
-/** Does this role stick to its building rather than turn on a defender? */
-export function ignoresDefenders(role: CreepRole | undefined): boolean {
-  return role !== undefined && role.kind !== "scanner";
-}
-
 /** Hit `target`, with the role's twist. */
 export function roleHit(ctx: TickContext, unit: Unit, def: UnitDef, target: Entity, damage: number): void {
   const { world } = ctx;

@@ -131,7 +131,10 @@ export function tickTaunts(ctx: TickContext): void {
     if (!taunt) continue;
     for (const creep of world.entities) {
       if (creep.kind !== "unit" || creep.hp <= 0 || creep.mode !== "roam" || !hostile(world, creep.team, taunter.team)) continue;
-      if (distance(creep, taunter) <= taunt.radius) creep.targetId = taunter.id;
+      if (distance(creep, taunter) > taunt.radius) continue;
+      creep.targetId = taunter.id;
+      creep.tauntedBy = taunter.id;
+      creep.tauntedUntil = world.tick + TICK_RATE + 1;
     }
   }
 }

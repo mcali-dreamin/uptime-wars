@@ -112,6 +112,11 @@ export function dealDamage(
   }
   const wasAlive = target.hp > 0;
   target.hp -= damage;
+  // Remember who's shooting: a creep turns on the tower or unit hitting it.
+  if (target.kind === "unit" && attacker.id !== target.id) {
+    target.provokedBy = attacker.id;
+    target.provokedAt = world.tick;
+  }
   // Paperwork: a slowing hit makes an enemy unit act at half speed for a while.
   if (attackerUnit?.slowTicks && target.kind === "unit" && target.hp > 0) target.slowedUntil = world.tick + attackerUnit.slowTicks;
   if (target.kind === "building") loseUsers(ctx, world.teams[target.team]!, damage, target.defId);
