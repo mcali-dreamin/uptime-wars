@@ -142,8 +142,6 @@ export class Session {
     // `?seed=N` replays a specific map (tests, bug reports); otherwise random.
     const fixed = Number(new URLSearchParams(location.search).get("seed"));
     const seed = Number.isInteger(fixed) && fixed !== 0 ? fixed : (Math.random() * 2 ** 31) | 0;
-    // `?map=routes` tries the structured map layout (highways, chokepoints, pockets).
-    const layout = new URLSearchParams(location.search).get("map") === "routes" ? "routes" : "noise";
-    return createWorld(this.content, { seed, races: [this.raceId, HORDE_RACE], heroes: [this.heroFor(this.raceId)], layout });
+    return createWorld(this.content, { seed, races: [this.raceId, HORDE_RACE], heroes: [this.heroFor(this.raceId)] });
   }
 }
