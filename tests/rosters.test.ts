@@ -133,13 +133,13 @@ describe("tier perks", () => {
     const def = content.buildings.function!.invoke!;
     w.teams[0]!.money = 1000;
     invoke(ctx, fn, false);
-    expect(fn.spawnTimer).toBe(def.cooldownTicks);
+    expect(fn.scaleTimer).toBe(def.cooldownTicks);
     expect(w.teams[0]!.money).toBe(1000 - def.cost);
     setTier(w, 2);
-    fn.spawnTimer = 0;
+    fn.scaleTimer = 0;
     w.teams[0]!.money = 1000;
     invoke(ctx, fn, false);
-    expect(fn.spawnTimer).toBe(Math.round(def.cooldownTicks * 0.7));
+    expect(fn.scaleTimer).toBe(Math.round(def.cooldownTicks * 0.7));
     expect(w.teams[0]!.money).toBe(1000 - Math.round(def.cost * 0.6));
   });
 

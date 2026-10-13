@@ -14,7 +14,8 @@ export function tickSpawners(ctx: TickContext): void {
   );
   const alive = new Map<number, number>();
   for (const entity of world.entities) {
-    if (entity.kind === "unit" && entity.hp > 0 && entity.spawnerId >= 0) {
+    // Burst units (a function's scale-up) don't count against the standing squad.
+    if (entity.kind === "unit" && entity.hp > 0 && entity.spawnerId >= 0 && entity.expiresAt === undefined) {
       alive.set(entity.spawnerId, (alive.get(entity.spawnerId) ?? 0) + 1);
     }
   }

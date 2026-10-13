@@ -807,6 +807,16 @@ export class Models {
         anim(orb, { type: "spin", speed: 1.5, axis: "y" });
         break;
       }
+      case "compute-pool": {
+        // A shallow pool of glowing cores, ready to take load.
+        this.cyl(g, team, "frame", 20, 22, 4, 8);
+        this.cyl(g, team, "dark", 17, 17, 3, 8, 0, 4);
+        for (const [x, z] of [[-8, -8], [8, -8], [-8, 8], [8, 8], [0, 0]] as const) {
+          const cell = this.box(g, team, "glow", 6, 6, 6, x, 8, z);
+          anim(cell, { type: "bob", amount: 1.5, speed: 2 + (x + z) * 0.05, base: 8 });
+        }
+        break;
+      }
       case "monorepo": {
         // One huge repository: a long slab of stacked layers with a glowing build light.
         this.box(g, team, "frame", 44, 4, 44);
