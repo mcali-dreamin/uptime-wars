@@ -174,12 +174,13 @@ describe("heroes", () => {
 
   it("blast hits every enemy in the area and nothing outside it", () => {
     const world = createWorld(content, setup("function-author", "serverless"));
-    order(world, { type: "learn", ability: "fan-out" });
+    giveXp(world, 6);
+    order(world, { type: "learn", ability: "event-storm" });
     const hero = hero0(world);
     const inside = [creepNear(world, "trojan", 200), creepNear(world, "trojan", 240)];
-    const outside = creepNear(world, "trojan", 700);
+    const outside = creepNear(world, "trojan", 800);
     const hp = inside.map((c) => c.hp);
-    order(world, { type: "cast", ability: "fan-out", x: hero.x + 220, y: hero.y, targetId: null });
+    order(world, { type: "cast", ability: "event-storm", x: hero.x + 220, y: hero.y, targetId: null });
     for (let i = 0; i < 30 && !world.events.some((e) => e.type === "cast"); i += 1) step(world, content);
     inside.forEach((c, i) => expect(c.hp).toBeLessThan(hp[i]!));
     expect(outside.hp).toBe(outside.maxHp);

@@ -97,9 +97,9 @@ attacks an enemy, `1`-`4` cast, `Shift`+`1`-`4` (or the `+`) learn.
 
 | Race | Hero | Plays as |
 | --- | --- | --- |
-| Open Source | Maintainer | ranged support: Code Review, Hotfix, Fork Bomb, ult Release Day |
+| Open Source | Maintainer | ranged support: Code Review, Hotfix (finishes construction), Fork Bomb, ult Release Day |
 | Hyperscaler | Site Reliability Engineer | tank: Rate Limit, Runbook, Canary Deploy, ult Autoscale |
-| Serverless | Function Author | caster: Cold Start, Fan-Out, Retry Backoff, ult Event Storm |
+| Serverless | Function Author | caster: Cold Start, Fan-Out (runs nearby functions), Retry with Backoff, ult Event Storm |
 | Walled Garden | Platform Owner | enforcer: Delist, Lockdown, Walled Off, ult Sherlocked |
 
 Heroes and abilities are JSON (`src/content/heroes.json`). An ability is one

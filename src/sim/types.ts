@@ -72,6 +72,10 @@ export interface HeroState {
   temps: { id: number; until: number }[];
   /** A buff ability running: extra damage fraction for every unit, until a tick. */
   buff: { amount: number; until: number } | null;
+  /** A shield ability running: buildings near its point take less damage until a tick. */
+  shield?: { x: number; y: number; radius: number; permille: number; until: number } | null;
+  /** Function runs are free until this tick (a discount ability). */
+  freeRunsUntil?: number;
 }
 
 interface EntityBase {

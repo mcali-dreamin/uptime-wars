@@ -136,6 +136,20 @@ export class HeroBar {
           return `${Math.round(amount)} × ${content.units[ability.unit!]!.name} for ${secs}s`;
         case "buff":
           return `Your units deal +${Math.round(amount * 100)}% damage for ${secs}s`;
+        case "shield":
+          return `Buildings within ${ability.radius}px take ${Math.round(amount / 10)}% less damage for ${secs}s`;
+        case "build":
+          return `Finishes construction and mends ${Math.round(amount)} within ${ability.radius}px`;
+        case "trigger":
+          return `Runs every function within ${ability.radius}px now, free`;
+        case "discount":
+          return `Function runs are free for ${secs}s`;
+        case "funds":
+          return `+$${Math.round(amount)}`;
+        case "stun":
+          return `Freezes creeps within ${ability.radius}px for ${secs}s${amount ? ` · ${Math.round(amount)} damage` : ""}`;
+        case "users":
+          return `Up to ${Math.round(amount)} users arrive now`;
       }
     })();
     lines.push(`${effect}${rank ? ` (rank ${rank})` : ""}`);

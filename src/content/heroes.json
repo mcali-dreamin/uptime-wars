@@ -68,16 +68,16 @@
     },
     "hotfix": {
       "name": "Hotfix",
-      "description": "Patch everything around you: heals your units and buildings.",
-      "effect": "heal",
+      "description": "Ship the fix now: everything under construction around you finishes at once, and damaged buildings are patched.",
+      "effect": "build",
       "target": "self",
       "unlockLevel": 1,
-      "cooldownTicks": 480,
+      "cooldownTicks": 600,
       "range": 0,
-      "radius": 260,
-      "amount": 150,
+      "radius": 280,
+      "amount": 250,
       "maxRank": 3,
-      "perRank": 75.0
+      "perRank": 150
     },
     "fork-bomb": {
       "name": "Fork Bomb",
@@ -175,16 +175,16 @@
     },
     "fan-out": {
       "name": "Fan-Out",
-      "description": "One event, a thousand invocations. Damage in an area.",
-      "effect": "blast",
+      "description": "One event, every invocation: every function near the point runs right now, free, cooldown or not.",
+      "effect": "trigger",
       "target": "point",
       "unlockLevel": 1,
-      "cooldownTicks": 220,
-      "range": 380,
-      "radius": 120,
-      "amount": 65,
-      "maxRank": 3,
-      "perRank": 35
+      "cooldownTicks": 700,
+      "range": 420,
+      "radius": 360,
+      "amount": 0,
+      "maxRank": 1,
+      "perRank": 0
     },
     "retry-backoff": {
       "name": "Retry with Backoff",

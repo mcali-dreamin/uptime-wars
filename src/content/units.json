@@ -151,6 +151,20 @@
     "size": 12,
     "sight": 200
   },
+  "free-tier": {
+    "name": "Free Tier",
+    "description": "Something for nothing. Irresistible.",
+    "hp": 255,
+    "armor": 3,
+    "damage": 0,
+    "range": 0,
+    "cooldownTicks": 999,
+    "speed": 0,
+    "aggro": 0,
+    "bounty": 0,
+    "size": 14,
+    "sight": 200
+  },
   "lambda": {
     "name": "Lambda",
     "description": "Spun up on demand, gone in twenty seconds. Fast, cheap, melee.",
@@ -183,7 +197,7 @@
   "function-author": {
     "name": "Function Author",
     "description": "Writes it, ships it, never runs a server. Ranged caster with a huge area ultimate.",
-    "hp": 345,
+    "hp": 480,
     "armor": 1,
     "damage": 20,
     "range": 150,
