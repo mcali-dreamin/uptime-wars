@@ -5,7 +5,7 @@ import type { TickContext } from "./context";
 import { placeBuilding, sendHome } from "./entities";
 import { TILE, footprintCenter } from "./map";
 import { buildCost, canFound, canPlace, isCore } from "./placement";
-import { canResearch, nextLevel } from "./upgrades";
+import { canResearch, nextLevel, slotOf } from "./upgrades";
 import { invoke, invokeBlocker } from "./functions";
 import { applyFork } from "./mechanics";
 import { heroOf, learnBlocker, orderCast } from "./heroes";
@@ -62,11 +62,11 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
       return applyOrder(ctx, command);
     case "research": {
       const team = world.teams[command.team]!;
-      const reason = canResearch(content, team, command.upgrade);
+      const reason = canResearch(content, team, command.upgrade, world);
       if (reason) return reason;
       const next = nextLevel(content, team, command.upgrade);
       team.money -= next.cost;
-      team.research = { upgrade: command.upgrade, remaining: next.ticks };
+      team[slotOf(content, command.upgrade)] = { upgrade: command.upgrade, remaining: next.ticks };
       return null;
     }
     case "attack": {

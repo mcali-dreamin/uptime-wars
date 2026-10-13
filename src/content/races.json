@@ -11,6 +11,7 @@
       "monorepo",
       "firewall",
       "solar-array",
+      "ci-server",
       "web-app",
       "mesh-node",
       "core"
@@ -57,7 +58,8 @@
           }
         }
       }
-    ]
+    ],
+    "center": "ci-server"
   },
   "hyperscaler": {
     "name": "Hyperscaler",
@@ -72,6 +74,7 @@
       "mainframe-bay",
       "cdn-edge",
       "power-plant",
+      "rnd-lab",
       "web-app",
       "edge-pop",
       "core"
@@ -112,7 +115,8 @@
           "unitHpMultiplier": 1.5
         }
       }
-    ]
+    ],
+    "center": "rnd-lab"
   },
   "serverless": {
     "name": "Serverless",
@@ -131,6 +135,7 @@
       "inference-endpoint",
       "state-machine",
       "compute-pool",
+      "build-pipeline",
       "web-app",
       "mesh-node",
       "core"
@@ -157,7 +162,8 @@
           "invokeCostMultiplier": 0.6
         }
       }
-    ]
+    ],
+    "center": "build-pipeline"
   },
   "walled-garden": {
     "name": "Walled Garden",
@@ -173,6 +179,7 @@
       "legal-dept",
       "app-review",
       "private-cloud",
+      "design-studio",
       "web-app",
       "core"
     ],
@@ -215,7 +222,8 @@
           }
         }
       }
-    ]
+    ],
+    "center": "design-studio"
   },
   "botnet": {
     "name": "The Botnet",

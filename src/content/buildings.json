@@ -434,5 +434,69 @@
     "buildable": true,
     "sight": 240,
     "compute": 90
+  },
+  "ci-server": {
+    "name": "CI Server",
+    "description": "Where your army gets better: weapons, armor, and Open Source's unit traits. Select it to research.",
+    "cost": 150,
+    "buildTicks": 100,
+    "hp": 700,
+    "armor": 2,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 280,
+    "limitPerTier": [
+      1,
+      1,
+      1
+    ]
+  },
+  "rnd-lab": {
+    "name": "R&D Lab",
+    "description": "Where your army gets better: weapons, armor, and Hyperscaler's unit traits. Select it to research.",
+    "cost": 150,
+    "buildTicks": 100,
+    "hp": 700,
+    "armor": 2,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 280,
+    "limitPerTier": [
+      1,
+      1,
+      1
+    ]
+  },
+  "build-pipeline": {
+    "name": "Build Pipeline",
+    "description": "Where your army gets better: weapons, armor, and Serverless's unit traits. Select it to research.",
+    "cost": 150,
+    "buildTicks": 100,
+    "hp": 700,
+    "armor": 2,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 280,
+    "limitPerTier": [
+      1,
+      1,
+      1
+    ]
+  },
+  "design-studio": {
+    "name": "Design Studio",
+    "description": "Where your army gets better: weapons, armor, and Walled Garden's unit traits. Select it to research.",
+    "cost": 150,
+    "buildTicks": 100,
+    "hp": 700,
+    "armor": 2,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 280,
+    "limitPerTier": [
+      1,
+      1,
+      1
+    ]
   }
 }

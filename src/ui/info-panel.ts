@@ -2,7 +2,7 @@
 // the build button you're hovering, what you're placing, or what you have
 // selected. Nothing else pops up. The full story lives in the Guide.
 
-import { invokeCost, earnedPerks, tierDef, TICK_RATE, forkCost, isCore, regionShield } from "../sim";
+import { invokeCost, upgradeName, earnedPerks, tierDef, TICK_RATE, forkCost, isCore, regionShield } from "../sim";
 import { armyUnits, groundOrderLabel, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { upgradeOf } from "./build-bar";
@@ -65,8 +65,10 @@ export class InfoPanel {
         const perks = earnedPerks(content, this.session.team).map((p) => p.name);
         lines.push(`Tier: ${tierDef(content, this.session.team).name}${perks.length ? ` · ${perks.join(", ")}` : ""}`);
       }
-      if (isCore(content, this.session.team, entity) && research) {
-        lines.push(`Researching ${content.upgrades[research.upgrade]!.name} · ${Math.ceil(research.remaining / TICK_RATE)}s`);
+      const lab = this.session.team.labResearch;
+      const doing = isCore(content, this.session.team, entity) ? research : entity.defId === content.races[raceId]!.center ? lab : null;
+      if (doing) {
+        lines.push(`Researching ${upgradeName(content, raceId, doing.upgrade)} · ${Math.ceil(doing.remaining / TICK_RATE)}s`);
       }
       if (entity.jammedUntil !== undefined && this.session.world.tick < entity.jammedUntil) lines.push("Jammed by a DDoS · can't shoot, spawn or run");
       const fn = content.buildings[entity.defId]!.invoke;
