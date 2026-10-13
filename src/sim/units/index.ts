@@ -17,6 +17,7 @@ import type { Unit, UnitMode } from "../types";
 import { builder } from "./builder";
 import { decoy } from "./decoy";
 import { hero } from "./hero";
+import { infector } from "./infector";
 import { guard } from "./guard";
 import { roam } from "./roam";
 import { TICK_RATE } from "../map";
@@ -31,7 +32,7 @@ export interface UnitTickState {
 
 export type Behavior = (ctx: TickContext, unit: Unit, def: UnitDef, state: UnitTickState) => void;
 
-const BEHAVIORS: Record<UnitMode, Behavior> = { guard, roam, builder, hero, decoy };
+const BEHAVIORS: Record<UnitMode, Behavior> = { guard, roam, builder, hero, decoy, infector };
 
 /** Once a second: healers mend allied units and buildings around them. */
 export function tickHealers(ctx: TickContext): void {

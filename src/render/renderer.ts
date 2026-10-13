@@ -94,6 +94,14 @@ export class Renderer {
         this.showBanner(`Botnet Farm down · ${event.units} creeps retaliating`);
         this.ping(event.x, event.y);
       }
+      if (event.type === "infecting") {
+        this.showBanner("An Infector is heading out · stop it before it builds");
+        this.ping(event.x, event.y);
+      }
+      if (event.type === "infected") {
+        this.showBanner("The botnet is building an Infected Node");
+        this.ping(event.x, event.y);
+      }
       if (event.type === "farms-rebuilt") this.showBanner(`The botnet rebuilt ${event.rebuilt} Botnet Farm${event.rebuilt > 1 ? "s" : ""}`);
       if (event.type === "fortified") this.showBanner(`The botnet rebuilt ${event.rebuilt} C2 Server${event.rebuilt > 1 ? "s" : ""}`);
       if (event.type === "wave") this.showBanner(`Incident ${event.wave} · ${event.name}${event.boss ? " · BOSS" : ""}`);

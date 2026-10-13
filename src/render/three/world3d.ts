@@ -54,6 +54,7 @@ const BUILDING_TOP: Record<string, number> = {
   "malware-nest": 70,
   "c2-server": 76,
   "botnet-farm": 64,
+  "infected-node": 72,
   "server-rack": 62,
   "hyperscale-rack": 72,
   "gpu-cluster": 32,

@@ -8,6 +8,7 @@ import type { Content } from "./content";
 import { spawnUnit } from "./entities";
 import { farmsDown, fortify, raiseFarms } from "./fortress";
 import { randomInt } from "./rng";
+import { liveNodes, sendInfectors } from "./spread";
 import { humanTeams } from "./teams";
 import type { World } from "./types";
 
@@ -44,15 +45,20 @@ export function tickWaveDirector(ctx: TickContext): void {
     const plan = planWave(world, content, wave, budgetScale);
     let at = world.tick;
     let packs = 0;
+    // The botnet's spread: some packs come out of its infected nodes instead of the nest.
+    const nodes = liveNodes(world, content, team.id);
     for (let i = 0; i < plan.units.length; ) {
       const size = randomInt(world, waves.packSize.min, waves.packSize.max);
       const packId = state.nextPackId++;
       packs += 1;
-      for (const unit of plan.units.slice(i, i + size)) state.pending.push({ tick: at, unit, packId, wave });
+      const fromNode = nodes.length > 0 && randomInt(world, 1, 1000) <= waves.spread.sharePermille;
+      const from = fromNode ? nodes[randomInt(world, 0, nodes.length - 1)]!.id : undefined;
+      for (const unit of plan.units.slice(i, i + size)) state.pending.push(from === undefined ? { tick: at, unit, packId, wave } : { tick: at, unit, packId, wave, from });
       i += size;
       at += waves.spawnSpacingTicks;
     }
     world.events.push({ type: "wave", wave, name: plan.name, packs, units: plan.units.length, boss: plan.bosses > 0 });
+    sendInfectors(ctx, team.id, wave);
     if (wave % waves.fortress.rebuildEvery === 0) {
       const rebuilt = fortify(world, content, team.id, wave);
       if (rebuilt > 0) world.events.push({ type: "fortified", wave, rebuilt });
@@ -69,11 +75,15 @@ export function tickWaveDirector(ctx: TickContext): void {
   for (const entity of world.entities) if (entity.kind === "unit" && entity.team === team.id) alive += 1;
   while (state.pending.length > 0 && state.pending[0]!.tick <= world.tick && alive < waves.maxAlive) {
     const spawn = state.pending.shift()!;
-    const x = nest.x + randomInt(world, -60, 60);
-    const y = nest.y + randomInt(world, -60, 60);
+    // Out of its node if that still stands, else the nest.
+    const node = spawn.from === undefined ? undefined : ctx.byId.get(spawn.from);
+    const source = node && node.hp > 0 ? node : nest;
+    const x = source.x + randomInt(world, -60, 60);
+    const y = source.y + randomInt(world, -60, 60);
     const hp = 1 + waves.hpGrowthPerWave * (spawn.wave - 1);
-    const unit = spawnUnit(ctx, team.id, spawn.unit, nest, x, y, "roam", hp);
+    const unit = spawnUnit(ctx, team.id, spawn.unit, source, x, y, spawn.infect ? "infector" : "roam", hp);
     unit.packId = spawn.packId;
+    if (spawn.infect) unit.foundAt = { ...spawn.infect };
     alive += 1;
   }
 }

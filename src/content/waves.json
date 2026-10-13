@@ -83,6 +83,17 @@
     "fromWave": 4,
     "every": 2
   },
+  "spread": {
+    "unit": "infector",
+    "building": "infected-node",
+    "fromWave": 2,
+    "everyWaves": 2,
+    "infectors": 1,
+    "escort": 3,
+    "max": 6,
+    "minFromStart": 34,
+    "sharePermille": 600
+  },
   "fortress": {
     "building": "c2-server",
     "rebuildEvery": 2,

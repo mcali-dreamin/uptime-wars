@@ -218,6 +218,25 @@ export interface WavesDef {
    * waves the ones you knocked down come back, with hp grown by
    * `hpGrowthPerWave` per wave.
    */
+  /**
+   * The botnet spreads. From incident `fromWave`, every `everyWaves` incidents,
+   * the nest sends `infectors` (with `escort` creeps) out to a site on the map,
+   * where each builds a `building` (an infected node). Finished nodes are new
+   * sources: `sharePermille` of incident packs come out of them instead of the
+   * nest. At most `max` nodes; sites are at least `minFromStart` tiles from
+   * every start.
+   */
+  spread: {
+    unit: string;
+    building: string;
+    fromWave: number;
+    everyWaves: number;
+    infectors: number;
+    escort: number;
+    max: number;
+    minFromStart: number;
+    sharePermille: number;
+  };
   fortress: {
     building: string;
     rebuildEvery: number;
