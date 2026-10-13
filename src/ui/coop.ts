@@ -138,7 +138,8 @@ export class CoopLobby {
   private rules(): MatchRules {
     const picked = this.body.querySelector<HTMLInputElement>('input[name="coop-mode"]:checked')?.value;
     const horde = (document.getElementById("coop-horde") as HTMLInputElement | null)?.checked ?? true;
-    return picked === "ffa" ? { mode: "ffa", horde } : { mode: "coop", horde: true };
+    const layout = new URLSearchParams(location.search).get("map") === "routes" ? "routes" : "noise";
+    return picked === "ffa" ? { mode: "ffa", horde, layout } : { mode: "coop", horde: true, layout };
   }
 
   // --- guest ------------------------------------------------------------
