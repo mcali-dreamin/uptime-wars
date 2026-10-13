@@ -251,7 +251,7 @@
   },
   "garden-wall": {
     "name": "Wall",
-    "description": "Blocks every path, for creeps and for your own units. Towers shoot over it. Cheap, tough, and the only way to shape where the war goes.",
+    "description": "Blocks every path, for creeps and for your own units (put a Gate in it to let them through). Towers shoot over it. Cheap, tough, and the only way to shape where the war goes.",
     "cost": 20,
     "buildTicks": 30,
     "hp": 900,
@@ -260,6 +260,19 @@
     "buildable": true,
     "sight": 160,
     "blocks": true
+  },
+  "garden-gate": {
+    "name": "Gate",
+    "description": "A wall your own units (and allies') walk straight through. Creeps and enemies can't: they have to break it.",
+    "cost": 40,
+    "buildTicks": 40,
+    "hp": 900,
+    "armor": 4,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 160,
+    "blocks": true,
+    "gate": true
   },
   "app-review": {
     "name": "App Review",

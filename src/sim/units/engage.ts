@@ -12,6 +12,7 @@ import type { Entity, Unit } from "../types";
 import { multiplier } from "../upgrades";
 import { roleHit, roleTargets } from "../roles";
 import { hostile } from "../teams";
+import { terrainFor } from "../walls";
 
 /**
  * Returns true when the unit spent its tick fighting or closing in, false
@@ -27,7 +28,8 @@ function fightsBack(ctx: TickContext, e: Entity): boolean {
 function canReach(ctx: TickContext, unit: Unit, def: UnitDef, e: Entity): boolean {
   if (edgeDistance(unit, e) <= def.range) return true;
   const [x, y] = nearEdge(unit, e);
-  return hasClearPath(ctx.world.terrain, unit.x, unit.y, x, y, unit.radius);
+  // Its own view of the ground: a gate is open to its owner, a wall to nobody.
+  return hasClearPath(terrainFor(ctx.world, unit.team).terrain, unit.x, unit.y, x, y, unit.radius);
 }
 
 /** Where to walk to reach an entity: a building's near edge (its own tiles may be blocked), a unit's centre. */
@@ -119,8 +121,9 @@ export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
   // Head for the near edge of a building, not its centre: a wall's own tiles
   // are blocked, so the way to its centre never looks clear.
   const [aimX, aimY] = nearEdge(unit, target);
-  if (hasClearPath(world.terrain, unit.x, unit.y, aimX, aimY, unit.radius)) {
-    moveToward(world.terrain, unit, aimX, aimY, Math.min(def.speed, gap - def.range + 0.5));
+  const { terrain } = terrainFor(world, unit.team);
+  if (hasClearPath(terrain, unit.x, unit.y, aimX, aimY, unit.radius)) {
+    moveToward(terrain, unit, aimX, aimY, Math.min(def.speed, gap - def.range + 0.5));
     return true;
   }
   // Seen but not straight-line reachable: carry on with the mode this tick.

@@ -17,6 +17,7 @@ import type { Point, Unit, World } from "../types";
 import type { Behavior } from "./index";
 import { engage } from "./engage";
 import { tickScanner } from "../roles";
+import { terrainFor } from "../walls";
 
 type Destination = number | Point;
 
@@ -31,7 +32,7 @@ export const roam: Behavior = (ctx, unit, def, state) => {
 /** Follow the pack: straggle back to the leader, else walk the pack's route. */
 function wander(ctx: TickContext, unit: Unit, leader: Unit | undefined, speed: number): void {
   const { world } = ctx;
-  const { terrain } = world;
+  const { terrain } = terrainFor(world, unit.team);
   if (terrain.roamPoints.length === 0) return;
 
   if (leader && leader !== unit && distance(unit, leader) > PACK_SPREAD) {
@@ -101,12 +102,12 @@ function pickRoamPoint(world: World): number {
 
 /** Next waypoint toward the destination; null on arrival. */
 function stepToward(world: World, unit: Unit, destination: Destination): Point | null {
-  const { terrain } = world;
+  const { terrain } = terrainFor(world, unit.team);
   if (typeof destination === "number") {
     const point = terrain.roamPoints[destination]!;
-    return nextStep(terrain, goalField(world, point.row * terrain.cols + point.col), unit.x, unit.y);
+    return nextStep(terrain, goalField(world, point.row * terrain.cols + point.col, unit.team), unit.x, unit.y);
   }
   if (distance(unit, destination) <= SENSED_ARRIVAL) return null;
   const tile = Math.floor(destination.y / TILE) * terrain.cols + Math.floor(destination.x / TILE);
-  return nextStep(terrain, goalField(world, tile), unit.x, unit.y) ?? destination;
+  return nextStep(terrain, goalField(world, tile, unit.team), unit.x, unit.y) ?? destination;
 }

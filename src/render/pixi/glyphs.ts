@@ -53,6 +53,10 @@ export function drawGlyph(g: Graphics, defId: string, x: number, y: number, size
     case "garden-wall":
       g.rect(x - s * 1.5, y - s * 1.5, s * 3, s * 3).fill({ color, alpha: alpha * 0.6 });
       break;
+    case "garden-gate":
+      for (const side of [-1, 1]) g.rect(x + side * s * 1.1 - s * 0.4, y - s * 1.5, s * 0.8, s * 3).fill({ color, alpha: alpha * 0.6 });
+      g.moveTo(x, y - s * 1.2).lineTo(x, y + s * 1.2).stroke({ width: 1.5, color, alpha });
+      break;
     case "mesh-node":
       g.circle(x, y, s * 0.35).fill({ color, alpha });
       for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
