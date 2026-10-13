@@ -16,35 +16,12 @@ import {
   START_MIN_FROM_NEST,
   START_SPACING,
 } from "./params";
-import { carveRoutes } from "./routes";
 import { scatterRoamPoints } from "./scatter";
 import { TILE_BLOCKED, TILE_OPEN, type Terrain, type TilePoint } from "./tiles";
 
-/**
- * Map layouts. "noise" (the default) is open ground with noise walls;
- * "routes" is a solid web carved into highways, chokepoints and pockets
- * (see routes.ts).
- */
-export type MapLayout = "noise" | "routes";
-
-export function generateTerrain(seed: number, cols = MAP_COLS, rows = MAP_ROWS, layout: MapLayout = "noise"): Terrain {
-  if (layout !== "routes") return generateOnce(seed, cols, rows, layout, 0);
-  // Routes carve narrow ground, and height can occasionally seal a start off
-  // behind a double cliff. Then try the next variant of the same seed: still a
-  // pure function of the seed, and nearly always the first try.
-  let terrain = generateOnce(seed, cols, rows, layout, 0);
-  for (let attempt = 1; attempt < 8 && !allReachable(terrain); attempt += 1) terrain = generateOnce(seed, cols, rows, layout, attempt);
-  return terrain;
-}
-
-function allReachable(t: Terrain): boolean {
-  const dist = bfs(t.tiles, t.cols, t.rows, t.starts[0]!);
-  return [t.nest, ...t.starts].every((p) => dist[p.row * t.cols + p.col]! >= 0);
-}
-
-function generateOnce(seed: number, cols: number, rows: number, layout: MapLayout, attempt: number): Terrain {
+export function generateTerrain(seed: number, cols = MAP_COLS, rows = MAP_ROWS): Terrain {
   // Separate stream from the match RNG so terrain never shifts gameplay rolls.
-  const rng = { rngState: (seed ^ 0x5bd1e995 ^ Math.imul(attempt, 0x9e3779b1)) | 0 };
+  const rng = { rngState: (seed ^ 0x5bd1e995) | 0 };
   const noiseSeed = randomInt(rng, 0, 0x7fffffff);
   const tiles = new Uint8Array(cols * rows);
 
@@ -67,12 +44,8 @@ function generateOnce(seed: number, cols: number, rows: number, layout: MapLayou
   const start = starts[0]!;
   // The fortress (plateau and moat) is built ground: no dead links,
   // so its rim is a clean cliff that gateways can be cut into anywhere.
-  if (layout === "routes") {
-    carveRoutes(tiles, cols, rows, nest, starts, FORTRESS_RADIUS + MOAT_WIDTH - 1, noiseSeed, rng);
-  } else {
-    clearDisc(tiles, cols, rows, nest.col + 1, nest.row + 1, FORTRESS_RADIUS + MOAT_WIDTH - 1);
-    for (const s of starts) clearDisc(tiles, cols, rows, s.col + 1, s.row + 1, START_CLEAR_RADIUS);
-  }
+  clearDisc(tiles, cols, rows, nest.col + 1, nest.row + 1, FORTRESS_RADIUS + MOAT_WIDTH - 1);
+  for (const s of starts) clearDisc(tiles, cols, rows, s.col + 1, s.row + 1, START_CLEAR_RADIUS);
 
   // The nest and every start must be reachable on foot from the first start;
   // if the noise walled one off, carve a winding-free corridor to the nest.
@@ -94,13 +67,6 @@ function generateOnce(seed: number, cols: number, rows: number, layout: MapLayou
   const heights = raiseTerrain(tiles, cols, rows, starts, nest, noiseSeed, rng);
 
   dist = bfs(tiles, cols, rows, start);
-  if (layout === "routes") {
-    // Narrow carved ground can leave a stray tile cut off by a cliff; wall it in.
-    // (Only for routes, so noise maps stay byte-identical.)
-    for (let i = 0; i < tiles.length; i += 1) {
-      if (tiles[i] === TILE_OPEN && dist[i]! < 0) tiles[i] = TILE_BLOCKED;
-    }
-  }
   const roamPoints = scatterRoamPoints(tiles, cols, rows, dist, starts, rng);
 
   return { cols, rows, tiles, heights, starts, nest, roamPoints };

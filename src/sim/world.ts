@@ -26,7 +26,7 @@ import { tickFunctions } from "./functions";
 import { syncWalls } from "./walls";
 import { tickRepair } from "./mechanics";
 import { tickSpawners } from "./spawners";
-import { MAX_PLAYERS, generateTerrain, type MapLayout } from "./terrain";
+import { MAX_PLAYERS, generateTerrain } from "./terrain";
 import { BASE_INCOME, STARTING_MONEY } from "./tuning";
 import type { TeamId, World } from "./types";
 import { tickHealers, tickUnits } from "./units";
@@ -49,12 +49,10 @@ export interface MatchSetup {
   startWithCore?: boolean;
   /** co-op (default) or ffa. FFA needs two or more players; the horde is optional. */
   mode?: MatchMode;
-  /** Map layout (default "noise"); "routes" carves highways and chokepoints. */
-  layout?: MapLayout;
 }
 
 export function createWorld(content: Content, setup: MatchSetup): World {
-  const terrain = generateTerrain(setup.seed, undefined, undefined, setup.layout ?? "noise");
+  const terrain = generateTerrain(setup.seed);
   const world: World = {
     mode: setup.mode ?? "coop",
     tick: 0,

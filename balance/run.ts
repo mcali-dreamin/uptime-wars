@@ -18,8 +18,7 @@ export function runRace(race: string): BotResult[] {
   const hero = process.env.BALANCE_NO_HERO ? false : true;
   for (const heroId of heroes) {
     for (const seed of SEEDS) {
-      const layout = process.env.BALANCE_LAYOUT === "routes" ? "routes" : "noise";
-      results.push(playMatch(content, race, seed, heroId, { minutes: MINUTES, hero, layout }));
+      results.push(playMatch(content, race, seed, heroId, { minutes: MINUTES, hero }));
       mkdirSync("balance-results", { recursive: true });
       writeFileSync(`balance-results/${race}.json`, JSON.stringify(results, null, 1));
     }
