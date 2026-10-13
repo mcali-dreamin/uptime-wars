@@ -48,8 +48,11 @@ describe("Botnet Farms", () => {
     expect(farmsDown(world, content, 1)).toBe(4);
     const weakened = planWave(createWorld(content, SETUP), content, 6, 1000 - 4 * content.waves.fortress.farms.weakenPermille).units.length;
     expect(weakened).toBeLessThan(full);
-    const every = content.waves.fortress.farms.rebuildEvery;
-    while (world.waves.nextIndex < every) step(world, content);
+    // Jump to just before the rebuild incident instead of simulating every wave up to it.
+    world.waves.nextIndex = content.waves.fortress.farms.rebuildEvery - 1;
+    world.waves.nextWaveTick = world.tick + 1;
+    world.waves.nextTrickleTick = 1e9;
+    for (let i = 0; i < 5 && farms(world).length < 4; i++) step(world, content);
     expect(farms(world)).toHaveLength(4);
   });
 });
