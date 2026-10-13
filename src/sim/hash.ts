@@ -6,7 +6,7 @@ import type { World } from "./types";
  * Render-only events and seed-derived terrain/navigation are excluded.
  */
 export function hashWorld(world: World): string {
-  const { events: _events, terrain: _terrain, nav: _nav, ...state } = world;
+  const { events: _events, terrain: _terrain, nav: _nav, log: _log, ...state } = world;
   return fnv1a(JSON.stringify(state));
 }
 

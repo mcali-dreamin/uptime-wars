@@ -1,4 +1,5 @@
-// The game's server: a tiny signaling relay so co-op invites are short links.
+// The game's server: a tiny signaling relay so co-op invites are short links,
+// and the place finished matches are reported to (anonymous stats + replay).
 //
 // A host posts a WebRTC offer and gets a code (and a secret key). A friend
 // opening `#join=CODE` reads the offer and posts back an answer. The host
@@ -7,7 +8,8 @@
 //
 // Everything else in this space is the static game build.
 
-import { capsule, endpoint, json, string, table } from "@spacefast/zero/server";
+import { capsule, endpoint, json, number, string, table } from "@spacefast/zero/server";
+import { parseMatch } from "./matches";
 import { KEY_LENGTH, codeFromPath, expired, makeCode, validBlob } from "./rules";
 
 const notFound = () => json({ error: "not_found" }, { status: 404 });
@@ -23,6 +25,26 @@ export default capsule({
       offer: string(),
       answer: string().default(""),
     }).index("by_code", ["code"]),
+    // One row per finished (or abandoned) match, as each player's browser reports it.
+    matches: table({
+      player: string(),
+      version: string(),
+      seed: number(),
+      mode: string(),
+      race: string(),
+      hero: string(),
+      races: string(),
+      team: number(),
+      outcome: string(),
+      survived: number(),
+      wave: number(),
+      tier: number(),
+      peakUsers: number(),
+      summary: string(),
+      log: string(),
+    })
+      .index("by_race", ["race"])
+      .index("by_version", ["version"]),
   },
   endpoints: {
     // Host: publish an offer, get a code and the key to read the answer with.
@@ -39,6 +61,15 @@ export default capsule({
       const key = makeCode(random, KEY_LENGTH) + makeCode(random, KEY_LENGTH);
       await ctx.db.invites!.insert({ code, key, offer: body.offer, answer: "" });
       return json({ code, key });
+    }),
+
+    // The game: a match ended. Anonymous; write-only from the outside.
+    reportMatch: endpoint({ method: "POST", path: "/api/matches" }, async (ctx, req) => {
+      const body = await req.json<unknown>().catch(() => null);
+      const row = parseMatch(body);
+      if (typeof row === "string") return bad(row);
+      await ctx.db.matches!.insert(row);
+      return json({ ok: true });
     }),
 
     // Guest: read the offer behind a code.

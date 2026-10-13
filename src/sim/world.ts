@@ -75,6 +75,7 @@ export function createWorld(content: Content, setup: MatchSetup): World {
     },
     outcome: null,
     events: [],
+    log: [],
   };
 
   const humans = humanTeams(world);

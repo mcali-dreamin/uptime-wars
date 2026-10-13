@@ -32,6 +32,8 @@ import type { NetMatch } from "./game/net/lobby";
 import { Director, tension, type Listener } from "./audio/cues";
 import { SoundEngine, type SoundMode } from "./audio/engine";
 import { CoopLobby } from "./ui/coop";
+import { Telemetry } from "./game/telemetry";
+import { version } from "../package.json";
 import { HeroBar, heroUnit } from "./ui/hero-bar";
 import { castBlocker } from "./sim/heroes";
 
@@ -94,7 +96,8 @@ const heroBar = new HeroBar(session, {
 bar.hero = heroBar;
 info.describeAbility = (id) => heroBar.describe(id);
 const guide = new Guide(session);
-const picker = new RacePicker(session, startMatch, () => void coop.hostGame(), applyColor);
+const telemetry = new Telemetry(content, version);
+const picker = new RacePicker(session, startMatch, () => void coop.hostGame(), applyColor, telemetry);
 const coop = new CoopLobby(session, startNetMatch, () => picker.show());
 coop.onLeave = (team) => {
   if (team === 0 && session.local !== 0) renderer.showBanner("The host left · match over");
@@ -448,13 +451,20 @@ function applyColor(): void {
   document.documentElement.style.setProperty("--accent", `#${session.color.hex.toString(16).padStart(6, "0")}`);
 }
 
+/** Report the match being left, if it never finished (a new one is starting). */
+function leaveMatch(): void {
+  if (!session.world.outcome) telemetry.report(session.world, session.local, false);
+}
+
 function startMatch(raceId: string, heroId?: string): void {
+  leaveMatch();
   applyColor();
   session.start(raceId, heroId);
   resetMatch();
 }
 
 function startNetMatch(match: NetMatch): void {
+  leaveMatch();
   session.startNet(match);
   resetMatch();
 }
@@ -472,6 +482,11 @@ function resetMatch(): void {
   renderer.showBanner("");
   select(fallback());
 }
+
+// Closing the tab mid-match still reports it.
+addEventListener("pagehide", () => {
+  if (!session.world.outcome) telemetry.report(session.world, session.local, false, true);
+});
 
 applyColor();
 // HUD first: the stage's size depends on the build bar's height.
@@ -538,6 +553,7 @@ renderer.app.ticker.add((ticker) => {
   if (world.outcome && !announced) {
     announced = true;
     renderer.showBanner(hud.announce());
+    telemetry.report(world, session.local, true);
   }
 
   // Selections that stopped making sense: the agent deployed or died, the deploy phase ended.

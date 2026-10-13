@@ -3,6 +3,7 @@
 
 import { PLAYER_COLORS } from "../game/colors";
 import type { Session } from "../game/session";
+import type { Telemetry } from "../game/telemetry";
 import { $ } from "./dom";
 
 export class RacePicker {
@@ -19,8 +20,14 @@ export class RacePicker {
     private readonly onPick: (raceId: string, heroId?: string) => void,
     private readonly onCoop: () => void,
     private readonly onColor: () => void = () => {},
+    telemetry?: Telemetry,
   ) {
     $("coop-host").addEventListener("click", () => this.coop());
+    const share = $("share-stats") as HTMLInputElement;
+    if (telemetry) {
+      share.checked = telemetry.enabled;
+      share.addEventListener("change", () => (telemetry.enabled = share.checked));
+    } else $("stats-row").hidden = true;
   }
 
   show(): void {

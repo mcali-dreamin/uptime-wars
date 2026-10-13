@@ -266,10 +266,21 @@ pick a race, and you're connected. One link per friend, up to three. Press
 WebRTC (public STUN, no TURN yet, so a few strict corporate or mobile networks
 won't connect).
 
-The only server is a tiny invite relay in the game's own Spacefast space
-(`zero/server`, Spacefast Zero): it holds each invite's WebRTC offer and the
-friend's answer for 30 minutes, and the answer is only readable with the
-host's key. Nothing about a match goes through it. `npm run build` stages it
+The only server is the game's own Spacefast space (`zero/server`, Spacefast
+Zero, backed by the space's WordPress). It is a tiny invite relay: it holds
+each invite's WebRTC offer and the friend's answer for 30 minutes, and the
+answer is only readable with the host's key. Nothing about a match goes
+through it while you play.
+
+**Match stats.** When a match ends (or you leave it after the first 20
+seconds), the game posts one anonymous report to `POST /api/matches`: a random
+player id kept in your browser, the version, seed, mode, races and hero, the
+outcome, uptime, incident, core tier and peak users, what was built and
+researched, and the command log. Seed + setup + command log replays the match
+exactly (`simulate`, `tests/replay.test.ts`), so any reported match can be
+re-run and inspected. Rows land in the `matches` table; the server only
+accepts them, nothing reads them back from outside. Turn it off with the
+checkbox on the race picker. Never sent from localhost or with `?debug`. `npm run build` stages it
 into `dist/` next to the static game. Where there's no relay (`npm run dev`, a
 plain static host), co-op falls back to copy and paste: the link carries the
 whole offer and the friend sends back a reply code.
@@ -310,6 +321,7 @@ Direction: survival on a procedurally generated open web.
 - [x] Compute is the army cap; generators are limited per core tier
 - [x] Race selection: Open Source Collective, Hyperscaler
 - More races: Hacker crew, State actor / APT
+- [x] Anonymous match reports (with replayable command logs) via Spacefast Zero
 - Content from WordPress, saves and leaderboards via Spacefast Zero
 
 ## Releases and deploys
