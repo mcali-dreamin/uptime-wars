@@ -164,16 +164,16 @@
     },
     "hotfix": {
       "name": "Hotfix",
-      "description": "Patch everything around you: heals your units and buildings.",
-      "effect": "heal",
+      "description": "Ship the fix now: everything under construction around you finishes at once, and damaged buildings are patched.",
+      "effect": "build",
       "target": "self",
       "unlockLevel": 1,
-      "cooldownTicks": 480,
+      "cooldownTicks": 600,
       "range": 0,
-      "radius": 260,
-      "amount": 150,
+      "radius": 280,
+      "amount": 250,
       "maxRank": 3,
-      "perRank": 75.0
+      "perRank": 150
     },
     "fork-bomb": {
       "name": "Fork Bomb",
@@ -284,17 +284,16 @@
       "perRank": 150.0
     },
     "patch-tuesday": {
-      "name": "Patch Tuesday",
-      "description": "A big scheduled heal for everything around you.",
-      "effect": "heal",
+      "name": "Bug Bounty",
+      "description": "Sponsors pay out for what you found: +$ now.",
+      "effect": "funds",
       "target": "self",
       "unlockLevel": 1,
       "cooldownTicks": 900,
       "range": 0,
-      "radius": 380,
-      "amount": 260,
+      "amount": 150,
       "maxRank": 3,
-      "perRank": 100.0
+      "perRank": 90
     },
     "zero-day": {
       "name": "Zero-day",
@@ -390,16 +389,17 @@
     },
     "sla": {
       "name": "SLA",
-      "description": "Four nines or refunds. Your units hit 40% harder for a while.",
-      "effect": "buff",
-      "target": "self",
+      "description": "Four nines or refunds: your buildings in an area take half damage for a while.",
+      "effect": "shield",
+      "target": "point",
       "unlockLevel": 1,
-      "cooldownTicks": 1000,
-      "range": 0,
-      "amount": 0.4,
-      "durationTicks": 300,
+      "cooldownTicks": 900,
+      "range": 420,
+      "radius": 260,
+      "amount": 500,
+      "durationTicks": 320,
       "maxRank": 3,
-      "perRank": 0.1
+      "perRank": 100
     },
     "region-outage": {
       "name": "Region Outage",
@@ -429,31 +429,27 @@
     },
     "free-tier": {
       "name": "Free Tier",
-      "description": "Something for nothing. Creeps nearby can't resist it.",
-      "effect": "decoy",
-      "target": "point",
+      "description": "Something for nothing: users sign up right away (up to your capacity).",
+      "effect": "users",
+      "target": "self",
       "unlockLevel": 1,
-      "cooldownTicks": 460,
-      "range": 340,
-      "radius": 300,
-      "amount": 280,
-      "durationTicks": 220,
-      "unit": "free-tier",
+      "cooldownTicks": 800,
+      "range": 0,
+      "amount": 40,
       "maxRank": 3,
-      "perRank": 137.5
+      "perRank": 30
     },
     "black-friday": {
       "name": "Black Friday",
-      "description": "A traffic stampede tramples an area.",
-      "effect": "blast",
-      "target": "point",
+      "description": "A sales spike: +$ now.",
+      "effect": "funds",
+      "target": "self",
       "unlockLevel": 1,
-      "cooldownTicks": 420,
-      "range": 400,
-      "radius": 160,
-      "amount": 110,
+      "cooldownTicks": 900,
+      "range": 0,
+      "amount": 140,
       "maxRank": 3,
-      "perRank": 50.0
+      "perRank": 80
     },
     "acquisition": {
       "name": "Acquisition",
@@ -481,16 +477,16 @@
     },
     "fan-out": {
       "name": "Fan-Out",
-      "description": "One event, a thousand invocations. Damage in an area.",
-      "effect": "blast",
+      "description": "One event, every invocation: every function near the point runs right now, free, cooldown or not.",
+      "effect": "trigger",
       "target": "point",
       "unlockLevel": 1,
-      "cooldownTicks": 220,
-      "range": 380,
-      "radius": 120,
-      "amount": 65,
-      "maxRank": 3,
-      "perRank": 35
+      "cooldownTicks": 700,
+      "range": 420,
+      "radius": 360,
+      "amount": 0,
+      "maxRank": 1,
+      "perRank": 0
     },
     "retry-backoff": {
       "name": "Retry with Backoff",
@@ -573,28 +569,28 @@
     },
     "budget-alert": {
       "name": "Budget Alert",
-      "description": "Someone's getting an email. Damage to one target.",
-      "effect": "strike",
-      "target": "enemy",
+      "description": "Someone found the overspend: a refund of +$ now.",
+      "effect": "funds",
+      "target": "self",
       "unlockLevel": 1,
-      "cooldownTicks": 170,
-      "range": 400,
-      "amount": 110,
+      "cooldownTicks": 800,
+      "range": 0,
+      "amount": 140,
       "maxRank": 3,
-      "perRank": 55
+      "perRank": 80
     },
     "savings-plan": {
       "name": "Savings Plan",
-      "description": "Commit up front. Your units hit 30% harder for a while.",
-      "effect": "buff",
+      "description": "Committed capacity: function runs cost nothing for a while.",
+      "effect": "discount",
       "target": "self",
       "unlockLevel": 1,
-      "cooldownTicks": 700,
+      "cooldownTicks": 1100,
       "range": 0,
-      "amount": 0.3,
-      "durationTicks": 260,
+      "amount": 0,
+      "durationTicks": 300,
       "maxRank": 3,
-      "perRank": 0.07
+      "perRank": 0
     },
     "reserved-capacity": {
       "name": "Reserved Capacity",
@@ -687,16 +683,17 @@
     },
     "policy-update": {
       "name": "Policy Update",
-      "description": "New rules, effective immediately, for everyone in an area.",
-      "effect": "blast",
+      "description": "New rules, effective immediately: creeps in an area freeze while they read them, and take a little damage.",
+      "effect": "stun",
       "target": "point",
       "unlockLevel": 1,
-      "cooldownTicks": 220,
+      "cooldownTicks": 420,
       "range": 380,
-      "radius": 120,
-      "amount": 65,
+      "radius": 150,
+      "amount": 30,
+      "durationTicks": 70,
       "maxRank": 3,
-      "perRank": 35
+      "perRank": 20
     },
     "terms-of-service": {
       "name": "Terms of Service",
@@ -741,16 +738,15 @@
     },
     "loyalty-program": {
       "name": "Loyalty Program",
-      "description": "Look after the faithful: a big heal for everything nearby.",
-      "effect": "heal",
+      "description": "Bring the faithful back: users return right away (up to your capacity).",
+      "effect": "users",
       "target": "self",
       "unlockLevel": 1,
-      "cooldownTicks": 540,
+      "cooldownTicks": 800,
       "range": 0,
-      "radius": 320,
-      "amount": 170,
+      "amount": 50,
       "maxRank": 3,
-      "perRank": 80
+      "perRank": 30
     },
     "featured-app": {
       "name": "Featured App",

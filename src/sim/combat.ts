@@ -11,6 +11,7 @@ import { heightAtTile } from "./terrain";
 import { HIGH_GROUND_DAMAGE, LOW_GROUND_SIGHT } from "./tuning";
 import { multiplier } from "./upgrades";
 import type { Entity } from "./types";
+import { heroShield } from "./heroes";
 import { raceMechanics } from "./tiers";
 
 /** Attacks this close (edge to edge) are melee, for thorns. */
@@ -96,7 +97,7 @@ export function dealDamage(
   let damage = Math.max(1, Math.round(baseDamage * downhill) - target.armor);
   if (target.kind === "building") {
     target.lastHitTick = world.tick;
-    const shield = regionShield(world, content, target).permille;
+    const shield = Math.min(900, regionShield(world, content, target).permille + heroShield(world, target));
     if (shield > 0) damage = Math.max(1, Math.round((damage * (1000 - shield)) / 1000));
   }
   const wasAlive = target.hp > 0;

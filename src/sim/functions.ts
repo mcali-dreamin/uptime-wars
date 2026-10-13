@@ -9,6 +9,7 @@ import type { TickContext } from "./context";
 import { sendHome, spawnUnit } from "./entities";
 import { randomInt } from "./rng";
 import type { Building, Team, Unit } from "./types";
+import { runsAreFree } from "./heroes";
 import { raceModifiers } from "./tiers";
 
 /** Why this function can't run right now, or null if it can. */
@@ -20,7 +21,7 @@ export function invokeBlocker(ctx: TickContext, building: Building): string | nu
   if (building.jammedUntil !== undefined && ctx.world.tick < building.jammedUntil) return "jammed";
   const team = ctx.world.teams[building.team]!;
   if (team.downTick !== null) return "offline";
-  if (team.money < invokeCost(ctx.content, team, def.cost)) return "not enough $";
+  if (!runsAreFree(team, ctx.world.tick) && team.money < invokeCost(ctx.content, team, def.cost)) return "not enough $";
   return null;
 }
 
@@ -30,11 +31,11 @@ export function invokeCost(content: TickContext["content"], team: Team, base: nu
 }
 
 /** Run a function: pay, spin up its units, start its cooldown. Call only when invokeBlocker is null. */
-export function invoke(ctx: TickContext, building: Building, auto: boolean): Unit[] {
+export function invoke(ctx: TickContext, building: Building, auto: boolean, free = false): Unit[] {
   const { world, content } = ctx;
   const def = content.buildings[building.defId]!.invoke!;
   const team = world.teams[building.team]!;
-  team.money -= invokeCost(content, team, def.cost);
+  if (!free && !runsAreFree(team, world.tick)) team.money -= invokeCost(content, team, def.cost);
   building.spawnTimer = Math.max(1, Math.round(def.cooldownTicks * (raceModifiers(content, team).invokeCooldownMultiplier ?? 1)));
   const units: Unit[] = [];
   for (let i = 0; i < def.count; i += 1) {

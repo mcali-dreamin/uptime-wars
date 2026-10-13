@@ -9,7 +9,9 @@
 import { dealDamage } from "./combat";
 import type { TickContext } from "./context";
 import type { AbilityDef, Content } from "./content";
+import { userCapacity } from "./economy";
 import { spawnUnit } from "./entities";
+import { invoke } from "./functions";
 import { distance } from "./movement";
 import { hostile } from "./teams";
 import type { CastCommand, Entity, HeroState, Point, Team, Unit, World } from "./types";
@@ -256,7 +258,61 @@ export function resolveCast(ctx: TickContext, team: Team, hero: Unit, abilityId:
     case "buff":
       state.buff = { amount, until: world.tick + ability.durationTicks! };
       return;
+    case "shield":
+      state.shield = { x: at.x, y: at.y, radius: ability.radius!, permille: amount, until: world.tick + ability.durationTicks! };
+      return;
+    case "build":
+      for (const entity of world.entities) {
+        if (entity.kind !== "building" || entity.hp <= 0 || entity.team !== team.id) continue;
+        if (distance(entity, at) > ability.radius! + entity.radius) continue;
+        if (entity.buildRemaining > 0) {
+          entity.buildRemaining = 0;
+          entity.hp = entity.maxHp;
+        } else entity.hp = Math.min(entity.maxHp, entity.hp + amount);
+      }
+      return;
+    case "trigger":
+      for (const entity of world.entities) {
+        if (entity.kind !== "building" || entity.hp <= 0 || entity.team !== team.id || entity.buildRemaining > 0) continue;
+        if (!content.buildings[entity.defId]!.invoke || distance(entity, at) > ability.radius! + entity.radius) continue;
+        invoke(ctx, entity, false, true);
+      }
+      return;
+    case "discount":
+      state.freeRunsUntil = world.tick + ability.durationTicks!;
+      return;
+    case "funds":
+      team.money += Math.round(amount);
+      return;
+    case "stun":
+      for (const entity of world.entities) {
+        if (entity.kind !== "unit" || entity.hp <= 0 || !hostile(world, entity.team, team.id)) continue;
+        if (distance(entity, at) > ability.radius! + entity.radius) continue;
+        entity.stunnedUntil = world.tick + ability.durationTicks!;
+        if (amount > 0) dealDamage(ctx, hero, entity, amount);
+      }
+      return;
+    case "users": {
+      const room = userCapacity(world, content, team) - team.users;
+      team.users += Math.max(0, Math.min(room, Math.round(amount)));
+      team.peakUsers = Math.max(team.peakUsers, team.users);
+      return;
+    }
   }
+}
+
+/** Extra shielding (permille) a hero's shield ability gives this building right now. */
+export function heroShield(world: World, building: Entity): number {
+  const shield = world.teams[building.team]?.hero?.shield;
+  if (!shield || world.tick >= shield.until) return 0;
+  const dx = building.x - shield.x;
+  const dy = building.y - shield.y;
+  return dx * dx + dy * dy <= shield.radius * shield.radius ? shield.permille : 0;
+}
+
+/** Are this team's function runs free right now? */
+export function runsAreFree(team: Team, tick: number): boolean {
+  return (team.hero?.freeRunsUntil ?? -1) > tick;
 }
 
 /** Damage multiplier from a running buff ability (1 when none). */

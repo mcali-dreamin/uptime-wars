@@ -291,7 +291,17 @@ export interface UpgradeDef {
 export interface AbilityDef {
   name: string;
   description: string;
-  effect: "blast" | "decoy" | "heal" | "strike" | "summon" | "buff";
+  /**
+   * Fighting: blast, strike, heal, decoy, summon, buff. Race tools:
+   * - shield:   your buildings within `radius` take `amount` permille less damage for `durationTicks`
+   * - build:    finish construction and mend your buildings within `radius` by `amount`
+   * - trigger:  run every function within `radius` now, free, ignoring cooldowns
+   * - discount: function runs cost nothing for `durationTicks`
+   * - funds:    +`amount` $
+   * - stun:     enemy units within `radius` can't act for `durationTicks`
+   * - users:    up to `amount` users arrive now (up to capacity)
+   */
+  effect: "blast" | "decoy" | "heal" | "strike" | "summon" | "buff" | "shield" | "build" | "trigger" | "discount" | "funds" | "stun" | "users";
   target: "point" | "enemy" | "self";
   unlockLevel: number;
   maxRank: number;

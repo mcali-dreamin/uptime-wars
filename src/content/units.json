@@ -281,7 +281,7 @@
   "function-author": {
     "name": "Function Author",
     "description": "Writes it, ships it, never runs a server. Ranged caster with a huge area ultimate.",
-    "hp": 345,
+    "hp": 480,
     "armor": 1,
     "damage": 20,
     "range": 150,

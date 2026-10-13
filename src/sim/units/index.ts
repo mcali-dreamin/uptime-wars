@@ -62,6 +62,7 @@ export function tickUnits(ctx: TickContext): void {
   }
   for (const unit of world.entities) {
     if (unit.kind !== "unit" || unit.hp <= 0) continue;
+    if (unit.stunnedUntil !== undefined && world.tick < unit.stunnedUntil) continue;
     // Slowed: half speed, half attack rate.
     if (unit.slowedUntil !== undefined && world.tick < unit.slowedUntil && world.tick % 2 === 1) continue;
     BEHAVIORS[unit.mode](ctx, unit, content.units[unit.defId]!, state);
