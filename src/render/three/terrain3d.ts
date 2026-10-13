@@ -15,6 +15,7 @@
 import * as THREE from "three";
 import { TILE, TILE_BLOCKED, TILE_CLIFF, TILE_OPEN, TILE_RAMP, type Terrain } from "../../sim";
 import type { FogTexture } from "./fog3d";
+import { NETWORK_GLSL_EMISSIVE, NETWORK_GLSL_HEAD, type NetworkOverlay } from "./network3d";
 
 /** Height of one level step, in world units (a tile is 48). */
 export const STEP = 44;
@@ -47,10 +48,13 @@ export class Terrain3D {
   private readonly groundMaterial: THREE.MeshStandardMaterial;
   private readonly disposables: { dispose(): void }[] = [];
 
-  constructor(private readonly fog: FogTexture) {
+  constructor(
+    private readonly fog: FogTexture,
+    network: NetworkOverlay,
+  ) {
     this.groundMaterial = fog.apply(
       new THREE.MeshStandardMaterial({ roughness: 0.92, metalness: 0.05, color: 0xffffff }),
-      { key: "ground", patch: patchGround },
+      { key: "ground", patch: patchGround, uniforms: network.uniforms },
     );
   }
 
@@ -506,7 +510,7 @@ function patchGround(shader: THREE.WebGLProgramParametersWithUniforms): void {
     .replace("#include <common>", "#include <common>\nattribute vec3 aKind; varying vec3 vKind; varying vec3 vWN;")
     .replace("#include <begin_vertex>", "#include <begin_vertex>\nvKind = aKind; vWN = normalize(objectNormal);");
   shader.fragmentShader = shader.fragmentShader
-    .replace("#include <common>", `#include <common>\n${groundFragmentHead}\nfloat gTerrainSteep = 0.0; float gTerrainLevel = 0.0;`)
+    .replace("#include <common>", `#include <common>\n${groundFragmentHead}\n${NETWORK_GLSL_HEAD}\nfloat gTerrainSteep = 0.0; float gTerrainLevel = 0.0;`)
     .replace("#include <color_fragment>", `#include <color_fragment>\n${GROUND_COLOR}`)
-    .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>\n${GROUND_EMISSIVE}`);
+    .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>\n${GROUND_EMISSIVE}\n${NETWORK_GLSL_EMISSIVE}`);
 }
