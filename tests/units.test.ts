@@ -127,7 +127,8 @@ describe("creeps", () => {
     // Just the incident: no background traffic muddying the packs.
     world.waves.nextTrickleTick = 1e9;
     while (world.tick <= content.waves.firstIncidentTicks + 40) step(world, content);
-    const creeps = world.entities.filter((e) => e.kind === "unit" && e.team === 1);
+    // Roaming creeps only: the farms' garrison guards the fortress.
+    const creeps = world.entities.filter((e) => e.kind === "unit" && e.team === 1 && e.mode === "roam");
     expect(creeps.length).toBeGreaterThan(0);
     const packs = new Map<number, number>();
     for (const creep of creeps) {
@@ -160,11 +161,11 @@ describe("creeps", () => {
     const world = createWorld(content, SETUP);
     queueCommand(world, firstSpot("server-rack"));
     // A defender, and the first creep out of the nest.
-    while (!(world.entities.some((e) => e.kind === "unit" && e.team === 0) && world.entities.some((e) => e.kind === "unit" && e.team === 1))) {
+    while (!(world.entities.some((e) => e.kind === "unit" && e.team === 0) && world.entities.some((e) => e.kind === "unit" && e.team === 1 && e.mode === "roam"))) {
       step(world, content);
     }
     const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
-    const creep = world.entities.find((e) => e.kind === "unit" && e.team === 1)!;
+    const creep = world.entities.find((e) => e.kind === "unit" && e.team === 1 && e.mode === "roam")!;
     const defender = world.entities.find((e) => e.kind === "unit" && e.team === 0)!;
     // The creep is at the core (nearest target: the core); the defender stands
     // further off, but well inside the creep's aggro range.
