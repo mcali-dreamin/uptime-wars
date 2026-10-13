@@ -9,7 +9,7 @@
 import { TILE } from "./map";
 import { TILE_BLOCKED, isWalkableTile, tileAt, type Terrain } from "./terrain";
 
-const ORTHOGONAL = 10;
+export const ORTHOGONAL = 10;
 const DIAGONAL = 14;
 
 // N, E, S, W, then diagonals. Order is part of determinism.

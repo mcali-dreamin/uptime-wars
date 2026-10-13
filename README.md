@@ -144,6 +144,12 @@ you have the compute to serve them. Every hit your core or a Web App takes
 drives some away (towers and racks don't: they're what you put in between).
 Numbers live in `src/content/economy.json`.
 
+**You're on the clock from the moment your core is online.** A big countdown
+gives you one minute; then the first incident comes out of the fog right
+outside your base (toward the nest) and marches straight on your core, and
+background traffic starts. Later incidents show the countdown for their last
+15 seconds. (`waves.json` → `firstIncidentTicks`, `opening`.)
+
 The malware nest sits in the middle of the web and you start out toward the
 edge. The botnet never stops, and its pressure comes in two forms.
 **Background traffic** is a small pack leaving the nest every 8 seconds,

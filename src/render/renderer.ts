@@ -96,7 +96,12 @@ export class Renderer {
       }
       if (event.type === "farms-rebuilt") this.showBanner(`The botnet rebuilt ${event.rebuilt} Botnet Farm${event.rebuilt > 1 ? "s" : ""}`);
       if (event.type === "fortified") this.showBanner(`The botnet rebuilt ${event.rebuilt} C2 Server${event.rebuilt > 1 ? "s" : ""}`);
-      if (event.type === "wave") this.showBanner(`Incident ${event.wave} · ${event.name}${event.boss ? " · BOSS" : ""}`);
+      if (event.type === "wave") {
+        // The opening incident comes in right outside: say so, and mark where.
+        const mine = event.entries?.filter((e) => e.team === this.localTeam) ?? [];
+        this.showBanner(mine.length ? `${event.name} · they're at your door` : `Incident ${event.wave} · ${event.name}${event.boss ? " · BOSS" : ""}`);
+        for (const e of mine) this.ping(e.x, e.y);
+      }
     }
   }
 

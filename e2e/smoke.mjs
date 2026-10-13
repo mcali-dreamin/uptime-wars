@@ -50,6 +50,8 @@ await run("smoke test", async ({ check, open }) => {
   await page.keyboard.press("c");
   await click(await home());
   check(await waitFor(() => state(() => window.uptime.session.core() !== undefined), 60000), "C + click founds the core");
+  const countdown = await waitFor(() => page.$eval("#countdown", (el) => (el.hidden ? null : el.textContent)));
+  check(/hits your base in\s*[01]:\d\d/.test(countdown ?? ""), `a countdown to the first incident shows (${countdown})`);
 
   // Sound: the first click unlocked audio, founding played its cue, M cycles on / effects / off.
   check(await waitFor(() => state(() => window.uptime.sound.running)), "audio starts after the first click");

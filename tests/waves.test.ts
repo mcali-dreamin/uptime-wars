@@ -145,8 +145,9 @@ describe("background traffic and incidents", () => {
     expect(planWave(world, content, 1).units.length).toBeGreaterThan(content.waves.trickle.maxPack * 2);
   });
 
-  it("the first incident comes well after traffic starts", () => {
-    expect(content.waves.firstIncidentTicks).toBeGreaterThan(content.waves.firstWaveTicks + 600);
+  it("nothing comes before the countdown runs out: traffic starts with the first incident, a minute in", () => {
+    expect(content.waves.firstIncidentTicks).toBe(60 * 20);
+    expect(content.waves.firstWaveTicks).toBeGreaterThanOrEqual(content.waves.firstIncidentTicks);
   });
 
   it("more players online, more pressure: the trickle scales strongly, incidents gently", () => {

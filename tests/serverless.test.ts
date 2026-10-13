@@ -93,6 +93,8 @@ describe("serverless", () => {
 
   it("a creep in range triggers it on its own", () => {
     const { world, fn } = withFunction();
+    // A later incident (from the nest): the opening one would land on the Function first.
+    world.waves.nextIndex = 1;
     world.waves.nextWaveTick = world.tick;
     while (!world.entities.some((e) => e.kind === "unit" && e.team === 1 && e.mode === "roam")) step(world, content);
     const creep = world.entities.find((e) => e.kind === "unit" && e.team === 1 && e.mode === "roam")!;

@@ -112,12 +112,13 @@ describe("builder start", () => {
     expect(world.outcome).toMatchObject({ winners: [1], reason: "all-offline" });
   });
 
-  it("traffic, then the first incident, come at the end of grace time even if you never found", () => {
+  it("traffic and the first incident come at the end of grace time even if you never found", () => {
     const world = createWorld(content, BUILDER_SETUP);
-    while (world.tick <= content.waves.graceTicks) step(world, content);
-    expect(world.waves.trickleSince).toBe(content.waves.graceTicks);
+    while (world.tick < content.waves.graceTicks) step(world, content);
+    expect(world.waves.trickleSince).toBe(-1);
     expect(world.waves.nextIndex).toBe(0);
     while (world.tick <= world.waves.nextWaveTick && world.waves.nextIndex === 0) step(world, content);
+    expect(world.waves.trickleSince).toBe(content.waves.graceTicks);
     expect(world.waves.nextIndex).toBe(1);
   });
 });

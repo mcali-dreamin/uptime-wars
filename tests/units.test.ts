@@ -124,8 +124,10 @@ describe("creeps", () => {
   it("an incident leaves the nest in the middle as random-sized packs", () => {
     const world = createWorld(content, SETUP);
     const nest = world.entities.find((e) => e.id === world.teams[1]!.coreId)!;
-    // Just the incident: no background traffic muddying the packs.
+    // Just the incident: no background traffic muddying the packs. Incident 2:
+    // the opening one comes in at your door instead (see opening.test.ts).
     world.waves.nextTrickleTick = 1e9;
+    world.waves.nextIndex = 1;
     while (world.tick <= content.waves.firstIncidentTicks + 40) step(world, content);
     // Roaming creeps only: the farms' garrison guards the fortress.
     const creeps = world.entities.filter((e) => e.kind === "unit" && e.team === 1 && e.mode === "roam");
