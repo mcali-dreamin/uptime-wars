@@ -9,7 +9,10 @@ import { placeBuilding } from "./entities";
 import { clusters } from "./terrain/elevation";
 import { FORTRESS_RADIUS } from "./terrain/params";
 import { TILE_OPEN, TILE_RAMP, type Terrain, type TilePoint } from "./terrain/tiles";
-import type { TeamId, World } from "./types";
+import type { TickContext } from "./context";
+import { hostile } from "./teams";
+import type { Entity, TeamId, World } from "./types";
+import { planWave } from "./waves";
 
 /** Diagonal posts around the nest, in tiles from its center. */
 const RING = [[-4, -4], [4, -4], [-4, 4], [4, 4]] as const;
@@ -93,4 +96,90 @@ export function fortify(world: World, content: Content, team: TeamId, wave: numb
     built += 1;
   }
   return built;
+}
+
+/** Botnet Farms (2x2) stand this far out from the nest, one per quarter. */
+const FARM_OFFSETS = [[-8, -8], [7, -8], [-8, 7], [7, 7]] as const;
+
+/** Top-left tiles of the Botnet Farms: clear of the nest, the C2 Servers, and each other. */
+export function farmSpots(terrain: Terrain): TilePoint[] {
+  const { cols, rows, nest } = terrain;
+  const cx = nest.col + 1;
+  const cy = nest.row + 1;
+  const taken = new Set<number>();
+  const block = (col: number, row: number, size: number, gap: number) => {
+    for (let r = row - gap; r < row + size + gap; r += 1) for (let c = col - gap; c < col + size + gap; c += 1) taken.add(r * cols + c);
+  };
+  block(nest.col, nest.row, 2, 1);
+  for (const spot of fortressSpots(terrain)) block(spot.col, spot.row, 1, 1);
+  const fits = (col: number, row: number) => {
+    for (let r = row; r < row + 2; r += 1) {
+      for (let c = col; c < col + 2; c += 1) {
+        if (c < 0 || r < 0 || c >= cols || r >= rows) return false;
+        const i = r * cols + c;
+        if (terrain.tiles[i] !== TILE_OPEN || terrain.heights[i] !== 2 || taken.has(i)) return false;
+      }
+    }
+    return true;
+  };
+  const spots: TilePoint[] = [];
+  for (const [dc, dr] of FARM_OFFSETS) {
+    let found: TilePoint | null = null;
+    for (let d = 0; d <= 4 && !found; d += 1) {
+      for (let r = -d; r <= d && !found; r += 1) {
+        for (let c = -d; c <= d && !found; c += 1) {
+          if (Math.max(Math.abs(c), Math.abs(r)) !== d) continue;
+          if (fits(cx + dc + c, cy + dr + r)) found = { col: cx + dc + c, row: cy + dr + r };
+        }
+      }
+    }
+    if (!found) continue;
+    spots.push(found);
+    block(found.col, found.row, 2, 1);
+  }
+  return spots;
+}
+
+/** Put up every missing Botnet Farm. Returns how many went up. */
+export function raiseFarms(world: World, content: Content, team: TeamId): number {
+  const { building } = content.waves.fortress.farms;
+  let built = 0;
+  for (const spot of farmSpots(world.terrain)) {
+    const standing = world.entities.some(
+      (e) => e.kind === "building" && e.team === team && e.defId === building && e.col === spot.col && e.row === spot.row && e.hp > 0,
+    );
+    if (standing) continue;
+    placeBuilding(world, content, team, building, spot.col, spot.row, true);
+    built += 1;
+  }
+  return built;
+}
+
+/** How many of the fortress's farm spots have no farm standing. */
+export function farmsDown(world: World, content: Content, team: TeamId): number {
+  const { building } = content.waves.fortress.farms;
+  const standing = world.entities.filter((e) => e.kind === "building" && e.team === team && e.defId === building && e.hp > 0).length;
+  return Math.max(0, farmSpots(world.terrain).length - standing);
+}
+
+/**
+ * A farm fell: the hornet's nest. A retaliation wave, a share of the current
+ * wave's size, comes out of the nest as one pack and marches on the spot the
+ * attacker hit it from. (The botnet traced the attack; it still doesn't know
+ * where your base is.)
+ */
+export function retaliate(ctx: TickContext, attacker: Entity): void {
+  const { world, content } = ctx;
+  const horde = world.teams.find((t) => t.controller === "wave-director");
+  if (!horde || !hostile(world, attacker.team, horde.id)) return;
+  const wave = Math.max(1, world.waves.nextIndex);
+  const plan = planWave(world, content, wave);
+  const count = Math.max(1, Math.floor((plan.units.length * content.waves.fortress.farms.retaliationPermille) / 1000));
+  const units: string[] = [];
+  for (let i = 0; i < count; i += 1) units.push(plan.units[i % plan.units.length]!);
+  const packId = world.waves.nextPackId++;
+  for (const unit of units) world.waves.pending.push({ tick: world.tick, unit, packId, wave });
+  world.waves.pending.sort((a, b) => a.tick - b.tick);
+  world.waves.packs[packId] = { x: attacker.x, y: attacker.y };
+  world.events.push({ type: "retaliation", team: attacker.team, x: attacker.x, y: attacker.y, units: units.length });
 }

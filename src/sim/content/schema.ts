@@ -218,7 +218,19 @@ export interface WavesDef {
    * waves the ones you knocked down come back, with hp grown by
    * `hpGrowthPerWave` per wave.
    */
-  fortress: { building: string; rebuildEvery: number; hpGrowthPerWave: number };
+  fortress: {
+    building: string;
+    rebuildEvery: number;
+    hpGrowthPerWave: number;
+    /**
+     * Botnet Farms: the fortress's barracks. They garrison it, and each one
+     * destroyed sends a retaliation wave of `retaliationPermille` of the
+     * current wave at whoever destroyed it, then shrinks every later wave's
+     * budget by `weakenPermille`. Fallen farms come back every `rebuildEvery`
+     * waves.
+     */
+    farms: { building: string; rebuildEvery: number; retaliationPermille: number; weakenPermille: number };
+  };
   names: string[];
 }
 

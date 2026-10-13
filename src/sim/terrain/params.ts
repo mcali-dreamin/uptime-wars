@@ -4,12 +4,12 @@ export const BLOCK_THRESHOLD = 0.64;
 export const START_CLEAR_RADIUS = 5;
 export const NEST_CLEAR_RADIUS = 3;
 /** The nest's fortress: a backbone plateau this many tiles in radius... */
-export const FORTRESS_RADIUS = 9;
+export const FORTRESS_RADIUS = 14;
 /** ...ringed by a surface-web moat this wide, so its rim is always a cliff... */
 export const MOAT_WIDTH = 3;
 /** ...with at least this many ramps up onto it, spread around the rim. */
-export const FORTRESS_GATES = 3;
-export const GATE_SPACING = 9;
+export const FORTRESS_GATES = 4;
+export const GATE_SPACING = 12;
 export const ROAM_POINT_COUNT = 64;
 export const ROAM_POINT_SPACING = 24;
 /** The start is at least this fraction of the center-to-corner distance from the nest. */

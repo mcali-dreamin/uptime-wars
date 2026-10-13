@@ -62,8 +62,8 @@ describe("walls", () => {
     const { world, walls } = walled();
     const wall = walls[0]!;
     world.waves.nextWaveTick = world.tick;
-    while (!world.entities.some((e) => e.kind === "unit" && e.team === 1)) step(world, content);
-    const creep = world.entities.find((e) => e.kind === "unit" && e.team === 1)!;
+    while (!world.entities.some((e) => e.kind === "unit" && e.team === 1 && e.mode === "roam")) step(world, content);
+    const creep = world.entities.find((e) => e.kind === "unit" && e.team === 1 && e.mode === "roam")!;
     // Start it two or three tiles from the wall on open ground at the wall's
     // height, where the wall is the nearest building.
     const others = world.entities.filter((e) => e.kind === "building" && e.team === 0 && e.id !== wall.id);

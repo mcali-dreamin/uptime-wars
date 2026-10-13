@@ -70,9 +70,9 @@ describe("users", () => {
     const world = createWorld(frozen, SETUP);
     world.teams[0]!.users = 40;
     // Let the first wave out, then put one creep right next to the core.
-    while (!world.entities.some((e) => e.kind === "unit" && e.team === 1)) step(world, frozen);
+    while (!world.entities.some((e) => e.kind === "unit" && e.team === 1 && e.mode === "roam")) step(world, frozen);
     const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
-    const creep = world.entities.find((e) => e.kind === "unit" && e.team === 1)!;
+    const creep = world.entities.find((e) => e.kind === "unit" && e.team === 1 && e.mode === "roam")!;
     // Keep the hero out of it: creeps fight a defender in their face before buildings.
     const hero = world.entities.find((e) => e.kind === "unit" && e.team === 0 && e.mode === "hero");
     if (hero?.kind === "unit") {
@@ -164,9 +164,10 @@ describe("compute", () => {
       for (let i = 0; i < 20 * 60; i++) {
         world.teams[0]!.overload = overload;
         step(world, content);
-        for (const e of world.entities) if (e.kind === "unit" && e.spawnerId >= 0 && !seen.has(e.id)) (seen.add(e.id), (count += 1));
+        // Only the player's rack (the botnet's farms spawn too).
+        for (const e of world.entities) if (e.kind === "unit" && e.team === 0 && e.spawnerId >= 0 && !seen.has(e.id)) (seen.add(e.id), (count += 1));
         // Keep the rack's units from capping it.
-        for (const e of world.entities) if (e.kind === "unit" && e.spawnerId >= 0) e.hp = 0;
+        for (const e of world.entities) if (e.kind === "unit" && e.team === 0 && e.spawnerId >= 0) e.hp = 0;
       }
       return count;
     };
