@@ -4,12 +4,12 @@
 // Functions fire on their own when an enemy comes within their trigger range
 // (they're event-driven), or when the player invokes them.
 
-import { nearestEnemy } from "./combat";
 import type { TickContext } from "./context";
 import { sendHome, spawnUnit } from "./entities";
 import { randomInt } from "./rng";
 import type { Building, Team, Unit } from "./types";
 import { raceModifiers } from "./tiers";
+import { hostile } from "./teams";
 import { traitsFor } from "./traits";
 
 /** Why this function can't run right now, or null if it can. */
@@ -17,7 +17,7 @@ export function invokeBlocker(ctx: TickContext, building: Building): string | nu
   const def = ctx.content.buildings[building.defId]!.invoke;
   if (!def) return "not a function";
   if (building.buildRemaining > 0) return "still deploying";
-  if (building.spawnTimer > 0) return "cooling down";
+  if ((building.scaleTimer ?? 0) > 0) return "cooling down";
   if (building.jammedUntil !== undefined && ctx.world.tick < building.jammedUntil) return "jammed";
   const team = ctx.world.teams[building.team]!;
   if (team.downTick !== null) return "offline";
@@ -36,7 +36,7 @@ export function invoke(ctx: TickContext, building: Building, auto: boolean): Uni
   const def = content.buildings[building.defId]!.invoke!;
   const team = world.teams[building.team]!;
   team.money -= invokeCost(content, team, def.cost);
-  building.spawnTimer = Math.max(1, Math.round(def.cooldownTicks * (raceModifiers(content, team).invokeCooldownMultiplier ?? 1)));
+  building.scaleTimer = Math.max(1, Math.round(def.cooldownTicks * (raceModifiers(content, team).invokeCooldownMultiplier ?? 1)));
   const units: Unit[] = [];
   const t = traitsFor(content, team, def.unit);
   const count = Math.round(def.count * (t.burstMult ?? 1)) + (t.squad ?? 0);
@@ -69,12 +69,33 @@ export function tickFunctions(ctx: TickContext): void {
   for (const building of functions) {
     if (building.buildRemaining > 0) continue;
     if (building.jammedUntil !== undefined && world.tick < building.jammedUntil) continue;
-    if (building.spawnTimer > 0) {
-      building.spawnTimer -= 1;
+    if ((building.scaleTimer ?? 0) > 0) {
+      building.scaleTimer! -= 1;
       continue;
     }
     const def = content.buildings[building.defId]!.invoke!;
-    if (!nearestEnemy(ctx, building, def.triggerRange)) continue;
+    // Autoscale on load: burst only when the enemies near it outnumber its squad.
+    if (!overloaded(ctx, building, def.triggerRange)) continue;
     if (invokeBlocker(ctx, building) === null) invoke(ctx, building, true);
   }
+}
+
+/** More enemy units within `range` of a function than units it has up (standing squad and burst). */
+function overloaded(ctx: TickContext, building: Building, range: number): boolean {
+  const { world } = ctx;
+  let enemies = 0;
+  let squad = 0;
+  const r2 = range * range;
+  for (const e of world.entities) {
+    if (e.hp <= 0) continue;
+    if (e.kind === "unit" && e.spawnerId === building.id) {
+      squad += 1;
+      continue;
+    }
+    if (e.kind !== "unit" || !hostile(world, e.team, building.team)) continue;
+    const dx = e.x - building.x;
+    const dy = e.y - building.y;
+    if (dx * dx + dy * dy <= r2) enemies += 1;
+  }
+  return enemies > squad;
 }

@@ -25,7 +25,7 @@ export function buildingCard(content: Content, raceId: string, buildingId: strin
   }
   if (def.invoke) {
     const unit = content.units[def.invoke.unit]!;
-    does.push(`${def.invoke.count}× ${unit.name} on demand · $${def.invoke.cost} / run`);
+    does.push(`+${def.invoke.count}× ${unit.name} burst · $${def.invoke.cost} / scale-up`);
   }
   if (def.attack) does.push(`tower · ${def.attack.damage} dmg · range ${def.attack.range}`);
   if (def.income) does.push(`+$${def.income.amount} / ${seconds(def.income.intervalTicks)}`);
@@ -66,7 +66,7 @@ export function buildingDetail(content: Content, raceId: string, buildingId: str
     const i = def.invoke;
     const unit = content.units[i.unit]!;
     stats.push(
-      `When a creep comes within ${i.triggerRange} (or you invoke it, V), spins up ${i.count}× ${unit.name} for ${seconds(i.ttlTicks)}, then cools down for ${seconds(i.cooldownTicks)}. Each run costs $${i.cost}; no $, no run. Running units use compute while they run, and none once cold.`,
+      `Autoscales: when creeps within ${i.triggerRange} outnumber its squad (or you scale it up, V), bursts ${i.count}× ${unit.name} more for ${seconds(i.ttlTicks)}, then cools down for ${seconds(i.cooldownTicks)}. Each scale-up costs $${i.cost}; no $, no burst.`,
     );
     stats.push(`${unit.name}: ${unitStats(unit, race.modifiers.unitHpMultiplier)}`);
   }

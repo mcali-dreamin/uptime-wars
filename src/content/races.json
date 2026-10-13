@@ -120,7 +120,7 @@
   },
   "serverless": {
     "name": "Serverless",
-    "specialty": "No standing army. Functions spin up squads when creeps show up, bill you per run, and go cold. Little to defend, but long fights add up.",
+    "specialty": "An army that autoscales. Functions keep a small squad warm and burst it bigger when creeps show up, then scale back down. Every scale-up costs $, so long fights add up.",
     "controller": "human",
     "look": "ephemeral",
     "core": "core",
@@ -134,6 +134,7 @@
       "function",
       "inference-endpoint",
       "state-machine",
+      "compute-pool",
       "build-pipeline",
       "web-app",
       "mesh-node",
@@ -148,15 +149,15 @@
     "tierPerks": [
       null,
       {
-        "name": "Warm Starts",
-        "description": "Functions cool down 30% faster.",
+        "name": "Warm Pools",
+        "description": "Scale-ups cool down 30% faster.",
         "modifiers": {
           "invokeCooldownMultiplier": 0.7
         }
       },
       {
         "name": "Reserved Capacity",
-        "description": "Every run costs 40% less.",
+        "description": "Every scale-up costs 40% less.",
         "modifiers": {
           "invokeCostMultiplier": 0.6
         }

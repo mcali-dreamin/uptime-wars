@@ -29,6 +29,7 @@ const FOV = 40;
 const BUILDING_TOP: Record<string, number> = {
   core: 116,
   monorepo: 60,
+  "compute-pool": 20,
   "ci-server": 56,
   "rnd-lab": 40,
   "build-pipeline": 36,
@@ -292,7 +293,7 @@ export class World3D implements WorldView {
     const alive = new Set<number>();
     // Functions with units running are warm; the rest are drawn cold.
     const running = new Set<number>();
-    for (const e of world.entities) if (e.kind === "unit" && e.expiresAt !== undefined && e.hp > 0) running.add(e.spawnerId);
+    for (const e of world.entities) if (e.kind === "unit" && e.spawnerId >= 0 && e.hp > 0) running.add(e.spawnerId);
     this.bars.begin(this.camera);
     for (const entity of world.entities) {
       alive.add(entity.id);

@@ -38,8 +38,9 @@ npm run dev
   fixed perk at Data Center and at Region (see the Guide's Races tab):
   Open Source (Process, Inference Drone, Kernel; cheaper forks, faster
   repair), Hyperscaler (Load Balancer, CDN Swarm, Mainframe; stronger region
-  shield, tougher units), Serverless (Lambda, Inference Call, Step Function;
-  faster cooldowns, cheaper runs), Walled Garden (Moderator, Gatekeeper, Legal
+  shield, tougher units), Serverless (Lambda, Inference Call, Step Function,
+  each kept warm as a small squad that bursts bigger when creeps come near;
+  faster scale-ups, cheaper scale-ups), Walled Garden (Moderator, Gatekeeper, Legal
   Team; walls hit back, near-zero churn). Perks live in `races.json` →
   `tierPerks`.
 - **Grow your core.** The first research, **Upgrade core**, takes it from

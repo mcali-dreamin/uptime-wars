@@ -200,7 +200,7 @@
   },
   "function": {
     "name": "Function",
-    "description": "No standing army. When a creep comes near (or you invoke it), it spins up four Lambdas for 20 seconds, then cools down. Each run costs $.",
+    "description": "Keeps a squad of three Lambdas warm. When creeps nearby outnumber the squad (or you scale it up, V), it bursts four more for 20 seconds. Each scale-up costs $.",
     "cost": 60,
     "buildTicks": 50,
     "hp": 280,
@@ -208,6 +208,12 @@
     "footprint": 1,
     "buildable": true,
     "sight": 320,
+    "spawn": {
+      "unit": "lambda",
+      "intervalTicks": 220,
+      "count": 1,
+      "maxAlive": 3
+    },
     "invoke": {
       "unit": "lambda",
       "count": 4,
@@ -219,7 +225,7 @@
   },
   "inference-endpoint": {
     "name": "Inference Endpoint",
-    "description": "Spins up three ranged Inference Calls on demand. Costs more per run, hits from range.",
+    "description": "Keeps two ranged Inference Calls warm, and bursts three more when creeps come near. Scale-ups cost more, hit from range. Needs a Data Center.",
     "cost": 130,
     "buildTicks": 80,
     "hp": 335,
@@ -227,6 +233,12 @@
     "footprint": 1,
     "buildable": true,
     "sight": 340,
+    "spawn": {
+      "unit": "inference-call",
+      "intervalTicks": 300,
+      "count": 1,
+      "maxAlive": 2
+    },
     "invoke": {
       "unit": "inference-call",
       "count": 3,
@@ -351,7 +363,7 @@
   },
   "state-machine": {
     "name": "State Machine",
-    "description": "Runs a Step Function workflow: two tough ranged units at once, on demand. Needs a Region.",
+    "description": "Keeps one Step Function running, and bursts two more when creeps come near: tough, ranged. Needs a Region.",
     "cost": 260,
     "buildTicks": 120,
     "hp": 520,
@@ -359,6 +371,12 @@
     "footprint": 1,
     "buildable": true,
     "sight": 360,
+    "spawn": {
+      "unit": "step-function",
+      "intervalTicks": 500,
+      "count": 1,
+      "maxAlive": 1
+    },
     "invoke": {
       "unit": "step-function",
       "count": 2,
@@ -404,6 +422,18 @@
       "maxAlive": 3
     },
     "tier": 2
+  },
+  "compute-pool": {
+    "name": "Compute Pool",
+    "description": "Provisioned concurrency: supplies 90 compute for your warm squads and their bursts.",
+    "cost": 90,
+    "buildTicks": 80,
+    "hp": 420,
+    "armor": 1,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 240,
+    "compute": 90
   },
   "ci-server": {
     "name": "CI Server",

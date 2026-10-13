@@ -2,7 +2,7 @@
 // the build button you're hovering, what you're placing, or what you have
 // selected. Nothing else pops up. The full story lives in the Guide.
 
-import { upgradeName, earnedPerks, tierDef, TICK_RATE, forkCost, isCore, regionShield } from "../sim";
+import { invokeCost, upgradeName, earnedPerks, tierDef, TICK_RATE, forkCost, isCore, regionShield } from "../sim";
 import { armyUnits, groundOrderLabel, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { upgradeOf } from "./build-bar";
@@ -15,7 +15,7 @@ export class InfoPanel {
   private readonly lines = $("info-lines");
   /** "Set rally (T)": the ground order without a right-click. */
   private readonly action = $("info-action");
-  /** "Invoke (V)" for a serverless function. */
+  /** "Scale up now (V)" for a serverless function. */
   private readonly invokeButton = $("info-invoke");
   /** "Fork · $N (X)" for races that can copy a building. */
   private readonly forkButton = $("info-fork");
@@ -73,10 +73,10 @@ export class InfoPanel {
       if (entity.jammedUntil !== undefined && this.session.world.tick < entity.jammedUntil) lines.push("Jammed by a DDoS · can't shoot, spawn or run");
       const fn = content.buildings[entity.defId]!.invoke;
       if (fn && entity.buildRemaining <= 0) {
-        lines.push(entity.spawnTimer > 0 ? `Cooling down · ${Math.ceil(entity.spawnTimer / TICK_RATE)}s` : "Ready · runs when a creep comes near");
+        lines.push((entity.scaleTimer ?? 0) > 0 ? `Scale-up cooling down · ${Math.ceil(entity.scaleTimer! / TICK_RATE)}s` : "Scale-up ready · bursts when a creep comes near");
         this.invokeButton.hidden = false;
-        this.invokeButton.textContent = `Invoke now · $${fn.cost} (V)`;
-        (this.invokeButton as HTMLButtonElement).disabled = entity.spawnTimer > 0 || this.session.team.money < fn.cost;
+        this.invokeButton.textContent = `Scale up now · $${invokeCost(content, this.session.team, fn.cost)} (V)`;
+        (this.invokeButton as HTMLButtonElement).disabled = (entity.scaleTimer ?? 0) > 0 || this.session.team.money < invokeCost(content, this.session.team, fn.cost);
       }
       const shield = regionShield(this.session.world, content, entity);
       if (content.races[raceId]!.mechanics?.region && entity.buildRemaining <= 0) {

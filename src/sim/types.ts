@@ -140,6 +140,8 @@ export interface Building extends EntityBase {
   /** This spawner's own rally point; overrides the team's global one. */
   rally: Point | null;
   spawnTimer: number;
+  /** A function's scale-up cooldown, in ticks (its standing squad uses spawnTimer). */
+  scaleTimer?: number;
   incomeTimer: number;
   /** The last tick anything hit it (for self-repair). */
   lastHitTick: number;
