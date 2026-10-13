@@ -6,7 +6,8 @@ import { TILE, footprintCenter } from "./map";
 import { TILE_OPEN, tileAt } from "./terrain";
 import type { Building, Entity, Team, TeamId, World } from "./types";
 import { unitInTheWay } from "./walls";
-import { tierBlocker, tierDef } from "./tiers";
+import { raceModifiers, tierBlocker, tierDef } from "./tiers";
+import { bonus } from "./upgrades";
 
 export function buildCost(content: Content, raceId: string, buildingId: string): number {
   return Math.round(content.buildings[buildingId]!.cost * content.races[raceId]!.modifiers.costMultiplier);
@@ -89,11 +90,16 @@ export function networkProviders(world: World, content: Content, teamId: TeamId)
   );
 }
 
-/** How far (px) a network building lets its team build: cores reach further at higher tiers. */
+/** Extra tiles a team's cores reach: tier + race (and its earned perks) + research. */
+export function coreReachBonus(content: Content, team: Team): number {
+  return tierDef(content, team).buildRadius + (raceModifiers(content, team).buildRadiusBonus ?? 0) + bonus(content, team, "buildRadius");
+}
+
+/** How far (px) a network building lets its team build. Cores: base + coreReachBonus. */
 export function reachOf(world: World, content: Content, provider: Building): number {
   const team = world.teams[provider.team];
-  const bonus = team && isCore(content, team, provider) ? tierDef(content, team).buildRadius : 0;
-  return (content.buildings[provider.defId]!.buildRadius! + bonus) * TILE;
+  const extra = team && isCore(content, team, provider) ? coreReachBonus(content, team) : 0;
+  return (content.buildings[provider.defId]!.buildRadius! + extra) * TILE;
 }
 
 /** Whether a point is inside any of the team's build radii. */

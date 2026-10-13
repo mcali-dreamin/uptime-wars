@@ -38,8 +38,9 @@ npm run dev
   fixed perk at Data Center and at Region (see the Guide's Races tab):
   Open Source (Process, Inference Drone, Kernel; cheaper forks, faster
   repair), Hyperscaler (Load Balancer, CDN Swarm, Mainframe; stronger region
-  shield, tougher units), Serverless (Lambda, Inference Call, Step Function;
-  faster cooldowns, cheaper runs), Walled Garden (Moderator, Gatekeeper, Legal
+  shield, tougher units), Serverless (Lambda, Inference Call, Step Function,
+  each kept warm as a small squad that bursts bigger when creeps come near;
+  faster scale-ups, cheaper scale-ups), Walled Garden (Moderator, Gatekeeper, Legal
   Team; walls hit back, near-zero churn). Perks live in `races.json` →
   `tierPerks`.
 - **Grow your core.** The first research, **Upgrade core**, takes it from
@@ -49,9 +50,17 @@ npm run dev
   build radius, and toughens them. A bigger base also draws crawlers from
   further away. Tiers live in `economy.json` → `tiers`; gates are `tier` and
   `limitPerTier` on a building.
-- Select your **core** to research upgrades (one at a time): Hardened
-  Containers, Exploit Kits, Anycast, Autoscaling, Edge Caching, Premium Tier.
-  Tuning lives in `src/content/upgrades.json`.
+- **Two places research**, one thing at a time each. Your **core** upgrades
+  the race and its base: core tier, building armor and HP, tower damage and
+  range, users and revenue. Your race's **upgrade center** (Open Source: CI
+  Server, Hyperscaler: R&D Lab, Serverless: Build Pipeline, Walled Garden:
+  Design Studio; one per player) upgrades the army: weapons, unit armor, unit
+  HP, spawn speed in three levels (Core, Data Center, Region), and **three
+  unit traits only your race has**, one per unit, unlocked with that unit's
+  tier: Fork on Exit, Open Weights, Self-Hosting; Sticky Sessions, Edge
+  Routing, Batch Jobs; Provisioned Concurrency, Batching, Parallel State;
+  Shadowban, Hold the Line, Cease and Desist. Each race names the shared
+  upgrades its own way. Tuning lives in `src/content/upgrades.json`.
 - `1`-`5` or click: pick a building. Click near your core (the ring shows your
   build radius) to place it. Shift-click to place several.
 - `WASD` / arrows, middle-drag or Alt-drag, or the very edge of the window: pan (`E` toggles edge

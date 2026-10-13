@@ -4,6 +4,7 @@
 import type { Session } from "../game/session";
 import { TERRAIN_GUIDE, perkLines, buildingDetail, unitDetail, upgradeDetail, type GuideEntry } from "./cards";
 import { $ } from "./dom";
+import { upgradesAt } from "../sim";
 
 type Tab = "controls" | "heroes" | "buildings" | "upgrades" | "creeps" | "terrain" | "races";
 
@@ -25,12 +26,12 @@ const CONTROLS: [string, string][] = [
   ["Select", "Click one of your buildings or units. Drag a box to select units; Shift adds to the group. Double-click a unit: every one of its kind on screen. Z: your whole army. Q: your hero."],
   ["Army", "With units selected, right-click the ground (or an enemy) to attack-move: they fight whatever they meet on the way, then hold the spot. F then click: a plain move that ignores enemies, for retreating. T then click works like right-click. Units you've sent stay put when you change a rally."],
   ["Hero", "Right-click to move or attack, 1-4 to cast, Shift+1-4 to learn. Full rundown in the Heroes tab."],
-  ["Research", "Select your core: the bar shows upgrades. Click one (or press its number) to research it. One at a time."],
+  ["Research", "Two places research, one thing at a time each. Your core upgrades the race and its base: core tier, building armor and HP, tower damage and range, users and revenue. Your upgrade center (CI Server, R&D Lab, Build Pipeline, Design Studio: one per player) upgrades the army: weapons, unit armor, unit HP, spawn speed, and your race's unit traits, one per unit, unlocked by core tier. Select either and click an upgrade (or press its number)."],
   ["Core tiers", "The first research, Upgrade core, grows your core: Core, then Data Center, then Region. Each tier hosts more Web Apps (2, 4, 6), unlocks stronger buildings, supplies more compute, reaches further, and makes your cores tougher. But a bigger base draws crawlers from further away, and while the core upgrades it can't research anything else."],
   ["Walls", "Walled Garden: Walls block every path, for creeps and your own units alike, so leave yourself a way out. Towers and ranged units shoot over them. Creeps that can't get round a wall tear into it. Users of a Walled Garden are loyal: they leave 60% slower when you're hit."],
   ["Fork", "Open Source: select one of your finished buildings (not the core) and press X (or Fork on its card), then click to place a copy for half its price, built in less than half the time. Open Source buildings also repair themselves once nothing has hit them for 5 seconds."],
   ["Region", "Hyperscaler: each finished building of yours within 3 tiles makes a building take 8% less damage, up to 40%. Pack your base into regions; a lone building gets no shield. The building's card shows its shield."],
-  ["Functions", "Serverless has no racks. A Function (or Inference Endpoint) spins up a squad when a creep comes near, for 20 seconds, then cools down. Each run costs $: no $, no run. Their units only use compute while running. Select one and press V (or its Invoke button) to run it now. Their rally point works like a rack's."],
+  ["Functions", "Serverless autoscales. A Function (Inference Endpoint, State Machine) keeps a small squad warm like any rack, and when the creeps near it outnumber that squad it bursts extra units for 20 seconds, then scales back down and cools off. Each scale-up costs $: no $, no burst. Select one and press V (or Scale up now) to burst it yourself. Their rally point works like a rack's. Compute Pools supply the compute their squads need."],
   ["Rally", "With a spawner selected, right-click the ground to send its units there. With the core selected, right-click sets the rally for every spawner that doesn't have its own. No right button? Press T (or the button on the info card), then click the ground. Ctrl-click, Cmd-click and two-finger taps count as right-clicks too."],
   ["Camera", "WASD / arrows, the window edge, or drag with the middle button or Alt held to pan. Wheel or +/- to zoom. Click the minimap to jump. Space: back home."],
   ["Other", "M: sound on / effects only / off · Esc: deselect · P: pause · E: edge scroll on/off · G: this guide · R: new match after an outage"],
@@ -110,7 +111,9 @@ export class Guide {
         return [race.core, ...race.buildings].map((id) => entry(buildingDetail(content, raceId, id)));
       }
       case "upgrades":
-        return Object.keys(content.upgrades).map((id) => entry(upgradeDetail(content, id)));
+        return [...upgradesAt(content, this.session.team, "core"), ...upgradesAt(content, this.session.team, "center")].map((id) =>
+          entry(upgradeDetail(content, id, raceId)),
+        );
       case "creeps": {
         const ids = [...content.waves.roster.map((r) => r.unit), content.waves.bosses.unit];
         return [...new Set(ids)].map((id) => {

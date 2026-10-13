@@ -5,6 +5,7 @@ import { lagging } from "./economy";
 import { sendHome, spawnInterval, spawnUnit } from "./entities";
 import { randomInt } from "./rng";
 import type { Building } from "./types";
+import { squadBonus } from "./traits";
 
 export function tickSpawners(ctx: TickContext): void {
   const { world, content } = ctx;
@@ -14,7 +15,8 @@ export function tickSpawners(ctx: TickContext): void {
   );
   const alive = new Map<number, number>();
   for (const entity of world.entities) {
-    if (entity.kind === "unit" && entity.hp > 0 && entity.spawnerId >= 0) {
+    // Burst units (a function's scale-up) don't count against the standing squad.
+    if (entity.kind === "unit" && entity.hp > 0 && entity.spawnerId >= 0 && entity.expiresAt === undefined) {
       alive.set(entity.spawnerId, (alive.get(entity.spawnerId) ?? 0) + 1);
     }
   }
@@ -26,7 +28,8 @@ export function tickSpawners(ctx: TickContext): void {
     if (lagging(world, building.team)) continue;
     building.spawnTimer -= 1;
     if (building.spawnTimer > 0) continue;
-    const room = Math.min(spawn.count, spawn.maxAlive - (alive.get(building.id) ?? 0));
+    const extra = squadBonus(content, world.teams[building.team], spawn.unit);
+    const room = Math.min(spawn.count + extra, spawn.maxAlive + extra - (alive.get(building.id) ?? 0));
     for (let i = 0; i < room; i += 1) {
       const x = building.x + randomInt(world, -20, 20);
       const y = building.y + building.radius + 10 + randomInt(world, 0, 8);

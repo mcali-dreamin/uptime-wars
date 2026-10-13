@@ -4,7 +4,7 @@
 // Two sizes: a compact card for the on-screen panel (a name and a line or
 // two of numbers) and full detail for the Guide.
 
-import { TICK_RATE, levelOf, nextLevel, type Content, type Team } from "../sim";
+import { upgradeName, TICK_RATE, levelOf, nextLevel, type Content, type Team } from "../sim";
 
 export interface InfoCard {
   title: string;
@@ -25,7 +25,7 @@ export function buildingCard(content: Content, raceId: string, buildingId: strin
   }
   if (def.invoke) {
     const unit = content.units[def.invoke.unit]!;
-    does.push(`${def.invoke.count}× ${unit.name} on demand · $${def.invoke.cost} / run`);
+    does.push(`+${def.invoke.count}× ${unit.name} burst · $${def.invoke.cost} / scale-up`);
   }
   if (def.attack) does.push(`tower · ${def.attack.damage} dmg · range ${def.attack.range}`);
   if (def.income) does.push(`+$${def.income.amount} / ${seconds(def.income.intervalTicks)}`);
@@ -66,7 +66,7 @@ export function buildingDetail(content: Content, raceId: string, buildingId: str
     const i = def.invoke;
     const unit = content.units[i.unit]!;
     stats.push(
-      `When a creep comes within ${i.triggerRange} (or you invoke it, V), spins up ${i.count}× ${unit.name} for ${seconds(i.ttlTicks)}, then cools down for ${seconds(i.cooldownTicks)}. Each run costs $${i.cost}; no $, no run. Running units use compute while they run, and none once cold.`,
+      `Autoscales: when creeps within ${i.triggerRange} outnumber its squad (or you scale it up, V), bursts ${i.count}× ${unit.name} more for ${seconds(i.ttlTicks)}, then cools down for ${seconds(i.cooldownTicks)}. Each scale-up costs $${i.cost}; no $, no burst.`,
     );
     stats.push(`${unit.name}: ${unitStats(unit, race.modifiers.unitHpMultiplier)}`);
   }
@@ -116,8 +116,19 @@ const STAT_TEXT: Record<string, string> = {
   spawnSpeed: "spawn speed",
   userCapacity: "user capacity",
   revenue: "revenue per user",
+  buildRadius: "core reach (tiles)",
   tier: "core tier",
+  unitArmor: "unit armor",
+  buildingArmor: "building armor",
+  buildingHp: "building HP",
+  towerDamage: "tower damage",
 };
+
+/** "+15% tower damage" or "+1 building armor" per level. */
+function effectText(def: { stat: string; perLevel: number }): string {
+  const flat = def.stat === "unitArmor" || def.stat === "buildingArmor" || def.stat === "buildRadius";
+  return `${flat ? `+${def.perLevel}` : `+${Math.round(def.perLevel * 100)}%`} ${STAT_TEXT[def.stat]} per level`;
+}
 
 /** What reaching a core tier gives, as one line. */
 function tierLine(content: Content, tier: number, raceId?: string): string {
@@ -152,14 +163,31 @@ export function upgradeCard(content: Content, team: Team, upgrade: string): Info
       ],
     };
   }
-  const effect = `+${Math.round(def.perLevel * 100)}% ${STAT_TEXT[def.stat]} per level`;
-  if (level >= def.maxLevel) return { title: def.name, lines: [effect, "Fully researched"] };
+  const name = upgradeName(content, team.raceId, upgrade);
+  const needs = def.tiers?.[level];
+  const gate = needs ? ` · needs ${content.economy.tiers[needs]!.name}` : "";
+  if (def.stat === "trait") {
+    const unit = content.units[def.unit!]!.name;
+    if (level >= 1) return { title: name, lines: [def.description, `${unit} trait · researched`] };
+    return { title: name, lines: [def.description, `${unit} trait · $${def.cost} · ${seconds(def.researchTicks)}${gate}`] };
+  }
+  const effect = effectText(def);
+  if (level >= def.maxLevel) return { title: name, lines: [effect, "Fully researched"] };
   const next = nextLevel(content, team, upgrade);
-  return { title: `${def.name} ${next.level}`, lines: [effect, `$${next.cost} · ${seconds(next.ticks)}`] };
+  return { title: `${name} ${next.level}`, lines: [effect, `$${next.cost} · ${seconds(next.ticks)}${gate}`] };
 }
 
-export function upgradeDetail(content: Content, upgrade: string): GuideEntry {
+export function upgradeDetail(content: Content, upgrade: string, raceId?: string): GuideEntry {
   const def = content.upgrades[upgrade]!;
+  const where = def.at === "center" ? "Upgrade center" : "Core";
+  if (def.stat === "trait") {
+    const needs = def.tiers?.[0];
+    return {
+      title: raceId ? upgradeName(content, raceId, upgrade) : def.name,
+      description: def.description,
+      stats: [`${content.units[def.unit!]!.name} trait · ${where}`, `Costs $${def.cost}${needs ? ` · needs ${content.economy.tiers[needs]!.name}` : ""}`],
+    };
+  }
   if (def.stat === "tier") {
     const costs = Array.from({ length: def.maxLevel }, (_, i) => `${def.cost * (i + 1)}`).join(" / ");
     return {
@@ -170,9 +198,9 @@ export function upgradeDetail(content: Content, upgrade: string): GuideEntry {
   }
   const costs = Array.from({ length: def.maxLevel }, (_, i) => `${def.cost * (i + 1)}`).join(" / ");
   return {
-    title: def.name,
+    title: raceId ? upgradeName(content, raceId, upgrade) : def.name,
     description: def.description,
-    stats: [`+${Math.round(def.perLevel * 100)}% ${STAT_TEXT[def.stat]} per level, ${def.maxLevel} levels`, `Costs $${costs}`],
+    stats: [`${effectText(def)}, ${def.maxLevel} levels · ${where}`, `Costs $${costs}`],
   };
 }
 

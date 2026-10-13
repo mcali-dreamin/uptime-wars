@@ -13,6 +13,8 @@ import { multiplier } from "./upgrades";
 import type { Entity } from "./types";
 import { heroShield } from "./heroes";
 import { raceMechanics } from "./tiers";
+import { bonus } from "./upgrades";
+import { afterHit, critMultiplier, onUnitDeath, traitArmor } from "./traits";
 
 /** Attacks this close (edge to edge) are melee, for thorns. */
 const MELEE_RANGE = 40;
@@ -87,14 +89,21 @@ export function dealDamage(
   attacker: Entity,
   target: Entity,
   baseDamage: number,
+  secondary = false,
 ): void {
   const { world, content } = ctx;
   const attackerUnit = attacker.kind === "unit" ? content.units[attacker.defId] : undefined;
+  if (!secondary) baseDamage *= critMultiplier(content, world, attacker);
   // Siege units tear into buildings.
   if (attackerUnit?.siege && target.kind === "building") baseDamage *= attackerUnit.siege;
   // One kind of damage: high ground hits harder, armor takes a flat amount off.
   const downhill = heightOf(ctx, attacker) > heightOf(ctx, target) ? HIGH_GROUND_DAMAGE : 1;
-  let damage = Math.max(1, Math.round(baseDamage * downhill) - target.armor);
+  const owner = world.teams[target.team];
+  const armor =
+    target.armor +
+    (target.kind === "building" ? bonus(content, owner, "buildingArmor") : bonus(content, owner, "unitArmor")) +
+    traitArmor(content, world, target);
+  let damage = Math.max(1, Math.round(baseDamage * downhill) - armor);
   if (target.kind === "building") {
     target.lastHitTick = world.tick;
     const shield = Math.min(900, regionShield(world, content, target).permille + heroShield(world, target));
@@ -115,6 +124,9 @@ export function dealDamage(
     y2: target.y,
     team: attacker.team,
   });
+  if (!secondary) afterHit(ctx, attacker, target, baseDamage, (to, amount) => dealDamage(ctx, attacker, to, amount, true));
+  // A trait may keep it alive (revive) or split it on the way out.
+  if (wasAlive && target.hp <= 0 && target.kind === "unit" && onUnitDeath(ctx, target)) return;
   // Thorns: a melee blow on a spiked building hits back (never twice: the attacker is a unit).
   if (target.kind === "building" && attacker.kind === "unit" && attacker.hp > 0 && (attackerUnit?.range ?? Infinity) <= MELEE_RANGE) {
     const thorns = raceMechanics(content, world.teams[target.team]!).thorns;
@@ -139,7 +151,7 @@ export function tickBuildingAttacks(ctx: TickContext): void {
     const range = attack.range * multiplier(content, world.teams[building.team]!, "towerRange");
     const target = nearestEnemy(ctx, building, range, (entity) => entity.kind === "unit");
     if (!target) continue;
-    dealDamage(ctx, building, target, attack.damage);
+    dealDamage(ctx, building, target, attack.damage * multiplier(content, world.teams[building.team]!, "towerDamage"));
     building.attackCooldown = attack.cooldownTicks;
   }
 }

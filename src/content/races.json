@@ -11,6 +11,7 @@
       "monorepo",
       "firewall",
       "solar-array",
+      "ci-server",
       "web-app",
       "mesh-node",
       "core"
@@ -57,7 +58,8 @@
           }
         }
       }
-    ]
+    ],
+    "center": "ci-server"
   },
   "hyperscaler": {
     "name": "Hyperscaler",
@@ -72,6 +74,7 @@
       "mainframe-bay",
       "cdn-edge",
       "power-plant",
+      "rnd-lab",
       "web-app",
       "edge-pop",
       "core"
@@ -112,11 +115,12 @@
           "unitHpMultiplier": 1.5
         }
       }
-    ]
+    ],
+    "center": "rnd-lab"
   },
   "serverless": {
     "name": "Serverless",
-    "specialty": "No standing army. Functions spin up squads when creeps show up, bill you per run, and go cold. Little to defend, but long fights add up.",
+    "specialty": "An army that autoscales. Functions keep a small squad warm and burst it bigger when creeps show up, then scale back down. Every scale-up costs $, so long fights add up.",
     "controller": "human",
     "look": "ephemeral",
     "core": "core",
@@ -130,6 +134,8 @@
       "function",
       "inference-endpoint",
       "state-machine",
+      "compute-pool",
+      "build-pipeline",
       "web-app",
       "mesh-node",
       "core"
@@ -143,24 +149,25 @@
     "tierPerks": [
       null,
       {
-        "name": "Warm Starts",
-        "description": "Functions cool down 30% faster.",
+        "name": "Warm Pools",
+        "description": "Scale-ups cool down 30% faster.",
         "modifiers": {
           "invokeCooldownMultiplier": 0.7
         }
       },
       {
         "name": "Reserved Capacity",
-        "description": "Every run costs 40% less.",
+        "description": "Every scale-up costs 40% less.",
         "modifiers": {
           "invokeCostMultiplier": 0.6
         }
       }
-    ]
+    ],
+    "center": "build-pipeline"
   },
   "walled-garden": {
     "name": "Walled Garden",
-    "specialty": "Builds real walls that block every path; towers and Moderators fire over them. Users are loyal: they leave 60% slower when you're hit. No network nodes: you build around your cores, nowhere else.",
+    "specialty": "Builds real walls that block every path; towers and Moderators fire over them. Users are loyal: they leave 60% slower when you're hit. No network nodes, but its cores reach 3 tiles further: you build around your cores, nowhere else.",
     "controller": "human",
     "look": "garden",
     "core": "core",
@@ -172,6 +179,7 @@
       "legal-dept",
       "app-review",
       "private-cloud",
+      "design-studio",
       "web-app",
       "core"
     ],
@@ -184,7 +192,8 @@
       "spawnIntervalMultiplier": 1,
       "costMultiplier": 1,
       "unitHpMultiplier": 1.1,
-      "startingMoneyBonus": 0
+      "startingMoneyBonus": 0,
+      "buildRadiusBonus": 3
     },
     "heroes": [
       "platform-owner",
@@ -214,7 +223,8 @@
           }
         }
       }
-    ]
+    ],
+    "center": "design-studio"
   },
   "botnet": {
     "name": "The Botnet",
