@@ -9,6 +9,8 @@ export const BASE_INCOME = { amount: 2, intervalTicks: 20 };
 export const CONSTRUCTION_START_HP = 0.25;
 /** A unit drops a target that runs this far past its sight. */
 export const LEASH_MULTIPLIER = 1.5;
+/** A creep that was hit this recently turns on whoever hit it. */
+export const PROVOKED_TICKS = 40;
 /** Guards defend this far around their home (spawn spot or rally point). */
 export const GUARD_RADIUS = 220;
 /** Guards within this distance of home count as home. */

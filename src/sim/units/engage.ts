@@ -7,15 +7,49 @@ import type { UnitDef } from "../content";
 import { distance, walkTo } from "../movement";
 import { hasClearPath, moveToward } from "../nav";
 import { buffMultiplier, luredBy } from "../heroes";
-import { BUILDING_SIGHT, GUARD_RADIUS, LEASH_MULTIPLIER } from "../tuning";
+import { BUILDING_SIGHT, GUARD_RADIUS, LEASH_MULTIPLIER, PROVOKED_TICKS } from "../tuning";
 import type { Entity, Unit } from "../types";
 import { multiplier } from "../upgrades";
-import { ignoresDefenders, roleHit, roleTargets } from "../roles";
+import { roleHit, roleTargets } from "../roles";
+import { hostile } from "../teams";
 
 /**
  * Returns true when the unit spent its tick fighting or closing in, false
  * when it should get on with its mode.
  */
+/** Can this enemy hurt you? Units (not decoys) and buildings with an attack. */
+function fightsBack(ctx: TickContext, e: Entity): boolean {
+  if (e.kind === "unit") return e.mode !== "decoy";
+  return ctx.content.buildings[e.defId]?.attack !== undefined;
+}
+
+/** In range already, or a clear straight walk to its near edge. */
+function canReach(ctx: TickContext, unit: Unit, def: UnitDef, e: Entity): boolean {
+  if (edgeDistance(unit, e) <= def.range) return true;
+  const [x, y] = nearEdge(unit, e);
+  return hasClearPath(ctx.world.terrain, unit.x, unit.y, x, y, unit.radius);
+}
+
+/** Where to walk to reach an entity: a building's near edge (its own tiles may be blocked), a unit's centre. */
+function nearEdge(unit: Unit, e: Entity): [number, number] {
+  if (e.kind !== "building") return [e.x, e.y];
+  const dx = unit.x - e.x;
+  const dy = unit.y - e.y;
+  const length = Math.sqrt(dx * dx + dy * dy) || 1;
+  const reach = e.radius + unit.radius + 2;
+  return [e.x + (dx / length) * reach, e.y + (dy / length) * reach];
+}
+
+/** Whoever hit this creep in the last moments, if it's still there to hit back. */
+function provokedTarget(ctx: TickContext, unit: Unit, def: UnitDef): Entity | undefined {
+  if (unit.provokedBy === undefined || ctx.world.tick - (unit.provokedAt ?? 0) > PROVOKED_TICKS) return undefined;
+  const attacker = ctx.byId.get(unit.provokedBy);
+  if (!attacker || attacker.hp <= 0 || !hostile(ctx.world, attacker.team, unit.team)) return undefined;
+  // Towers outrange most creeps: chase as far as the shooter's own reach, plus some.
+  const reach = Math.max(def.aggro, (attacker.kind === "building" ? ctx.content.buildings[attacker.defId]?.attack?.range : ctx.content.units[attacker.defId]?.range) ?? 0) * LEASH_MULTIPLIER;
+  return edgeDistance(unit, attacker) <= reach ? attacker : undefined;
+}
+
 export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
   const { world } = ctx;
   const guard = unit.mode === "guard";
@@ -42,12 +76,25 @@ export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
   if (!keep || (target === undefined && !lure)) {
     target = nearestEnemy(ctx, unit, def.aggro, wants, guard ? def.aggro : Math.max(def.aggro, BUILDING_SIGHT)) ?? undefined;
   }
-  // Roamers find bases by their buildings (seen from far off), but a defender
-  // that gets in their face comes first: switch to the nearest enemy unit in
-  // aggro range rather than keep chewing on a building while it's shot at.
-  if (target?.kind === "building" && !guard && !ignoresDefenders(def.role)) {
-    const threat = nearestEnemy(ctx, unit, def.aggro, (e) => e.kind === "unit");
-    if (threat) target = threat;
+  // Roamers find bases by their buildings (seen from far off), but whatever
+  // fights back comes first: the tower or unit that just hit it, else the
+  // nearest defender (a unit or a tower) in aggro range, rather than keep
+  // chewing on a Web App while a firewall shoots it.
+  // Specialists only turn on what their role goes for (a siege creep hits
+  // back at a tower, a phisher keeps going for your users).
+  const taunter = unit.tauntedBy !== undefined && world.tick < (unit.tauntedUntil ?? 0) ? ctx.byId.get(unit.tauntedBy) : undefined;
+  if (!guard && !lure && taunter && taunter.hp > 0) {
+    target = taunter;
+  } else if (!guard && !lure) {
+    // Only if it can get at them: a tower shooting over a wall means the wall comes first.
+    const reachable = (e: Entity) => (wants === undefined || wants(e)) && canReach(ctx, unit, def, e);
+    const provoker = provokedTarget(ctx, unit, def);
+    if (provoker && reachable(provoker)) {
+      target = provoker;
+    } else if (target === undefined || !fightsBack(ctx, target)) {
+      const threat = nearestEnemy(ctx, unit, def.aggro, (e) => fightsBack(ctx, e) && reachable(e));
+      if (threat) target = threat;
+    }
   }
   if (target && !guardCanHold(target)) target = undefined;
   unit.targetId = target?.id ?? null;
@@ -71,16 +118,7 @@ export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
   }
   // Head for the near edge of a building, not its centre: a wall's own tiles
   // are blocked, so the way to its centre never looks clear.
-  let aimX = target.x;
-  let aimY = target.y;
-  if (target.kind === "building") {
-    const dx = unit.x - target.x;
-    const dy = unit.y - target.y;
-    const length = Math.sqrt(dx * dx + dy * dy) || 1;
-    const reach = target.radius + unit.radius + 2;
-    aimX = target.x + (dx / length) * reach;
-    aimY = target.y + (dy / length) * reach;
-  }
+  const [aimX, aimY] = nearEdge(unit, target);
   if (hasClearPath(world.terrain, unit.x, unit.y, aimX, aimY, unit.radius)) {
     moveToward(world.terrain, unit, aimX, aimY, Math.min(def.speed, gap - def.range + 0.5));
     return true;
