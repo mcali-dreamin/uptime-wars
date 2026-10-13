@@ -88,6 +88,8 @@ export interface BuildingDef {
   compute?: number;
   /** Blocks movement for everyone, like terrain (walls). Not line of sight: you can shoot over it. */
   blocks?: boolean;
+  /** A blocking building its owner's units (and allies') pass through: a gate. */
+  gate?: boolean;
   /** Users this building can serve. Your total capacity caps your user count. */
   userCapacity?: number;
   /** Needs this core tier (index into economy.tiers; 0 = from the start). */

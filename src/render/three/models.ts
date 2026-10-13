@@ -295,7 +295,7 @@ export class Models {
     }
     if (this.look === "garden") {
       // Walls carry their own hedge; everything else gets a trimmed hedge on top.
-      if (isUnit || defId === "garden-wall") return;
+      if (isUnit || defId === "garden-wall" || defId === "garden-gate") return;
       this.box(g, team, "hedge", Math.max(8, w * 0.7), 5, Math.max(8, d * 0.7), 0, h, 0);
       if (w > 30) {
         for (const [cx, cz] of [[1, 1], [-1, -1]] as const) {
@@ -747,6 +747,18 @@ export class Models {
         this.box(g, team, "body", 48, 30, 48);
         this.box(g, team, "frame", 49, 2, 49, 0, 30);
         this.box(g, team, "hedge", 44, 9, 44, 0, 32);
+        break;
+      }
+      case "garden-gate": {
+        // Two wall posts with an arch and a glowing threshold: wall-height, so
+        // it lines up with the walls beside it, but plainly a way through.
+        for (const x of [-1, 1]) {
+          this.box(g, team, "body", 12, 30, 48, x * 18, 0, 0);
+          this.box(g, team, "hedge", 10, 9, 44, x * 18, 32, 0);
+        }
+        this.box(g, team, "frame", 48, 4, 10, 0, 30, 0);
+        const sill = this.box(g, team, "glow", 22, 1, 40, 0, 0.5, 0);
+        anim(sill, { type: "pulse", amount: 0.15, speed: 2 });
         break;
       }
       case "app-review": {

@@ -11,6 +11,7 @@ import { BUILDING_SIGHT, GUARD_RADIUS, LEASH_MULTIPLIER } from "../tuning";
 import type { Entity, Unit } from "../types";
 import { multiplier } from "../upgrades";
 import { ignoresDefenders, roleHit, roleTargets } from "../roles";
+import { terrainFor } from "../walls";
 
 /**
  * Returns true when the unit spent its tick fighting or closing in, false
@@ -81,8 +82,9 @@ export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
     aimX = target.x + (dx / length) * reach;
     aimY = target.y + (dy / length) * reach;
   }
-  if (hasClearPath(world.terrain, unit.x, unit.y, aimX, aimY, unit.radius)) {
-    moveToward(world.terrain, unit, aimX, aimY, Math.min(def.speed, gap - def.range + 0.5));
+  const { terrain } = terrainFor(world, unit.team);
+  if (hasClearPath(terrain, unit.x, unit.y, aimX, aimY, unit.radius)) {
+    moveToward(terrain, unit, aimX, aimY, Math.min(def.speed, gap - def.range + 0.5));
     return true;
   }
   // Seen but not straight-line reachable: carry on with the mode this tick.

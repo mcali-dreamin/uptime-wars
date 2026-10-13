@@ -2,7 +2,8 @@ import { bodyFits } from "../src/sim/nav";
 import { describe, expect, it } from "vitest";
 import { createWorld, isWalkableTile, queueCommand, step, TILE, type Building, type World } from "../src/sim";
 import { makeContext } from "../src/sim/context";
-import { spawnUnit } from "../src/sim/entities";
+import { placeBuilding, spawnUnit } from "../src/sim/entities";
+import { terrainFor } from "../src/sim/walls";
 import { loseUsers } from "../src/sim/economy";
 import { content, planBuildOrder } from "./fixtures";
 
@@ -108,5 +109,64 @@ describe("Walled Garden loyalty", () => {
     };
     const share = content.races["walled-garden"]!.mechanics!.loyalty!.churnPermille / 1000;
     expect(churn("walled-garden")).toBe(Math.floor(churn("open-source") * share));
+  });
+});
+
+describe("gates", () => {
+  const gated = (races: string[], mode?: "ffa") => {
+    const s = { seed: 1234, races, startWithCore: true, ...(mode ? { mode } : {}) };
+    const world = createWorld(content, s);
+    world.waves.nextWaveTick = 1e9;
+    const core = world.entities.find((e) => e.id === world.teams[0]!.coreId) as Building;
+    // An open tile two right of the core's footprint with open ground either side, east-west.
+    let at: { col: number; row: number } | null = null;
+    for (let dc = 3; dc < 8 && !at; dc += 1) {
+      const col = core.col + dc;
+      const row = core.row;
+      if ([-1, 0, 1].every((o) => isWalkableTile(world.terrain, col + o, row))) at = { col, row };
+    }
+    const gate = placeBuilding(world, content, 0, "garden-gate", at!.col, at!.row, true);
+    step(world, content);
+    return { world, gate };
+  };
+  const open = (world: World, team: number, gate: Building) => isWalkableTile(terrainFor(world, team).terrain, gate.col, gate.row);
+
+  it("blocks creeps but opens for its owner", () => {
+    const { world, gate } = gated(["walled-garden", "botnet"]);
+    expect(isWalkableTile(world.terrain, gate.col, gate.row)).toBe(false);
+    expect(open(world, 1, gate)).toBe(false);
+    expect(open(world, 0, gate)).toBe(true);
+  });
+
+  it("opens for co-op allies, not for free-for-all enemies", () => {
+    const coop = gated(["walled-garden", "open-source", "botnet"]);
+    expect(open(coop.world, 1, coop.gate)).toBe(true);
+    const ffa = gated(["walled-garden", "open-source"], "ffa");
+    expect(open(ffa.world, 1, ffa.gate)).toBe(false);
+  });
+
+  it("your units walk straight through it", () => {
+    const { world, gate } = gated(["walled-garden", "botnet"]);
+    const ctx = makeContext(world, content);
+    const unit = spawnUnit(ctx, 0, "moderator", gate, (gate.col - 1 + 0.5) * TILE, (gate.row + 0.5) * TILE, "guard");
+    unit.homeX = (gate.col + 1 + 0.5) * TILE;
+    unit.homeY = (gate.row + 0.5) * TILE;
+    unit.order = "move";
+    // It goes *through* the gate tile, not round it.
+    let crossed = false;
+    for (let i = 0; i < 80; i += 1) {
+      step(world, content);
+      if (Math.floor(unit.x / TILE) === gate.col && Math.floor(unit.y / TILE) === gate.row) crossed = true;
+    }
+    expect(crossed).toBe(true);
+    expect(unit.x).toBeGreaterThan((gate.col + 1) * TILE);
+  });
+
+  it("when it falls, the views go with it", () => {
+    const { world, gate } = gated(["walled-garden", "botnet"]);
+    gate.hp = 0;
+    step(world, content);
+    expect(world.nav.views).toBeUndefined();
+    expect(isWalkableTile(world.terrain, gate.col, gate.row)).toBe(true);
   });
 });

@@ -329,8 +329,19 @@ export type SimEvent =
  * from the world hash.
  */
 export interface Navigation {
-  /** Flow field toward a goal tile, keyed by tile index. Filled on demand by walkTo. */
+  /**
+   * Flow field toward a goal tile, keyed by view * tiles + goal tile (view 0
+   * is the shared one). Filled on demand by walkTo.
+   */
   goals: Map<number, Int32Array>;
+  /**
+   * Gates: per-team views of the terrain where friendly gates are open
+   * (keyed by team id; absent when there are no gates). Pure function of
+   * the entities, rebuilt with the walls.
+   */
+  views?: Map<number, { key: number; terrain: Terrain }>;
+  /** What the views were built for (gate tiles and owners). */
+  gateSignature?: string;
 }
 
 export interface World {
