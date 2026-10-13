@@ -19,6 +19,7 @@ import {
   type Placement,
   type Selection,
 } from "./game/selection";
+import { Alerts } from "./game/alerts";
 import { Session } from "./game/session";
 import { setLocalColor } from "./render/palette";
 import { BuildBar, FOUND_BUTTON, aimingButton, type BarMode } from "./ui/build-bar";
@@ -48,6 +49,11 @@ const renderer = new Renderer();
 const hud = new Hud(session);
 const sound = new SoundEngine();
 const director = new Director(content);
+const alerts = new Alerts(content);
+/** Alert colours on the minimap. */
+const ALERT_COLOR = { attack: 0xfacc15, core: 0xf87171, lost: 0xf87171, hero: 0xfacc15 } as const;
+/** Is a world point on screen right now (and in sight)? */
+const onScreen = (p: Point) => renderer.onScreen(p.x, p.y);
 const soundButton = $("sound");
 const SOUND_LABEL: Record<SoundMode, string> = { on: "Sound: on", sfx: "Sound: effects", off: "Sound: off" };
 soundButton.textContent = SOUND_LABEL[sound.mode];
@@ -117,6 +123,7 @@ if (new URLSearchParams(location.search).has("debug")) {
   Object.assign(window, {
     uptime: {
       sound,
+      alerts,
       get world() {
         return session.world;
       },
@@ -413,6 +420,13 @@ const gameInput: GameInput = {
       return true;
     }
     if (key === "r" && session.world.outcome) return picker.show(), true;
+    // Space: to the latest alert if there's a fresh one, else home. H: always home.
+    const alert = key === " " ? alerts.latest(performance.now() / 1000) : null;
+    if (alert) {
+      renderer.camera.centerOn(alert.x, alert.y);
+      alerts.recent.shift();
+      return true;
+    }
     if (key === " " || key === "h") {
       const home = session.home();
       if (home) renderer.camera.centerOn(home.x, home.y);
@@ -471,6 +485,7 @@ function startNetMatch(match: NetMatch): void {
 
 function resetMatch(): void {
   director.reset();
+  alerts.reset();
   renderer.localTeam = session.local;
   // After the team is known: in co-op your colour paints your own slot.
   applyColor();
@@ -520,6 +535,10 @@ renderer.app.ticker.add((ticker) => {
       }
       renderer.collectEvents(world);
       for (const cue of director.cues(world, world.events, session.local, listener, performance.now() / 1000)) sound.play(cue);
+      for (const alert of alerts.update(world, world.events, session.local, performance.now() / 1000, onScreen)) {
+        renderer.showBanner(`${alert.text} · Space to look`);
+        sound.play({ name: alert.kind === "lost" ? "building-down" : alert.kind === "hero" ? "hero-down" : "alarm", volume: 0.6, pan: 0 });
+      }
       for (const event of world.events) {
         if (event.type === "failover" && event.team === session.team.id) renderer.showBanner("Core lost · failover");
         if (event.type === "offline") {
@@ -531,7 +550,7 @@ renderer.app.ticker.add((ticker) => {
           );
         }
         if (event.type === "hero-level" && event.team === session.local) renderer.showBanner(`Level ${event.level} · skill point ready (Q)`);
-        if (event.type === "hero-down" && event.team === session.local) renderer.showBanner("Your hero is down");
+
         if (event.type === "hero-up" && event.team === session.local) renderer.showBanner("Your hero is back");
         if (event.type === "researched" && event.team === session.team.id) {
           const def = content.upgrades[event.upgrade]!;
@@ -549,6 +568,10 @@ renderer.app.ticker.add((ticker) => {
       steps += 1;
     }
     if (steps === MAX_STEPS_PER_FRAME) accumulator = 0;
+  }
+  {
+    const now = performance.now() / 1000;
+    renderer.setMinimapFlashes(alerts.recent.map((a) => ({ x: a.x, y: a.y, age: now - a.at, color: ALERT_COLOR[a.kind] })));
   }
   if (world.outcome && !announced) {
     announced = true;

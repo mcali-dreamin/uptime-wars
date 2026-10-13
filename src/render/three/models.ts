@@ -725,6 +725,45 @@ export class Models {
         }
         break;
       }
+      case "botnet-farm": {
+        // A fleshy hive of server pods, glowing vents, and a hatch the bots pour out of.
+        this.shape(g, team, "flesh", "farm-base", () => {
+          const geo = new THREE.CylinderGeometry(40, 46, 14, 7);
+          geo.translate(0, 7, 0);
+          return geo;
+        });
+        for (let i = 0; i < 6; i += 1) {
+          const a = (i / 6) * Math.PI * 2;
+          const pod = this.shape(g, team, "flesh", "farm-pod", () => new THREE.CapsuleGeometry(7, 22, 4, 8), Math.cos(a) * 26, 30, Math.sin(a) * 26);
+          pod.rotation.set(Math.sin(a) * 0.25, 0, -Math.cos(a) * 0.25);
+          this.shape(g, team, "hot", "farm-vent", () => new THREE.SphereGeometry(3, 8, 6), Math.cos(a) * 26, 46, Math.sin(a) * 26);
+        }
+        this.shape(g, team, "flesh", "farm-dome", () => new THREE.SphereGeometry(20, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), 0, 14, 0);
+        const hatch = this.shape(g, team, "hot", "farm-hatch", () => new THREE.TorusGeometry(9, 2, 6, 16), 0, 34, 0);
+        hatch.rotation.x = Math.PI / 2;
+        anim(hatch, { type: "pulse", amount: 0.2, speed: 2 });
+        break;
+      }
+      case "infected-node": {
+        // A server rack gone wrong: a dark slab split open, red tendrils
+        // rooting it into the ground, and a hot core pulsing in the crack.
+        this.shape(g, team, "flesh", "node-roots", () => new THREE.CylinderGeometry(34, 42, 6, 9), 0, 3, 0);
+        for (let i = 0; i < 7; i += 1) {
+          const a = (i / 7) * Math.PI * 2;
+          const root = this.shape(g, team, "flesh", "node-root", () => new THREE.ConeGeometry(4, 34, 5), Math.cos(a) * 30, 6, Math.sin(a) * 30);
+          root.rotation.set(Math.sin(a) * 1.25, 0, -Math.cos(a) * 1.25);
+        }
+        for (const x of [-11, 11]) {
+          const half = this.box(g, team, "dark", 18, 58, 26, x, 4, 0);
+          half.rotation.z = x < 0 ? 0.12 : -0.12;
+        }
+        const core = this.shape(g, team, "hot", "node-core", () => new THREE.OctahedronGeometry(9), 0, 38, 0);
+        anim(core, { type: "pulse", amount: 0.25, speed: 3 });
+        const halo = this.shape(g, team, "hot", "node-halo", () => new THREE.TorusGeometry(16, 1.2, 6, 24), 0, 66, 0);
+        halo.rotation.x = Math.PI / 2;
+        anim(halo, { type: "spin", speed: 1.2, axis: "z" });
+        break;
+      }
       case "c2-server": {
         // A spiked obelisk with a hot eye that watches the gateway.
         this.cyl(g, team, "flesh", 16, 20, 8, 5);
@@ -1062,6 +1101,18 @@ export class Models {
           const seg = this.shape(g, team, i === 0 ? "hot" : "flesh", `worm:${r}:${i}`, () => new THREE.SphereGeometry(s, 8, 6), 0, s, -i * r * 1.25);
           anim(seg, { type: "wiggle", amount: r * 0.5, speed: 9, phase: i * 0.9, base: 0 });
         }
+        break;
+      }
+      case "infector": {
+        // A hunched carrier with a glowing seed on its back: the thing to kill.
+        this.shape(g, team, "flesh", `inf-body:${r}`, () => new THREE.SphereGeometry(r * 0.85, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), 0, r * 0.3, 0);
+        for (let i = 0; i < 4; i += 1) {
+          const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+          const leg = this.box(g, team, "flesh", r * 0.18, r * 0.9, r * 0.18, Math.cos(a) * r * 0.75, 0, Math.sin(a) * r * 0.75);
+          leg.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5);
+        }
+        const seed = this.shape(g, team, "hot", `inf-seed:${r}`, () => new THREE.IcosahedronGeometry(r * 0.55, 0), 0, r * 1.45, 0);
+        anim(seed, { type: "pulse", amount: 0.3, speed: 5 });
         break;
       }
       case "scanner": {

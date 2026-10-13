@@ -134,6 +134,22 @@
       "maxAlive": 6
     }
   },
+  "infected-node": {
+    "name": "Infected Node",
+    "description": "A compromised machine the botnet has taken over. Incidents pour out of it as well as the nest, so the more nodes stand, the more directions you're hit from. Takes 20 seconds to build: clear it and the botnet has to send another infector.",
+    "cost": 0,
+    "buildTicks": 400,
+    "hp": 1600,
+    "armor": 2,
+    "footprint": 2,
+    "buildable": false,
+    "sight": 320,
+    "attack": {
+      "damage": 8,
+      "range": 170,
+      "cooldownTicks": 24
+    }
+  },
   "hyperscale-rack": {
     "name": "Hyperscale Rack",
     "description": "Provisions Load Balancers: slow to spin up, very hard to kill. They gather at its rally point.",

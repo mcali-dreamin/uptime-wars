@@ -61,6 +61,10 @@ export function validateContent(content: Content): void {
   const fortress = content.waves.fortress;
   if (!content.buildings[fortress.building]?.attack) errors.push(`fortress building ${fortress.building} must be a building that shoots`);
   if (!(fortress.rebuildEvery >= 1)) errors.push("fortress.rebuildEvery must be at least 1");
+  const spread = content.waves.spread;
+  if (!content.units[spread.unit]) errors.push(`spread unit ${spread.unit} is unknown`);
+  if (content.buildings[spread.building]?.footprint !== 2) errors.push(`spread building ${spread.building} must exist and be 2x2`);
+  if (!(spread.everyWaves >= 1)) errors.push("spread.everyWaves must be at least 1");
   const farm = content.buildings[fortress.farms.building];
   if (!farm?.spawn) errors.push(`fortress farm ${fortress.farms.building} must be a building that spawns`);
   else if (farm.footprint !== 2) errors.push(`fortress farm ${fortress.farms.building} must be 2x2`);

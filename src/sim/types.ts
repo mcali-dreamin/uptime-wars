@@ -1,6 +1,6 @@
 import type { MatchMode } from "./teams";
 import type { Controller } from "./content";
-import type { Terrain } from "./terrain";
+import type { Terrain, TilePoint } from "./terrain";
 
 /** Index into world.teams. */
 export type TeamId = number;
@@ -97,7 +97,7 @@ interface EntityBase {
  * - roam:  wanders the map with its pack and attacks whatever it sees. Creeps
  *   never know where you are; they find you by running into you.
  */
-export type UnitMode = "guard" | "roam" | "builder" | "hero" | "decoy";
+export type UnitMode = "guard" | "roam" | "builder" | "hero" | "decoy" | "infector";
 
 export interface Unit extends EntityBase {
   kind: "unit";
@@ -282,6 +282,10 @@ export interface WaveSpawn {
   /** Where it enters (default: the nest), and a base it marches on (default: it wanders). */
   at?: Point;
   target?: Point;
+  /** Comes out of this infected node (entity id) instead of the nest, if it still stands. */
+  from?: number;
+  /** An infector, heading to build a node on this site (top-left tile). */
+  infect?: TilePoint;
 }
 
 export interface WaveState {
@@ -296,6 +300,8 @@ export interface WaveState {
   nextPackId: number;
   /** Pack id -> where it's heading: a roam point index, or a point it sensed. */
   packs: Record<number, number | Point>;
+  /** Pack id -> a flanking waypoint it takes before closing on its target. */
+  approach?: Record<number, Point>;
 
 }
 
@@ -326,13 +332,17 @@ export type SimEvent =
   | { type: "retaliation"; team: TeamId; x: number; y: number; units: number }
   /** The botnet rebuilt fallen Botnet Farms. */
   | { type: "farms-rebuilt"; wave: number; rebuilt: number }
+  /** An infector left the nest for (x, y). */
+  | { type: "infecting"; x: number; y: number }
+  /** An infector reached its site: a node is going up at (x, y). */
+  | { type: "infected"; x: number; y: number }
   | { type: "founded"; x: number; y: number }
   | { type: "failover"; team: TeamId; x: number; y: number }
   /** A team went offline while its allies play on. */
   | { type: "offline"; team: TeamId }
   | { type: "cast"; team: TeamId; ability: string; x: number; y: number; radius: number; targetId: number | null }
   | { type: "hero-level"; team: TeamId; level: number }
-  | { type: "hero-down"; team: TeamId; respawnAt: number }
+  | { type: "hero-down"; team: TeamId; respawnAt: number; x: number; y: number }
   | { type: "hero-up"; team: TeamId; x: number; y: number }
   | { type: "revived"; id: number; x: number; y: number; team: TeamId }
   | { type: "researched"; team: TeamId; upgrade: string; level: number }

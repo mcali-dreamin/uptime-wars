@@ -11,6 +11,7 @@ import { TILE } from "./map";
 import { goalField } from "./movement";
 import { ORTHOGONAL, UNREACHABLE, bodyFits } from "./nav";
 import { randomInt } from "./rng";
+import { liveNodes, sendInfectors } from "./spread";
 import { humanTeams } from "./teams";
 import type { Building, Point, TeamId, World } from "./types";
 
@@ -50,13 +51,18 @@ export function tickWaveDirector(ctx: TickContext): void {
     const plan = planWave(world, content, wave, scale);
     let at = world.tick;
     let packs = 0;
+    // The botnet's spread: some packs come out of its infected nodes instead of the nest.
+    const nodes = liveNodes(world, content, team.id);
     for (let i = 0; i < plan.units.length; ) {
       const size = randomInt(world, waves.packSize.min, waves.packSize.max);
       const packId = state.nextPackId++;
       const entry = entries[packs % Math.max(1, entries.length)];
       packs += 1;
+      const fromNode = entry === undefined && nodes.length > 0 && randomInt(world, 1, 1000) <= waves.spread.sharePermille;
+      const from = fromNode ? nodes[randomInt(world, 0, nodes.length - 1)]!.id : undefined;
       for (const unit of plan.units.slice(i, i + size)) {
-        state.pending.push(entry ? { tick: at, unit, packId, wave, at: entry.at, target: entry.core } : { tick: at, unit, packId, wave });
+        const spawn = { tick: at, unit, packId, wave };
+        state.pending.push(entry ? { ...spawn, at: entry.at, target: entry.core } : from === undefined ? spawn : { ...spawn, from });
       }
       i += size;
       at += waves.spawnSpacingTicks;
@@ -70,6 +76,7 @@ export function tickWaveDirector(ctx: TickContext): void {
       boss: plan.bosses > 0,
       ...(entries.length ? { entries: entries.map((e) => ({ team: e.team, x: e.at.x, y: e.at.y })) } : {}),
     });
+    sendInfectors(ctx, team.id, wave);
     if (wave % waves.fortress.rebuildEvery === 0) {
       const rebuilt = fortify(world, content, team.id, wave);
       if (rebuilt > 0) world.events.push({ type: "fortified", wave, rebuilt });
@@ -86,12 +93,16 @@ export function tickWaveDirector(ctx: TickContext): void {
   for (const entity of world.entities) if (entity.kind === "unit" && entity.team === team.id) alive += 1;
   while (state.pending.length > 0 && state.pending[0]!.tick <= world.tick && alive < waves.maxAlive) {
     const spawn = state.pending.shift()!;
-    const from = spawn.at ?? nest;
-    const x = from.x + randomInt(world, -40, 40);
-    const y = from.y + randomInt(world, -40, 40);
+    // At its door (the opening), out of its node if that still stands, else the nest.
+    const node = spawn.from === undefined ? undefined : ctx.byId.get(spawn.from);
+    const source = spawn.at ?? (node && node.hp > 0 ? node : nest);
+    const spread = spawn.at ? 40 : 60;
+    const x = source.x + randomInt(world, -spread, spread);
+    const y = source.y + randomInt(world, -spread, spread);
     const hp = 1 + waves.hpGrowthPerWave * (spawn.wave - 1);
-    const unit = spawnUnit(ctx, team.id, spawn.unit, from, x, y, "roam", hp);
+    const unit = spawnUnit(ctx, team.id, spawn.unit, source, x, y, spawn.infect ? "infector" : "roam", hp);
     unit.packId = spawn.packId;
+    if (spawn.infect) unit.foundAt = { ...spawn.infect };
     // Marching on a base: no wandering first.
     if (spawn.target && state.packs[spawn.packId] === undefined) state.packs[spawn.packId] = { x: spawn.target.x, y: spawn.target.y };
     alive += 1;
