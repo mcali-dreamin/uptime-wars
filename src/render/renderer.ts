@@ -100,6 +100,17 @@ export class Renderer {
     }
   }
 
+  /** Is a world point on screen and in sight right now? */
+  onScreen(x: number, y: number): boolean {
+    const v = this.view.viewRect() ?? this.camera.view(0);
+    return x >= v.left && x <= v.right && y >= v.top && y <= v.bottom && this.fog.isVisible(x, y);
+  }
+
+  /** Flash these points on the minimap (alerts). `ages` in seconds. */
+  setMinimapFlashes(flashes: { x: number; y: number; age: number; color: number }[]): void {
+    this.minimap.flashes = flashes;
+  }
+
   /** Mark where an order was given. Render-only. */
   ping(x: number, y: number): void {
     this.pings.push({ x, y, age: 0 });

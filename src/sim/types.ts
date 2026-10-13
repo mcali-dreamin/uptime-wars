@@ -329,7 +329,7 @@ export type SimEvent =
   | { type: "offline"; team: TeamId }
   | { type: "cast"; team: TeamId; ability: string; x: number; y: number; radius: number; targetId: number | null }
   | { type: "hero-level"; team: TeamId; level: number }
-  | { type: "hero-down"; team: TeamId; respawnAt: number }
+  | { type: "hero-down"; team: TeamId; respawnAt: number; x: number; y: number }
   | { type: "hero-up"; team: TeamId; x: number; y: number }
   | { type: "revived"; id: number; x: number; y: number; team: TeamId }
   | { type: "researched"; team: TeamId; upgrade: string; level: number }

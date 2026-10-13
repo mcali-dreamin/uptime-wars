@@ -40,6 +40,9 @@ export class Minimap {
     this.fog.setMinimapScale(this.scale);
   }
 
+  /** Alerts to flash on the minimap: world point and age in seconds. */
+  flashes: { x: number; y: number; age: number; color: number }[] = [];
+
   draw(world: World, width: number, height: number, view: Rect, shows: (entity: World["entities"][number]) => boolean): void {
     if (!this.terrain) return;
     const s = this.scale;
@@ -58,6 +61,12 @@ export class Minimap {
       } else {
         g.rect(entity.x * s - 1, entity.y * s - 1, 2, 2).fill({ color });
       }
+    }
+    // Alert flashes: an expanding ring that pulses for a few seconds.
+    for (const f of this.flashes) {
+      if (f.age > 4) continue;
+      const pulse = (f.age % 1) / 1;
+      g.circle(f.x * s, f.y * s, 4 + pulse * 10).stroke({ width: 2, color: f.color, alpha: 1 - pulse });
     }
     g.rect(view.left * s, view.top * s, (view.right - view.left) * s, (view.bottom - view.top) * s).stroke({ width: 1, color: 0xd6e2f0, alpha: 0.8 });
   }
