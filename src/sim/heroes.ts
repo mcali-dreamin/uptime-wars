@@ -97,7 +97,8 @@ export function spawnHero(ctx: TickContext, team: Team, at: Point): Unit | undef
     team.hero = { unitId: -1, level: 1, xp: 0, baseHp: 0, ranks: {}, cooldowns: {}, respawnAt: null, focusId: null, cast: null, temps: [], buff: null };
   }
   // Behind the core as the camera sees it (north), out of the way of the base you'll build in front.
-  const unit = spawnUnit(ctx, team.id, heroId, at, at.x, at.y - 70, "hero");
+  // Below the core (toward the camera), so its model never hides the hero.
+  const unit = spawnUnit(ctx, team.id, heroId, at, at.x, at.y + 70, "hero");
   team.hero.baseHp = unit.maxHp;
   applyLevel(content, unit, team.hero.level, heroId, unit.maxHp);
   unit.hp = unit.maxHp;

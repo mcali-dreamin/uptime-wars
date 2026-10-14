@@ -334,3 +334,14 @@ describe("hero healing at a core", () => {
     expect(hero.hp).toBeLessThanOrEqual(before);
   });
 });
+
+describe("hero spawn", () => {
+  it("the hero appears below the core, in front of it from the camera", () => {
+    for (const race of ["open-source", "hyperscaler", "serverless", "walled-garden"]) {
+      const world = createWorld(content, { seed: 1234, races: [race, "botnet"], startWithCore: true });
+      const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
+      const hero = heroOf(world, world.teams[0]!)!;
+      expect(hero.y, race).toBeGreaterThan(core.y);
+    }
+  });
+});
