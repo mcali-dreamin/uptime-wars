@@ -105,6 +105,10 @@ export function dealDamage(
     (target.kind === "building" ? bonus(content, owner, "buildingArmor") : bonus(content, owner, "unitArmor")) +
     traitArmor(content, world, target);
   let damage = Math.max(1, Math.round(baseDamage * downhill) - armor);
+  if (target.kind === "unit" && target.mode === "hero") {
+    const state = world.teams[target.team]?.hero;
+    if (state) state.lastHitTick = world.tick;
+  }
   if (target.kind === "building") {
     target.lastHitTick = world.tick;
     const shield = Math.min(900, regionShield(world, content, target).permille + heroShield(world, target));

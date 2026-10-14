@@ -453,6 +453,12 @@ export interface HeroesDef {
   skillPointsPerLevel: number;
   /** Levels between ranks of the same ability. */
   levelsPerRank: number;
+  /**
+   * Back at base: a hero within `radius` px of one of its team's cores heals
+   * `permillePerSecond` of its max hp each second, once nothing has hit it
+   * for `quietTicks`.
+   */
+  coreHeal?: { radius: number; permillePerSecond: number; quietTicks: number };
   /** Keyed by the hero's unit id. */
   heroes: Record<string, HeroDef>;
   abilities: Record<string, AbilityDef>;
