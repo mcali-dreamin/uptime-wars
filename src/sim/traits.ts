@@ -34,7 +34,7 @@ export function effectiveDef(content: Content, team: Team | undefined, unit: Uni
 }
 
 /** Is this unit holding its post (home, no order)? */
-function holding(unit: Unit): boolean {
+export function holding(unit: Unit): boolean {
   return unit.order === null && distance(unit, { x: unit.homeX, y: unit.homeY }) <= HOME_SLACK * 2;
 }
 
