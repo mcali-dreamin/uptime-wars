@@ -24,6 +24,7 @@ import { teamCores } from "./placement";
 import { hordeTeam, humanTeams, type MatchMode } from "./teams";
 import { tickFunctions } from "./functions";
 import { syncWalls } from "./walls";
+import { tickSeparation } from "./separation";
 import { tickRepair } from "./mechanics";
 import { tickSpawners } from "./spawners";
 import { MAX_PLAYERS, generateTerrain } from "./terrain";
@@ -149,6 +150,7 @@ export function step(world: World, content: Content): void {
   tickFunctions(ctx);
   tickBuildingAttacks(ctx);
   tickUnits(ctx);
+  tickSeparation(ctx);
   // Last, so a building that finishes this tick starts working next tick.
   tickRepair(ctx);
   tickHealers(ctx);
