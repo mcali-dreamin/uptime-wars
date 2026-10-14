@@ -187,6 +187,20 @@ await run("smoke test", async ({ check, open }) => {
   await page.keyboard.press("Escape");
   await page.keyboard.press("z");
   check(await state(() => window.uptime.selection.kind === "army" && window.uptime.selection.ids.length > 0), "Z selects the whole army");
+  // Control groups: Alt+1 saves the army, Esc clears, 1 brings it back. Shift+right-click queues.
+  await page.keyboard.press("Alt+Digit1");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Digit1");
+  check(await state(() => window.uptime.selection.kind === "army" && window.uptime.selection.ids.length > 0), "Alt+1 saves a group and 1 brings it back");
+  const far = await openNear(spot.x, spot.y, 8, 16);
+  await click(there, { button: "right" });
+  await page.keyboard.down("Shift");
+  await click(far, { button: "right" });
+  await page.keyboard.up("Shift");
+  check(
+    await waitFor(() => state(() => window.uptime.world.entities.some((e) => window.uptime.selection.ids?.includes(e.id) && (e.waypoints?.length ?? 0) > 0))),
+    "Shift+right-click queues an order",
+  );
 
   // The core's card researches.
   await page.keyboard.press("Escape");
