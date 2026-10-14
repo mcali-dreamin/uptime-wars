@@ -20,6 +20,7 @@ import {
   type Selection,
 } from "./game/selection";
 import { Alerts } from "./game/alerts";
+import { ControlGroups } from "./game/groups";
 import { Session } from "./game/session";
 import { setLocalColor } from "./render/palette";
 import { BuildBar, FOUND_BUTTON, aimingButton, type BarMode } from "./ui/build-bar";
@@ -50,6 +51,7 @@ const hud = new Hud(session);
 const sound = new SoundEngine();
 const director = new Director(content);
 const alerts = new Alerts(content);
+const groups = new ControlGroups();
 /** Alert colours on the minimap. */
 const ALERT_COLOR = { attack: 0xfacc15, core: 0xf87171, lost: 0xf87171, hero: 0xfacc15 } as const;
 /** Is a world point on screen right now (and in sight)? */
@@ -124,6 +126,7 @@ if (new URLSearchParams(location.search).has("debug")) {
     uptime: {
       sound,
       alerts,
+      groups,
       get world() {
         return session.world;
       },
@@ -249,8 +252,8 @@ function refreshPointer(): void {
           : "";
 }
 
-function order(point: Point): void {
-  const next = groundOrder(session, selection, point);
+function order(point: Point, queue = false): void {
+  const next = groundOrder(session, selection, point, queue);
   if (!next) return;
   session.issue(next);
   renderer.ping(point.x, point.y);
@@ -357,7 +360,7 @@ const gameInput: GameInput = {
     select(NOTHING);
   },
 
-  rightClick(point) {
+  rightClick(point, _onMinimap, queue) {
     if (selection.kind === "place" || selection.kind === "found") return select(fallback());
     if (selection.kind === "cast") {
       const hero = heroUnit(session);
@@ -375,7 +378,7 @@ const gameInput: GameInput = {
     }
     // Nothing selected while deploying: right-click still walks the agent.
     if (selection.kind === "none" && session.builder()) select(fallback());
-    order(point);
+    order(point, queue === true);
   },
 
   boxSelect(rect, shift) {
@@ -402,6 +405,27 @@ const gameInput: GameInput = {
       if (selection.kind === "cast") select(hero ? { kind: "entity", id: hero.id } : NOTHING);
       else select(isArmed() ? disarmed(selection) : session.deploying ? fallback() : NOTHING);
       return true;
+    }
+    // Control groups: Ctrl/Alt + 1..9 saves, 1..9 recalls (and wins over the
+    // build hotkey with the same number once the group exists).
+    const groupKey = /^Digit([1-9])$/.exec(event.code)?.[1];
+    if (groupKey && !session.deploying) {
+      const n = Number(groupKey);
+      if (event.ctrlKey || event.altKey) {
+        if (groups.assign(n, selection)) renderer.showBanner(`Group ${n} set`);
+        return true;
+      }
+      if (!event.shiftKey && groups.has(n) && !heroSelected() && !coreSelected() && !centerSelected()) {
+        const recalled = groups.recall(n, (id) => session.entity(id) !== undefined, performance.now());
+        if (recalled) {
+          select(recalled.selection);
+          if (recalled.doubleTap) {
+            const first = recalled.selection.kind === "army" ? session.entity(recalled.selection.ids[0]!) : session.entity((recalled.selection as { id: number }).id);
+            if (first) renderer.camera.centerOn(first.x, first.y);
+          }
+          return true;
+        }
+      }
     }
     if (key === "q" && !session.deploying) return selectHero();
     if (key === "t") return arm();
@@ -486,6 +510,7 @@ function startNetMatch(match: NetMatch): void {
 function resetMatch(): void {
   director.reset();
   alerts.reset();
+  groups.reset();
   renderer.localTeam = session.local;
   // After the team is known: in co-op your colour paints your own slot.
   applyColor();

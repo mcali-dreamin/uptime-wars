@@ -11,7 +11,7 @@ import { applyFork } from "./mechanics";
 import { heroOf, learnBlocker, orderCast } from "./heroes";
 import { hostile } from "./teams";
 import { isWalkableTile } from "./terrain";
-import { MAX_ORDER_UNITS, ORDER_SPREAD_MAX, ORDER_SPREAD_PER_UNIT, RALLY_SPREAD } from "./tuning";
+import { MAX_ORDER_UNITS, MAX_WAYPOINTS, ORDER_SPREAD_MAX, ORDER_SPREAD_PER_UNIT, RALLY_SPREAD } from "./tuning";
 import type { Command, OrderCommand, RallyCommand, World } from "./types";
 
 /**
@@ -122,10 +122,18 @@ function applyOrder(ctx: TickContext, command: OrderCommand): string | null {
   const point = { x: command.x, y: command.y };
   // A bigger group needs more room at the destination.
   const spread = Math.min(ORDER_SPREAD_MAX, Math.max(RALLY_SPREAD / 2, Math.round(ORDER_SPREAD_PER_UNIT * Math.sqrt(units.length) * 2)));
+  const groupSpread = units.length === 1 ? 0 : spread;
   for (const unit of units) {
-    sendHome(world, unit, point, units.length === 1 ? 0 : spread);
-    unit.order = command.attack ? "attack" : "move";
     unit.commanded = true;
+    // Queued behind an order still under way: wait its turn (see guard).
+    if (command.queue && unit.order !== null) {
+      if ((unit.waypoints?.length ?? 0) >= MAX_WAYPOINTS) continue;
+      (unit.waypoints ??= []).push({ x: point.x, y: point.y, attack: command.attack, spread: groupSpread });
+      continue;
+    }
+    unit.waypoints = undefined;
+    sendHome(world, unit, point, groupSpread);
+    unit.order = command.attack ? "attack" : "move";
     // A plain move drops whatever it was fighting.
     if (!command.attack) unit.targetId = null;
   }
