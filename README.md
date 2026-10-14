@@ -1,23 +1,37 @@
 # Uptime Wars
 
 Survival on the open web, in the browser. Every match generates a fresh patch
-of the internet from a seed: dead links and a
-malware nest somewhere far off-screen. Build around your core, let your racks
-fork defenders, and keep your uptime while packs of crawlers wander the web.
+of the internet from a seed: dead links, cliffs and ramps, and a malware nest
+somewhere far off-screen. Build a base around your core, field an army, and
+keep your uptime while the botnet escalates, or break its fortress and take
+the nest offline. Solo or co-op, four races, one hero each.
 
-> Prototype. Balance, art, and most of the design are placeholders.
+**[Play it in your browser](https://dist-xrbnhsmrf.view.fast/)**: no install,
+no account. Press `G` in a match for the Guide.
+
+> Prototype. Balance, art, and much of the design are still moving.
 
 ## Play
+
+Online: **https://dist-xrbnhsmrf.view.fast/** (always the latest release).
+Locally:
 
 ```sh
 npm install
 npm run dev
 ```
 
-- Pick a race first. **Open Source Collective** is cheap and fast: it forks
-  swarms and its spawners run 15% quicker. **Hyperscaler** has deep pockets and
-  heavy iron: +$150 to start, 30% tougher units, slower spawners, and its
-  own roster (Load Balancer tanks, long-range CDN Edge towers, Power Plants).
+- Pick a race first:
+  - **Open Source Collective**: cheap swarms that spawn 15% faster. Fork any
+    building for half price; buildings repair themselves when nothing's
+    hitting them.
+  - **Hyperscaler**: rich and tough, +$75 to start and units 15% tougher.
+    Buildings packed into a region shield each other.
+  - **Serverless**: an army that autoscales. Functions keep a small squad warm
+    and burst it bigger when creeps show up; every scale-up costs $.
+  - **Walled Garden**: real walls that block every path, with towers and
+    Moderators firing over them. Loyal users, and no network nodes: you build
+    around your cores.
 - You start with a **deploy agent**, already selected. Click (or right-click)
   the ground to walk it and scout through the fog. Press `C` (or the button) and
   click to choose where your core goes; the agent walks there and becomes the
@@ -191,7 +205,10 @@ is **uptime**: how long your core stays online. Taking the nest offline ends
 the run early, in your favor, but it's a **fortress**: the nest sits on a
 backbone plateau ringed by cliffs, every ramp up is guarded by a C2 Server,
 and more ring the nest itself. Every 2 incidents the botnet rebuilds the ones you
-knocked down, tougher (`waves.json` → `fortress`). Where they stand is a pure
+knocked down, tougher (`waves.json` → `fortress`). The nest is **shielded**
+while its four **Botnet Farms** stand: break every farm (each one weakens later
+incidents), then the nest. Rebuilt farms shield it again, and the top bar's
+Nest stat shows where you are. When the nest falls, the whole botnet collapses. Where they stand is a pure
 function of the seed. Hover anything (buttons, buildings, units, terrain) to see what it does.
 Add `?debug` to the URL to expose live state as `window.uptime`.
 
@@ -344,9 +361,13 @@ Direction: survival on a procedurally generated open web.
 - [x] Network expansion (per race) and redundant cores
 - [x] Heroes: one per race, levels, skill points, four abilities each
 - [x] Compute is the army cap; generators are limited per core tier
-- [x] Race selection: Open Source Collective, Hyperscaler
+- [x] Four races: Open Source Collective, Hyperscaler, Serverless, Walled Garden
+- [x] Spawner ranks: upgrade a spawner in place for fewer, stronger units
+- [x] Co-op over WebRTC (invite links, lockstep)
+- [x] A win condition: break the Botnet Farms, then take the nest offline
 - More races: Hacker crew, State actor / APT
 - [x] Anonymous match reports (with replayable command logs) via Spacefast Zero
+- [x] Public at https://dist-xrbnhsmrf.view.fast/, source at https://github.com/mcali-dreamin/uptime-wars
 - Content from WordPress, saves and leaderboards via Spacefast Zero
 
 ## Releases and deploys
