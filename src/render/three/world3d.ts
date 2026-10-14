@@ -498,6 +498,13 @@ export class World3D implements WorldView {
         const color = entity.order === "attack" ? INVALID : VALID;
         this.thinRings.add(entity.homeX, ground(entity.homeX, entity.homeY), entity.homeY, 6, color, 0.8);
       }
+      // Shift-queued waypoints: a smaller marker at each, in order.
+      for (const wp of entity.waypoints ?? []) {
+        const key = `${Math.round(wp.x / 24)}:${Math.round(wp.y / 24)}`;
+        if (destinations.has(key)) continue;
+        destinations.add(key);
+        this.thinRings.add(wp.x, ground(wp.x, wp.y), wp.y, 4, wp.attack ? INVALID : VALID, 0.6);
+      }
     }
 
     if (frame.selectedId !== null) {

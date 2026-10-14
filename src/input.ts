@@ -15,7 +15,8 @@ export interface GameInput {
   click(point: Point, shift: boolean, entity: number | null): void;
   /** A drag-selection rectangle, in client pixels. */
   boxSelect(rect: { left: number; top: number; right: number; bottom: number }, shift: boolean): void;
-  rightClick(point: Point, onMinimap: boolean): void;
+  /** `queue`: Shift was held (queue the order behind the current ones). */
+  rightClick(point: Point, onMinimap: boolean, queue?: boolean): void;
   /** Pointer moved over the map (null when it left or is over the minimap). */
   hover(point: Point | null): void;
   /** Game keys. Return true when handled. */
@@ -58,7 +59,7 @@ export function bindInput(renderer: Renderer, game: GameInput): void {
   const secondary = (event: MouseEvent) => {
     if (game.blocked()) return;
     const onMinimap = renderer.minimapHit(event.clientX, event.clientY);
-    game.rightClick(onMinimap ?? renderer.toWorld(event.clientX, event.clientY), onMinimap !== null);
+    game.rightClick(onMinimap ?? renderer.toWorld(event.clientX, event.clientY), onMinimap !== null, event.shiftKey);
   };
 
   const local = (event: MouseEvent) => {

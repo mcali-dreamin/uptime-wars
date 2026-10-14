@@ -44,11 +44,11 @@ export function groundOrderLabel(session: Session, selection: Selection): string
 }
 
 /** The order for right-clicking (or, for the deploy agent, clicking) the ground at `point`. */
-export function groundOrder(session: Session, selection: Selection, point: Point): Order | null {
+export function groundOrder(session: Session, selection: Selection, point: Point, queue = false): Order | null {
   if (selection.kind === "army") {
     const units = armyUnits(session, selection);
     if (units.length === 0) return null;
-    return { type: "order", unitIds: units.map((u) => u.id), x: point.x, y: point.y, attack: selection.armed !== "move" };
+    return { type: "order", unitIds: units.map((u) => u.id), x: point.x, y: point.y, attack: selection.armed !== "move", ...(queue ? { queue: true } : {}) };
   }
   const entity = selectedEntity(session, selection);
   if (!entity || !groundOrderLabel(session, selection)) return null;

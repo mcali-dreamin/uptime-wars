@@ -121,6 +121,8 @@ export interface Unit extends EntityBase {
   commanded: boolean;
   /** Serverless units go cold at this tick (absent: they don't). */
   expiresAt?: number;
+  /** Shift-queued orders still to come, in order, after the current one. */
+  waypoints?: { x: number; y: number; attack: boolean; spread: number }[];
   /** The last enemy that hit it, and when: creeps turn on whatever is shooting them. */
   provokedBy?: number;
   provokedAt?: number;
@@ -216,6 +218,8 @@ export interface OrderCommand {
   x: number;
   y: number;
   attack: boolean;
+  /** Shift-queued: go here after the orders already given, instead of now. */
+  queue?: boolean;
 }
 
 /** Start researching the next level of an upgrade at the core. */
