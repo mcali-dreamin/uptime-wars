@@ -70,6 +70,8 @@ export interface HeroState {
   cast: { ability: string; x: number; y: number; targetId: number | null } | null;
   /** Decoys and summons, and when they vanish. */
   temps: { id: number; until: number }[];
+  /** The last tick anything hit the hero (core healing waits for quiet). */
+  lastHitTick?: number;
   /** A buff ability running: extra damage fraction for every unit, until a tick. */
   buff: { amount: number; until: number } | null;
   /** A shield ability running: buildings near its point take less damage until a tick. */

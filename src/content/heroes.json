@@ -3,6 +3,11 @@
   "xpPerBounty": 2,
   "xpPerLevel": 100,
   "maxLevel": 10,
+  "coreHeal": {
+    "radius": 260,
+    "permillePerSecond": 40,
+    "quietTicks": 60
+  },
   "heroes": {
     "maintainer": {
       "hpPerLevel": 40,

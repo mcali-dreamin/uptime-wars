@@ -293,3 +293,44 @@ describe("hero UI text", () => {
     for (const id of Object.keys(content.heroes.abilities)) expect(() => bar.describe(id)).not.toThrow();
   });
 });
+
+describe("hero healing at a core", () => {
+  const heal = content.heroes.coreHeal!;
+  const fresh = () => {
+    const world = createWorld(content, { seed: 1234, races: ["open-source", "botnet"], startWithCore: true });
+    world.waves.nextWaveTick = world.waves.nextTrickleTick = 1e9;
+    const hero = heroOf(world, world.teams[0]!)!;
+    const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
+    return { world, hero, core };
+  };
+  const seconds = (world: ReturnType<typeof fresh>["world"], n: number) => {
+    for (let i = 0; i < n * 20; i += 1) step(world, content);
+  };
+
+  it("a hurt hero near its core heals over time, up to full", () => {
+    const { world, hero } = fresh();
+    hero.hp = Math.round(hero.maxHp * 0.3);
+    const before = hero.hp;
+    seconds(world, 5);
+    expect(hero.hp).toBeGreaterThanOrEqual(before + Math.floor((hero.maxHp * heal.permillePerSecond * 4) / 1000));
+    seconds(world, 60);
+    expect(hero.hp).toBe(hero.maxHp);
+  });
+
+  it("not while it's being hit, and not away from home", () => {
+    const { world, hero, core } = fresh();
+    hero.hp = Math.round(hero.maxHp * 0.3);
+    world.teams[0]!.hero!.lastHitTick = world.tick + 1e6;
+    let before = hero.hp;
+    seconds(world, 3);
+    expect(hero.hp).toBe(before);
+
+    world.teams[0]!.hero!.lastHitTick = undefined;
+    hero.x = core.x + heal.radius + 600;
+    hero.homeX = hero.x;
+    hero.moveTo = { x: hero.x, y: hero.y };
+    before = hero.hp;
+    seconds(world, 3);
+    expect(hero.hp).toBeLessThanOrEqual(before);
+  });
+});

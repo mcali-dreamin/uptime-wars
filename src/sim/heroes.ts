@@ -13,6 +13,7 @@ import { userCapacity } from "./economy";
 import { spawnUnit } from "./entities";
 import { invoke } from "./functions";
 import { distance } from "./movement";
+import { teamCores } from "./placement";
 import { hostile } from "./teams";
 import type { CastCommand, Entity, HeroState, Point, Team, Unit, World } from "./types";
 
@@ -72,6 +73,19 @@ export function castBlocker(world: World, content: Content, team: Team, abilityI
   if (!hero.ranks[abilityId]) return "not learned";
   if ((hero.cooldowns[abilityId] ?? 0) > 0) return "on cooldown";
   return null;
+}
+
+/** Once a second: a hero resting near one of its cores heals (see HeroesDef.coreHeal). */
+function healAtCore(ctx: TickContext, team: Team, state: HeroState): void {
+  const { world, content } = ctx;
+  const heal = content.heroes.coreHeal;
+  if (!heal || world.tick % 20 !== 0 || state.unitId === -1) return;
+  const hero = ctx.byId.get(state.unitId);
+  if (!hero || hero.kind !== "unit" || hero.hp <= 0 || hero.hp >= hero.maxHp) return;
+  if (state.lastHitTick !== undefined && world.tick - state.lastHitTick < heal.quietTicks) return;
+  const home = teamCores(world, content, team).some((core) => distance(core, hero) <= heal.radius + core.radius);
+  if (!home) return;
+  hero.hp = Math.min(hero.maxHp, hero.hp + Math.max(1, Math.round((hero.maxHp * heal.permillePerSecond) / 1000)));
 }
 
 /** Spawn the hero at a core (on founding, and on respawn). */
@@ -144,6 +158,7 @@ export function tickHeroes(ctx: TickContext): void {
   for (const team of world.teams) {
     const state = team.hero;
     if (!state) continue;
+    healAtCore(ctx, team, state);
     for (const ability of Object.keys(state.cooldowns)) {
       if (state.cooldowns[ability]! > 0) state.cooldowns[ability]! -= 1;
     }
