@@ -397,3 +397,7 @@ npm run e2e       # browser smoke test + two-browser co-op against dist/ (needs:
 
 CI runs all four on every pull request, and the deploy workflow runs them
 again before publishing.
+
+## License
+
+[MIT](LICENSE) © 2026 Chris Huber.
