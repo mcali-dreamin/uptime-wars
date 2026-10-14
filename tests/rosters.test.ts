@@ -72,15 +72,16 @@ describe("unit traits", () => {
     const w = world("hyperscaler");
     const ctx = makeContext(w, content);
     const c = core(w);
-    const nest = w.entities.find((e) => e.id === w.teams[1]!.coreId) as Building;
+    // A Botnet Farm: the nest itself is shielded while the farms stand.
+    const farm = w.entities.find((e) => e.kind === "building" && e.defId === content.waves.fortress.farms.building) as Building;
     const mf = spawnUnit(ctx, 0, "mainframe", c, c.x, c.y, "guard");
     const lb = spawnUnit(ctx, 0, "load-balancer", c, c.x, c.y, "guard");
-    const before = nest.hp;
-    dealDamage(ctx, mf, nest, 30);
-    const siege = before - nest.hp;
-    const mid = nest.hp;
-    dealDamage(ctx, lb, nest, 30);
-    expect(siege).toBeGreaterThan(2.5 * (mid - nest.hp));
+    const before = farm.hp;
+    dealDamage(ctx, mf, farm, 30);
+    const siege = before - farm.hp;
+    const mid = farm.hp;
+    dealDamage(ctx, lb, farm, 30);
+    expect(siege).toBeGreaterThan(2.5 * (mid - farm.hp));
   });
 
   it("a Legal Team hit makes an enemy act every other tick for a while", () => {

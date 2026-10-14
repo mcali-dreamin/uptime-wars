@@ -4,7 +4,7 @@ import { creditKill } from "./heroes";
 import { hostile } from "./teams";
 import { GRID_CELL, GRID_STRIDE, type TickContext } from "./context";
 import { regionShield } from "./mechanics";
-import { retaliate } from "./fortress";
+import { nestShielded, retaliate } from "./fortress";
 import { loseUsers } from "./economy";
 import { TILE } from "./map";
 import { hasLineOfSight } from "./nav";
@@ -113,6 +113,11 @@ export function dealDamage(
     target.lastHitTick = world.tick;
     const shield = Math.min(900, regionShield(world, content, target).permille + heroShield(world, target));
     if (shield > 0) damage = Math.max(1, Math.round((damage * (1000 - shield)) / 1000));
+  }
+  // The nest can't be touched while a Botnet Farm stands.
+  if (target.kind === "building" && nestShielded(world, content, target)) {
+    damage = 0;
+    world.events.push({ type: "nest-shielded", team: attacker.team, x: target.x, y: target.y });
   }
   const wasAlive = target.hp > 0;
   target.hp -= damage;

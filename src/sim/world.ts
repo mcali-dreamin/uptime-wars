@@ -18,7 +18,7 @@ import { buildGrid, makeContext, type TickContext } from "./context";
 import type { Content } from "./content";
 import { tickConstruction, tickCooldowns, tickIncome, tickUsers } from "./economy";
 import { foundCore, spawnUnit } from "./entities";
-import { fortify, raiseFarms } from "./fortress";
+import { collapseHorde, fortify, raiseFarms } from "./fortress";
 import { footprintCenter } from "./map";
 import { teamCores } from "./placement";
 import { hordeTeam, humanTeams, type MatchMode } from "./teams";
@@ -193,6 +193,7 @@ function checkOutcome(ctx: TickContext): void {
       team.research = null;
       team.labResearch = null;
       if (team.controller === "human") world.events.push({ type: "offline", team: team.id });
+      if (team.controller === "wave-director") collapseHorde(world, team.id);
     }
   }
   const humans = humanTeams(world);

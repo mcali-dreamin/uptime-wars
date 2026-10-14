@@ -88,7 +88,7 @@
   },
   "malware-nest": {
     "name": "Malware Nest",
-    "description": "Where the crawlers come from. Survive what it sends.",
+    "description": "Where the crawlers come from. Shielded while any Botnet Farm stands: break the farms, then take it offline and the whole botnet goes down.",
     "cost": 0,
     "buildTicks": 0,
     "hp": 4690,

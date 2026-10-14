@@ -335,7 +335,11 @@ export type SimEvent =
   /** The botnet put fallen C2 Servers back up. */
   | { type: "fortified"; wave: number; rebuilt: number }
   /** A Botnet Farm fell: `units` creeps retaliate against (x, y), where `team` hit it from. */
-  | { type: "retaliation"; team: TeamId; x: number; y: number; units: number }
+  | { type: "retaliation"; team: TeamId; x: number; y: number; units: number; farmsLeft: number }
+  /** A hit on the nest bounced off its shield: a Botnet Farm still stands. */
+  | { type: "nest-shielded"; team: TeamId; x: number; y: number }
+  /** The nest fell and the whole botnet went down with it. */
+  | { type: "collapsed"; team: TeamId }
   /** The botnet rebuilt fallen Botnet Farms. */
   | { type: "farms-rebuilt"; wave: number; rebuilt: number }
   /** An infector left the nest for (x, y). */

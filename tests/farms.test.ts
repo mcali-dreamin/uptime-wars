@@ -56,3 +56,71 @@ describe("Botnet Farms", () => {
     expect(farms(world)).toHaveLength(4);
   });
 });
+
+describe("the nest's shield", () => {
+  const nestOf = (world: World) => world.entities.find((e) => e.id === world.teams[1]!.coreId)!;
+  const attackerAt = (world: World) => {
+    const ctx = makeContext(world, content);
+    const nest = nestOf(world);
+    return { ctx, attacker: spawnUnit(ctx, 0, "process", nest, nest.x + 60, nest.y, "guard") };
+  };
+
+  it("takes no damage while any Botnet Farm stands", () => {
+    const world = createWorld(content, SETUP);
+    const nest = nestOf(world);
+    for (const f of farms(world).slice(1)) f.hp = 0;
+    const { ctx, attacker } = attackerAt(world);
+    const hp = nest.hp;
+    dealDamage(ctx, attacker, nest, 500);
+    expect(nest.hp).toBe(hp);
+    expect(world.events.some((e) => e.type === "nest-shielded" && e.team === 0)).toBe(true);
+  });
+
+  it("drops when the last farm falls, and the retaliation says so", () => {
+    const world = createWorld(content, SETUP);
+    const nest = nestOf(world);
+    const [last, ...rest] = farms(world);
+    for (const f of rest) f.hp = 0;
+    const { ctx, attacker } = attackerAt(world);
+    last!.hp = 1;
+    dealDamage(ctx, attacker, last!, 50);
+    expect(world.events.find((e) => e.type === "retaliation")).toMatchObject({ farmsLeft: 0 });
+    const hp = nest.hp;
+    dealDamage(ctx, attacker, nest, 500);
+    expect(nest.hp).toBeLessThan(hp);
+  });
+
+  it("comes back up when the botnet rebuilds its farms", () => {
+    const world = createWorld(content, SETUP);
+    for (const f of farms(world)) f.hp = 0;
+    step(world, content);
+    world.waves.nextIndex = content.waves.fortress.farms.rebuildEvery - 1;
+    world.waves.nextWaveTick = world.tick + 1;
+    world.waves.nextTrickleTick = 1e9;
+    for (let i = 0; i < 5 && farms(world).length < 4; i++) step(world, content);
+    const { ctx, attacker } = attackerAt(world);
+    const nest = nestOf(world);
+    const hp = nest.hp;
+    dealDamage(ctx, attacker, nest, 500);
+    expect(nest.hp).toBe(hp);
+  });
+
+  it("taking the nest offline collapses the whole botnet and wins", () => {
+    const world = createWorld(content, SETUP);
+    world.waves.nextWaveTick = 1e9;
+    for (let i = 0; i < 400; i++) step(world, content);
+    world.waves.pending.push({ tick: world.tick + 100, unit: "bot", packId: 0, wave: 1 });
+    expect(world.entities.filter((e) => e.team === 1 && e.hp > 0).length).toBeGreaterThan(5);
+    for (const f of farms(world)) f.hp = 0;
+    step(world, content);
+    const { ctx, attacker } = attackerAt(world);
+    const nest = nestOf(world);
+    nest.hp = 1;
+    dealDamage(ctx, attacker, nest, 50);
+    step(world, content);
+    expect(world.outcome).toMatchObject({ winners: [0], reason: "nest-offline" });
+    expect(world.entities.filter((e) => e.team === 1)).toHaveLength(0);
+    expect(world.waves.pending).toHaveLength(0);
+    expect(world.events.some((e) => e.type === "collapsed")).toBe(true);
+  });
+});

@@ -68,6 +68,9 @@ body {
   cursor: help;
 }
 
+#nest-stat.exposed #nest {
+  color: #7dffa0;
+}
 #compute-stat.overloaded #compute {
   color: #f87171;
   font-weight: bold;
