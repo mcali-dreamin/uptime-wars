@@ -15,7 +15,7 @@ import { PING_MS, SHOT_TTL_MS, type Frame, type WorldView } from "../frame";
 import { HIGHLIGHT, INVALID, VALID, teamColor } from "../palette";
 import { Bars, Bolts, Particles, Rings } from "./effects";
 import { FogTexture } from "./fog3d";
-import { Models, animate } from "./models";
+import { roleOf, Models, animate } from "./models";
 import { Terrain3D } from "./terrain3d";
 import { NetworkOverlay } from "./network3d";
 
@@ -378,7 +378,11 @@ export class World3D implements WorldView {
     const size = entity.kind === "unit" ? entity.radius : entity.footprint;
     const team = world.teams[entity.team];
     const look = (team && content.races[team.raceId]?.look) ?? "default";
-    const object = this.models.make(entity.defId, color, size, entity.kind === "unit", look);
+    const def = entity.kind === "building" ? content.buildings[entity.defId] : undefined;
+    const role = def && team ? roleOf(def, isCore(content, team, entity)) : undefined;
+    const made = def?.spawn?.unit ?? def?.invoke?.unit;
+    const emblem = made ? { unit: made, size: content.units[made]!.size } : undefined;
+    const object = this.models.make(entity.defId, color, size, entity.kind === "unit", look, role, def?.tier ?? 0, emblem);
     object.userData.entityId = entity.id;
     object.traverse((node) => {
       if ((node as THREE.Mesh).isMesh) node.userData.material = (node as THREE.Mesh).material;

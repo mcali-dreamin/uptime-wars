@@ -37,6 +37,41 @@ type Mat =
 /** A race's look (see RaceDef.look), or "default" for the botnet and anything without one. */
 export type Look = "scrappy" | "monolith" | "ephemeral" | "garden" | "default";
 
+/**
+ * What a building is for. Race decides what it's made of; role decides its
+ * shape and its signal light, so you can tell a tower from a barracks from a
+ * generator at a glance in any race:
+ * - spawner: wide and low, with a big lit door (team colour) on the camera side
+ * - tower:   the tallest, slimmest thing in the base, with a red beacon on top
+ * - power:   low and flat, with an amber band of light round its base
+ * - users:   a cyan screen, tall
+ * - network: a thin mast with a white tip
+ * - lab:     a violet ring turning over the top
+ */
+export type Role = "spawner" | "tower" | "power" | "users" | "network" | "lab" | "wall" | "core";
+
+/** The role a building plays, from what its definition says it does. */
+export function roleOf(def: { spawn?: unknown; invoke?: unknown; attack?: unknown; compute?: number; income?: unknown; userCapacity?: number; buildRadius?: number; blocks?: boolean }, isCore: boolean): Role {
+  if (isCore) return "core";
+  if (def.blocks) return "wall";
+  if (def.spawn || def.invoke) return "spawner";
+  if (def.attack) return "tower";
+  if (def.compute || def.income) return "power";
+  if (def.userCapacity) return "users";
+  if (def.buildRadius) return "network";
+  return "lab";
+}
+
+/** Target size of each role's body (world units; a tile is 48), and its signal colour. */
+const ROLE_SHAPE: Partial<Record<Role, { width: number; height: number; light: number | null }>> = {
+  spawner: { width: 46, height: 30, light: null },
+  tower: { width: 28, height: 96, light: 0xff3b3b },
+  power: { width: 46, height: 20, light: 0xffb020 },
+  users: { width: 38, height: 68, light: 0x22d3ee },
+  network: { width: 16, height: 60, light: 0xffffff },
+  lab: { width: 40, height: 42, light: 0xa855f7 },
+};
+
 export class Models {
   private readonly templates = new Map<string, THREE.Group>();
   private readonly materials = new Map<string, THREE.Material>();
@@ -49,14 +84,28 @@ export class Models {
   constructor(private readonly fog: FogTexture) {}
 
   /** A fresh instance of an entity's model. */
-  make(defId: string, team: number, size: number, isUnit: boolean, look: Look = "default"): THREE.Group {
+  make(
+    defId: string,
+    team: number,
+    size: number,
+    isUnit: boolean,
+    look: Look = "default",
+    role?: Role,
+    tier = 0,
+    emblem?: { unit: string; size: number },
+  ): THREE.Group {
     // Keyed by colour and look too: a new match may bring a new colour or race.
-    const key = `${defId}:${team}:${size}:${look}`;
+    const key = `${defId}:${team}:${size}:${look}:${role ?? ""}:${tier}:${emblem?.unit ?? ""}`;
     let template = this.templates.get(key);
     if (!template) {
       this.look = look;
       template = isUnit ? this.unit(defId, team, size) : this.building(defId, team);
+      // Players' buildings take their role's shape (the botnet keeps its own).
+      const shaped = !isUnit && role !== undefined && look !== "default" && ROLE_SHAPE[role] !== undefined;
+      if (shaped) template = this.shapeForRole(template, role!, tier);
       this.dress(template, defId, team, isUnit);
+      if (shaped) this.signal(template, role!, team, tier);
+      if (shaped && emblem) this.emblem(template, emblem, team);
       this.look = "default";
       template.traverse((node) => {
         if ((node as THREE.Mesh).isMesh) {
@@ -254,6 +303,120 @@ export class Models {
     return null;
   }
 
+  // --- role shapes ----------------------------------------------------------
+
+  /**
+   * Squash or stretch a building toward its role's proportions. The model goes
+   * in a wrapper so the world view can still scale the whole thing (while
+   * deploying, and for core tiers). Clamped so details never turn to mush.
+   * Higher-tier buildings are a little bigger: they're the expensive ones.
+   */
+  private shapeForRole(model: THREE.Group, role: Role, tier: number): THREE.Group {
+    const target = ROLE_SHAPE[role]!;
+    const box = new THREE.Box3().setFromObject(model);
+    const w = Math.max(1, Math.max(box.max.x - box.min.x, box.max.z - box.min.z));
+    const h = Math.max(1, box.max.y);
+    const clamp = (v: number) => Math.min(2.2, Math.max(0.45, v));
+    const grow = 1 + 0.12 * tier;
+    const sxz = clamp((target.width * (role === "tower" || role === "network" ? 1 : grow)) / w);
+    const sy = clamp((target.height * grow) / h);
+    const outer = new THREE.Group();
+    model.scale.set(sxz, sy, sxz);
+    outer.add(model);
+    return outer;
+  }
+
+  /** The role's signal light, in a colour that means the same thing in every race. */
+  private signal(g: THREE.Group, role: Role, team: number, tier: number): void {
+    const box = new THREE.Box3().setFromObject(g);
+    const w = box.max.x - box.min.x;
+    const d = box.max.z - box.min.z;
+    const h = box.max.y;
+    const light = ROLE_SHAPE[role]!.light;
+    const lit = light === null ? this.mat("glow", team) : this.roleLight(light);
+    const add = (mesh: THREE.Mesh) => {
+      mesh.material = lit;
+      mesh.userData.noShadow = true;
+      return mesh;
+    };
+    switch (role) {
+      case "spawner": {
+        // A wide lit door on the camera side (+z), and a lintel over it. Tier 2 gets two.
+        const doors = tier >= 2 ? [-w * 0.2, w * 0.2] : [0];
+        for (const x of doors) {
+          add(this.box(g, team, "glow", w * (tier >= 2 ? 0.28 : 0.5), h * 0.55, 1, x, 0, box.max.z + 0.6));
+          this.box(g, team, "dark", w * (tier >= 2 ? 0.34 : 0.6), 2, 2, x, h * 0.55, box.max.z + 0.8);
+        }
+        return;
+      }
+      case "tower": {
+        // A beacon on a short mast, and a ring at the top: it shoots.
+        this.cyl(g, team, "dark", 1.2, 1.6, 10, 6, 0, h, 0);
+        const beacon = add(this.shape(g, team, "glow", "role-beacon", () => new THREE.SphereGeometry(4.5, 12, 8), 0, h + 13, 0));
+        anim(beacon, { type: "pulse", amount: 0.25, speed: 4 });
+        const ring = add(this.shape(g, team, "glow", `role-ring:${Math.round(w)}`, () => new THREE.TorusGeometry(Math.max(w, d) * 0.55, 1, 6, 24), 0, h - 1, 0));
+        ring.rotation.x = Math.PI / 2;
+        return;
+      }
+      case "power": {
+        // A band of amber light round the base: it powers things.
+        const ring = add(this.shape(g, team, "glow", `role-band:${Math.round(w)}`, () => new THREE.TorusGeometry(Math.max(w, d) * 0.62, 1.4, 6, 32), 0, 2, 0));
+        ring.rotation.x = Math.PI / 2;
+        add(this.box(g, team, "glow", w * 0.4, 1.5, d * 0.4, 0, h, 0));
+        return;
+      }
+      case "users": {
+        // A cyan screen facing the camera, raised: people use this.
+        add(this.box(g, team, "glow", w * 0.7, h * 0.3, 1, 0, h * 0.62, box.max.z + 0.6));
+        return;
+      }
+      case "network": {
+        // A white tip on a thin mast: it reaches.
+        this.cyl(g, team, "dark", 1, 1.4, 14, 6, 0, h, 0);
+        const tip = add(this.shape(g, team, "glow", "role-tip", () => new THREE.OctahedronGeometry(3.5), 0, h + 17, 0));
+        anim(tip, { type: "spin", speed: 1.5, axis: "y" });
+        return;
+      }
+      case "lab": {
+        // A violet ring turning over the top: research happens here.
+        const ring = add(this.shape(g, team, "glow", `role-halo:${Math.round(w)}`, () => new THREE.TorusGeometry(Math.max(w, d) * 0.45, 1.3, 8, 28), 0, h + 8, 0));
+        ring.rotation.x = Math.PI / 2.6;
+        anim(ring, { type: "spin", speed: 0.8, axis: "z" });
+        return;
+      }
+    }
+  }
+
+  /**
+   * A spawner shows what it makes: a small copy of its unit turning on a lit
+   * pad on the roof. That's what tells one barracks from another.
+   */
+  private emblem(g: THREE.Group, emblem: { unit: string; size: number }, team: number): void {
+    const h = new THREE.Box3().setFromObject(g).max.y;
+    const pad = this.cyl(g, team, "glow", 12, 13, 1.2, 16, 0, h, 0);
+    pad.userData.noShadow = true;
+    const figure = this.unit(emblem.unit, team, emblem.size);
+    const box = new THREE.Box3().setFromObject(figure);
+    const span = Math.max(1, box.max.x - box.min.x, box.max.y - box.min.y, box.max.z - box.min.z);
+    const holder = new THREE.Group();
+    holder.position.y = h + 1.2;
+    figure.scale.setScalar(26 / span);
+    holder.add(figure);
+    anim(holder, { type: "spin", speed: 0.7, axis: "y" });
+    g.add(holder);
+  }
+
+  private readonly roleLights = new Map<number, THREE.Material>();
+
+  private roleLight(color: number): THREE.Material {
+    let material = this.roleLights.get(color);
+    if (!material) {
+      material = this.fog.apply(new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.8, roughness: 0.3 }));
+      this.roleLights.set(color, material);
+    }
+    return material;
+  }
+
   // --- race dressing --------------------------------------------------------
 
   /** Add the look's details around a finished model, sized to its bounds. */
@@ -296,9 +459,9 @@ export class Models {
     if (this.look === "garden") {
       // Walls carry their own hedge; everything else gets a trimmed hedge on top.
       if (isUnit || defId === "garden-wall" || defId === "garden-gate") return;
-      this.box(g, team, "hedge", Math.max(8, w * 0.7), 5, Math.max(8, d * 0.7), 0, h, 0);
-      if (w > 30) {
-        for (const [cx, cz] of [[1, 1], [-1, -1]] as const) {
+      // Topiaries at the corners, never on the roof: from above the roof is what tells buildings apart.
+      {
+        for (const [cx, cz] of [[1, 1], [-1, 1]] as const) {
           this.cyl(g, team, "frame", 2.5, 3, 4, 8, cx * (w / 2 + 4), 0, cz * (d / 2 + 4));
           this.shape(g, team, "hedge", "topiary", () => new THREE.SphereGeometry(5, 8, 6), cx * (w / 2 + 4), 9, cz * (d / 2 + 4));
         }
@@ -307,9 +470,7 @@ export class Models {
     }
     if (this.look === "ephemeral") {
       if (isUnit) return;
-      // A wireframe cage round the whole thing, with floating corner nodes.
-      const cage = this.box(g, team, "frame", w + 6, h + 4, d + 6, 0, 0, 0);
-      cage.userData.noShadow = true;
+      // Floating corner nodes (no cage: it hid every building's shape).
       for (const [cx, cz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]] as const) {
         const node = this.shape(g, team, "glow", "eph-node", () => new THREE.OctahedronGeometry(2), cx * (w / 2 + 3), h + 6, cz * (d / 2 + 3));
         anim(node, { type: "bob", amount: 1.5, speed: 2, base: h + 6 });
@@ -325,17 +486,8 @@ export class Models {
     }
     // A chrome plinth under it...
     this.box(g, team, "chrome", w + 8, 2.5, d + 8, 0, 0, 0);
-    // ...white light strips round the top edges...
-    for (const [sx, sz, lw, ld] of [[0, d / 2 + 1, w + 2, 1.2], [0, -d / 2 - 1, w + 2, 1.2], [w / 2 + 1, 0, 1.2, d + 2], [-w / 2 - 1, 0, 1.2, d + 2]] as const) {
-      this.box(g, team, "white", lw, 1.2, ld, sx, h - 2, sz);
-    }
-    // ...and chrome corner posts with lit seams on anything big enough.
-    if (w > 22 && h > 24) {
-      for (const [cx, cz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]] as const) {
-        this.box(g, team, "chrome", 2.2, h - 2, 2.2, cx * (w / 2 + 1.2), 2.5, cz * (d / 2 + 1.2));
-        this.box(g, team, "white", 0.6, h - 8, 0.6, cx * (w / 2 + 2.6), 5, cz * (d / 2 + 2.6));
-      }
-    }
+    // ...and a white light strip along its front edge (not round the roof: that turned every building into the same lit square).
+    this.box(g, team, "white", w + 2, 1.2, 1.2, 0, 2.5, d / 2 + 4);
   }
 
   // --- race silhouettes ----------------------------------------------------
