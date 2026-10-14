@@ -9,8 +9,25 @@ import { unitInTheWay } from "./walls";
 import { raceModifiers, tierBlocker, tierDef } from "./tiers";
 import { bonus } from "./upgrades";
 
-export function buildCost(content: Content, raceId: string, buildingId: string): number {
+/** A building's price before any you already own (race modifier applied). */
+export function baseCost(content: Content, raceId: string, buildingId: string): number {
   return Math.round(content.buildings[buildingId]!.cost * content.races[raceId]!.modifiers.costMultiplier);
+}
+
+/** How many of a building a team has standing (or under construction). */
+export function owned(world: World, teamId: TeamId, buildingId: string): number {
+  let n = 0;
+  for (const e of world.entities) if (e.kind === "building" && e.team === teamId && e.defId === buildingId && e.hp > 0) n += 1;
+  return n;
+}
+
+/** What the next one costs: each one you already own adds costGrowthPermille. */
+export function buildCost(world: World, content: Content, teamId: TeamId, buildingId: string): number {
+  const team = world.teams[teamId]!;
+  const def = content.buildings[buildingId]!;
+  const growth = def.costGrowthPermille ?? content.economy.costGrowthPermille ?? 0;
+  const base = baseCost(content, team.raceId, buildingId);
+  return Math.round((base * (1000 + growth * owned(world, teamId, buildingId))) / 1000);
 }
 
 export function isOccupied(world: World, col: number, row: number, footprint: number): boolean {
@@ -42,7 +59,7 @@ export function canPlace(
   buildingId: string,
   col: number,
   row: number,
-  cost = buildCost(content, world.teams[teamId]!.raceId, buildingId),
+  cost = buildCost(world, content, teamId, buildingId),
 ): string | null {
   const team = world.teams[teamId]!;
   const race = content.races[team.raceId]!;

@@ -70,7 +70,7 @@ export class BuildBar {
       const index = this.session.race.buildings.indexOf(id);
       if (index >= 0) {
         const detail = button.querySelector("small")!;
-        const text = locked ? `${index + 1} · ${locked}` : `${index + 1} · ${buildCost(content, team.raceId, id)}`;
+        const text = locked ? `${index + 1} · ${locked}` : `${index + 1} · ${buildCost(this.session.world, content, this.session.local, id)}`;
         if (detail.textContent !== text) detail.textContent = text;
       }
       button.classList.toggle("selected", id === selected);
@@ -94,7 +94,7 @@ export class BuildBar {
       this.root.append(this.button(FOUND_BUTTON, "Deploy core", "C"));
     } else if (mode === "build") {
       race.buildings.forEach((id, index) => {
-        const cost = buildCost(content, this.session.team.raceId, id);
+        const cost = buildCost(this.session.world, content, this.session.local, id);
         this.root.append(this.button(id, content.buildings[id]!.name, `${index + 1} · ${cost}`));
       });
     } else {

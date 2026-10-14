@@ -1,6 +1,6 @@
 // Top bar numbers, the status line, and the hint line over the map.
 
-import { TICK_RATE, computeBalance, hashWorld, incomeRate, isCore, previewWave, userCapacity } from "../sim";
+import { TICK_RATE, threatPermille, computeBalance, hashWorld, incomeRate, isCore, previewWave, userCapacity } from "../sim";
 import { groundOrderLabel, leftClickOrders, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { $ } from "./dom";
@@ -32,6 +32,7 @@ export class Hud {
   private readonly wave = $("wave");
   private readonly nextWave = $("next-wave");
   private readonly status = $("status");
+  private readonly threat = $("threat");
   private readonly countdown = $("countdown");
   private readonly countdownLabel = $("countdown-label");
   private readonly countdownTime = $("countdown-time");
@@ -61,6 +62,7 @@ export class Hud {
     this.wave.textContent = String(world.waves.nextIndex);
     this.nextWave.textContent = `${Math.max(0, Math.ceil((world.waves.nextWaveTick - world.tick) / TICK_RATE))}s`;
     this.updatePreview(world.waves.nextIndex + 1);
+    this.updateThreat();
     this.updateCountdown();
     if (!world.outcome) {
       const waiting = this.session.waitingOn().filter((team) => team !== this.session.local);
@@ -122,6 +124,13 @@ export class Hud {
       "Compute is also your army cap: a spawner only adds a unit if its upkeep fits in what's free, so more spawners reinforce faster but never field more. " +
       "Generators are limited per core tier: tech up the core to raise the cap. " +
       "Over capacity (users growing past it), users stop arriving and start leaving, and your towers, spawners and research slow down.";
+  }
+
+  /** How much your base has raised the stakes, on the preview line. */
+  private updateThreat(): void {
+    const permille = threatPermille(this.session.world, this.session.content);
+    const text = permille > 1050 ? `Threat ×${(permille / 1000).toFixed(1)}` : "";
+    if (this.threat.textContent !== text) this.threat.textContent = text;
   }
 
   /** What the next wave brings: its name, its creeps (new ones marked), and any boss. */

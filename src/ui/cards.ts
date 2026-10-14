@@ -83,7 +83,10 @@ export function buildingDetail(content: Content, raceId: string, buildingId: str
   if (def.buildRadius) stats.push(`Extends your network: you can build within ${def.buildRadius} tiles of it`);
   stats.push(`${def.hp} HP, ${def.armor} armor`);
   if (def.buildable) {
-    stats.push(`Costs $${Math.round(def.cost * race.modifiers.costMultiplier)}, builds in ${seconds(def.buildTicks)}`);
+    const growth = def.costGrowthPermille ?? content.economy.costGrowthPermille ?? 0;
+    stats.push(
+      `Costs $${Math.round(def.cost * race.modifiers.costMultiplier)}${growth ? `, +${growth / 10}% for each one you already own` : ""}, builds in ${seconds(def.buildTicks)}`,
+    );
   }
   return { title: def.name, description: def.description, stats };
 }

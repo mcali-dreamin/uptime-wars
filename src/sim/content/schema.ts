@@ -92,6 +92,8 @@ export interface BuildingDef {
   gate?: boolean;
   /** Users this building can serve. Your total capacity caps your user count. */
   userCapacity?: number;
+  /** Each one you already own makes the next cost this much more, permille (default economy.costGrowthPermille). */
+  costGrowthPermille?: number;
   /** Needs this core tier (index into economy.tiers; 0 = from the start). */
   tier?: number;
   /** At most this many per player, by core tier (counting ones under construction). */
@@ -196,6 +198,12 @@ export interface WavesDef {
   /** ...the first incident this long after it... */
   firstIncidentTicks: number;
   /**
+   * The botnet notices a big base: incidents scale by sqrt(worth / referenceWorth),
+   * at least 1 and at most maxScale, where worth is what the players online
+   * have built (at base price) plus the $ they're sitting on, averaged.
+   */
+  threat?: { referenceWorth: number; maxScale: number };
+  /**
    * The first incident is the opening fight: a small one (`budget` points)
    * that comes out of the fog `entryDistance` px from each player's core,
    * toward the nest, and marches straight in. So the countdown means something.
@@ -272,6 +280,8 @@ export interface EconomyDef {
   minArrivalsPerSecond: number;
   /** $ per user per second. */
   revenuePerUserPerSecond: number;
+  /** Each building of a kind you own makes the next one cost this much more, permille. */
+  costGrowthPermille: number;
   /**
    * Compute is capacity, not money: buildings supply it, users and units use
    * it. Over capacity, the overload (the share of demand you can't serve)

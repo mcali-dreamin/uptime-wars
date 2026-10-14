@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createWorld, forkCost, queueCommand, regionShield, step, type Building, type World } from "../src/sim";
+import { buildCost, createWorld, forkCost, queueCommand, regionShield, step, type Building, type World } from "../src/sim";
 import { makeContext } from "../src/sim/context";
 import { dealDamage } from "../src/sim/combat";
 import { content, planBuildOrder } from "./fixtures";
@@ -26,7 +26,8 @@ describe("Open Source: forks", () => {
     const { world, built } = base("open-source", ["server-rack"]);
     const rack = built[0]!;
     const price = forkCost(world, content, 0, rack)!;
-    expect(price).toBe(Math.floor(content.buildings["server-rack"]!.cost / 2));
+    // Half of what the next one would cost (and you already own one).
+    expect(price).toBe(Math.floor(buildCost(world, content, 0, "server-rack") / 2));
     const [spot] = planBuildOrder(content, setup("open-source"), [[0, "server-rack"], [0, "server-rack"]]).slice(1);
     const before = world.teams[0]!.money;
     queueCommand(world, { type: "fork", tick: world.tick, team: 0, sourceId: rack.id, col: spot!.col, row: spot!.row });

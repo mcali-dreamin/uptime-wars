@@ -138,6 +138,13 @@ The HUD shows it as in use / supplied. It can go over, and the further over
 you are the worse it gets: no new users arrive, users leave in proportion, and
 your towers, spawners and research all slow by the same share.
 
+**Spending is a choice.** Every building of a kind costs 10% more than the
+last for each one you already own (network buildings and walls excepted), so
+spamming one thing gets expensive fast. And the botnet notices a big base:
+incidents grow with the square root of what you've built and banked
+(`waves.json` → `threat`, up to ×3), shown as "Threat ×1.6" next to the
+incident preview. Sitting on a pile of $ makes you a target.
+
 **Users** are why you're online. They arrive while your core is up and grow
 toward your capacity (the core serves 40; each Web App adds 60), as long as
 you have the compute to serve them. Every hit your core or a Web App takes
