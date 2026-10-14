@@ -14,6 +14,9 @@ import { PING_MS, SHOT_TTL_MS, type Ghost, type Shot, type WorldView } from "./f
 import { Minimap } from "./minimap";
 import { World2D } from "./pixi/world2d";
 
+/** How often a bounced shot on the shielded nest repeats its banner. */
+const SHIELD_NOTICE_MS = 8000;
+
 export class Renderer {
   readonly app = new Application();
   readonly camera = new Camera();
@@ -29,6 +32,7 @@ export class Renderer {
     style: { fill: 0xd6e2f0, fontFamily: "monospace", fontSize: 26, fontWeight: "bold" },
   });
   private bannerAge = Infinity;
+  private shieldNoticeAt = -Infinity;
   private previous = new Map<number, { x: number; y: number }>();
   private shots: Shot[] = [];
   /** Order markers: a ring that shrinks where you just sent something. */
@@ -91,7 +95,11 @@ export class Renderer {
         this.ping(event.x, event.y);
       }
       if (event.type === "retaliation" && event.team === this.localTeam) {
-        this.showBanner(`Botnet Farm down · ${event.units} creeps retaliating`);
+        this.showBanner(
+          event.farmsLeft > 0
+            ? `Botnet Farm down · ${event.units} creeps retaliating · ${event.farmsLeft} left shielding the Nest`
+            : `Last Botnet Farm down · ${event.units} creeps retaliating · the Nest is exposed`,
+        );
         this.ping(event.x, event.y);
       }
       if (event.type === "infecting") {
@@ -102,7 +110,13 @@ export class Renderer {
         this.showBanner("The botnet is building an Infected Node");
         this.ping(event.x, event.y);
       }
-      if (event.type === "farms-rebuilt") this.showBanner(`The botnet rebuilt ${event.rebuilt} Botnet Farm${event.rebuilt > 1 ? "s" : ""}`);
+      if (event.type === "farms-rebuilt") this.showBanner(`The botnet rebuilt ${event.rebuilt} Botnet Farm${event.rebuilt > 1 ? "s" : ""} · the Nest is shielded again`);
+      // Every bounced shot is an event: say it once in a while, not every frame.
+      if (event.type === "nest-shielded" && event.team === this.localTeam && this.shieldNoticeAt + SHIELD_NOTICE_MS < performance.now()) {
+        this.shieldNoticeAt = performance.now();
+        this.showBanner("The Nest is shielded · destroy every Botnet Farm first");
+      }
+      if (event.type === "collapsed") this.showBanner("Nest offline · the botnet collapses");
       if (event.type === "fortified") this.showBanner(`The botnet rebuilt ${event.rebuilt} C2 Server${event.rebuilt > 1 ? "s" : ""}`);
       if (event.type === "wave") {
         // The opening incident comes in right outside: say so, and mark where.

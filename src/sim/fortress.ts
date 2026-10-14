@@ -10,6 +10,7 @@ import { clusters } from "./terrain/elevation";
 import { FORTRESS_RADIUS } from "./terrain/params";
 import { TILE_OPEN, TILE_RAMP, type Terrain, type TilePoint } from "./terrain/tiles";
 import type { TickContext } from "./context";
+import { isCore } from "./placement";
 import { hostile } from "./teams";
 import type { Entity, TeamId, World } from "./types";
 import { planWave } from "./waves";
@@ -162,6 +163,38 @@ export function farmsDown(world: World, content: Content, team: TeamId): number 
   return Math.max(0, farmSpots(world.terrain).length - standing);
 }
 
+/** Botnet Farms still standing for this team. */
+export function farmsStanding(world: World, content: Content, team: TeamId): number {
+  const { building } = content.waves.fortress.farms;
+  let standing = 0;
+  for (const e of world.entities) if (e.kind === "building" && e.team === team && e.defId === building && e.hp > 0) standing += 1;
+  return standing;
+}
+
+/**
+ * The nest's shield: it takes no damage while any Botnet Farm stands. Break
+ * the farms, then the nest. Farms the botnet rebuilds put the shield back up.
+ */
+export function nestShielded(world: World, content: Content, target: Entity): boolean {
+  const team = world.teams[target.team];
+  if (!team || team.controller !== "wave-director" || !isCore(content, team, target)) return false;
+  return farmsStanding(world, content, team.id) > 0;
+}
+
+/**
+ * The nest fell: the botnet goes down with it. Every building and creep it
+ * still has collapses, and nothing more comes out.
+ */
+export function collapseHorde(world: World, team: TeamId): void {
+  for (const e of world.entities) {
+    if (e.team !== team || e.hp <= 0) continue;
+    e.hp = 0;
+    world.events.push({ type: "death", id: e.id, x: e.x, y: e.y, team: e.team, kind: e.kind, defId: e.defId });
+  }
+  world.waves.pending = [];
+  world.events.push({ type: "collapsed", team });
+}
+
 /**
  * A farm fell: the hornet's nest. A retaliation wave, a share of the current
  * wave's size, comes out of the nest as one pack and marches on the spot the
@@ -181,5 +214,6 @@ export function retaliate(ctx: TickContext, attacker: Entity): void {
   for (const unit of units) world.waves.pending.push({ tick: world.tick, unit, packId, wave });
   world.waves.pending.sort((a, b) => a.tick - b.tick);
   world.waves.packs[packId] = { x: attacker.x, y: attacker.y };
-  world.events.push({ type: "retaliation", team: attacker.team, x: attacker.x, y: attacker.y, units: units.length });
+  const farmsLeft = farmsStanding(world, content, horde.id);
+  world.events.push({ type: "retaliation", team: attacker.team, x: attacker.x, y: attacker.y, units: units.length, farmsLeft });
 }

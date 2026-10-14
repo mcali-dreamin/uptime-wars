@@ -1,6 +1,6 @@
 // Top bar numbers, the status line, and the hint line over the map.
 
-import { TICK_RATE, threatPermille, computeBalance, hashWorld, incomeRate, isCore, previewWave, userCapacity } from "../sim";
+import { TICK_RATE, threatPermille, computeBalance, farmSpots, farmsStanding, hashWorld, hordeTeam, incomeRate, isCore, previewWave, userCapacity } from "../sim";
 import { groundOrderLabel, leftClickOrders, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { $ } from "./dom";
@@ -29,6 +29,8 @@ export class Hud {
   private lost = 0;
   private lostAt = -Infinity;
   private readonly core = $("core");
+  private readonly nest = $("nest");
+  private readonly nestStat = $("nest-stat");
   private readonly wave = $("wave");
   private readonly nextWave = $("next-wave");
   private readonly status = $("status");
@@ -59,6 +61,7 @@ export class Hud {
         ? "not deployed"
         : "offline";
     this.uptime.textContent = clock((world.outcome?.tick ?? world.tick) / TICK_RATE);
+    this.updateNest();
     this.wave.textContent = String(world.waves.nextIndex);
     this.nextWave.textContent = `${Math.max(0, Math.ceil((world.waves.nextWaveTick - world.tick) / TICK_RATE))}s`;
     this.updatePreview(world.waves.nextIndex + 1);
@@ -124,6 +127,22 @@ export class Hud {
       "Compute is also your army cap: a spawner only adds a unit if its upkeep fits in what's free, so more spawners reinforce faster but never field more. " +
       "Generators are limited per core tier: tech up the core to raise the cap. " +
       "Over capacity (users growing past it), users stop arriving and start leaving, and your towers, spawners and research slow down.";
+  }
+
+  /** The win condition, always in view: farms left, then the nest's health. */
+  private updateNest(): void {
+    const { world, content } = this.session;
+    const horde = hordeTeam(world);
+    const nest = horde ? world.entities.find((e) => e.hp > 0 && isCore(content, horde, e)) : undefined;
+    let text: string;
+    if (!horde || !nest) text = "offline";
+    else {
+      const standing = farmsStanding(world, content, horde.id);
+      const total = farmSpots(world.terrain).length;
+      text = standing > 0 ? `shielded · ${total - standing}/${total} farms down` : `exposed · ${Math.ceil(nest.hp)} / ${nest.maxHp}`;
+    }
+    if (this.nest.textContent !== text) this.nest.textContent = text;
+    this.nestStat.classList.toggle("exposed", text.startsWith("exposed"));
   }
 
   /** How much your base has raised the stakes, on the preview line. */
