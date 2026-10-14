@@ -2,7 +2,7 @@
 // the build bar or with G; pauses the match while open.
 
 import type { Session } from "../game/session";
-import { TERRAIN_GUIDE, perkLines, buildingDetail, unitDetail, upgradeDetail, type GuideEntry } from "./cards";
+import { TERRAIN_GUIDE, perkLines, rankLines, buildingDetail, unitDetail, upgradeDetail, type GuideEntry } from "./cards";
 import { $ } from "./dom";
 import { upgradesAt } from "../sim";
 
@@ -22,7 +22,7 @@ const CONTROLS: [string, string][] = [
   ["Start", "Your deploy agent starts selected. Click the ground to walk it, then press C and click to deploy your core."],
   ["Build", "Number keys or click a button, then click inside your network (the green rings). Shift-click to place several."],
   ["Network", "Cores, Mesh Nodes (Open Source) and Edge PoPs (Hyperscaler) each extend where you can build. Build outward to hold ramps and push toward the nest."],
-  ["Redundancy", "Build more cores inside your network. If your main core falls the next takes over; you only go down when every core is down."],
+  ["Redundancy", "Build more cores inside your network. If your main core falls the next takes over; you only go down when every core is down. Extra cores add reach, not compute: only one core's compute counts."],
   ["Select", "Click one of your buildings or units. Drag a box to select units; Shift adds to the group. Double-click a unit: every one of its kind on screen. Z: your whole army. Q: your hero."],
   ["Army", "With units selected, right-click the ground (or an enemy) to attack-move: they fight whatever they meet on the way, then hold the spot. F then click: a plain move that ignores enemies, for retreating. T then click works like right-click. Units you've sent stay put when you change a rally."],
   ["Hero", "Right-click to move or attack, 1-4 to cast, Shift+1-4 to learn. Hurt? Bring it home: near any of your cores it heals 4% a second once nothing is hitting it. Full rundown in the Heroes tab."],
@@ -39,6 +39,7 @@ const CONTROLS: [string, string][] = [
   ["Camera", "WASD / arrows, the window edge, or drag with the middle button or Alt held to pan. Wheel or +/- to zoom. Click the minimap to jump. Space: back home."],
   ["Other", "M: sound on / effects only / off · Esc: deselect · P: pause · E: edge scroll on/off · G: this guide · R: new match after an outage"],
   ["Army cap", "Compute caps your army. Every unit uses some; a spawner only adds one if there's room. More spawners reinforce faster, they don't make your army bigger. Generators are limited per core tier (Solar Arrays: 2, then 4, then 7), so to field a bigger army, tech up the core. The Compute stat says 'army cap' when you're at it."],
+  ["Ranks", "The other way past the army cap: better units. Select a spawner (or function) and press U (or Upgrade on its card) to rank it up in place: rank 1 at Data Center, rank 2 at Region. It stops spawning while it refits, then makes tougher, harder-hitting units that use more compute each but are worth more per compute. Each race ranks its own way: see the Races tab."],
   ["$", "Money. Users pay it every second, and everything is bought with it: buildings, research, kills pay bounties in it. Hover the +/s next to $ to see where it comes from."],
   ["Users", "Users are your income. They arrive while your core is up and grow toward your capacity (core + Web Apps), as long as you have the compute to serve them. Every hit your core or a Web App takes drives some away (the red −N by Users); towers and racks are what you put in between. And a bigger base makes more traffic: crawlers sense you from further away the more you build, the more users you have, and the longer you're online."],
   ["Compute", "Capacity, not money. Your core, Solar Arrays and Power Plants supply it; every user and unit uses some (shown as in use / supplied). It can go over. The further over you are, the worse it gets: no new users arrive and some leave each second, and your towers, spawners and research all run slower by the same share (shown as % slow). Build generators to grow."],
@@ -162,7 +163,7 @@ export class Guide {
         return this.session.playable.map((id) => {
           const race = content.races[id]!;
           const roster = race.buildings.map((b) => content.buildings[b]!.name).join(", ");
-          return entry({ title: race.name, description: race.specialty, stats: [roster, ...perkLines(content, id)] });
+          return entry({ title: race.name, description: race.specialty, stats: [roster, ...perkLines(content, id), ...rankLines(content, id)] });
         });
     }
   }

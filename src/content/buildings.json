@@ -1,6 +1,6 @@
 {
   "core": {
-    "name": "Core Data Center",
+    "name": "Core",
     "description": "Your base. Serves users, shoots creeps, extends your network. You only go down when every core is down.",
     "cost": 300,
     "buildTicks": 300,

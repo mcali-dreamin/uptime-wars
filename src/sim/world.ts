@@ -12,6 +12,7 @@
 //
 // Each system lives in its own module; step() is the order they run in.
 
+import { tickRefits } from "./ranks";
 import { tickBuildingAttacks } from "./combat";
 import { applyCommands } from "./commands";
 import { buildGrid, makeContext, type TickContext } from "./context";
@@ -144,6 +145,7 @@ export function step(world: World, content: Content): void {
   tickIncome(ctx);
   tickUsers(ctx);
   tickResearch(ctx);
+  tickRefits(ctx);
   tickHeroes(ctx);
   tickWaveDirector(ctx);
   tickSpawners(ctx);

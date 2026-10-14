@@ -4,7 +4,7 @@
 // Two sizes: a compact card for the on-screen panel (a name and a line or
 // two of numbers) and full detail for the Guide.
 
-import { upgradeName, TICK_RATE, levelOf, nextLevel, type Content, type Team } from "../sim";
+import { upgradeName, TICK_RATE, levelOf, nextLevel, type Content, type SpawnerRank, type Team } from "../sim";
 
 export interface InfoCard {
   title: string;
@@ -38,10 +38,10 @@ export function buildingCard(content: Content, raceId: string, buildingId: strin
   return { title: def.name, lines };
 }
 
-export function unitCard(content: Content, unitId: string, hp: number, maxHp: number): InfoCard {
+export function unitCard(content: Content, unitId: string, hp: number, maxHp: number, rank: string | null = null): InfoCard {
   const unit = content.units[unitId]!;
   const role = unit.damage <= 0 ? "can't attack" : unit.range > 60 ? "ranged" : "melee";
-  return { title: unit.name, lines: [`${Math.ceil(hp)} / ${maxHp} HP · ${role}`] };
+  return { title: rank ? `${rank} ${unit.name}` : unit.name, lines: [`${Math.ceil(hp)} / ${maxHp} HP · ${role}`] };
 }
 
 // --- guide detail -----------------------------------------------------------
@@ -205,6 +205,23 @@ export function upgradeDetail(content: Content, upgrade: string, raceId?: string
     description: def.description,
     stats: [`${effectText(def)}, ${def.maxLevel} levels · ${where}`, `Costs $${costs}`],
   };
+}
+
+/** What one spawner rank does, in a line: "+40% HP, +50% damage, +2 armor · 1.6× compute". */
+export function rankEffect(rank: SpawnerRank): string {
+  const pct = (permille: number) => `${permille >= 1000 ? "+" : ""}${Math.round((permille - 1000) / 10)}%`;
+  const parts = [`${pct(rank.hpPermille)} HP`, `${pct(rank.damagePermille)} damage`];
+  if (rank.armor) parts.push(`+${rank.armor} armor`);
+  if (rank.maxAlive) parts.push(`${rank.maxAlive > 0 ? "+" : ""}${rank.maxAlive} squad`);
+  if (rank.burst) parts.push(`+${rank.burst} per burst`);
+  return `${parts.join(", ")} · ${rank.upkeepPermille / 1000}× compute`;
+}
+
+/** A race's spawner ranks, one line each, for the Guide. */
+export function rankLines(content: Content, raceId: string): string[] {
+  return (content.races[raceId]?.spawnerRanks ?? []).map(
+    (rank, i) => `Spawner rank ${i + 1}, ${rank.name} (${content.economy.tiers[rank.tier]!.name}, ${rank.costPermille / 10}% of its price): ${rankEffect(rank)}`,
+  );
 }
 
 /** A race's tier perks, one line each ("Data Center · Community: Forks cost 35%..."). */

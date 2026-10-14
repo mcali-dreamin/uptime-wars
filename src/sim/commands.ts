@@ -1,6 +1,7 @@
 // Player commands. Everything a player does goes through here, scheduled for
 // a tick, so a match is fully described by its seed plus its command log.
 
+import { rankBlocker, startRank } from "./ranks";
 import type { TickContext } from "./context";
 import { placeBuilding, sendHome } from "./entities";
 import { TILE, footprintCenter } from "./map";
@@ -83,6 +84,14 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
     }
     case "cast":
       return orderCast(ctx, world.teams[command.team]!, command);
+    case "rank": {
+      const building = ctx.byId.get(command.buildingId);
+      const target = building?.kind === "building" ? building : undefined;
+      const reason = rankBlocker(content, world, command.team, target);
+      if (reason) return reason;
+      startRank(content, world, target!);
+      return null;
+    }
     case "invoke": {
       const building = ctx.byId.get(command.buildingId);
       if (!building || building.kind !== "building" || building.team !== command.team || building.hp <= 0) return "not your building";

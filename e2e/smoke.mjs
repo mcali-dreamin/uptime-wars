@@ -202,6 +202,25 @@ await run("smoke test", async ({ check, open }) => {
     "Shift+right-click queues an order",
   );
 
+  // Spawner ranks: gated on Data Center, then U upgrades the selected spawner in place.
+  await page.keyboard.press("Escape");
+  await click(spot);
+  await waitFor(() => state((id) => window.uptime.selection.id === id, spawner));
+  const rankButton = () => page.evaluate(() => {
+    const b = document.getElementById("info-rank");
+    return b && !b.hidden ? { text: b.textContent, disabled: b.disabled } : null;
+  });
+  const gated = await waitFor(async () => (await rankButton())?.text.includes("needs Data Center") && (await rankButton()));
+  check(Boolean(gated?.disabled), "a spawner's rank button waits for Data Center");
+  await state(() => {
+    const t = window.uptime.session.team;
+    t.upgrades[Object.keys(window.uptime.content.upgrades).find((u) => window.uptime.content.upgrades[u].stat === "tier")] = 1;
+    t.money += 2000;
+  });
+  check(Boolean(await waitFor(async () => (await rankButton())?.text.startsWith("Upgrade to") && !(await rankButton()).disabled)), "at Data Center the rank button offers the upgrade");
+  await page.keyboard.press("u");
+  check(await waitFor(() => state((id) => (window.uptime.world.entities.find((e) => e.id === id)?.refitRemaining ?? 0) > 0, spawner)), "U starts the rank-up");
+
   // The core's card researches.
   await page.keyboard.press("Escape");
   await state(() => (window.uptime.session.team.money += 1000));

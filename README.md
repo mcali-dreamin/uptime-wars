@@ -112,6 +112,17 @@ Arrays 2 / 4 / 7, and so on), so the way to a bigger army is teching up the
 core, not building more spawners. More spawners reinforce faster; they
 don't field more.
 
+**Spawner ranks.** At the cap, the other way up is better units, not more.
+Select a spawner (or a Serverless function) and press `U` (or the button on
+its card) to upgrade it in place: rank 1 at Data Center, rank 2 at Region.
+It stops spawning while it refits, then everything it makes is tougher and
+hits harder, for more compute each, so a ranked squad is worth more per
+compute than a plain one. Units already out keep their old rank. Each race
+ranks its own way (`races.json` -> `spawnerRanks`): Open Source cheap and
+quick (Stable, LTS), Hyperscaler armored (Reserved, Dedicated), Serverless
+bigger bursts (Warm, Provisioned), Walled Garden fewer, elite units
+(Verified, Premium). So every $ is a choice: another spawner, or a better one.
+
 **Sound.** Everything you hear is synthesised in the browser with Web Audio
 (`src/audio/`): no audio files. Combat is positional and only plays for what
 you can see, and busy sounds are rate-limited. Waves, bosses, your core
@@ -128,7 +139,8 @@ deals 25% more damage. Hold a ramp and you hold the plateau.
 within reach of a core (7 tiles) or a network building. Open Source builds
 cheap, fragile Mesh Nodes (reach 4); Hyperscaler builds armored Edge PoPs
 (reach 7). Cores are buildable too ($300). If your main core falls, the
-next takes over, and you only go down when every core is down.
+next takes over, and you only go down when every core is down. Extra cores
+are reach and redundancy, not compute: only one core's compute counts.
 
 **$ and compute** are two different things. **$** is money: users pay it
 every second, and everything (buildings, research) is bought with it.

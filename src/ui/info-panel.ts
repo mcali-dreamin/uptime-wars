@@ -2,11 +2,12 @@
 // the build button you're hovering, what you're placing, or what you have
 // selected. Nothing else pops up. The full story lives in the Guide.
 
-import { invokeCost, upgradeName, earnedPerks, tierDef, TICK_RATE, forkCost, isCore, regionShield } from "../sim";
+import { invokeCost, upgradeName, earnedPerks, tierDef, TICK_RATE, forkCost, isCore, regionShield, buildingRank, nextRank, rankBlocker, rankCost, unitRank } from "../sim";
 import { armyUnits, groundOrderLabel, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
+import type { Building } from "../sim";
 import { upgradeOf } from "./build-bar";
-import { buildingCard, unitCard, upgradeCard, type InfoCard } from "./cards";
+import { buildingCard, rankEffect, unitCard, upgradeCard, type InfoCard } from "./cards";
 import { $ } from "./dom";
 
 export class InfoPanel {
@@ -19,6 +20,8 @@ export class InfoPanel {
   private readonly invokeButton = $("info-invoke");
   /** "Fork · $N (X)" for races that can copy a building. */
   private readonly forkButton = $("info-fork");
+  /** "Upgrade to <rank> · $N (U)" for a spawner. */
+  private readonly rankButton = $("info-rank");
   /** Build button under the pointer, or "found" for the deploy button. */
   hoverButton: string | null = null;
   /** Ability under the pointer in the hero's command card. */
@@ -31,7 +34,9 @@ export class InfoPanel {
     arm: () => void,
     invoke: () => void = () => {},
     fork: () => void = () => {},
+    rank: () => void = () => {},
   ) {
+    this.rankButton.addEventListener("click", () => rank());
     this.forkButton.addEventListener("click", () => fork());
     this.action.addEventListener("click", () => arm());
     this.invokeButton.addEventListener("click", () => invoke());
@@ -41,6 +46,7 @@ export class InfoPanel {
     this.action.hidden = true;
     this.invokeButton.hidden = true;
     this.forkButton.hidden = true;
+    this.rankButton.hidden = true;
     const { content } = this.session;
     const raceId = this.session.team.raceId;
     const placing = selection.kind === "place" ? selection.building : selection.kind === "found" ? "found" : null;
@@ -78,6 +84,7 @@ export class InfoPanel {
         this.invokeButton.textContent = `Scale up now · $${invokeCost(content, this.session.team, fn.cost)} (V)`;
         (this.invokeButton as HTMLButtonElement).disabled = (entity.scaleTimer ?? 0) > 0 || this.session.team.money < invokeCost(content, this.session.team, fn.cost);
       }
+      this.showRank(entity, lines);
       const shield = regionShield(this.session.world, content, entity);
       if (content.races[raceId]!.mechanics?.region && entity.buildRemaining <= 0) {
         lines.push(shield.neighbors > 0 ? `Region: ${shield.permille / 10}% less damage (${shield.neighbors} nearby)` : "Region: alone, no shield. Build nearby to protect it");
@@ -96,7 +103,27 @@ export class InfoPanel {
       this.showAction(selection);
       return this.show({ title: card.title, lines });
     }
-    this.show(unitCard(content, entity.defId, entity.hp, entity.maxHp));
+    this.show(unitCard(content, entity.defId, entity.hp, entity.maxHp, unitRank(content, this.session.world, entity)?.name ?? null));
+  }
+
+  /** A spawner's rank, its rank-up in progress, and the button for the next one. */
+  private showRank(entity: Building, lines: string[]): void {
+    if (entity.team !== this.session.local || entity.buildRemaining > 0) return;
+    const { content, world } = this.session;
+    const rank = buildingRank(content, world, entity);
+    if (rank) lines.push(`Rank ${entity.rank} · ${rank.name}: ${rankEffect(rank)}`);
+    if ((entity.refitRemaining ?? 0) > 0) {
+      lines.push(`Upgrading · ${Math.ceil(entity.refitRemaining! / TICK_RATE)}s · not spawning`);
+      return;
+    }
+    const next = nextRank(content, world, entity);
+    const price = rankCost(content, world, entity);
+    if (!next || price === null) return;
+    const blocker = rankBlocker(content, world, this.session.local, entity);
+    lines.push(`Next · ${next.name}: ${rankEffect(next)}`);
+    this.rankButton.hidden = false;
+    this.rankButton.textContent = blocker && blocker.startsWith("needs") ? `${next.name} ${blocker}` : `Upgrade to ${next.name} · $${price} (U)`;
+    (this.rankButton as HTMLButtonElement).disabled = blocker !== null;
   }
 
   /** Buildings with a ground order get a button for it; the deploy agent's is a plain click already. */

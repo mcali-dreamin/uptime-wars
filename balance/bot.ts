@@ -18,6 +18,8 @@ import {
   tierOf,
   tierUpgrade,
   userCapacity,
+  rankBlocker,
+  type Building,
   type Command,
   type Content,
   type Entity,
@@ -81,6 +83,14 @@ export function playMatch(content: Content, race: string, seed: number, heroId: 
     }
     // Saving for the next tier: don't spend below what it costs.
     const saving = canResearch(content, team, tier) === "not enough $" ? nextTier : 0;
+    // Once comfortable, rank a spawner up: at the compute cap better units beat more of them.
+    if (!saving && team.money > 700) {
+      const rankable = world.entities.find((e): e is Building => e.kind === "building" && rankBlocker(content, world, 0, e as Building) === null);
+      if (rankable) {
+        issue({ type: "rank", buildingId: rankable.id });
+        continue;
+      }
+    }
 
     const core = world.entities.find((e) => e.id === team.coreId) as { col: number; row: number } | undefined;
     if (!core) continue;

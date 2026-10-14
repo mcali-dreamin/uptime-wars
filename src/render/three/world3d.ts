@@ -353,10 +353,12 @@ export class World3D implements WorldView {
       // Buildings: a hologram that rises while it's being deployed.
       const cold = frame.content.buildings[entity.defId]?.invoke !== undefined && !running.has(entity.id);
       const building = entity.buildRemaining > 0;
-      if ((building || cold) !== s.holo) this.setHologram(s, building || cold);
-      // A core grows with its team's tier: Data Center, then Region.
+      // Mid rank-up it's a hologram too: being rebuilt, not working.
+      const holo = building || cold || (entity.refitRemaining ?? 0) > 0;
+      if (holo !== s.holo) this.setHologram(s, holo);
+      // A core grows with its team's tier: Data Center, then Region. A spawner with its rank.
       const owner = frame.world.teams[entity.team];
-      const grow = owner && isCore(frame.content, owner, entity) ? 1 + 0.18 * tierOf(frame.content, owner) : 1;
+      const grow = owner && isCore(frame.content, owner, entity) ? 1 + 0.18 * tierOf(frame.content, owner) : 1 + 0.14 * (entity.rank ?? 0);
       s.object.scale.set(grow, building ? Math.max(0.08, entity.hp / entity.maxHp) * grow : grow, grow);
       const top = s.top ?? BUILDING_TOP[entity.defId] ?? 50;
       const selected = frame.selectedId === entity.id;
@@ -387,6 +389,8 @@ export class World3D implements WorldView {
     object.traverse((node) => {
       if ((node as THREE.Mesh).isMesh) node.userData.material = (node as THREE.Mesh).material;
     });
+    // Ranked units come out bigger, so a veteran squad reads at a glance.
+    if (entity.kind === "unit" && entity.rank) object.scale.setScalar(1 + 0.2 * entity.rank);
     // Heroes stand out: a size bigger than their army, with a gold beacon overhead.
     if (entity.kind === "unit" && entity.mode === "hero") {
       object.scale.setScalar(HERO_SCALE);
