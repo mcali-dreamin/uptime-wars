@@ -53,6 +53,13 @@ describe("building", () => {
 });
 
 describe("builder start", () => {
+  it("the deploy agent is quick: walking to a site isn't dead time, and nothing out-runs it", () => {
+    const agent = content.units["deploy-agent"]!;
+    for (const [id, unit] of Object.entries(content.units)) {
+      if (id !== "deploy-agent") expect(agent.speed, id).toBeGreaterThan(unit.speed);
+    }
+  });
+
   const BUILDER_SETUP = { seed: 1234, races: ["open-source", "botnet"] as [string, string] };
 
   it("you start with a deploy agent and no core, and the horde's clocks are on grace time", () => {

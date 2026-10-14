@@ -88,7 +88,7 @@
     "damage": 0,
     "range": 0,
     "cooldownTicks": 20,
-    "speed": 3.96,
+    "speed": 8,
     "aggro": 0,
     "bounty": 0,
     "size": 11,
