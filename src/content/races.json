@@ -57,7 +57,29 @@
         }
       }
     ],
-    "center": "ci-server"
+    "center": "ci-server",
+    "spawnerRanks": [
+      {
+        "name": "Stable",
+        "tier": 1,
+        "costPermille": 700,
+        "ticks": 240,
+        "hpPermille": 1400,
+        "damagePermille": 1500,
+        "armor": 0,
+        "upkeepPermille": 1400
+      },
+      {
+        "name": "LTS",
+        "tier": 2,
+        "costPermille": 1400,
+        "ticks": 400,
+        "hpPermille": 2000,
+        "damagePermille": 2200,
+        "armor": 1,
+        "upkeepPermille": 1900
+      }
+    ]
   },
   "hyperscaler": {
     "name": "Hyperscaler",
@@ -112,7 +134,29 @@
         }
       }
     ],
-    "center": "rnd-lab"
+    "center": "rnd-lab",
+    "spawnerRanks": [
+      {
+        "name": "Reserved",
+        "tier": 1,
+        "costPermille": 1000,
+        "ticks": 300,
+        "hpPermille": 1700,
+        "damagePermille": 1300,
+        "armor": 2,
+        "upkeepPermille": 1600
+      },
+      {
+        "name": "Dedicated",
+        "tier": 2,
+        "costPermille": 2000,
+        "ticks": 500,
+        "hpPermille": 2700,
+        "damagePermille": 1800,
+        "armor": 4,
+        "upkeepPermille": 2300
+      }
+    ]
   },
   "serverless": {
     "name": "Serverless",
@@ -157,7 +201,31 @@
         }
       }
     ],
-    "center": "build-pipeline"
+    "center": "build-pipeline",
+    "spawnerRanks": [
+      {
+        "name": "Warm",
+        "tier": 1,
+        "costPermille": 1000,
+        "ticks": 300,
+        "hpPermille": 1400,
+        "damagePermille": 1400,
+        "armor": 0,
+        "upkeepPermille": 1400,
+        "burst": 1
+      },
+      {
+        "name": "Provisioned",
+        "tier": 2,
+        "costPermille": 2000,
+        "ticks": 500,
+        "hpPermille": 2000,
+        "damagePermille": 2000,
+        "armor": 1,
+        "upkeepPermille": 1800,
+        "burst": 2
+      }
+    ]
   },
   "walled-garden": {
     "name": "Walled Garden",
@@ -217,7 +285,31 @@
         }
       }
     ],
-    "center": "design-studio"
+    "center": "design-studio",
+    "spawnerRanks": [
+      {
+        "name": "Verified",
+        "tier": 1,
+        "costPermille": 1000,
+        "ticks": 300,
+        "hpPermille": 1900,
+        "damagePermille": 1500,
+        "armor": 2,
+        "upkeepPermille": 1600,
+        "maxAlive": -1
+      },
+      {
+        "name": "Premium",
+        "tier": 2,
+        "costPermille": 2000,
+        "ticks": 500,
+        "hpPermille": 3000,
+        "damagePermille": 2200,
+        "armor": 3,
+        "upkeepPermille": 2400,
+        "maxAlive": -2
+      }
+    ]
   },
   "botnet": {
     "name": "The Botnet",

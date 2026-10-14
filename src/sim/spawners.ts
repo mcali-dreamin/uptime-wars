@@ -11,6 +11,7 @@ import { sendHome, spawnInterval, spawnUnit } from "./entities";
 import { randomInt } from "./rng";
 import type { Building } from "./types";
 import { squadBonus } from "./traits";
+import { applyRank, buildingRank, rankedMaxAlive, rankedUpkeep, refitting } from "./ranks";
 
 export function tickSpawners(ctx: TickContext): void {
   const { world, content } = ctx;
@@ -43,23 +44,26 @@ export function tickSpawners(ctx: TickContext): void {
     if (!spawn || building.buildRemaining > 0) continue;
     // Jammed by a DDoS: the timer stalls.
     if (building.jammedUntil !== undefined && world.tick < building.jammedUntil) continue;
+    // Mid rank-up: nothing comes out until it's done.
+    if (refitting(building)) continue;
     if (lagging(world, building.team)) continue;
     if (building.spawnTimer > 0) building.spawnTimer -= 1;
     if (building.spawnTimer > 0) continue;
     // At the cap: hold, ready to go the moment there's room.
-    const upkeep = unitUpkeep(content, spawn.unit);
+    const upkeep = rankedUpkeep(unitUpkeep(content, spawn.unit), buildingRank(content, world, building));
     if (freeFor(building.team) < upkeep) {
       world.teams[building.team]!.capped = true;
       continue;
     }
     const extra = squadBonus(content, world.teams[building.team], spawn.unit);
-    const room = Math.min(spawn.count + extra, spawn.maxAlive + extra - (alive.get(building.id) ?? 0));
+    const room = Math.min(spawn.count + extra, rankedMaxAlive(content, world, building, spawn.maxAlive) + extra - (alive.get(building.id) ?? 0));
     for (let i = 0; i < room && freeFor(building.team) >= upkeep; i += 1) {
       free.set(building.team, freeFor(building.team) - upkeep);
       const x = building.x + randomInt(world, -20, 20);
       const y = building.y + building.radius + 10 + randomInt(world, 0, 8);
       const unit = spawnUnit(ctx, building.team, spawn.unit, building, x, y, "guard");
       unit.spawnerId = building.id;
+      applyRank(content, world, unit, building);
       const rally = building.rally ?? world.teams[building.team]!.rally;
       if (rally) sendHome(world, unit, rally);
     }

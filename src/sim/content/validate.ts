@@ -21,6 +21,12 @@ export function validateContent(content: Content): void {
     else if (core.footprint !== 2) errors.push(`race ${id} core ${race.core} must have a 2x2 footprint`);
     else if (race.controller === "human" && !core.buildRadius) errors.push(`race ${id} core ${race.core} needs a buildRadius`);
     if (race.builder && !content.units[race.builder]) errors.push(`race ${id} has unknown builder ${race.builder}`);
+    for (const [i, rank] of (race.spawnerRanks ?? []).entries()) {
+      if (rank.tier < 0 || rank.tier >= content.economy.tiers.length) errors.push(`race ${id} rank ${i + 1} needs a known core tier`);
+      if (rank.costPermille <= 0 || rank.ticks <= 0 || rank.hpPermille <= 0 || rank.damagePermille <= 0 || rank.upkeepPermille <= 0) {
+        errors.push(`race ${id} rank ${i + 1} needs cost, ticks, hp, damage, and upkeep > 0`);
+      }
+    }
     if (race.controller === "human" && !RACE_LOOKS.includes(race.look!)) errors.push(`race ${id} needs a look (${RACE_LOOKS.join(", ")})`);
     for (const buildingId of race.buildings) {
       const building = content.buildings[buildingId];

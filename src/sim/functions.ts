@@ -12,12 +12,14 @@ import { runsAreFree } from "./heroes";
 import { raceModifiers } from "./tiers";
 import { hostile } from "./teams";
 import { traitsFor } from "./traits";
+import { applyRank, rankedBurst, refitting } from "./ranks";
 
 /** Why this function can't run right now, or null if it can. */
 export function invokeBlocker(ctx: TickContext, building: Building): string | null {
   const def = ctx.content.buildings[building.defId]!.invoke;
   if (!def) return "not a function";
   if (building.buildRemaining > 0) return "still deploying";
+  if (refitting(building)) return "upgrading";
   if ((building.scaleTimer ?? 0) > 0) return "cooling down";
   if (building.jammedUntil !== undefined && ctx.world.tick < building.jammedUntil) return "jammed";
   const team = ctx.world.teams[building.team]!;
@@ -40,13 +42,14 @@ export function invoke(ctx: TickContext, building: Building, auto: boolean, free
   building.scaleTimer = Math.max(1, Math.round(def.cooldownTicks * (raceModifiers(content, team).invokeCooldownMultiplier ?? 1)));
   const units: Unit[] = [];
   const t = traitsFor(content, team, def.unit);
-  const count = Math.round(def.count * (t.burstMult ?? 1)) + (t.squad ?? 0);
+  const count = Math.round(rankedBurst(content, world, building, def.count) * (t.burstMult ?? 1)) + (t.squad ?? 0);
   for (let i = 0; i < count; i += 1) {
     const x = building.x + randomInt(world, -20, 20);
     const y = building.y + building.radius + 10 + randomInt(world, 0, 8);
     const unit = spawnUnit(ctx, building.team, def.unit, building, x, y, "guard");
     unit.spawnerId = building.id;
     unit.expiresAt = world.tick + def.ttlTicks;
+    applyRank(content, world, unit, building);
     const rally = building.rally ?? team.rally;
     if (rally) sendHome(world, unit, rally);
     units.push(unit);

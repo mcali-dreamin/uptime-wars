@@ -125,7 +125,7 @@ export class Hud {
     this.computeStat.title =
       `In use / supplied. Each user uses ${content.economy.compute.perUser}, each unit about ${content.economy.compute.perUnit}. ` +
       "Compute is also your army cap: a spawner only adds a unit if its upkeep fits in what's free, so more spawners reinforce faster but never field more. " +
-      "Generators are limited per core tier: tech up the core to raise the cap. " +
+      "Generators are limited per core tier: tech up the core to raise the cap, or rank spawners up (U) for better units per compute. " +
       "Over capacity (users growing past it), users stop arriving and start leaving, and your towers, spawners and research slow down.";
   }
 

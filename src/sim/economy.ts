@@ -11,6 +11,7 @@ import type { Team, World } from "./types";
 import { multiplier } from "./upgrades";
 import { BASE_INCOME, CONSTRUCTION_START_HP } from "./tuning";
 import { raceMechanics, tierDef } from "./tiers";
+import { rankedUpkeep, unitRank } from "./ranks";
 
 export function tickCooldowns(ctx: TickContext): void {
   const { world } = ctx;
@@ -27,16 +28,24 @@ export function unitUpkeep(content: TickContext["content"], unitId: string): num
 /** Compute supplied and used by a team right now. Integers; pure. */
 export function computeBalance(world: World, content: TickContext["content"], team: Team): { supply: number; demand: number } {
   const per = content.economy.compute;
+  const coreId = content.races[team.raceId]!.core;
   let supply = 0;
+  // Only one core supplies compute: more cores are reach and redundancy,
+  // not a way around the generator limits.
+  let coreSupply = 0;
   let units = 0;
   for (const entity of world.entities) {
     if (entity.team !== team.id || entity.hp <= 0) continue;
     if (entity.kind === "building") {
-      if (entity.buildRemaining <= 0) supply += content.buildings[entity.defId]!.compute ?? 0;
+      if (entity.buildRemaining > 0) continue;
+      const compute = content.buildings[entity.defId]!.compute ?? 0;
+      if (entity.defId === coreId) coreSupply = Math.max(coreSupply, compute);
+      else supply += compute;
     } else if (entity.mode !== "builder") {
-      units += unitUpkeep(content, entity.defId);
+      units += rankedUpkeep(unitUpkeep(content, entity.defId), unitRank(content, world, entity));
     }
   }
+  supply += coreSupply;
   // A higher core tier supplies more, as long as a core is up.
   if (team.coreId !== -1 && team.downTick === null) supply += tierDef(content, team).compute;
   return { supply, demand: team.users * per.perUser + units };

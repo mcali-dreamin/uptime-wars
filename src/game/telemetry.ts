@@ -28,7 +28,7 @@ export interface MatchReport {
   wave: number;
   tier: number;
   peakUsers: number;
-  summary: { built: Record<string, number>; researched: Record<string, number>; heroLevel: number; ticks: number; players: number };
+  summary: { built: Record<string, number>; ranked: number; researched: Record<string, number>; heroLevel: number; ticks: number; players: number };
   log: World["log"];
 }
 
@@ -36,8 +36,10 @@ export interface MatchReport {
 export function buildReport(content: Content, world: World, team: number, player: string, version: string, ended: boolean): MatchReport {
   const t = world.teams[team]!;
   const built: Record<string, number> = {};
+  let ranked = 0;
   for (const command of world.log) {
     if (command.team === team && command.type === "build") built[command.building] = (built[command.building] ?? 0) + 1;
+    if (command.team === team && command.type === "rank") ranked += 1;
   }
   const won = world.outcome?.winners.includes(team) ?? false;
   const upTo = t.downTick ?? world.outcome?.tick ?? world.tick;
@@ -57,6 +59,7 @@ export function buildReport(content: Content, world: World, team: number, player
     peakUsers: t.peakUsers,
     summary: {
       built,
+      ranked,
       researched: { ...t.upgrades },
       heroLevel: t.hero?.level ?? 0,
       ticks: world.tick,

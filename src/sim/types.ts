@@ -138,6 +138,8 @@ export interface Unit extends EntityBase {
   stunnedUntil?: number;
   /** Trait bookkeeping: hits landed (crit), revive ready at, and a split child (doesn't split again). */
   hits?: number;
+  /** The rank of the spawner it came from (see ranks.ts); absent is 0. */
+  rank?: number;
   reviveAt?: number;
   forked?: boolean;
   /** Scanners: what they spotted and when, until they report it. */
@@ -163,6 +165,10 @@ export interface Building extends EntityBase {
   lastHitTick: number;
   /** Jammed by a DDoS until this tick: no shooting, spawning, or running. */
   jammedUntil?: number;
+  /** Spawner rank (see ranks.ts); absent is 0. */
+  rank?: number;
+  /** Ticks left on a rank-up; it doesn't spawn or run meanwhile. */
+  refitRemaining?: number;
 }
 
 export type Entity = Unit | Building;
@@ -277,7 +283,15 @@ export interface ForkCommand {
   row: number;
 }
 
-export type Command = ForkCommand | BuildCommand | MoveCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | AttackCommand | CastCommand | LearnCommand | InvokeCommand;
+/** Rank a spawner up in place: fewer, stronger units (see ranks.ts). */
+export interface RankCommand {
+  type: "rank";
+  tick: number;
+  team: TeamId;
+  buildingId: number;
+}
+
+export type Command = RankCommand | ForkCommand | BuildCommand | MoveCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | AttackCommand | CastCommand | LearnCommand | InvokeCommand;
 
 export interface WaveSpawn {
   tick: number;
@@ -356,6 +370,7 @@ export type SimEvent =
   | { type: "hero-up"; team: TeamId; x: number; y: number }
   | { type: "revived"; id: number; x: number; y: number; team: TeamId }
   | { type: "researched"; team: TeamId; upgrade: string; level: number }
+  | { type: "ranked"; id: number; team: TeamId; rank: number; x: number; y: number }
   | { type: "rejected"; command: Command; reason: string };
 
 /**

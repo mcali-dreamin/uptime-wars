@@ -190,6 +190,7 @@ body {
 
 #info-action,
 #info-fork,
+#info-rank,
 #info-invoke {
   pointer-events: auto;
   margin-top: 0.4rem;
@@ -203,6 +204,7 @@ body {
 }
 
 #info-fork:hover,
+#info-rank:hover,
 #info-invoke:hover,
 #info-action:hover,
 #info-action.armed {
@@ -210,6 +212,7 @@ body {
 }
 
 #info-fork[hidden],
+#info-rank[hidden],
 #info-invoke[hidden],
 #info-action[hidden] {
   display: none;

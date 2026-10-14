@@ -29,7 +29,7 @@ import { Guide } from "./ui/guide";
 import { Hud } from "./ui/hud";
 import { InfoPanel } from "./ui/info-panel";
 import { RacePicker } from "./ui/race-picker";
-import { upgradeName, TICK_RATE, TILE, forkCost, isCore, loadDefaultContent, type Point } from "./sim";
+import { upgradeName, TICK_RATE, TILE, forkCost, isCore, nextRank, loadDefaultContent, type Point } from "./sim";
 import type { NetMatch } from "./game/net/lobby";
 import { Director, tension, type Listener } from "./audio/cues";
 import { SoundEngine, type SoundMode } from "./audio/engine";
@@ -77,7 +77,7 @@ const listener: Listener = {
   },
   visible: (p) => renderer.fog.isVisible(p.x, p.y),
 };
-const info = new InfoPanel(session, () => arm(), () => invokeSelected(), () => forkSelected());
+const info = new InfoPanel(session, () => arm(), () => invokeSelected(), () => forkSelected(), () => rankSelected());
 const bar = new BuildBar(session, {
   choose: (button) => {
     sound.ui("click");
@@ -282,6 +282,14 @@ function invokeSelected(): boolean {
   return true;
 }
 
+/** Upgrade the selected spawner to its next rank (U, or the info card's button). */
+function rankSelected(): boolean {
+  const entity = selectedEntity(session, selection);
+  if (entity?.kind !== "building" || !nextRank(content, session.world, entity)) return false;
+  session.issue({ type: "rank", buildingId: entity.id });
+  return true;
+}
+
 function arm(how: "attack" | "move" = "attack"): boolean {
   const next = armed(session, selection, how);
   if (next) select(next);
@@ -432,6 +440,7 @@ const gameInput: GameInput = {
     if (key === "f") return arm("move");
     if (key === "v") return invokeSelected();
     if (key === "x") return forkSelected();
+    if (key === "u") return rankSelected();
     if (key === "z") {
       // The whole army.
       const ids = allSoldiers(session).map((u) => u.id);
@@ -544,7 +553,14 @@ const invite = CoopLobby.inviteInUrl();
 if (invite) void coop.join(invite);
 else picker.show();
 
+/** The info card follows the match (countdowns, prices), not only the pointer. */
+let infoClock = 0;
 renderer.app.ticker.add((ticker) => {
+  infoClock += ticker.deltaMS;
+  if (infoClock >= 250) {
+    infoClock = 0;
+    info.refresh(selection);
+  }
   const { world } = session;
   // Co-op never pauses: the others are waiting on our turns.
   const running = session.net ? !coop.open : !paused && !guide.open;

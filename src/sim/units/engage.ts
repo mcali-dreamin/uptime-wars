@@ -2,6 +2,7 @@
 // mode that fights.
 
 import { canSee, edgeDistance, nearestEnemy } from "../combat";
+import { rankDamage } from "../ranks";
 import type { TickContext } from "../context";
 import type { UnitDef } from "../content";
 import { distance, walkTo } from "../movement";
@@ -108,7 +109,7 @@ export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
     const disarmed = unit.disarmedUntil !== undefined && world.tick < unit.disarmedUntil;
     if (unit.attackCooldown <= 0 && !disarmed) {
       const team = world.teams[unit.team]!;
-      const damage = def.damage * multiplier(ctx.content, team, "unitDamage") * buffMultiplier(team, world.tick);
+      const damage = def.damage * multiplier(ctx.content, team, "unitDamage") * buffMultiplier(team, world.tick) * rankDamage(ctx.content, world, unit);
       roleHit(ctx, unit, def, target, damage);
       unit.attackCooldown = def.cooldownTicks;
     }

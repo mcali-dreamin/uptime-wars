@@ -107,6 +107,27 @@ export type Controller = "human" | "wave-director";
 export type RaceLook = "scrappy" | "monolith" | "ephemeral" | "garden";
 export const RACE_LOOKS: readonly RaceLook[] = ["scrappy", "monolith", "ephemeral", "garden"];
 
+/**
+ * One spawner rank. Units it spawns from then on get these (permille of the
+ * plain unit; armor is flat). The standing squad (maxAlive) and a function's
+ * burst change by `maxAlive` / `burst` (never below 1).
+ */
+export interface SpawnerRank {
+  name: string;
+  /** Core tier it needs. */
+  tier: number;
+  /** Price, permille of the building's base cost. */
+  costPermille: number;
+  /** Refit time; the building doesn't spawn or run meanwhile. */
+  ticks: number;
+  hpPermille: number;
+  damagePermille: number;
+  armor: number;
+  upkeepPermille: number;
+  maxAlive?: number;
+  burst?: number;
+}
+
 export interface TierPerk {
   name: string;
   description: string;
@@ -162,6 +183,11 @@ export interface RaceDef {
   tierPerks?: (TierPerk | null)[];
   /** The race's upgrade center: the building that researches its army upgrades and traits. */
   center?: string;
+  /**
+   * Ranks any of its spawners (and functions) can be upgraded to, in order:
+   * fewer, stronger units for more compute each. See ranks.ts.
+   */
+  spawnerRanks?: SpawnerRank[];
   modifiers: {
     spawnIntervalMultiplier: number;
     costMultiplier: number;
