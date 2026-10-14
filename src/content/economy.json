@@ -2,7 +2,7 @@
   "startingUsers": 5,
   "growthPerSecond": 0.04,
   "minArrivalsPerSecond": 1,
-  "revenuePerUserPerSecond": 0.13,
+  "revenuePerUserPerSecond": 0.08,
   "damagePerUserLost": 12,
   "compute": {
     "perUser": 1,
@@ -40,5 +40,6 @@
       "coreHp": 1.7,
       "traffic": 3000
     }
-  ]
+  ],
+  "costGrowthPermille": 100
 }

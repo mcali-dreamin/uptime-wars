@@ -195,5 +195,5 @@ export function tierLock(session: Session, building: string): string | null {
 }
 
 export function affordable(session: Session, building: string): boolean {
-  return session.team.money >= buildCost(session.content, session.team.raceId, building);
+  return session.team.money >= buildCost(session.world, session.content, session.local, building);
 }

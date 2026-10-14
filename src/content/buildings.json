@@ -227,7 +227,8 @@
     "footprint": 1,
     "buildable": true,
     "sight": 260,
-    "buildRadius": 4
+    "buildRadius": 4,
+    "costGrowthPermille": 0
   },
   "edge-pop": {
     "name": "Edge PoP",
@@ -239,7 +240,8 @@
     "footprint": 1,
     "buildable": true,
     "sight": 360,
-    "buildRadius": 7
+    "buildRadius": 7,
+    "costGrowthPermille": 0
   },
   "function": {
     "name": "Function",
@@ -302,7 +304,8 @@
     "footprint": 1,
     "buildable": true,
     "sight": 160,
-    "blocks": true
+    "blocks": true,
+    "costGrowthPermille": 0
   },
   "garden-gate": {
     "name": "Gate",
@@ -315,7 +318,8 @@
     "buildable": true,
     "sight": 160,
     "blocks": true,
-    "gate": true
+    "gate": true,
+    "costGrowthPermille": 0
   },
   "app-review": {
     "name": "App Review",

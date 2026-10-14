@@ -50,7 +50,7 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
       const reason = canPlace(world, content, command.team, command.building, command.col, command.row);
       if (reason) return reason;
       const team = world.teams[command.team]!;
-      team.money -= buildCost(content, team.raceId, command.building);
+      team.money -= buildCost(world, content, team.id, command.building);
       const building = placeBuilding(world, content, team.id, command.building, command.col, command.row, false);
       ctx.byId.set(building.id, building);
       return null;

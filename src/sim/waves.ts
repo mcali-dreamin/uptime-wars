@@ -47,7 +47,10 @@ export function tickWaveDirector(ctx: TickContext): void {
     const budgetScale = Math.max(0, 1000 - down * waves.fortress.farms.weakenPermille);
     // The opening incident lands at each player's door, smaller.
     const entries = wave === 1 && waves.opening ? openingEntries(ctx) : [];
-    const scale = entries.length > 0 ? Math.round((waves.opening!.budget * 1000) / waves.budget.start) : budgetScale;
+    const scale =
+      entries.length > 0
+        ? Math.round((waves.opening!.budget * 1000) / waves.budget.start)
+        : Math.round((budgetScale * threatPermille(world, content)) / 1000);
     const plan = planWave(world, content, wave, scale);
     let at = world.tick;
     let packs = 0;
@@ -197,6 +200,32 @@ export function openingEntries(ctx: TickContext): { team: TeamId; at: Point; cor
     out.push({ team: team.id, at: found ?? { x: nest.x, y: nest.y }, core: { x: core.x, y: core.y } });
   }
   return out;
+}
+
+/**
+ * How much bigger incidents are because of what the players have built and
+ * banked, permille (1000 = no change). sqrt(worth / reference), clamped to
+ * [1, maxScale]; worth is averaged over the players online so co-op doesn't
+ * double-count (playerScale already handles headcount).
+ */
+export function threatPermille(world: World, content: Content): number {
+  const threat = content.waves.threat;
+  if (!threat) return 1000;
+  let total = 0;
+  let players = 0;
+  for (const team of humanTeams(world)) {
+    if (team.downTick !== null || team.coreId === -1) continue;
+    players += 1;
+    total += Math.max(0, team.money);
+    for (const e of world.entities) {
+      if (e.kind !== "building" || e.team !== team.id || e.hp <= 0) continue;
+      total += Math.round(content.buildings[e.defId]!.cost * content.races[team.raceId]!.modifiers.costMultiplier);
+    }
+  }
+  if (players === 0) return 1000;
+  const ratio = total / players / threat.referenceWorth;
+  const scale = Math.min(threat.maxScale, Math.max(1, Math.sqrt(ratio)));
+  return Math.round(scale * 1000);
 }
 
 /** Ticks between wave n and wave n + 1. */

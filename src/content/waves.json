@@ -122,5 +122,9 @@
     "Supply chain",
     "Botnet surge",
     "Rootkit season"
-  ]
+  ],
+  "threat": {
+    "referenceWorth": 3000,
+    "maxScale": 3
+  }
 }

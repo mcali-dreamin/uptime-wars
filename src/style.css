@@ -764,3 +764,8 @@ body {
     transform: scale(1.12);
   }
 }
+
+#threat {
+  color: #f87171;
+  font-weight: 600;
+}

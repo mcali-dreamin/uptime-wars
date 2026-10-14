@@ -16,7 +16,7 @@ export function forkCost(world: World, content: Content, teamId: TeamId, source:
   const fork = raceMechanics(content, team).fork;
   if (!fork || !source || source.team !== teamId || source.hp <= 0 || source.buildRemaining > 0) return null;
   if (isCore(content, team, source)) return null;
-  return Math.floor((buildCost(content, team.raceId, source.defId) * fork.costPermille) / 1000);
+  return Math.floor((buildCost(world, content, teamId, source.defId) * fork.costPermille) / 1000);
 }
 
 /** Why this fork can't happen, or null if it can. */
