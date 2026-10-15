@@ -58,7 +58,7 @@ export class HeroBar {
       this.card.classList.add("down");
     } else {
       this.card.classList.remove("down");
-      this.status.textContent = points > 0 ? `+${points} skill point${points > 1 ? "s" : ""}` : max ? "Max level" : `${Math.floor(state.xp - from)} / ${to - from} XP`;
+      this.status.textContent = points > 0 ? `${points} skill point${points > 1 ? "s" : ""} to spend · click` : max ? "Max level" : `${Math.floor(state.xp - from)} / ${to - from} XP`;
     }
     this.card.classList.toggle("points", points > 0);
   }

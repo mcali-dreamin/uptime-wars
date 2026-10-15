@@ -5,7 +5,8 @@
 import { invokeCost, upgradeName, earnedPerks, tierDef, TICK_RATE, forkCost, isCore, regionShield, buildingRank, nextRank, rankBlocker, rankCost, unitRank } from "../sim";
 import { armyUnits, groundOrderLabel, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
-import type { Building } from "../sim";
+import { heightAtTile, TILE, type Building, type Entity } from "../sim";
+import { HIGH_GROUND_DAMAGE } from "../sim/tuning";
 import { upgradeOf } from "./build-bar";
 import { buildingCard, rankEffect, unitCard, upgradeCard, type InfoCard } from "./cards";
 import { $ } from "./dom";
@@ -85,6 +86,7 @@ export class InfoPanel {
         (this.invokeButton as HTMLButtonElement).disabled = (entity.scaleTimer ?? 0) > 0 || this.session.team.money < invokeCost(content, this.session.team, fn.cost);
       }
       this.showRank(entity, lines);
+      if (content.buildings[entity.defId]!.attack) this.showHeight(entity, lines);
       const shield = regionShield(this.session.world, content, entity);
       if (content.races[raceId]!.mechanics?.region && entity.buildRemaining <= 0) {
         lines.push(shield.neighbors > 0 ? `Region: ${shield.permille / 10}% less damage (${shield.neighbors} nearby)` : "Region: alone, no shield. Build nearby to protect it");
@@ -103,7 +105,18 @@ export class InfoPanel {
       this.showAction(selection);
       return this.show({ title: card.title, lines });
     }
-    this.show(unitCard(content, entity.defId, entity.hp, entity.maxHp, unitRank(content, this.session.world, entity)?.name ?? null));
+    const card = unitCard(content, entity.defId, entity.hp, entity.maxHp, unitRank(content, this.session.world, entity)?.name ?? null);
+    if (entity.team === this.session.local) this.showHeight(entity, card.lines);
+    this.show(card);
+  }
+
+  /** The high-ground bonus, where it applies: the sim gives it, so the card says it. */
+  private showHeight(entity: Entity, lines: string[]): void {
+    const terrain = this.session.world.terrain;
+    const level = heightAtTile(terrain, Math.floor(entity.x / TILE), Math.floor(entity.y / TILE));
+    if (level <= 0) return;
+    const bonus = Math.round((HIGH_GROUND_DAMAGE - 1) * 100);
+    lines.push(`High ground: +${bonus}% damage to anything below it`);
   }
 
   /** A spawner's rank, its rank-up in progress, and the button for the next one. */

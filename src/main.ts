@@ -138,6 +138,16 @@ if (new URLSearchParams(location.search).has("debug")) {
       renderer,
       content,
       TILE,
+      /** The simulation itself, for replays and checks: `await uptime.sim()`. */
+      sim: () => import("./sim"),
+      /** Watch a world built elsewhere (a replay at some tick) as player 1. */
+      load(world: typeof session.world) {
+        session.world = world;
+        session.net = null;
+        session.local = 0;
+        session.raceId = world.teams[0]!.raceId;
+        resetMatch();
+      },
     },
   });
 }

@@ -211,6 +211,8 @@ incidents), then the nest. Rebuilt farms shield it again, and the top bar's
 Nest stat shows where you are. When the nest falls, the whole botnet collapses. Where they stand is a pure
 function of the seed. Hover anything (buttons, buildings, units, terrain) to see what it does.
 Add `?debug` to the URL to expose live state as `window.uptime`.
+`await uptime.sim()` is the simulation module and `uptime.load(world)` watches
+any world you build with it, such as a reported match replayed to some minute.
 
 ## How it's built
 
