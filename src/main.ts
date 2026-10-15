@@ -35,6 +35,7 @@ import { Director, tension, type Listener } from "./audio/cues";
 import { SoundEngine, type SoundMode } from "./audio/engine";
 import { CoopLobby } from "./ui/coop";
 import { Telemetry } from "./game/telemetry";
+import { metronome } from "./game/metronome";
 import { version } from "../package.json";
 import { HeroBar, heroUnit } from "./ui/hero-bar";
 import { castBlocker } from "./sim/heroes";
@@ -138,6 +139,16 @@ if (new URLSearchParams(location.search).has("debug")) {
       renderer,
       content,
       TILE,
+      /** The simulation itself, for replays and checks: `await uptime.sim()`. */
+      sim: () => import("./sim"),
+      /** Watch a world built elsewhere (a replay at some tick) as player 1. */
+      load(world: typeof session.world) {
+        session.world = world;
+        session.net = null;
+        session.local = 0;
+        session.raceId = world.teams[0]!.raceId;
+        resetMatch();
+      },
     },
   });
 }
@@ -553,19 +564,23 @@ const invite = CoopLobby.inviteInUrl();
 if (invite) void coop.join(invite);
 else picker.show();
 
-/** The info card follows the match (countdowns, prices), not only the pointer. */
-let infoClock = 0;
-renderer.app.ticker.add((ticker) => {
-  infoClock += ticker.deltaMS;
-  if (infoClock >= 250) {
-    infoClock = 0;
-    info.refresh(selection);
-  }
+/**
+ * Run the match forward by the real time since the last call: whole ticks
+ * only, the remainder carried in `accumulator` for the renderer to
+ * interpolate. The frame loop calls this; so does the metronome while the tab
+ * is hidden in co-op, since there's no frame loop then and the others are
+ * waiting on our turns.
+ */
+let lastAdvance = performance.now();
+function advance(now: number): void {
+  // Capped so a long gap (a hidden solo tab coming back) doesn't burst.
+  const delta = Math.min(Math.max(0, now - lastAdvance), MAX_STEPS_PER_FRAME * STEP_MS);
+  lastAdvance = now;
   const { world } = session;
   // Co-op never pauses: the others are waiting on our turns.
   const running = session.net ? !coop.open : !paused && !guide.open;
   if (running && !picker.open && !world.outcome) {
-    accumulator += ticker.deltaMS;
+    accumulator += delta;
     let steps = 0;
     while (accumulator >= STEP_MS && steps < MAX_STEPS_PER_FRAME) {
       renderer.capturePrevious(world);
@@ -610,6 +625,23 @@ renderer.app.ticker.add((ticker) => {
     }
     if (steps === MAX_STEPS_PER_FRAME) accumulator = 0;
   }
+}
+
+// Co-op in a hidden tab: no frames, but the match goes on.
+metronome(STEP_MS, () => {
+  if (document.hidden && session.net) advance(performance.now());
+});
+
+/** The info card follows the match (countdowns, prices), not only the pointer. */
+let infoClock = 0;
+renderer.app.ticker.add((ticker) => {
+  infoClock += ticker.deltaMS;
+  if (infoClock >= 250) {
+    infoClock = 0;
+    info.refresh(selection);
+  }
+  advance(performance.now());
+  const { world } = session;
   {
     const now = performance.now() / 1000;
     renderer.setMinimapFlashes(alerts.recent.map((a) => ({ x: a.x, y: a.y, age: now - a.at, color: ALERT_COLOR[a.kind] })));

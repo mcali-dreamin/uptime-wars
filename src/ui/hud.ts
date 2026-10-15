@@ -31,7 +31,6 @@ export class Hud {
   private readonly core = $("core");
   private readonly nest = $("nest");
   private readonly nestStat = $("nest-stat");
-  private readonly wave = $("wave");
   private readonly nextWave = $("next-wave");
   private readonly status = $("status");
   private readonly threat = $("threat");
@@ -51,6 +50,7 @@ export class Hud {
     const team = this.session.team;
     const core = this.session.core();
     this.money.textContent = String(team.money);
+    this.updateBanked();
     this.users.textContent = team.coreId === -1 ? "0" : `${team.users} / ${userCapacity(world, this.session.content, team)}`;
     this.updateIncome();
     this.updateCompute();
@@ -62,8 +62,7 @@ export class Hud {
         : "offline";
     this.uptime.textContent = clock((world.outcome?.tick ?? world.tick) / TICK_RATE);
     this.updateNest();
-    this.wave.textContent = String(world.waves.nextIndex);
-    this.nextWave.textContent = `${Math.max(0, Math.ceil((world.waves.nextWaveTick - world.tick) / TICK_RATE))}s`;
+    this.nextWave.textContent = `in ${Math.max(0, Math.ceil((world.waves.nextWaveTick - world.tick) / TICK_RATE))}s`;
     this.updatePreview(world.waves.nextIndex + 1);
     this.updateThreat();
     this.updateCountdown();
@@ -104,6 +103,21 @@ export class Hud {
     this.users.classList.toggle("churning", showing);
   }
 
+  /**
+   * A pile of $ counts toward the botnet's threat just like buildings do, but
+   * defends nothing. Past half the threat's reference worth, $ turns amber.
+   */
+  private updateBanked(): void {
+    const team = this.session.team;
+    const threshold = (this.session.content.waves.threat?.referenceWorth ?? Infinity) / 2;
+    const banked = team.coreId !== -1 && team.money >= threshold;
+    if (this.money.classList.contains("banked") === banked) return;
+    this.money.classList.toggle("banked", banked);
+    this.money.title = banked
+      ? "Banked $ draws the botnet like buildings do (see Threat), but defends nothing. Spend it: build, research, or rank a spawner up (U)."
+      : "";
+  }
+
   /** Compute in use / supplied; red, with how much slower everything runs, when over. */
   private updateCompute(): void {
     const { world, content } = this.session;
@@ -117,7 +131,7 @@ export class Hud {
     const over = team.overload > 0;
     const capped = team.capped === true;
     this.compute.textContent = over
-      ? `${demand} / ${supply} · ${Math.round(team.overload / 10)}% slow`
+      ? `${demand} / ${supply} · ${Math.max(1, Math.round(team.overload / 10))}% slow`
       : capped
         ? `${demand} / ${supply} · army cap`
         : `${demand} / ${supply}`;
@@ -158,7 +172,8 @@ export class Hud {
     this.previewed = wave;
     const { units } = this.session.content;
     const preview = previewWave(this.session.content, wave);
-    this.previewTitle.textContent = `Incident ${wave} · ${preview.name}`;
+    this.previewTitle.textContent = `Next: ${preview.name}`;
+    this.previewTitle.title = `Incident ${wave}`;
     const parts: HTMLElement[] = preview.creeps.map((id) => {
       const span = document.createElement("span");
       const fresh = preview.fresh.includes(id) && wave > 1;

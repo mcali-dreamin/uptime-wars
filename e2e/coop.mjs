@@ -110,6 +110,23 @@ await run(
     const desync = await Promise.all([host, guest].map((p) => p.evaluate(() => window.uptime.session.net.desyncTick)));
     check(synced && desync.every((d) => d === null), "the worlds stay in sync");
 
+    // The guest switches tabs: no frames there, but the match keeps going for
+    // both, since the host can only step once the guest's turns arrive.
+    await guest.evaluate(() => {
+      window.uptime.renderer.app.ticker.stop();
+      Object.defineProperty(document, "hidden", { value: true, configurable: true });
+    });
+    const before = await Promise.all([host, guest].map((p) => p.evaluate(() => window.uptime.world.tick)));
+    const onward = await waitFor(async () => {
+      const now = await Promise.all([host, guest].map((p) => p.evaluate(() => window.uptime.world.tick)));
+      return now[0] > before[0] + 100 && now[1] > before[1] + 100;
+    }, 60000);
+    check(onward, "a hidden tab keeps the co-op match running for everyone");
+    await guest.evaluate(() => {
+      delete document.hidden;
+      window.uptime.renderer.app.ticker.start();
+    });
+
     // The guest leaves: the host plays on.
     await guest.context().close();
     const tick = await host.evaluate(() => window.uptime.world.tick);

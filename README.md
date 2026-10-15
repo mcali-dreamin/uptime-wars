@@ -211,6 +211,8 @@ incidents), then the nest. Rebuilt farms shield it again, and the top bar's
 Nest stat shows where you are. When the nest falls, the whole botnet collapses. Where they stand is a pure
 function of the seed. Hover anything (buttons, buildings, units, terrain) to see what it does.
 Add `?debug` to the URL to expose live state as `window.uptime`.
+`await uptime.sim()` is the simulation module and `uptime.load(world)` watches
+any world you build with it, such as a reported match replayed to some minute.
 
 ## How it's built
 
@@ -335,6 +337,12 @@ anyone. The host relays all turns (a star), which lets it drop a player who
 disconnects at a tick everyone agrees on; their base keeps fighting. Every
 100 ticks turns carry a world hash, so a desync is caught right away. Co-op
 can't pause. If the host leaves, the match is over.
+
+Ticks normally run from the frame loop, but a hidden tab gets no frames, and in
+lockstep one player's stalled turns freeze everyone. So in co-op a hidden tab
+keeps stepping on a beat from a tiny inline Worker (`src/game/metronome.ts`;
+browsers throttle a hidden tab's timers, not a Worker's). Solo, a hidden tab
+just pauses.
 
 **The horde is just a team.** Team 1 is the Botnet race, driven by the wave
 director instead of a human.

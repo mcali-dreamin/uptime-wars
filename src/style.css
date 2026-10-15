@@ -25,6 +25,8 @@ body {
 #app {
   display: grid;
   grid-template-rows: auto 1fr auto;
+  /* minmax(0, …): what's in the bars never makes the game wider than the window. */
+  grid-template-columns: minmax(0, 1fr);
   height: 100%;
 }
 
@@ -40,6 +42,11 @@ body {
   border-width: 0 0 1px;
 }
 
+#hud {
+  gap: 1.25rem;
+  overflow: hidden;
+}
+
 #build-bar {
   border-width: 1px 0 0;
   gap: 0.5rem;
@@ -49,6 +56,12 @@ body {
 .stat {
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
+}
+
+/* A stat's value stays on one line ("332 / 410", never "332 /" over "410"). */
+.stat > span:last-child {
+  white-space: nowrap;
 }
 
 .label {
@@ -59,7 +72,20 @@ body {
 }
 
 .preview {
+  /* The one stat that gives way: its creep list trails off with an ellipsis. */
+  flex: 1 1 0;
+  flex-shrink: 1;
   min-width: 0;
+}
+
+#money.banked {
+  color: #fbbf24;
+  cursor: help;
+}
+
+#money.banked::after {
+  content: " · spend";
+  font-size: 0.75rem;
 }
 
 #income {
@@ -461,6 +487,36 @@ body {
   margin-right: 0.5rem;
 }
 
+#next-wave {
+  color: var(--text);
+}
+
+/* Laptop widths: the whole build bar still fits on one row. */
+@media (max-width: 1500px) {
+  #hud {
+    gap: 1rem;
+  }
+  #build-bar {
+    gap: 0.35rem;
+    padding: 0.45rem 0.6rem;
+  }
+  #build-bar .race-name {
+    display: none;
+  }
+  /* M still cycles the sound; the incident preview needs the room more. */
+  #sound {
+    display: none;
+  }
+  .build-btn,
+  .guide-btn {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.85rem;
+  }
+  .build-btn small {
+    font-size: 0.72rem;
+  }
+}
+
 .guide-btn {
   margin-left: auto;
   background: transparent;
@@ -615,6 +671,21 @@ body {
 #hero-card:hover,
 #hero-card.points {
   border-color: var(--accent);
+}
+
+/* Unspent skill points pulse until they're spent: easy to miss otherwise. */
+#hero-card.points {
+  animation: points-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes points-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(125, 255, 160, 0);
+  }
+  50% {
+    box-shadow: 0 0 14px 2px rgba(125, 255, 160, 0.45);
+  }
 }
 
 #hero-card.down {

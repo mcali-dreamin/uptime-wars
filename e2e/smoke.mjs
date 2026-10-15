@@ -77,7 +77,16 @@ await run("smoke test", async ({ check, open }) => {
   check(await waitFor(() => state(() => Math.abs(window.uptime.renderer.camera.x - window.uptime.session.core().x) < 50)), "Space jumps the camera to the alert");
   check(/^\+[\d.]+\/s$/.test(await page.textContent("#income")), "the HUD shows income");
   check(/^\d+ \/ \d+/.test(await page.textContent("#compute")), `the HUD shows compute in use / supplied (${await page.textContent("#compute")})`);
-  check((await page.textContent("#preview-title")).startsWith("Incident 1"), "the HUD previews the next incident");
+  // Laptop width with a late-game HUD (a long creep list, compute over): the
+  // game still fits the window, minimap and build bar included.
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.evaluate(() => {
+    document.querySelector("#preview-creeps").textContent = "Bot · Worm · Trojan · Port Scanner · Phisher · DDoS Node · Cryptominer · Rootkit · Ransomware BOSS";
+  });
+  const fit = await page.evaluate(() => ({ page: document.documentElement.scrollWidth, bar: document.querySelector("#build-bar").getBoundingClientRect().height }));
+  check(fit.page <= 1280 && fit.bar < 80, `the HUD fits a 1280px window on one row each (${fit.page}px wide, bar ${Math.round(fit.bar)}px)`);
+  await page.setViewportSize({ width: 1600, height: 900 });
+  check((await page.textContent("#preview-title")).startsWith("Next: ") && (await page.getAttribute("#preview-title", "title")) === "Incident 1", "the HUD previews the next incident");
   check((await page.$$eval(".build-btn", (b) => b.length)) >= 4, "the build bar shows the race's buildings");
 
   // Build a spawner with a number key and a click, then select it.

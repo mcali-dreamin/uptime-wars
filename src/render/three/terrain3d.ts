@@ -238,20 +238,20 @@ export class Terrain3D {
       {
         level: 0,
         geometry: fungusGeometry(),
-        material: this.fog.apply(new THREE.MeshStandardMaterial({ color: 0x6d28d9, emissive: 0x7c3aed, emissiveIntensity: 0.7, roughness: 0.6 })),
-        chance: 0.14,
+        material: this.fog.apply(new THREE.MeshStandardMaterial({ color: 0x6d28d9, emissive: 0x7c3aed, emissiveIntensity: 0.4, roughness: 0.6 })),
+        chance: 0.06,
       },
       {
         level: 1,
         geometry: pixelGeometry(),
-        material: this.fog.apply(new THREE.MeshStandardMaterial({ color: 0x34d399, emissive: 0x10b981, emissiveIntensity: 0.55, roughness: 0.7 })),
-        chance: 0.2,
+        material: this.fog.apply(new THREE.MeshStandardMaterial({ color: 0x34d399, emissive: 0x10b981, emissiveIntensity: 0.3, roughness: 0.7 })),
+        chance: 0.08,
       },
       {
         level: 2,
         geometry: ventGeometry(),
-        material: this.fog.apply(new THREE.MeshStandardMaterial({ color: 0x8796a8, emissive: 0x38bdf8, emissiveIntensity: 0.25, roughness: 0.4, metalness: 0.7 })),
-        chance: 0.07,
+        material: this.fog.apply(new THREE.MeshStandardMaterial({ color: 0x8796a8, emissive: 0x38bdf8, emissiveIntensity: 0.15, roughness: 0.4, metalness: 0.7 })),
+        chance: 0.03,
       },
     ];
     const m = new THREE.Matrix4();
@@ -443,7 +443,7 @@ const groundFragmentHead = /* glsl */ `
   vec3 levelColor(float lvl) {
     vec3 deep = vec3(0.085, 0.06, 0.14);
     vec3 surface = vec3(0.075, 0.2, 0.15);
-    vec3 backbone = vec3(0.28, 0.31, 0.37);
+    vec3 backbone = vec3(0.115, 0.13, 0.16);
     return lvl < 1.0 ? mix(deep, surface, smoothstep(0.6, 1.0, lvl)) : mix(surface, backbone, smoothstep(1.6, 2.0, lvl));
   }
   vec3 traceColor(float lvl) {
@@ -494,7 +494,7 @@ const GROUND_EMISSIVE = /* glsl */ `
     vec2 xz = vFogWorld.xz;
     float flat_ = 1.0 - gTerrainSteep;
     float tr = traces(xz) * flat_ * (1.0 - vKind.y) * (1.0 - vKind.z);
-    float strength = gTerrainLevel < 0.5 ? 0.22 : gTerrainLevel < 1.5 ? 0.3 : 0.16;
+    float strength = gTerrainLevel < 0.5 ? 0.13 : gTerrainLevel < 1.5 ? 0.17 : 0.1;
     totalEmissiveRadiance += traceColor(gTerrainLevel) * tr * strength;
     // Fibre strata in cliff faces.
     float strata = 1.0 - smoothstep(0.0, 0.08, abs(fract(vFogWorld.y / 11.0 + vnoise(xz * 0.02)) - 0.5));
