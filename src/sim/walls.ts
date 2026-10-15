@@ -14,7 +14,8 @@ import type { Content } from "./content";
 import { TILE } from "./map";
 import { bodyFits, nearestFit } from "./nav";
 import { hostile } from "./teams";
-import type { Terrain } from "./terrain";
+import { walls, type Terrain } from "./terrain";
+import { NOTCH_TILES } from "./tuning";
 import type { Entity, World } from "./types";
 
 /** Rewrite the overlay (and gate views) if the buildings standing differ from last time. */
@@ -45,6 +46,7 @@ export function syncWalls(world: World, content: Content): void {
     any = true;
     if (def.gate) anyGate = true;
   }
+  if (any) fillNotches(terrain, next);
   const signature = anyGate ? gateSignature(gates) : "";
   const current = terrain.built;
   if (!any && !current) return;
@@ -80,6 +82,55 @@ function settle(world: World): void {
       unit.moveTo = nearestFit(terrain, unit.moveTo.x, unit.moveTo.y, r) ?? unit.moveTo;
     }
   }
+}
+
+/**
+ * Ground cut off into a pocket of a few tiles (a building closing a notch
+ * against a cliff, which placement allows) is no use to anyone, and a unit
+ * spawned or pushed into one could never leave. So it counts as built over.
+ */
+function fillNotches(terrain: Terrain, built: Uint8Array): void {
+  const { cols, rows, tiles } = terrain;
+  const open = (i: number) => !walls(tiles[i]) && built[i] !== 1;
+  const seen = new Uint8Array(tiles.length);
+  const pocket: number[] = [];
+  for (let start = 0; start < tiles.length; start += 1) {
+    if (seen[start] || !open(start)) continue;
+    pocket.length = 0;
+    pocket.push(start);
+    seen[start] = 1;
+    for (let q = 0; q < pocket.length; q += 1) {
+      const i = pocket[q]!;
+      const c = i % cols;
+      const r = (i - c) / cols;
+      for (let dr = -1; dr <= 1; dr += 1) {
+        for (let dc = -1; dc <= 1; dc += 1) {
+          const nc = c + dc;
+          const nr = r + dr;
+          if ((dc === 0 && dr === 0) || nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+          const n = nr * cols + nc;
+          if (seen[n] || !open(n) || (dc !== 0 && dr !== 0 && (!open(r * cols + nc) || !open(nr * cols + c)))) continue;
+          seen[n] = 1;
+          pocket.push(n);
+        }
+      }
+    }
+    // Only pockets a building helped make: the map's own odd corners stay as they are.
+    if (pocket.length <= NOTCH_TILES && pocket.some((i) => touchesBuilt(terrain, built, i))) for (const i of pocket) built[i] = 1;
+  }
+}
+
+function touchesBuilt(terrain: Terrain, built: Uint8Array, i: number): boolean {
+  const c = i % terrain.cols;
+  const r = (i - c) / terrain.cols;
+  for (let dr = -1; dr <= 1; dr += 1) {
+    for (let dc = -1; dc <= 1; dc += 1) {
+      const nc = c + dc;
+      const nr = r + dr;
+      if (nc >= 0 && nr >= 0 && nc < terrain.cols && nr < terrain.rows && built[nr * terrain.cols + nc] === 1) return true;
+    }
+  }
+  return false;
 }
 
 function gateSignature(gates: Int16Array): string {

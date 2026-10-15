@@ -171,6 +171,14 @@ incidents grow with the square root of what you've built and banked
 (`waves.json` → `threat`, up to ×3), shown as "Threat ×1.6" next to the
 incident preview. Sitting on a pile of $ makes you a target.
 
+**Buildings are solid.** Nobody walks through a building, your own units
+included: they go round. So base layout matters. Pack it tight and creeps have
+to chew through the outside to get in, but leave your army a way out: a
+building that would wall ground in two is refused ("leave a way through").
+Closing off a notch of a few tiles against a cliff is fine; it then counts as
+built over, so nothing spawns into it. Walls and gates are the exception: they
+exist to close gaps.
+
 **Users** are why you're online. They arrive while your core is up and grow
 toward your capacity (the core serves 40; each Web App adds 60), as long as
 you have the compute to serve them. Every hit your core or a Web App takes
@@ -282,6 +290,9 @@ and room to build.
 
 **Many units, few path searches.** Movement follows flow fields: one Dijkstra
 pass outward from a destination that every unit heading there walks downhill.
+Steps cost 10 or 14, so the search runs on a bucket queue rather than a heap,
+over a walkable-tile mask cached per building layout. Fields are dropped when
+a building goes up or comes down, since every building blocks.
 Each map has ~24 roam points with a field each; a pack picks one, walks it,
 and picks another. Guards hold near where they spawned and fight whatever
 comes within reach.

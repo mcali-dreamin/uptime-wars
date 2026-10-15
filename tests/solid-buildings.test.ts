@@ -2,9 +2,11 @@
 // Gates are the one exception (see walls.test.ts).
 
 import { describe, expect, it } from "vitest";
-import { createWorld, queueCommand, step, TILE, type Building, type Unit, type World } from "../src/sim";
+import { createWorld, isWalkableTile, queueCommand, step, TILE, TILE_OPEN, tileAt, type Building, type Unit, type World } from "../src/sim";
 import { makeContext } from "../src/sim/context";
-import { spawnUnit } from "../src/sim/entities";
+import { placeBuilding, spawnUnit } from "../src/sim/entities";
+import { flowField, UNREACHABLE } from "../src/sim/nav";
+import { canPlace } from "../src/sim/placement";
 import { content, planBuildOrder } from "./fixtures";
 
 const RACES = ["open-source", "hyperscaler", "serverless", "walled-garden"];
@@ -15,6 +17,17 @@ function inside(u: Unit, b: Building): boolean {
   const top = b.row * TILE;
   const size = b.footprint * TILE;
   return u.x > left && u.x < left + size && u.y > top && u.y < top + size;
+}
+
+/** Units with no way out: the nest is out of reach from where they stand. */
+function trapped(world: World): string | null {
+  const t = world.terrain;
+  const field = flowField(t, [t.nest.row * t.cols + t.nest.col]);
+  for (const u of world.entities) {
+    if (u.kind !== "unit" || u.hp <= 0) continue;
+    if (field[Math.floor(u.y / TILE) * t.cols + Math.floor(u.x / TILE)] === UNREACHABLE) return `${u.defId} (team ${u.team}) walled in at tick ${world.tick}`;
+  }
+  return null;
 }
 
 function stranded(world: World): string | null {
@@ -46,12 +59,48 @@ describe("solid buildings", () => {
       world.waves.nextWaveTick = 600;
       for (let i = 0; i < 3000 && !world.outcome; i += 1) {
         step(world, content);
-        const problem = stranded(world);
-        expect(problem).toBeNull();
+        expect(stranded(world)).toBeNull();
+        if (i % 100 === 0) expect(trapped(world)).toBeNull();
       }
       expect(world.entities.filter((e) => e.kind === "unit" && e.team === 0).length).toBeGreaterThan(0);
     });
   }
+
+  it("a building can't close a ring: the last gap stays open", () => {
+    const setup = { seed: 1234, races: ["hyperscaler", "botnet"], startWithCore: true };
+    const world = createWorld(content, setup);
+    world.waves.nextWaveTick = 1e9;
+    world.teams[0]!.money = 1e6;
+    const core = world.entities.find((e): e is Building => e.id === world.teams[0]!.coreId)!;
+    // A square ring of one-tile buildings three tiles out from the core, all but one tile.
+    const ring: [number, number][] = [];
+    const d = 3;
+    for (let k = -d; k <= d + 1; k += 1) ring.push([core.col + k, core.row - d], [core.col + k, core.row + d + 1]);
+    for (let k = -d + 1; k <= d; k += 1) ring.push([core.col - d, core.row + k], [core.col + d + 1, core.row + k]);
+    for (const [c, r] of ring) expect(tileAt(world.terrain, c, r)).toBe(TILE_OPEN);
+    const [gap, ...rest] = ring;
+    for (const [c, r] of rest) placeBuilding(world, content, 0, "cdn-edge", c, r, false);
+    expect(canPlace(world, content, 0, "cdn-edge", gap![0], gap![1])).toBe("would wall in ground: leave a way through");
+    // Anywhere off the ring is fine.
+    expect(canPlace(world, content, 0, "cdn-edge", core.col + d + 3, core.row)).toBeNull();
+  });
+
+  it("a notch a building closes against a cliff counts as built: nobody can end up in it", () => {
+    // Seed 1234: a CDN Edge at (279, 137) closes off the one tile at (278, 137)
+    // between it and a diagonal cliff.
+    const setup = { seed: 1234, races: ["hyperscaler", "botnet"], startWithCore: true };
+    const world = createWorld(content, setup);
+    world.waves.nextWaveTick = 1e9;
+    world.teams[0]!.money = 1e6;
+    expect(isWalkableTile(world.terrain, 278, 137)).toBe(true);
+    expect(canPlace(world, content, 0, "cdn-edge", 279, 137)).toBeNull();
+    queueCommand(world, { type: "build", tick: world.tick, team: 0, building: "cdn-edge", col: 279, row: 137 });
+    step(world, content);
+    expect(isWalkableTile(world.terrain, 278, 137)).toBe(false);
+    const unit = spawnUnit(makeContext(world, content), 0, "process", { x: 0, y: 0 }, 278.5 * TILE, 137.5 * TILE, "guard");
+    expect(Math.floor(unit.x / TILE) === 278 && Math.floor(unit.y / TILE) === 137).toBe(false);
+    expect(trapped(world)).toBeNull();
+  });
 
   it("a building that goes down on a unit pushes it out", () => {
     const setup = { seed: 1234, races: ["open-source", "botnet"], startWithCore: true };

@@ -8,6 +8,7 @@ import type { Building, Entity, Team, TeamId, World } from "./types";
 import { unitInTheWay } from "./walls";
 import { raceModifiers, tierBlocker, tierDef } from "./tiers";
 import { bonus } from "./upgrades";
+import { NOTCH_TILES } from "./tuning";
 
 /** A building's price before any you already own (race modifier applied). */
 export function baseCost(content: Content, raceId: string, buildingId: string): number {
@@ -88,9 +89,6 @@ export function canPlace(
  * spawns included. Closing a gap is what walls and gates are for: they're
  * left out of the search (and can't seal anything here themselves).
  */
-/** A pocket this small (tiles) against a cliff may be closed off. */
-const NOTCH_TILES = 4;
-
 export function sealsOff(world: World, content: Content, col: number, row: number, footprint: number): boolean {
   const { terrain } = world;
   const { cols, rows } = terrain;
