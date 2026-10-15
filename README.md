@@ -338,6 +338,12 @@ disconnects at a tick everyone agrees on; their base keeps fighting. Every
 100 ticks turns carry a world hash, so a desync is caught right away. Co-op
 can't pause. If the host leaves, the match is over.
 
+Ticks normally run from the frame loop, but a hidden tab gets no frames, and in
+lockstep one player's stalled turns freeze everyone. So in co-op a hidden tab
+keeps stepping on a beat from a tiny inline Worker (`src/game/metronome.ts`;
+browsers throttle a hidden tab's timers, not a Worker's). Solo, a hidden tab
+just pauses.
+
 **The horde is just a team.** Team 1 is the Botnet race, driven by the wave
 director instead of a human.
 
