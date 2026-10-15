@@ -88,6 +88,9 @@ export function canPlace(
  * spawns included. Closing a gap is what walls and gates are for: they're
  * left out of the search (and can't seal anything here themselves).
  */
+/** A pocket this small (tiles) against a cliff may be closed off. */
+const NOTCH_TILES = 4;
+
 export function sealsOff(world: World, content: Content, col: number, row: number, footprint: number): boolean {
   const { terrain } = world;
   const { cols, rows } = terrain;
@@ -108,32 +111,50 @@ export function sealsOff(world: World, content: Content, col: number, row: numbe
       if (open[r * cols + c]) edge.push(r * cols + c);
     }
   }
-  if (edge.length === 0) return false;
-  // Is all of it still one piece of ground with the big open map? Flood from
-  // one edge tile; the map's open ground is far bigger than any base.
+  // Ground on each side gets flooded. A notch of a few tiles against a cliff
+  // is fine to close off (nobody's in it); anything bigger on two sides of
+  // the building means it would cut real ground in two.
   const seen = new Uint8Array(cols * rows);
-  const queue = [edge[0]!];
-  seen[edge[0]!] = 1;
-  const need = new Set(edge);
-  need.delete(edge[0]!);
-  for (let q = 0; q < queue.length && need.size > 0; q += 1) {
-    const i = queue[q]!;
-    const c = i % cols;
-    const r = (i - c) / cols;
-    for (let dr = -1; dr <= 1; dr += 1) {
-      for (let dc = -1; dc <= 1; dc += 1) {
-        const nc = c + dc;
-        const nr = r + dr;
-        if ((dc === 0 && dr === 0) || nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
-        const n = nr * cols + nc;
-        // Diagonals can't cut a corner, the same as walking.
-        if (seen[n] || !open[n] || (dc !== 0 && dr !== 0 && (!open[r * cols + nc] || !open[nr * cols + c]))) continue;
-        seen[n] = 1;
-        need.delete(n);
-        queue.push(n);
+  const flood = (start: number, limit: number, need?: Set<number>): number[] => {
+    const tiles = [start];
+    seen[start] = 1;
+    for (let q = 0; q < tiles.length && tiles.length <= limit && need?.size !== 0; q += 1) {
+      const i = tiles[q]!;
+      const c = i % cols;
+      const r = (i - c) / cols;
+      for (let dr = -1; dr <= 1; dr += 1) {
+        for (let dc = -1; dc <= 1; dc += 1) {
+          const nc = c + dc;
+          const nr = r + dr;
+          if ((dc === 0 && dr === 0) || nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+          const n = nr * cols + nc;
+          // Diagonals can't cut a corner, the same as walking.
+          if (seen[n] || !open[n] || (dc !== 0 && dr !== 0 && (!open[r * cols + nc] || !open[nr * cols + c]))) continue;
+          seen[n] = 1;
+          need?.delete(n);
+          tiles.push(n);
+        }
       }
     }
+    return tiles;
+  };
+  const big: number[] = [];
+  for (const start of edge) {
+    if (seen[start]) continue;
+    const pocket = flood(start, NOTCH_TILES);
+    if (pocket.length > NOTCH_TILES) {
+      big.push(start);
+      continue;
+    }
+    // A notch: only fine to close if nobody is standing in it.
+    const inside = new Set(pocket);
+    if (world.entities.some((e) => e.kind === "unit" && e.hp > 0 && inside.has(Math.floor(e.y / TILE) * cols + Math.floor(e.x / TILE)))) return true;
   }
+  if (big.length <= 1) return false;
+  // Two or more big pieces of ground touch the footprint: are they still one?
+  seen.fill(0);
+  const need = new Set(big.slice(1));
+  flood(big[0]!, Infinity, need);
   return need.size > 0;
 }
 
