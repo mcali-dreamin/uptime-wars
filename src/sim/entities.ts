@@ -3,7 +3,7 @@
 import type { TickContext } from "./context";
 import type { Content } from "./content";
 import { TILE, footprintCenter } from "./map";
-import { bodyFits } from "./nav";
+import { bodyFits, nearestFit } from "./nav";
 import { randomInt } from "./rng";
 import type { Terrain } from "./terrain";
 import { CONSTRUCTION_START_HP, RALLY_SPREAD } from "./tuning";
@@ -67,18 +67,9 @@ export function spawnInterval(content: Content, team: Team | undefined, defId: s
 }
 
 /** Nearest spot where a body of radius r fits, searching outward in a fixed pattern. */
+/** (x, y), or the nearest spot a body fits (not inside a building); `fallback` if none. */
 function walkableSpot(terrain: Terrain, x: number, y: number, r: number, fallback: Point): Point {
-  if (bodyFits(terrain, x, y, r)) return { x, y };
-  for (let ring = 1; ring <= 4; ring += 1) {
-    const d = ring * (TILE / 2);
-    const offsets = [
-      [0, -d], [d, 0], [0, d], [-d, 0], [d, -d], [d, d], [-d, d], [-d, -d],
-    ] as const;
-    for (const [ox, oy] of offsets) {
-      if (bodyFits(terrain, x + ox, y + oy, r)) return { x: x + ox, y: y + oy };
-    }
-  }
-  return { x: fallback.x, y: fallback.y };
+  return nearestFit(terrain, x, y, r) ?? { x: fallback.x, y: fallback.y };
 }
 
 /** Spawn a unit near (x, y), nudged onto walkable ground; `from` is the fallback spot. */
@@ -146,7 +137,10 @@ export function sendHome(world: World, unit: Unit, point: Point, spread = RALLY_
   unit.homeX = point.x + randomInt(world, -spread, spread);
   unit.homeY = point.y + randomInt(world, -spread, spread);
   if (!bodyFits(world.terrain, unit.homeX, unit.homeY, unit.radius)) {
-    unit.homeX = point.x;
-    unit.homeY = point.y;
+    // Spread put it somewhere it can't stand: the point itself, or the
+    // nearest spot to it that fits (a point on a building means beside it).
+    const spot = nearestFit(world.terrain, point.x, point.y, unit.radius) ?? point;
+    unit.homeX = spot.x;
+    unit.homeY = spot.y;
   }
 }

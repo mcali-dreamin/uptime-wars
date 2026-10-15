@@ -42,3 +42,6 @@ export const HIGH_GROUND_DAMAGE = 1.25;
 export const SENSED_ARRIVAL = 160;
 /** A roaming pack reconsiders where it's going this often, in ticks. */
 export const REROUTE_TICKS = 200;
+
+/** A pocket of ground this small (tiles) may be closed off by a building: it then counts as built over. */
+export const NOTCH_TILES = 4;

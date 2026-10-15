@@ -35,33 +35,98 @@ function canStep(terrain: Terrain, col: number, row: number, dc: number, dr: num
   return true;
 }
 
-/** Cost-to-goal for every tile. `goals` are tile indices. */
+/**
+ * Cost-to-goal for every tile. `goals` are tile indices. A goal under a
+ * building (its own tiles are blocked) means the ground around that building,
+ * so you can walk to a building, not only past it.
+ */
 export function flowField(terrain: Terrain, goals: number[]): Int32Array {
-  const { cols } = terrain;
-  const dist = new Int32Array(terrain.tiles.length).fill(UNREACHABLE);
-  const heap = new MinHeap();
-  for (const goal of [...goals].sort((a, b) => a - b)) {
+  const { cols, rows } = terrain;
+  const walk = walkMask(terrain);
+  const dist = new Int32Array(walk.length).fill(UNREACHABLE);
+  // Dijkstra on a bucket queue: steps cost 10 or 14, so DIAGONAL + 1 buckets
+  // in a ring hold everything still to visit (Dial's algorithm). Distances
+  // come out exactly as a heap would give them.
+  const buckets: number[][] = Array.from({ length: DIAGONAL + 1 }, () => []);
+  let pending = 0;
+  for (const goal of [...new Set(goals.flatMap((g) => aroundBuilt(terrain, g)))].sort((a, b) => a - b)) {
+    if (dist[goal] === 0) continue;
     dist[goal] = 0;
-    heap.push(0, goal);
+    buckets[0]!.push(goal);
+    pending += 1;
   }
-  while (heap.size > 0) {
-    const [d, i] = heap.pop();
-    if (d > dist[i]!) continue;
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    for (const [dc, dr, step] of NEIGHBORS) {
-      // Reverse search: we move from goal outward, so check the step from the
-      // neighbor back into this tile.
-      if (!canStep(terrain, col, row, dc, dr)) continue;
-      const n = (row + dr) * cols + (col + dc);
-      const cost = d + step;
-      if (dist[n] === UNREACHABLE || cost < dist[n]!) {
-        dist[n] = cost;
-        heap.push(cost, n);
+  for (let d = 0; pending > 0; d += 1) {
+    const bucket = buckets[d % buckets.length]!;
+    for (let k = 0; k < bucket.length; k += 1) {
+      const i = bucket[k]!;
+      pending -= 1;
+      if (dist[i] !== d) continue;
+      const col = i % cols;
+      const row = (i - col) / cols;
+      for (const [dc, dr, step] of NEIGHBORS) {
+        // Reverse search: we move from goal outward, so check the step from the
+        // neighbor back into this tile.
+        const c = col + dc;
+        const r = row + dr;
+        if (c < 0 || r < 0 || c >= cols || r >= rows) continue;
+        const n = r * cols + c;
+        if (!walk[n]) continue;
+        if (dc !== 0 && dr !== 0 && (!walk[row * cols + c] || !walk[r * cols + col])) continue;
+        const cost = d + step;
+        if (dist[n] === UNREACHABLE || cost < dist[n]!) {
+          dist[n] = cost;
+          buckets[cost % buckets.length]!.push(n);
+          pending += 1;
+        }
       }
     }
+    bucket.length = 0;
   }
   return dist;
+}
+
+/** Walkable (1) or not, per tile. Cached per overlay: a new overlay is a new array. */
+const masks = new WeakMap<object, Uint8Array>();
+function walkMask(terrain: Terrain): Uint8Array {
+  const key = terrain.built ?? terrain.tiles;
+  let mask = masks.get(key);
+  if (mask && mask.length === terrain.tiles.length) return mask;
+  mask = new Uint8Array(terrain.tiles.length);
+  for (let row = 0; row < terrain.rows; row += 1) {
+    for (let col = 0; col < terrain.cols; col += 1) {
+      if (isWalkableTile(terrain, col, row)) mask[row * terrain.cols + col] = 1;
+    }
+  }
+  masks.set(key, mask);
+  return mask;
+}
+
+/**
+ * The tile itself, or for a tile under buildings, the walkable tiles touching
+ * that block of buildings (buildings side by side count as one).
+ */
+function aroundBuilt(terrain: Terrain, tile: number): number[] {
+  const { cols, rows, built } = terrain;
+  if (built?.[tile] !== 1) return [tile];
+  const seen = new Set([tile]);
+  const queue = [tile];
+  const edge: number[] = [];
+  for (let q = 0; q < queue.length; q += 1) {
+    const i = queue[q]!;
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    for (const [dc, dr] of NEIGHBORS) {
+      const c = col + dc;
+      const r = row + dr;
+      if (c < 0 || r < 0 || c >= cols || r >= rows) continue;
+      const n = r * cols + c;
+      if (seen.has(n)) continue;
+      seen.add(n);
+      if (built[n] === 1) queue.push(n);
+      else if (isWalkableTile(terrain, c, r)) edge.push(n);
+    }
+  }
+  return edge.length > 0 ? edge : [tile];
 }
 
 /** Center of the next tile downhill from (x, y), or null at the goal / off the field. */
@@ -104,6 +169,33 @@ export function bodyFits(terrain: Terrain, x: number, y: number, r: number): boo
     isWalkablePoint(terrain, x, y + e) &&
     isWalkablePoint(terrain, x, y - e)
   );
+}
+
+/**
+ * The nearest spot to (x, y) where a body of radius `r` fits, searching
+ * outward in half-tile rings up to `maxTiles` away; null if there's none.
+ * Order is fixed, so peers agree.
+ */
+export function nearestFit(terrain: Terrain, x: number, y: number, r: number, maxTiles = 8): { x: number; y: number } | null {
+  if (bodyFits(terrain, x, y, r)) return { x, y };
+  const half = TILE / 2;
+  for (let ring = 1; ring <= maxTiles * 2; ring += 1) {
+    let best: { x: number; y: number } | null = null;
+    let bestD = Infinity;
+    for (let i = -ring; i <= ring; i += 1) {
+      for (const [ox, oy] of [[i, -ring], [ring, i], [-i, ring], [-ring, -i]] as const) {
+        const px = x + ox * half;
+        const py = y + oy * half;
+        const d = ox * ox + oy * oy;
+        if (d < bestD && bodyFits(terrain, px, py, r)) {
+          best = { x: px, y: py };
+          bestD = d;
+        }
+      }
+    }
+    if (best) return best;
+  }
+  return null;
 }
 
 /** True when no blocked tile lies on the segment. Samples every quarter tile. */
@@ -187,60 +279,5 @@ export function moveToward(
     // so the body can work itself free instead of freezing.
     mover.x = nx;
     mover.y = ny;
-  }
-}
-
-/** Binary min-heap of (priority, value), ties broken by value for determinism. */
-class MinHeap {
-  private readonly priorities: number[] = [];
-  private readonly values: number[] = [];
-
-  get size(): number {
-    return this.values.length;
-  }
-
-  push(priority: number, value: number): void {
-    this.priorities.push(priority);
-    this.values.push(value);
-    let i = this.values.length - 1;
-    while (i > 0) {
-      const parent = (i - 1) >> 1;
-      if (!this.less(i, parent)) break;
-      this.swap(i, parent);
-      i = parent;
-    }
-  }
-
-  pop(): [number, number] {
-    const top: [number, number] = [this.priorities[0]!, this.values[0]!];
-    const lastPriority = this.priorities.pop()!;
-    const lastValue = this.values.pop()!;
-    if (this.values.length > 0) {
-      this.priorities[0] = lastPriority;
-      this.values[0] = lastValue;
-      let i = 0;
-      for (;;) {
-        const left = 2 * i + 1;
-        const right = left + 1;
-        let smallest = i;
-        if (left < this.values.length && this.less(left, smallest)) smallest = left;
-        if (right < this.values.length && this.less(right, smallest)) smallest = right;
-        if (smallest === i) break;
-        this.swap(i, smallest);
-        i = smallest;
-      }
-    }
-    return top;
-  }
-
-  private less(a: number, b: number): boolean {
-    const pa = this.priorities[a]!;
-    const pb = this.priorities[b]!;
-    return pa < pb || (pa === pb && this.values[a]! < this.values[b]!);
-  }
-
-  private swap(a: number, b: number): void {
-    [this.priorities[a], this.priorities[b]] = [this.priorities[b]!, this.priorities[a]!];
-    [this.values[a], this.values[b]] = [this.values[b]!, this.values[a]!];
   }
 }

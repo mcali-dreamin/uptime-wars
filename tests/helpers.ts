@@ -52,16 +52,19 @@ export function planBuildOrder(
 
   return order.map(([tick, building]) => {
     // Leave a one-tile gap between buildings so spawns always have room.
+    // (Buildings are solid: touching ones could wall ground in.)
+    const size = content.buildings[building]!.footprint;
     const spot = candidates.find((c) => {
-      for (let r = c.row - 1; r <= c.row + 1; r += 1) {
-        for (let k = c.col - 1; k <= c.col + 1; k += 1) {
+      for (let r = c.row - 1; r <= c.row + size; r += 1) {
+        for (let k = c.col - 1; k <= c.col + size; k += 1) {
           if (taken.has(r * terrain.cols + k)) return false;
+          if (r >= c.row && r < c.row + size && k >= c.col && k < c.col + size && tileAt(terrain, k, r) !== TILE_OPEN) return false;
         }
       }
       return true;
     });
     if (!spot) throw new Error(`no room for ${building}`);
-    taken.add(spot.row * terrain.cols + spot.col);
+    for (let r = spot.row; r < spot.row + size; r += 1) for (let k = spot.col; k < spot.col + size; k += 1) taken.add(r * terrain.cols + k);
     return { type: "build", tick, team, building, col: spot.col, row: spot.row };
   });
 }
