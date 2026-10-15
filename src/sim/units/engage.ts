@@ -127,6 +127,11 @@ export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
     moveToward(terrain, unit, aimX, aimY, Math.min(def.speed, gap - def.range + 0.5));
     return true;
   }
-  // Seen but not straight-line reachable: carry on with the mode this tick.
+  // Seen but not straight-line reachable. Your units find the way round your
+  // buildings to it; a creep carries on with its mode (a wall is a wall).
+  if (guard) {
+    walkTo(world, unit, { x: aimX, y: aimY }, Math.min(def.speed, gap - def.range + 0.5));
+    return true;
+  }
   return false;
 }

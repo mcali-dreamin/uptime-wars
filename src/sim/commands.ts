@@ -11,7 +11,8 @@ import { invoke, invokeBlocker } from "./functions";
 import { applyFork } from "./mechanics";
 import { heroOf, learnBlocker, orderCast } from "./heroes";
 import { hostile } from "./teams";
-import { isWalkableTile } from "./terrain";
+import { TILE_OPEN, isWalkableTile, tileAt } from "./terrain";
+import { nearestFit } from "./nav";
 import { MAX_ORDER_UNITS, MAX_WAYPOINTS, ORDER_SPREAD_MAX, ORDER_SPREAD_PER_UNIT, RALLY_SPREAD } from "./tuning";
 import type { Command, OrderCommand, RallyCommand, World } from "./types";
 
@@ -37,8 +38,15 @@ export function applyCommands(ctx: TickContext): void {
   }
 }
 
-const walkable = (world: World, x: number, y: number) =>
-  isWalkableTile(world.terrain, Math.floor(x / TILE), Math.floor(y / TILE));
+/** Ground you can send someone to: not cliffs or walls. A building counts: they go beside it. */
+const walkable = (world: World, x: number, y: number) => {
+  const col = Math.floor(x / TILE);
+  const row = Math.floor(y / TILE);
+  return isWalkableTile(world.terrain, col, row) || world.terrain.built?.[row * world.terrain.cols + col] === 1 && tileAt(world.terrain, col, row) === TILE_OPEN;
+};
+
+/** Where a body actually ends up for a point: beside a building rather than in it. */
+const landing = (world: World, x: number, y: number, r: number) => nearestFit(world.terrain, x, y, r) ?? { x, y };
 
 /** Returns a rejection reason, or null when the command was applied. */
 function applyCommand(ctx: TickContext, command: Command): string | null {
@@ -155,7 +163,7 @@ function moveHero(ctx: TickContext, command: Extract<Command, { type: "move" }>)
   const hero = heroOf(world, team);
   if (!hero) return "no hero";
   if (!walkable(world, command.x, command.y)) return "can't walk there";
-  hero.moveTo = { x: command.x, y: command.y };
+  hero.moveTo = landing(world, command.x, command.y, hero.radius);
   team.hero!.focusId = null;
   team.hero!.cast = null;
   return null;
@@ -172,7 +180,7 @@ function moveBuilder(ctx: TickContext, command: Extract<Command, { type: "move" 
     builder.foundAt = { col: command.col, row: command.row };
   } else {
     if (!walkable(world, command.x, command.y)) return "can't walk there";
-    builder.moveTo = { x: command.x, y: command.y };
+    builder.moveTo = landing(world, command.x, command.y, builder.radius);
     builder.foundAt = null;
   }
   return null;

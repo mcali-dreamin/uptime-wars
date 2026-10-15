@@ -392,6 +392,8 @@ export interface Navigation {
   views?: Map<number, { key: number; terrain: Terrain }>;
   /** What the views were built for (gate tiles and owners). */
   gateSignature?: string;
+  /** The buildings (id:team) the overlay was last built for. */
+  builtKey?: string;
 }
 
 export interface World {
