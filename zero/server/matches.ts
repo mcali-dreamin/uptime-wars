@@ -42,7 +42,7 @@ export function parseMatch(body: unknown): MatchRow | string {
   if (typeof b.player !== "string" || !ID.test(b.player)) return "bad_player";
   if (typeof b.version !== "string" || !/^\d+\.\d+\.\d+$/.test(b.version)) return "bad_version";
   if (!isInt(b.seed, -(2 ** 31), 2 ** 32)) return "bad_seed";
-  if (b.mode !== "coop" && b.mode !== "ffa") return "bad_mode";
+  if (b.mode !== "coop" && b.mode !== "ffa" && b.mode !== "custom") return "bad_mode";
   if (!isSlug(b.race) || !(b.hero === "" || isSlug(b.hero))) return "bad_race";
   if (!Array.isArray(b.races) || b.races.length < 1 || b.races.length > 5 || !b.races.every(isSlug)) return "bad_races";
   if (!isInt(b.team, 0, 4)) return "bad_team";

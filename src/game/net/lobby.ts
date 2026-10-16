@@ -1,9 +1,9 @@
 // Setting up a match with friends: the host collects guests over peer links,
-// then starts everyone on the same seed with a team each, in co-op (everyone
-// against the horde) or free-for-all (everyone against everyone). From then on the links
-// carry lockstep turns (see lockstep.ts).
+// then starts everyone on the same seed with a team each, under the rules the
+// host composed (sides, diplomacy, the botnet; see sim/teams.ts). From then
+// on the links carry lockstep turns (see lockstep.ts).
 
-import { MAX_PLAYERS, createWorld, type Content, type MatchMode, type TeamId, type World } from "../../sim";
+import { MAX_PLAYERS, createWorld, rulesFor, type Content, type MatchMode, type MatchRules, type TeamId, type World } from "../../sim";
 import { Lockstep, type LockstepMessage } from "./lockstep";
 import type { PeerLink } from "./rtc";
 
@@ -11,16 +11,33 @@ const HORDE_RACE = "botnet";
 
 type LobbyMessage =
   | { t: "hello"; race: string; hero?: string }
-  | { t: "start"; seed: number; races: string[]; heroes: (string | undefined)[]; you: TeamId; mode?: MatchMode }
+  | { t: "start"; seed: number; races: string[]; heroes: (string | undefined)[]; you: TeamId; mode?: MatchMode; rules?: MatchRules }
   | LockstepMessage;
 
-/** How the host set the match up. FFA can drop the horde; co-op always has it. */
-export interface MatchRules {
-  mode: MatchMode;
+/**
+ * How the host set the match up: a preset to start from, whether the botnet
+ * plays, and any rule on top (sides per seat, diplomacy, nest must fall).
+ * With nothing else to fight (one side, alliances locked) the botnet always plays.
+ */
+export interface LobbyRules extends Partial<MatchRules> {
+  mode?: MatchMode;
   horde: boolean;
 }
 
-export const COOP: MatchRules = { mode: "coop", horde: true };
+export const COOP: LobbyRules = { mode: "coop", horde: true };
+
+/** The rules a lobby setup comes to for `players` seats, and whether the botnet plays. */
+export function composeRules(setup: LobbyRules, players: number): { rules: MatchRules; horde: boolean } {
+  const base = rulesFor(setup.mode ?? "coop", players);
+  const sides = setup.sides ? Array.from({ length: players }, (_, i) => setup.sides![i] ?? 0) : base.sides;
+  const rules: MatchRules = {
+    sides,
+    diplomacy: setup.diplomacy ?? base.diplomacy,
+    nestMustFall: setup.nestMustFall ?? base.nestMustFall,
+  };
+  const enemyBesides = new Set(sides).size > 1 || rules.diplomacy === "open";
+  return { rules, horde: setup.horde || !enemyBesides };
+}
 
 export interface NetMatch {
   world: World;
@@ -82,16 +99,15 @@ export class HostLobby {
   }
 
   /** Start the match for everyone who's ready. The host is player 1. */
-  start(hostRace: string, seed: number, hostHero?: string, rules: MatchRules = COOP): NetMatch {
-    const { mode } = rules;
-    const horde = mode === "coop" || rules.horde;
+  start(hostRace: string, seed: number, hostHero?: string, setup: LobbyRules = COOP): NetMatch {
     // Guests that never said hello don't get a seat.
     for (const guest of this.guests.filter((g) => g.race === null)) guest.link.close();
     this.guests.splice(0, this.guests.length, ...this.ready);
+    const { rules, horde } = composeRules(setup, this.guests.length + 1);
     const races = [hostRace, ...this.guests.map((guest) => guest.race!), ...(horde ? [HORDE_RACE] : [])];
     const heroes = [hostHero, ...this.guests.map((guest) => guest.hero)];
-    for (const [i, guest] of this.guests.entries()) guest.link.send({ t: "start", seed, races, heroes, you: i + 1, mode } satisfies LobbyMessage);
-    const world = createWorld(this.content, { seed, races, heroes, mode });
+    for (const [i, guest] of this.guests.entries()) guest.link.send({ t: "start", seed, races, heroes, you: i + 1, rules } satisfies LobbyMessage);
+    const world = createWorld(this.content, { seed, races, heroes, rules });
     this.lockstep = new Lockstep(world, this.content, {
       local: 0,
       host: true,
@@ -117,7 +133,7 @@ export function joinHost(content: Content, link: PeerLink, race: string, hero: s
   link.onMessage = (raw) => {
     const message = raw as LobbyMessage;
     if (message.t !== "start") return;
-    const world = createWorld(content, { seed: message.seed, races: message.races, heroes: message.heroes ?? [], mode: message.mode ?? "coop" });
+    const world = createWorld(content, { seed: message.seed, races: message.races, heroes: message.heroes ?? [], mode: message.mode ?? "coop", rules: message.rules });
     const lockstep = new Lockstep(world, content, { local: message.you, host: false, send: (m) => link.send(m) });
     link.onMessage = (next) => {
       const m = next as LobbyMessage;

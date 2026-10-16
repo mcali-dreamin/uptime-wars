@@ -69,19 +69,29 @@ await run(
     };
 
     // Copy-paste signalling (the handshake is the part that differs), then a
-    // quick free-for-all without the horde: the host's rules reach the guest.
+    // composed match: free-for-all, no horde, open alliances. The host's rules
+    // reach the guest, and the two ally from the players panel.
     const paste = await connect(false);
-    await paste.host.check('input[name="coop-mode"][value="ffa"]');
-    check(await paste.host.$eval("#coop-horde-row", (el) => !el.hidden), "FFA offers to leave the horde out");
+    await paste.host.click('[data-preset="ffa"]');
+    check(await paste.host.$eval("#coop-horde", (el) => !el.disabled), "with two sides, the horde is optional");
     await paste.host.uncheck("#coop-horde");
+    await paste.host.check("#coop-open");
     await paste.host.click("#coop-start");
-    const rules = (page) => page.evaluate(() => ({ mode: window.uptime.world.mode, races: window.uptime.world.teams.map((t) => t.raceId).join() }));
+    const rules = (page) =>
+      page.evaluate(() => ({ rules: JSON.stringify(window.uptime.world.rules), races: window.uptime.world.teams.map((t) => t.raceId).join() }));
     const ffa = await waitFor(async () => {
       const [h, g] = [await rules(paste.host), await rules(paste.guest)];
-      return h.mode === "ffa" && g.mode === "ffa" && h.races === g.races ? h : null;
+      return h.rules.includes('"open"') && h.rules === g.rules && h.races === g.races ? h : null;
     }, 60000);
-    check(ffa && !ffa.races.includes("botnet"), `both browsers start the same free-for-all, no horde (${ffa?.races})`);
-    check(await waitFor(async () => (await paste.guest.textContent("#status")).includes("Free-for-all"), 30000), "the HUD says it's a free-for-all");
+    check(ffa && !ffa.races.includes("botnet"), `both browsers start the same composed match, no horde (${ffa?.races} ${ffa?.rules})`);
+    check(await waitFor(async () => (await paste.guest.textContent("#status")).includes("Custom rules"), 30000), "the HUD names the rules");
+    for (const page of [paste.host, paste.guest]) {
+      await waitFor(() => page.$eval("#players", (el) => !el.hidden && el.querySelector("button") !== null), 30000);
+      await page.click("#players button");
+    }
+    const allied = (page) => page.evaluate(() => window.uptime.world.allies.join());
+    check(await waitFor(async () => (await allied(paste.host)) === "3,3" && (await allied(paste.guest)) === "3,3", 30000), "both click Ally: they're allied in both worlds");
+    check(await waitFor(async () => (await paste.guest.textContent("#players")).includes("Ally"), 10000), "the players panel shows the alliance");
     await paste.host.context().close();
     await paste.guest.context().close();
 

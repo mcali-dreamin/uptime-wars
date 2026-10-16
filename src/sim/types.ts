@@ -1,4 +1,4 @@
-import type { MatchMode } from "./teams";
+import type { MatchRules } from "./teams";
 import type { Controller } from "./content";
 import type { Terrain, TilePoint } from "./terrain";
 
@@ -305,7 +305,23 @@ export interface RankCommand {
   buildingId: number;
 }
 
-export type Command = RankCommand | ForkCommand | BuildCommand | MoveCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | AttackCommand | CastCommand | LearnCommand | InvokeCommand;
+/** Offer another player an alliance, or accept theirs (open diplomacy only). */
+export interface AllyCommand {
+  type: "ally";
+  tick: number;
+  team: TeamId;
+  with: TeamId;
+}
+
+/** Break an alliance, or withdraw an offer. One-sided, immediate. */
+export interface UnallyCommand {
+  type: "unally";
+  tick: number;
+  team: TeamId;
+  with: TeamId;
+}
+
+export type Command = AllyCommand | UnallyCommand | RankCommand | ForkCommand | BuildCommand | MoveCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | AttackCommand | CastCommand | LearnCommand | InvokeCommand;
 
 export interface WaveSpawn {
   tick: number;
@@ -343,8 +359,9 @@ export interface WaveState {
 
 export interface Outcome {
   /**
-   * Co-op: every human team when the nest falls; the horde when every human
-   * team is down. FFA: the last human team with a core up.
+   * The players left standing and everyone allied with them, once nothing
+   * hostile to them that counts is left (teams.ts); or the horde, when every
+   * player is down.
    */
   winners: TeamId[];
   reason: "nest-offline" | "all-offline" | "last-standing";
@@ -353,6 +370,11 @@ export interface Outcome {
 
 /** Transient, render-only. Not part of the simulation state or its hash. */
 export type SimEvent =
+  /** `team` offered `with` an alliance. */
+  | { type: "ally-offer"; team: TeamId; with: TeamId }
+  | { type: "allied"; team: TeamId; with: TeamId }
+  /** `team` broke its alliance with `with` (or withdrew its offer). */
+  | { type: "unallied"; team: TeamId; with: TeamId }
   | { type: "shot"; from: number; to: number; x1: number; y1: number; x2: number; y2: number; team: TeamId }
   | { type: "death"; id: number; x: number; y: number; team: TeamId; kind: Entity["kind"]; defId: string }
   /** A function ran: `units` spun up. `auto`: an enemy triggered it. */
@@ -413,8 +435,12 @@ export interface Navigation {
 }
 
 export interface World {
-  /** co-op (humans together vs the horde) or ffa (everyone vs everyone). */
-  mode: MatchMode;
+  /** Who starts on whose side, whether that can change, and what winning takes (teams.ts). */
+  rules: MatchRules;
+  /** Per team: a bitmask of the teams it's allied with, itself included. Always mutual. */
+  allies: number[];
+  /** Per team: a bitmask of the players it has offered an alliance that's not answered yet. */
+  offers: number[];
   tick: number;
   seed: number;
   rngState: number;

@@ -6,7 +6,7 @@
 // Off with the toggle on the race picker. Never sent from a dev machine, and
 // silently dropped wherever there's no server (a plain static host).
 
-import { tierOf, type Content, type World } from "../sim";
+import { rulesLabel, tierOf, type Content, type MatchRules, type World } from "../sim";
 
 const OPT_OUT_KEY = "uptime:telemetry";
 const PLAYER_KEY = "uptime:player";
@@ -18,7 +18,8 @@ export interface MatchReport {
   player: string;
   version: string;
   seed: number;
-  mode: World["mode"];
+  /** The preset the rules match, or "custom" (then summary.rules has them). */
+  mode: "coop" | "ffa" | "custom";
   race: string;
   hero: string;
   races: string[];
@@ -35,6 +36,8 @@ export interface MatchReport {
     heroLevel: number;
     ticks: number;
     players: number;
+    /** The rules, when they aren't a preset. Replays need them. */
+    rules?: MatchRules;
     /** Computer players' difficulty per team (null = a person or the horde), when there are any. Replays need it. */
     ai?: (string | null)[];
   };
@@ -56,7 +59,7 @@ export function buildReport(content: Content, world: World, team: number, player
     player,
     version,
     seed: world.seed,
-    mode: world.mode,
+    mode: rulesLabel(world),
     race: t.raceId,
     hero: t.heroId ?? "",
     races: world.teams.map((x) => x.raceId),
@@ -73,6 +76,7 @@ export function buildReport(content: Content, world: World, team: number, player
       heroLevel: t.hero?.level ?? 0,
       ticks: world.tick,
       players: world.teams.filter((x) => x.controller === "human" && !x.ai).length,
+      ...(rulesLabel(world) === "custom" ? { rules: world.rules } : {}),
       ...(world.teams.some((x) => x.ai) ? { ai: world.teams.map((x) => x.ai?.difficulty ?? null) } : {}),
     },
     log: world.log,

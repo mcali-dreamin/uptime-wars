@@ -850,3 +850,76 @@ body {
   color: #f87171;
   font-weight: 600;
 }
+
+/* Players and their sides, top right; diplomacy buttons when alliances are open. */
+#players {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.45rem 0.6rem;
+  background: rgba(18, 25, 34, 0.9);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+#players[hidden] {
+  display: none;
+}
+
+#players .player {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+#players i {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+#players small {
+  color: var(--muted);
+  margin-left: auto;
+}
+
+#players small.ally {
+  color: var(--accent);
+}
+
+#players small.enemy {
+  color: var(--danger);
+}
+
+#players button {
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+#players button.accept {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.coop-presets {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+#coop-players li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+#coop-rules-note {
+  color: var(--muted);
+}

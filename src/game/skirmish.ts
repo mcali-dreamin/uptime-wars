@@ -4,12 +4,16 @@
 //   ?ai=easy,insane:serverless  two opponents; a race after the colon
 //   &mode=coop                  computers on your side against the horde
 //   &horde=0                    free-for-all without the horde
+//   &sides=0,0,1,1              starting sides per player (same = allied): 2v2
+//   &diplomacy=open             ally and unally during the match
+//   &nest=1                     the nest must fall to win (0: it needn't)
 //
 // Opponents without a race take the other races in order. Pure: reads the
 // query string it's given.
 
 import type { Content, MatchSetup } from "../sim";
 import { MAX_PLAYERS } from "../sim";
+import { composeRules } from "./net/lobby";
 
 export const HORDE_RACE = "botnet";
 
@@ -41,11 +45,23 @@ export function skirmishSetup(
     });
   if (slots.length === 0)
     return { seed, races: [race, HORDE_RACE], heroes: [hero] };
-  const coop = params.get("mode") === "coop";
-  const horde = coop || params.get("horde") !== "0";
+  const mode = params.get("mode") === "coop" ? "coop" : "ffa";
+  const sides = params.get("sides")?.split(",").map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n < MAX_PLAYERS);
+  const nest = params.get("nest");
+  const { rules, horde } = composeRules(
+    {
+      mode,
+      horde: params.get("horde") !== "0",
+      ...(sides?.length ? { sides } : {}),
+      ...(params.get("diplomacy") === "open" ? { diplomacy: "open" as const } : {}),
+      ...(nest === "0" || nest === "1" ? { nestMustFall: nest === "1" } : {}),
+    },
+    slots.length + 1,
+  );
   return {
     seed,
-    mode: coop ? "coop" : "ffa",
+    mode,
+    rules,
     races: [race, ...slots.map((s) => s.race), ...(horde ? [HORDE_RACE] : [])],
     heroes: [hero],
     ai: [undefined, ...slots.map((s) => s.difficulty)],

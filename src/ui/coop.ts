@@ -5,19 +5,29 @@
 // seats one friend.
 
 import { MAX_PLAYERS } from "../sim";
-import { HostLobby, joinHost, type MatchRules, type NetMatch } from "../game/net/lobby";
+import { HostLobby, composeRules, joinHost, type LobbyRules, type NetMatch } from "../game/net/lobby";
 import { answerOffer, createOffer } from "../game/net/rtc";
 import { fetchOffer, isCode, postAnswer, publishOffer, type HostedInvite } from "../game/net/signal";
 import type { Session } from "../game/session";
 import { $ } from "./dom";
 
 const JOIN_PARAM = "join";
+const SIDE_NAMES = ["A", "B", "C", "D"];
+
+/** Starting points for the rules: each just sets the toggles below it. */
+const PRESETS = {
+  coop: { label: "Co-op", sides: (_: number) => 0, horde: true, nest: true, open: false },
+  ffa: { label: "Free-for-all", sides: (i: number) => i, horde: true, nest: false, open: false },
+  teams: { label: "Teams", sides: (i: number) => i % 2, horde: false, nest: false, open: false },
+} as const;
 
 export class CoopLobby {
   private readonly root = $("coop");
   private readonly body = $("coop-body");
   private host: HostLobby | null = null;
   private hosted: HostedInvite | null = null;
+  /** Each seat's starting side (seat 0 is the host). */
+  private sides: number[] = [0, 0, 0, 0];
   open = false;
 
   constructor(
@@ -97,10 +107,14 @@ export class CoopLobby {
     if (!document.getElementById("coop-invite")) {
       this.body.innerHTML = `
         <h2>Play with friends</h2>
-        <div class="coop-mode" role="radiogroup">
-          <label><input type="radio" name="coop-mode" value="coop" checked> <b>Co-op</b> · together against the horde</label>
-          <label><input type="radio" name="coop-mode" value="ffa"> <b>Free-for-all</b> · last core standing</label>
-          <label id="coop-horde-row" hidden><input type="checkbox" id="coop-horde" checked> The horde plays too (everyone's enemy)</label>
+        <div class="coop-mode">
+          <div class="coop-presets">Start from ${Object.entries(PRESETS)
+            .map(([id, p]) => `<button type="button" data-preset="${id}">${p.label}</button>`)
+            .join("")}</div>
+          <label><input type="checkbox" id="coop-horde" checked> <b>The botnet plays</b> · everyone's enemy</label>
+          <label id="coop-nest-row"><input type="checkbox" id="coop-nest" checked> Its nest must fall to win</label>
+          <label><input type="checkbox" id="coop-open"> <b>Open alliances</b> · ally and unally during the match</label>
+          <small id="coop-rules-note"></small>
         </div>
         <p>Send a friend this link. Each link seats one friend (up to ${MAX_PLAYERS - 1}).</p>
         <div class="coop-row"><input id="coop-invite" readonly><button id="coop-copy">Copy</button></div>
@@ -113,12 +127,29 @@ export class CoopLobby {
         <button id="coop-start" class="coop-primary">Start match</button>`;
       $("coop-copy").addEventListener("click", () => copy($("coop-invite") as HTMLInputElement));
       $("coop-start").addEventListener("click", () => this.startHost());
-      for (const radio of this.body.querySelectorAll<HTMLInputElement>('input[name="coop-mode"]')) {
-        radio.addEventListener("change", () => ($("coop-horde-row").hidden = this.rules().mode !== "ffa"));
+      for (const button of this.body.querySelectorAll<HTMLButtonElement>("[data-preset]")) {
+        button.addEventListener("click", () => this.preset(button.dataset.preset as keyof typeof PRESETS));
       }
+      for (const id of ["coop-horde", "coop-nest", "coop-open"]) $(id).addEventListener("change", () => this.syncRules());
     }
     const players = [`You (${raceName(this.session.raceId)})`, ...lobby.guests.map((g, i) => `Player ${i + 2} (${raceName(g.race)})`)];
-    $("coop-players").replaceChildren(...players.map((text) => Object.assign(document.createElement("li"), { textContent: text })));
+    $("coop-players").replaceChildren(
+      ...players.map((text, seat) => {
+        const li = document.createElement("li");
+        const side = document.createElement("select");
+        side.className = "coop-side";
+        side.title = "Starting side: the same side starts allied";
+        side.innerHTML = SIDE_NAMES.map((name, i) => `<option value="${i}">Side ${name}</option>`).join("");
+        side.value = String(this.sides[seat]);
+        side.addEventListener("change", () => {
+          this.sides[seat] = Number(side.value);
+          this.syncRules();
+        });
+        li.append(Object.assign(document.createElement("span"), { textContent: text }), side);
+        return li;
+      }),
+    );
+    this.syncRules();
     ($("coop-start") as HTMLButtonElement).disabled = lobby.ready.length === 0;
     if (lobby.full) ($("coop-invite") as HTMLInputElement).value = "The match is full.";
   }
@@ -134,11 +165,35 @@ export class CoopLobby {
     this.onStart(match);
   }
 
-  /** What the host picked: co-op, or FFA with or without the horde. */
-  private rules(): MatchRules {
-    const picked = this.body.querySelector<HTMLInputElement>('input[name="coop-mode"]:checked')?.value;
-    const horde = (document.getElementById("coop-horde") as HTMLInputElement | null)?.checked ?? true;
-    return picked === "ffa" ? { mode: "ffa", horde } : { mode: "coop", horde: true };
+  /** What the host composed: sides per seat, the botnet, diplomacy. */
+  private rules(): LobbyRules {
+    const checked = (id: string) => (document.getElementById(id) as HTMLInputElement | null)?.checked ?? false;
+    return {
+      horde: checked("coop-horde"),
+      nestMustFall: checked("coop-nest"),
+      diplomacy: checked("coop-open") ? "open" : "locked",
+      sides: this.sides.slice(0, 1 + (this.host?.guests.length ?? 0)),
+    };
+  }
+
+  private preset(id: keyof typeof PRESETS): void {
+    const p = PRESETS[id];
+    this.sides = this.sides.map((_, i) => p.sides(i));
+    ($("coop-horde") as HTMLInputElement).checked = p.horde;
+    ($("coop-nest") as HTMLInputElement).checked = p.nest;
+    ($("coop-open") as HTMLInputElement).checked = p.open;
+    this.renderHost();
+  }
+
+  /** Keep the toggles honest: with nothing else to fight, the botnet has to play. */
+  private syncRules(): void {
+    const horde = $("coop-horde") as HTMLInputElement;
+    const players = 1 + (this.host?.guests.length ?? 0);
+    const composed = composeRules({ ...this.rules(), horde: false }, players);
+    horde.disabled = composed.horde;
+    if (composed.horde) horde.checked = true;
+    $("coop-nest-row").hidden = !horde.checked;
+    $("coop-rules-note").textContent = composed.horde ? "Everyone starts on one side, so the botnet plays." : "";
   }
 
   // --- guest ------------------------------------------------------------

@@ -47,7 +47,8 @@ export function syncWalls(world: World, content: Content): void {
     if (def.gate) anyGate = true;
   }
   if (any) fillNotches(terrain, next);
-  const signature = anyGate ? gateSignature(gates) : "";
+  // Who a gate opens for depends on the sides, which can change mid-match.
+  const signature = anyGate ? `${gateSignature(gates)}|${world.allies.join(",")}` : "";
   const current = terrain.built;
   if (!any && !current) return;
   if (current && same(current, next) && signature === (world.nav.gateSignature ?? "")) return;

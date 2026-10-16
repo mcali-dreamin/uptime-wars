@@ -26,14 +26,15 @@ import {
 import { Alerts } from "./game/alerts";
 import { ControlGroups } from "./game/groups";
 import { Session } from "./game/session";
-import { setLocalColor } from "./render/palette";
+import { setLocalColor, teamColor } from "./render/palette";
 import { BuildBar, FOUND_BUTTON, aimingButton, type BarMode } from "./ui/build-bar";
 import { $ } from "./ui/dom";
 import { Guide } from "./ui/guide";
 import { Hud } from "./ui/hud";
+import { PlayersPanel } from "./ui/players";
 import { InfoPanel } from "./ui/info-panel";
 import { RacePicker } from "./ui/race-picker";
-import { upgradeName, TICK_RATE, TILE, forkCost, isCore, nextRank, loadDefaultContent, type Point } from "./sim";
+import { allied, humanTeams, upgradeName, TICK_RATE, TILE, forkCost, isCore, nextRank, loadDefaultContent, type Point } from "./sim";
 import type { NetMatch } from "./game/net/lobby";
 import { Director, tension, type Listener } from "./audio/cues";
 import { SoundEngine, type SoundMode } from "./audio/engine";
@@ -53,6 +54,7 @@ const content = loadDefaultContent();
 const session = new Session(content);
 const renderer = new Renderer();
 const hud = new Hud(session);
+const playersPanel = new PlayersPanel(session, teamColor);
 const sound = new SoundEngine();
 const director = new Director(content);
 const alerts = new Alerts(content);
@@ -637,13 +639,20 @@ function advance(now: number): void {
       for (const event of world.events) {
         if (event.type === "failover" && event.team === session.team.id) renderer.showBanner("Core lost · failover");
         if (event.type === "offline") {
-          const ffa = session.world.mode === "ffa";
+          const w = session.world;
+          const alliesUp = humanTeams(w).some((t) => t.id !== session.local && t.downTick === null && allied(w, t.id, session.local));
           renderer.showBanner(
             event.team === session.local
-              ? ffa ? "You're offline · spectating" : "You're offline · your allies play on"
-              : ffa ? `Player ${event.team + 1} is out` : `Player ${event.team + 1} is offline`,
+              ? alliesUp ? "You're offline · your allies play on" : "You're offline · spectating"
+              : allied(w, event.team, session.local) ? `Player ${event.team + 1} is offline` : `Player ${event.team + 1} is out`,
           );
         }
+        // Diplomacy that involves you.
+        if (event.type === "ally-offer" && event.with === session.local) renderer.showBanner(`Player ${event.team + 1} offers an alliance · accept it top right`);
+        if (event.type === "allied" && (event.team === session.local || event.with === session.local)) {
+          renderer.showBanner(`Allied with Player ${(event.team === session.local ? event.with : event.team) + 1}`);
+        }
+        if (event.type === "unallied" && event.with === session.local) renderer.showBanner(`Player ${event.team + 1} broke the alliance`);
         if (event.type === "hero-level" && event.team === session.local) renderer.showBanner(`Level ${event.level} · skill point ready (Q)`);
 
         if (event.type === "hero-up" && event.team === session.local) renderer.showBanner("Your hero is back");
@@ -709,6 +718,7 @@ renderer.app.ticker.add((ticker) => {
   const selectedId = selection.kind === "entity" ? selection.id : null;
   renderer.draw(world, content, paused ? 1 : accumulator / STEP_MS, ticker.deltaMS, placement, selectedId, selectedIds(selection));
   hud.update(selection, paused);
+  playersPanel.update();
   sound.setTension(tension(world, session.local, content));
   heroBar.update();
 });

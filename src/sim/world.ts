@@ -22,7 +22,7 @@ import { foundCore, spawnUnit } from "./entities";
 import { collapseHorde, fortify, raiseFarms } from "./fortress";
 import { footprintCenter } from "./map";
 import { teamCores } from "./placement";
-import { hordeTeam, humanTeams, type MatchMode } from "./teams";
+import { allied, hordeTeam, humanTeams, rulesFor, startingAllies, type MatchMode, type MatchRules } from "./teams";
 import { tickFunctions } from "./functions";
 import { syncWalls } from "./walls";
 import { tickSeparation } from "./separation";
@@ -50,8 +50,10 @@ export interface MatchSetup {
   heroes?: (string | undefined)[];
   /** Skip the builder phase: found every core at its start tile. */
   startWithCore?: boolean;
-  /** co-op (default) or ffa. FFA needs two or more players; the horde is optional. */
+  /** A preset to start from: co-op (default) or ffa. `rules` overrides any part of it. */
   mode?: MatchMode;
+  /** Who's on whose side, whether that can change, and what winning takes (teams.ts). */
+  rules?: Partial<MatchRules>;
   /**
    * Per team (in team order): a difficulty id makes that player a computer
    * player; omitted or undefined is a person. Only players can be computers.
@@ -61,15 +63,20 @@ export interface MatchSetup {
 
 export function createWorld(content: Content, setup: MatchSetup): World {
   const terrain = generateTerrain(setup.seed);
+  const teams = setup.races.map((race, id) => makeTeam(content, id, race, setup.heroes?.[id], setup.ai?.[id]));
+  const players = teams.filter((team) => team.controller === "human").length;
+  const rules: MatchRules = { ...rulesFor(setup.mode ?? "coop", players), ...setup.rules };
   const world: World = {
-    mode: setup.mode ?? "coop",
+    rules,
+    allies: startingAllies(teams, rules),
+    offers: teams.map(() => 0),
     tick: 0,
     seed: setup.seed,
     rngState: setup.seed | 0,
     terrain,
     nav: { goals: new Map() },
     nextId: 1,
-    teams: setup.races.map((race, id) => makeTeam(content, id, race, setup.heroes?.[id], setup.ai?.[id])),
+    teams,
     entities: [],
     commands: [],
     waves: {
@@ -89,8 +96,13 @@ export function createWorld(content: Content, setup: MatchSetup): World {
   const humans = humanTeams(world);
   if (humans.length < 1 || humans.length > MAX_PLAYERS) throw new Error(`A match needs 1 to ${MAX_PLAYERS} players`);
   if (humans.some((team, i) => team.id !== i)) throw new Error("Human teams come first");
-  if (world.mode === "ffa" && humans.length < 2) throw new Error("Free-for-all needs at least 2 players");
-  if (world.mode === "coop" && !hordeTeam(world)) throw new Error("Co-op needs the horde");
+  if (rules.sides.length !== humans.length || rules.sides.some((side) => !Number.isInteger(side) || side < 0)) {
+    throw new Error("Every player needs a side");
+  }
+  // Something has to be the enemy: the botnet, another side, or a friend you can turn on.
+  if (!hordeTeam(world) && new Set(rules.sides).size < 2 && rules.diplomacy !== "open") {
+    throw new Error("A match needs an enemy: the botnet or another side");
+  }
   for (const team of world.teams) {
     if (team.ai && team.controller !== "human") throw new Error(`Team ${team.id} isn't a player, so it can't be a computer player`);
   }
@@ -181,8 +193,8 @@ export function step(world: World, content: Content): void {
 
 /**
  * Redundancy: when your primary core falls, the next one (lowest id) takes
- * over. A team goes offline when every core is down. Co-op: the match is lost
- * when every human team is offline, and won by all of them when the nest is.
+ * over. A team goes offline when every core is down. Then see if the match
+ * is decided (decide).
  */
 function checkOutcome(ctx: TickContext): void {
   const { world, content } = ctx;
@@ -213,19 +225,36 @@ function checkOutcome(ctx: TickContext): void {
       if (team.controller === "wave-director") collapseHorde(world, team.id);
     }
   }
-  const humans = humanTeams(world);
+  decide(world);
+  // No win by timer: the web never runs out of traffic. Your score is uptime.
+}
+
+/**
+ * The match is won when the players still up are all allied with each other
+ * and nothing hostile to them that counts is left: every other player is
+ * down, and so is the nest if the rules say it must fall. There has to have
+ * been something to beat (a player or the nest), so one side alone against a
+ * botnet that needn't fall plays on for uptime. Winners are that alliance,
+ * including allies who went down along the way. It's lost when every player
+ * is down; then the horde, if it's still up, wins.
+ */
+function decide(world: World): void {
+  const players = humanTeams(world);
+  const up = players.filter((team) => team.downTick === null);
   const horde = hordeTeam(world);
-  if (world.mode === "ffa") {
-    // Last core standing. The nest falling just removes one enemy.
-    const up = humans.filter((team) => team.downTick === null);
-    if (up.length === 1) world.outcome = { winners: [up[0]!.id], reason: "last-standing", tick: world.tick };
-    else if (up.length === 0) world.outcome = { winners: horde && horde.downTick === null ? [horde.id] : [], reason: "all-offline", tick: world.tick };
+  if (up.length === 0) {
+    world.outcome = { winners: horde && horde.downTick === null ? [horde.id] : [], reason: "all-offline", tick: world.tick };
     return;
   }
-  if (horde && horde.downTick !== null) {
-    world.outcome = { winners: humans.map((team) => team.id), reason: "nest-offline", tick: world.tick };
-  } else if (humans.every((team) => team.downTick !== null)) {
-    world.outcome = { winners: horde ? [horde.id] : [], reason: "all-offline", tick: world.tick };
-  }
-  // No win by timer: the web never runs out of traffic. Your score is uptime.
+  const lead = up[0]!;
+  if (up.some((team) => !allied(world, lead.id, team.id))) return;
+  const nestCounts = horde !== undefined && world.rules.nestMustFall;
+  if (nestCounts && horde.downTick === null) return;
+  const beaten = players.some((team) => team.downTick !== null && !allied(world, lead.id, team.id));
+  if (!beaten && !(nestCounts && horde.downTick !== null)) return;
+  world.outcome = {
+    winners: players.filter((team) => allied(world, lead.id, team.id)).map((team) => team.id),
+    reason: nestCounts ? "nest-offline" : "last-standing",
+    tick: world.tick,
+  };
 }

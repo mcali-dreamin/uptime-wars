@@ -1,6 +1,8 @@
 // Top bar numbers, the status line, and the hint line over the map.
 
-import { TICK_RATE, threatPermille, computeBalance, farmSpots, farmsStanding, hashWorld, hordeTeam, incomeRate, isCore, previewWave, userCapacity } from "../sim";
+import { TICK_RATE, threatPermille, computeBalance, farmSpots, farmsStanding, hashWorld, hordeTeam, incomeRate, isCore, previewWave, rulesLabel, userCapacity } from "../sim";
+
+const RULES_NAME = { coop: "Co-op", ffa: "Free-for-all", custom: "Custom rules" } as const;
 import { groundOrderLabel, leftClickOrders, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { $ } from "./dom";
@@ -78,7 +80,7 @@ export class Hud {
         : waiting.length > 0
           ? `Waiting for ${waiting.map((team) => `Player ${team + 1}`).join(", ")}…`
           : this.session.net
-            ? `${world.mode === "ffa" ? "Free-for-all" : "Co-op"} · you're Player ${this.session.local + 1}`
+            ? `${RULES_NAME[rulesLabel(world)]} · you're Player ${this.session.local + 1}`
             : "";
       this.status.className = "";
     }
@@ -258,16 +260,17 @@ export class Hud {
     const won = outcome.winners.includes(this.session.local);
     // Your uptime ends when you go offline, even if others played on.
     const uptime = clock((this.session.team.downTick ?? outcome.tick) / TICK_RATE);
-    if (world.mode === "ffa") {
-      const winner = outcome.reason === "last-standing" ? outcome.winners[0]! : null;
+    const names = (teams: number[]) => teams.map((t) => `Player ${t + 1}`).join(" & ");
+    const others = outcome.winners.filter((t) => t !== this.session.local);
+    const hordeWon = outcome.winners.some((t) => world.teams[t]?.controller !== "human");
+    if (outcome.reason === "last-standing" || (!won && !hordeWon && outcome.winners.length > 0)) {
+      const together = others.length > 0 ? ` with ${names(others)}` : "";
       const summary = won
-        ? `LAST CORE STANDING - you outlasted everyone. Uptime ${uptime}.`
-        : winner !== null
-          ? `OUTAGE - Player ${winner + 1} is the last core standing. You lasted ${uptime}.`
-          : `OUTAGE - the horde took everyone down. You lasted ${uptime}.`;
+        ? `LAST ${others.length > 0 ? "ALLIANCE" : "CORE"} STANDING - you outlasted everyone${together}. Uptime ${uptime}.`
+        : `OUTAGE - ${names(outcome.winners)} ${outcome.winners.length > 1 ? "are" : "is"} the last standing. You lasted ${uptime}.`;
       this.status.textContent = `${summary} Press R to pick a race for a new web. [${hashWorld(world)}]`;
       this.status.className = won ? "won" : "lost";
-      return won ? "VICTORY · last core standing" : winner !== null ? `DEFEAT · Player ${winner + 1} wins` : "OUTAGE · the horde wins";
+      return won ? "VICTORY · last standing" : `DEFEAT · ${names(outcome.winners)} ${outcome.winners.length > 1 ? "win" : "wins"}`;
     }
     const summary = won
       ? `NEST OFFLINE - you took down the botnet at ${uptime}.`
