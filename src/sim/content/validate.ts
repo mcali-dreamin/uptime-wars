@@ -34,6 +34,10 @@ export function validateContent(content: Content): void {
       else if (!building.buildable) errors.push(`race ${id} lists unbuildable ${buildingId}`);
     }
   }
+  for (const [i, rank] of (content.waves.ranks?.levels ?? []).entries()) {
+    if (rank.hpPermille <= 0 || rank.damagePermille <= 0 || (rank.worth ?? 1) <= 0) errors.push(`creep rank ${i + 1} needs hp, damage, and worth > 0`);
+  }
+  if (content.waves.ranks && content.waves.ranks.maxUnits < 1) errors.push("creep ranks need maxUnits >= 1");
   for (const entry of content.waves.roster) {
     if (!content.units[entry.unit]) errors.push(`wave roster uses unknown unit ${entry.unit}`);
     if (entry.cost <= 0) errors.push(`wave roster unit ${entry.unit} must cost more than 0`);

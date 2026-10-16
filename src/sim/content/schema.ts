@@ -112,8 +112,17 @@ export const RACE_LOOKS: readonly RaceLook[] = ["scrappy", "monolith", "ephemera
  * plain unit; armor is flat). The standing squad (maxAlive) and a function's
  * burst change by `maxAlive` / `burst` (never below 1).
  */
-export interface SpawnerRank {
+/** What a rank does to a unit: permille of the plain unit's hp and damage, flat armor. */
+export interface UnitRank {
   name: string;
+  hpPermille: number;
+  damagePermille: number;
+  armor: number;
+  /** Bounty and hero XP multiplier when it's killed (default 1). */
+  worth?: number;
+}
+
+export interface SpawnerRank extends UnitRank {
   /** Core tier it needs. */
   tier: number;
   /** Price, permille of the building's base cost. */
@@ -250,6 +259,14 @@ export interface WavesDef {
   hpGrowthPerWave: number;
   /** Never let more than this many creeps be alive; overflow waits its turn. */
   maxAlive: number;
+  /**
+   * Late incidents get tougher, not bigger. A wave rolled with more than
+   * `maxUnits` creeps keeps one in 2^r of them at rank r (the smallest r that
+   * fits, up to the last level); each level should be worth twice the one
+   * before, so the wave's strength is unchanged. Past the last level the
+   * excess is dropped.
+   */
+  ranks?: { maxUnits: number; levels: UnitRank[] };
   roster: { unit: string; cost: number; fromWave: number; weight: number }[];
   /** One more boss every `every` waves from `fromWave` on. */
   bosses: { unit: string; fromWave: number; every: number };

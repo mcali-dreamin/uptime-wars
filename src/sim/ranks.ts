@@ -7,7 +7,7 @@
 // way. A building's rank applies to the units it spawns from then on; the
 // ones already out keep theirs. While it's refitting, it doesn't spawn or run.
 
-import type { Content, SpawnerRank } from "./content/schema";
+import type { Content, SpawnerRank, UnitRank } from "./content/schema";
 import type { TickContext } from "./context";
 import { lagging } from "./economy";
 import { baseCost } from "./placement";
@@ -19,10 +19,17 @@ export function ranksOf(content: Content, team: Team | undefined): SpawnerRank[]
   return (team && content.races[team.raceId]!.spawnerRanks) || [];
 }
 
-/** The rank a unit was spawned at, or null for a plain one. */
-export function unitRank(content: Content, world: World, unit: Unit): SpawnerRank | null {
+/** The rank a unit was spawned at, or null for a plain one. Creeps rank by waves.json -> ranks. */
+export function unitRank(content: Content, world: World, unit: Unit): UnitRank | null {
   if (!unit.rank) return null;
-  return ranksOf(content, world.teams[unit.team])[unit.rank - 1] ?? null;
+  const team = world.teams[unit.team];
+  if (team?.controller === "wave-director") return content.waves.ranks?.levels[unit.rank - 1] ?? null;
+  return ranksOf(content, team)[unit.rank - 1] ?? null;
+}
+
+/** Bounty and XP multiplier for killing this unit. */
+export function rankWorth(content: Content, world: World, unit: Unit): number {
+  return unitRank(content, world, unit)?.worth ?? 1;
 }
 
 /** The rank a building is at, or null at rank 0. */
@@ -88,8 +95,12 @@ export function tickRefits(ctx: TickContext): void {
 /** Stamp a freshly spawned unit with its spawner's rank: tougher, harder-hitting, armored. */
 export function applyRank(content: Content, world: World, unit: Unit, building: Building): void {
   const rank = buildingRank(content, world, building);
-  if (!rank) return;
-  unit.rank = building.rank;
+  if (rank) stampRank(unit, building.rank!, rank);
+}
+
+/** Give a fresh unit rank `level` (1-based): its hp and armor now, its damage through rankDamage. */
+export function stampRank(unit: Unit, level: number, rank: UnitRank): void {
+  unit.rank = level;
   unit.maxHp = Math.round((unit.maxHp * rank.hpPermille) / 1000);
   unit.hp = unit.maxHp;
   unit.armor += rank.armor;
@@ -102,8 +113,8 @@ export function rankDamage(content: Content, world: World, unit: Unit): number {
 }
 
 /** Compute a unit at this rank uses, from its plain upkeep. Integer. */
-export function rankedUpkeep(base: number, rank: SpawnerRank | null): number {
-  return rank ? Math.round((base * rank.upkeepPermille) / 1000) : base;
+export function rankedUpkeep(base: number, rank: UnitRank | null): number {
+  return rank && "upkeepPermille" in rank ? Math.round((base * (rank as SpawnerRank).upkeepPermille) / 1000) : base;
 }
 
 /** A spawner's standing squad at its rank (never below 1). */

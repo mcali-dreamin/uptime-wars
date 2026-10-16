@@ -306,6 +306,8 @@ export interface WaveSpawn {
   from?: number;
   /** An infector, heading to build a node on this site (top-left tile). */
   infect?: TilePoint;
+  /** Creep rank (waves.json -> ranks), absent is plain. */
+  rank?: number;
 }
 
 export interface WaveState {
