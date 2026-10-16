@@ -517,6 +517,33 @@ export interface HeroesDef {
   abilities: Record<string, AbilityDef>;
 }
 
+/**
+ * A computer player's skill (src/content/difficulty.json). Nothing here bends
+ * the rules except `revenuePermille`, the one open handicap: what each user
+ * earns it, relative to a human's (1000 = the same).
+ */
+export interface DifficultyDef {
+  name: string;
+  description: string;
+  /** How often it plays its hero (learn, cast), in ticks. */
+  heroEveryTicks: number;
+  /** How often it builds, researches, and ranks, in ticks. */
+  buildEveryTicks: number;
+  /** Highest core tier it grows to (0 = never). */
+  maxTier: number;
+  /** Researches other upgrades once it holds more $ than this; null = never. */
+  researchAbove: number | null;
+  /** Ranks a spawner up once it holds more $ than this; null = never. */
+  rankAbove: number | null;
+  /** $ it keeps on top of a core tier's price before buying it. */
+  tierReserve: number;
+  /** While saving for a tier, the share of that price (permille) a build may not dip below. */
+  savingKeepPermille: number;
+  /** Learns and casts hero abilities; off = the hero only auto-fights. */
+  playsHero: boolean;
+  revenuePermille: number;
+}
+
 export interface Content {
   units: Record<string, UnitDef>;
   buildings: Record<string, BuildingDef>;
@@ -525,4 +552,5 @@ export interface Content {
   economy: EconomyDef;
   upgrades: Record<string, UpgradeDef>;
   heroes: HeroesDef;
+  difficulties: Record<string, DifficultyDef>;
 }

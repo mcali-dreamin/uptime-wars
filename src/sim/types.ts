@@ -50,6 +50,18 @@ export interface Team {
   heroId: string | null;
   /** That hero's state, once the core is online. */
   hero: HeroState | null;
+  /** A computer player's state; null for a person (and the horde). */
+  ai: AiState | null;
+}
+
+/** A computer player: a player like any other whose commands come from src/sim/ai. */
+export interface AiState {
+  /** Key into content.difficulties. */
+  difficulty: string;
+  /** Next building in its build rotation. */
+  next: number;
+  /** Hero abilities cast so far. */
+  casts: number;
 }
 
 export interface HeroState {

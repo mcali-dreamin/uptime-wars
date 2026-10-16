@@ -79,8 +79,13 @@ describe("solid buildings", () => {
     for (let k = -d + 1; k <= d; k += 1) ring.push([core.col - d, core.row + k], [core.col + d + 1, core.row + k]);
     for (const [c, r] of ring) expect(tileAt(world.terrain, c, r)).toBe(TILE_OPEN);
     const [gap, ...rest] = ring;
-    for (const [c, r] of rest) placeBuilding(world, content, 0, "cdn-edge", c, r, false);
+    // Asked first with the ring open: the answer may not go stale as buildings go up (or down).
+    expect(canPlace(world, content, 0, "cdn-edge", gap![0], gap![1])).toBeNull();
+    const placed = rest.map(([c, r]) => placeBuilding(world, content, 0, "cdn-edge", c, r, false));
     expect(canPlace(world, content, 0, "cdn-edge", gap![0], gap![1])).toBe("would wall in ground: leave a way through");
+    placed[1]!.hp = 0; // the next tile along the top edge, not a corner
+    expect(canPlace(world, content, 0, "cdn-edge", gap![0], gap![1])).toBeNull();
+    placed[1]!.hp = placed[1]!.maxHp;
     // Anywhere off the ring is fine.
     expect(canPlace(world, content, 0, "cdn-edge", core.col + d + 3, core.row)).toBeNull();
   });

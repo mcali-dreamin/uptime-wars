@@ -15,6 +15,11 @@ export function validateContent(content: Content): void {
       errors.push(`building ${id} spawns unknown unit ${building.spawn.unit}`);
     }
   }
+  for (const [id, d] of Object.entries(content.difficulties)) {
+    if (d.heroEveryTicks <= 0 || d.buildEveryTicks <= 0) errors.push(`difficulty ${id} needs heroEveryTicks and buildEveryTicks > 0`);
+    if (d.maxTier < 0 || d.maxTier >= content.economy.tiers.length) errors.push(`difficulty ${id} maxTier needs a known core tier`);
+    if (d.revenuePermille <= 0) errors.push(`difficulty ${id} needs revenuePermille > 0`);
+  }
   for (const [id, race] of Object.entries(content.races)) {
     const core = content.buildings[race.core];
     if (!core) errors.push(`race ${id} has unknown core ${race.core}`);

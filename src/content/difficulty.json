@@ -1,0 +1,54 @@
+{
+  "easy": {
+    "name": "Easy",
+    "description": "A junior on call: slow to react, never researches or ranks up, stops at the middle tier.",
+    "heroEveryTicks": 60,
+    "buildEveryTicks": 120,
+    "maxTier": 1,
+    "researchAbove": null,
+    "rankAbove": null,
+    "tierReserve": 60,
+    "savingKeepPermille": 500,
+    "playsHero": false,
+    "revenuePermille": 1000
+  },
+  "normal": {
+    "name": "Normal",
+    "description": "A steady operator: grows the core, researches when rich, ranks up at the compute cap.",
+    "heroEveryTicks": 20,
+    "buildEveryTicks": 40,
+    "maxTier": 2,
+    "researchAbove": 900,
+    "rankAbove": 700,
+    "tierReserve": 60,
+    "savingKeepPermille": 500,
+    "playsHero": true,
+    "revenuePermille": 1000
+  },
+  "hard": {
+    "name": "Hard",
+    "description": "A seasoned SRE: reacts fast and spends sooner, on the same economy as you.",
+    "heroEveryTicks": 10,
+    "buildEveryTicks": 20,
+    "maxTier": 2,
+    "researchAbove": 600,
+    "rankAbove": 500,
+    "tierReserve": 30,
+    "savingKeepPermille": 700,
+    "playsHero": true,
+    "revenuePermille": 1000
+  },
+  "insane": {
+    "name": "Insane",
+    "description": "Hard, with a bigger budget: earns more from every user than you do.",
+    "heroEveryTicks": 10,
+    "buildEveryTicks": 20,
+    "maxTier": 2,
+    "researchAbove": 600,
+    "rankAbove": 500,
+    "tierReserve": 30,
+    "savingKeepPermille": 700,
+    "playsHero": true,
+    "revenuePermille": 1500
+  }
+}

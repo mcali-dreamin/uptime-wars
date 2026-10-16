@@ -13,6 +13,7 @@ import { BASE_INCOME, CONSTRUCTION_START_HP } from "./tuning";
 import { raceMechanics, tierDef } from "./tiers";
 import { buildingRank, rankedMaxAlive, rankedUpkeep, refitting, unitRank } from "./ranks";
 import { squadBonus } from "./traits";
+import { revenueFactor } from "./ai";
 
 export function tickCooldowns(ctx: TickContext): void {
   const { world } = ctx;
@@ -175,7 +176,7 @@ export function tickUsers(ctx: TickContext): void {
     }
     team.peakUsers = Math.max(team.peakUsers, team.users);
 
-    team.revenueCarry += team.users * economy.revenuePerUserPerSecond * multiplier(content, team, "revenue");
+    team.revenueCarry += team.users * economy.revenuePerUserPerSecond * multiplier(content, team, "revenue") * revenueFactor(content, team);
     const revenue = Math.floor(team.revenueCarry);
     team.money += revenue;
     team.revenueCarry -= revenue;
@@ -195,7 +196,7 @@ export function incomeRate(world: World, content: TickContext["content"], team: 
     if (income) buildings += (income.amount * TICK_RATE) / income.intervalTicks;
   }
   const online = team.controller === "human" && team.coreId !== -1 && team.downTick === null;
-  const users = online ? team.users * content.economy.revenuePerUserPerSecond * multiplier(content, team, "revenue") : 0;
+  const users = online ? team.users * content.economy.revenuePerUserPerSecond * multiplier(content, team, "revenue") * revenueFactor(content, team) : 0;
   return { base, buildings, users };
 }
 
