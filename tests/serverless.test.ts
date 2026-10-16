@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createWorld, hashWorld, queueCommand, step, type Building, type World } from "../src/sim";
+import { computeBalance, createWorld, hashWorld, queueCommand, step, type Building, type World } from "../src/sim";
 import { makeContext } from "../src/sim/context";
 import { spawnUnit } from "../src/sim/entities";
 import { content, planBuildOrder } from "./fixtures";
@@ -49,6 +49,34 @@ describe("serverless", () => {
     for (let i = 0; i < fnDef.ttlTicks + 2; i++) step(world, content);
     expect(burst(world, fn)).toHaveLength(0);
     expect(standing(world, fn)).toHaveLength(squad.maxAlive);
+  });
+
+  it("a burst only spins up what free compute has room for, and costs that share: compute caps bursts too", () => {
+    const { world, fn } = withFunction();
+    const team = world.teams[0]!;
+    team.money = 1000;
+    const upkeep = content.units[fnDef.unit]!.upkeep ?? content.economy.compute.perUnit;
+    // Leave room for exactly two burst units: users soak up the rest.
+    const { supply, demand } = computeBalance(world, content, team);
+    team.users += (supply - demand - 2 * upkeep) / content.economy.compute.perUser;
+    queueCommand(world, { type: "invoke", tick: world.tick, team: 0, buildingId: fn.id });
+    const before = team.money;
+    step(world, content);
+    expect(burst(world, fn)).toHaveLength(2);
+    expect(before - team.money).toBeLessThan(fnDef.cost);
+    const after = computeBalance(world, content, team);
+    expect(after.demand).toBeLessThanOrEqual(after.supply);
+  });
+
+  it("with no compute free, a Function won't burst at all: at army cap", () => {
+    const { world, fn } = withFunction();
+    const team = world.teams[0]!;
+    const { supply, demand } = computeBalance(world, content, team);
+    team.users += (supply - demand) / content.economy.compute.perUser;
+    queueCommand(world, { type: "invoke", tick: world.tick, team: 0, buildingId: fn.id });
+    step(world, content);
+    expect(burst(world, fn)).toHaveLength(0);
+    expect(world.events.some((e) => e.type === "rejected" && e.reason === "at army cap")).toBe(true);
   });
 
   it("it won't run again during its cooldown, or without $", () => {
