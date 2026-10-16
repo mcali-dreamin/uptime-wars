@@ -126,7 +126,14 @@ only adds one if it fits in what's free. Users use compute too, so a bigger
 army costs you users (income). Generators are limited per core tier (Solar
 Arrays 2 / 4 / 7, and so on), so the way to a bigger army is teching up the
 core, not building more spawners. More spawners reinforce faster; they
-don't field more.
+don't field more. At the top tier the limit turns soft: generators past it
+cost +100% of their base price more each (`pastLimitGrowthPermille`), so late
+$ still buys a bigger army.
+
+The army gets its compute first. Arriving users only take compute that's
+free after every spawner's standing squad is refilled, so users never push
+you over capacity or starve the army you built. When users stall for that
+reason, the HUD shows "need compute" next to Users.
 
 **Spawner ranks.** At the cap, the other way up is better units, not more.
 Select a spawner (or a Serverless function) and press `U` (or the button on
@@ -393,7 +400,7 @@ Direction: survival on a procedurally generated open web.
 - [x] Core tech tiers: Core, Data Center, Region
 - [x] Network expansion (per race) and redundant cores
 - [x] Heroes: one per race, levels, skill points, four abilities each
-- [x] Compute is the army cap; generators are limited per core tier
+- [x] Compute is the army cap; generators are limited per core tier (soft at the top tier)
 - [x] Four races: Open Source Collective, Hyperscaler, Serverless, Walled Garden
 - [x] Spawner ranks: upgrade a spawner in place for fewer, stronger units
 - [x] Co-op over WebRTC (invite links, lockstep)
