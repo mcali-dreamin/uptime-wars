@@ -13,6 +13,9 @@ export const SHOT_TTL_MS = 120;
 export const PING_MS = 600;
 
 export interface Shot {
+  /** Shooter and target entity ids. */
+  from: number;
+  to: number;
   x1: number;
   y1: number;
   x2: number;

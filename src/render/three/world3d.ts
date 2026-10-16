@@ -13,7 +13,7 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import { TILE, isCore, tierOf, type Content, type Entity, type Point, type SimEvent, type World } from "../../sim";
 import { PING_MS, SHOT_TTL_MS, type Frame, type WorldView } from "../frame";
 import { HIGHLIGHT, INVALID, VALID, teamColor } from "../palette";
-import { Bars, Bolts, Particles, Rings } from "./effects";
+import { Bars, Bolts, Debris, Particles, Rings } from "./effects";
 import { FogTexture } from "./fog3d";
 import { roleOf, Models, animate } from "./models";
 import { Terrain3D } from "./terrain3d";
@@ -66,6 +66,22 @@ const BUILDING_TOP: Record<string, number> = {
   "mesh-node": 48,
   "edge-pop": 50,
 };
+/** How a shot reads: melee is a strike at the target, ranged a bolt, towers a heavier bolt. */
+type ShotStyle = "melee" | "ranged" | "tower";
+/** A unit attacking from this close (px) is melee: no bolt, it lunges. */
+const MELEE_RANGE = 40;
+/** A hit this hard or harder lands with a bang. */
+const HEAVY_DAMAGE = 30;
+/** Hit reaction (flinch and knock-back) and attack lunge, in ms. */
+const FLINCH_MS = 160;
+const LUNGE_MS = 140;
+/** A unit's health bar stays up this long after its last hit, then fades. */
+const BAR_MS = 2600;
+const BAR_FADE_MS = 500;
+/** A building this hurt keeps its bar up. */
+const BUILDING_BAR_BELOW = 0.6;
+/** Camera shake from a building going down on screen. */
+const SHAKE_S = 0.45;
 /** Turn rate for units changing heading, per second. */
 const TURN = 10;
 const SKY = 0x060a12;
@@ -84,6 +100,16 @@ interface Shown {
   holo: boolean;
   /** Top of the model (buildings), measured once, for health bars. */
   top?: number;
+  /** Its scale before any hit reaction (rank, hero). */
+  scale: number;
+  /** Last hit: when (ms, performance clock; may be in the future while the bolt flies) and from where. */
+  hitAt: number;
+  hitX: number;
+  hitY: number;
+  /** Last melee swing: when, and toward where. */
+  lungeAt: number;
+  lungeX: number;
+  lungeY: number;
 }
 
 export class World3D implements WorldView {
@@ -100,6 +126,16 @@ export class World3D implements WorldView {
   private readonly models = new Models(this.fogTexture);
   private readonly bolts = new Bolts();
   private readonly particles = new Particles();
+  private readonly debris = new Debris();
+  /** Shots fired since the last frame, for impacts, flinches, and lunges. */
+  private readonly fired: Extract<SimEvent, { type: "shot" }>[] = [];
+  /** Every entity by id, refreshed each frame. */
+  private readonly byId = new Map<number, Entity>();
+  /** Bolts whose impact has been drawn. */
+  private readonly landed = new WeakSet<object>();
+  /** Screen shake left (s) and its strength (px). */
+  private shake = 0;
+  private shakePower = 0;
   private readonly bars = new Bars();
   private readonly thinRings = new Rings(0.975);
   private readonly rings = new Rings(0.82);
@@ -169,6 +205,7 @@ export class World3D implements WorldView {
       this.thinRings.mesh,
       this.rings.mesh,
       this.bars.group,
+      this.debris.mesh,
       this.ghost,
       this.flag,
       this.rallyLine,
@@ -195,6 +232,7 @@ export class World3D implements WorldView {
     for (const s of this.shown.values()) this.entityLayer.remove(s.object);
     this.shown.clear();
     this.deaths.length = 0;
+    this.fired.length = 0;
     this.fogTexture.setTerrain(world.terrain);
     this.terrain3d.build(world.terrain);
     this.network.setWorld(world);
@@ -203,6 +241,7 @@ export class World3D implements WorldView {
   event(event: SimEvent): void {
     if (event.type === "death" || event.type === "expired") this.deaths.push(event);
     if (event.type === "cast") this.casts.push(event);
+    if (event.type === "shot") this.fired.push(event);
   }
 
   draw(frame: Frame): void {
@@ -214,12 +253,17 @@ export class World3D implements WorldView {
     this.placeCamera(frame);
     this.fogTexture.update(frame.fog, t);
     this.models.update(t);
-    this.syncEntities(frame, t, dt);
+    this.byId.clear();
+    for (const e of frame.world.entities) this.byId.set(e.id, e);
+    this.drawImpacts(frame, now);
+    this.syncEntities(frame, t, dt, now);
     this.drawDeaths(frame);
     this.drawCasts(frame, dt);
     this.drawShots(frame);
     this.drawOverlay(frame, t);
     this.particles.update(dt);
+    this.debris.update(dt);
+    this.shake = Math.max(0, this.shake - dt);
     if (this.composer) this.composer.render();
     else this.renderer.render(this.scene, this.camera);
   }
@@ -274,6 +318,11 @@ export class World3D implements WorldView {
     const { camera } = frame;
     const ground = this.terrain3d.floorAt(camera.x, camera.y);
     const target = new THREE.Vector3(camera.x, ground, camera.y);
+    if (this.shake > 0) {
+      const k = (this.shake / SHAKE_S) * this.shakePower;
+      target.x += (Math.random() - 0.5) * 2 * k;
+      target.z += (Math.random() - 0.5) * 2 * k;
+    }
     const distance = DISTANCE / camera.zoom;
     this.camera.position.set(target.x, target.y + distance * Math.sin(PITCH), target.z + distance * Math.cos(PITCH));
     this.camera.lookAt(target);
@@ -297,6 +346,12 @@ export class World3D implements WorldView {
     this.sun.position.set(target.x - 900, target.y + 1700, target.z - 600);
   }
 
+  /** Whether a world point is in view (roughly: inside the camera's ground rectangle). */
+  private onScreen(x: number, y: number): boolean {
+    const v = new THREE.Vector3(x, this.terrain3d.floorAt(x, y), y).project(this.camera);
+    return Math.abs(v.x) <= 1 && Math.abs(v.y) <= 1 && v.z < 1;
+  }
+
   private aim(x: number, y: number): void {
     const { width, height } = this.size();
     this.raycaster.setFromCamera(new THREE.Vector2((x / width) * 2 - 1, -(y / height) * 2 + 1), this.camera);
@@ -304,7 +359,7 @@ export class World3D implements WorldView {
 
   // --- entities -------------------------------------------------------------
 
-  private syncEntities(frame: Frame, t: number, dt: number): void {
+  private syncEntities(frame: Frame, t: number, dt: number, now: number): void {
     const { world } = frame;
     const alive = new Set<number>();
     // Functions with units running are warm; the rest are drawn cold.
@@ -327,6 +382,7 @@ export class World3D implements WorldView {
       const floor = this.terrain3d.floorAt(at.x, at.y);
       s.object.position.set(at.x, floor, at.y);
       animate(s.object, t, s.seed);
+      this.react(s, at, now);
 
       if (entity.kind === "unit") {
         const dx = at.x - s.lastX;
@@ -341,11 +397,17 @@ export class World3D implements WorldView {
         s.lastX = at.x;
         s.lastY = at.y;
         s.object.rotation.y = s.heading;
-        // A hero's bar is always up, above its beacon.
+        // A hero's bar is always up, above its beacon. Anyone else's only
+        // while it's selected or for a moment after it's hit: a brawl of a
+        // hundred units shouldn't be a wall of bars.
         const hero = entity.mode === "hero";
-        if (hero || entity.hp < entity.maxHp || frame.selectedIds.has(entity.id)) {
+        const since = now - s.hitAt;
+        const recent = entity.hp < entity.maxHp && since < BAR_MS;
+        if (hero || frame.selectedIds.has(entity.id) || recent) {
           const y = hero ? s.size * 5.6 : s.size * 3.4;
-          this.bars.add(at.x, floor + y, at.y, Math.max(16, s.size * (hero ? 3 : 2.4)), entity.hp / entity.maxHp);
+          const width = Math.max(16, s.size * (hero ? 3 : 2.4));
+          const fade = hero || frame.selectedIds.has(entity.id) ? 1 : Math.min(1, (BAR_MS - since) / BAR_FADE_MS);
+          this.bars.add(at.x, floor + y, at.y, width * fade, entity.hp / entity.maxHp);
         }
         continue;
       }
@@ -362,7 +424,10 @@ export class World3D implements WorldView {
       s.object.scale.set(grow, building ? Math.max(0.08, entity.hp / entity.maxHp) * grow : grow, grow);
       const top = s.top ?? BUILDING_TOP[entity.defId] ?? 50;
       const selected = frame.selectedId === entity.id || frame.selectedIds.has(entity.id);
-      if (entity.hp < entity.maxHp || selected) {
+      // A building's bar: while selected, just after a hit, or once it's badly hurt.
+      const since = now - s.hitAt;
+      const ratio = entity.hp / entity.maxHp;
+      if (selected || (ratio < 1 && (since < BAR_MS || ratio < BUILDING_BAR_BELOW))) {
         this.bars.add(at.x, floor + top * s.object.scale.y + 12, at.y, entity.footprint * TILE * 0.8, entity.hp / entity.maxHp);
       }
     }
@@ -415,6 +480,13 @@ export class World3D implements WorldView {
       lastY: entity.y,
       holo: false,
       top: entity.kind === "building" ? new THREE.Box3().setFromObject(object).max.y : undefined,
+      scale: object.scale.x,
+      hitAt: -Infinity,
+      hitX: 0,
+      hitY: 0,
+      lungeAt: -Infinity,
+      lungeX: 0,
+      lungeY: 0,
     };
   }
 
@@ -431,6 +503,95 @@ export class World3D implements WorldView {
 
   // --- effects --------------------------------------------------------------
 
+  /** How a shot from this entity reads. */
+  private styleOf(content: Content, from: Entity | undefined): ShotStyle {
+    if (!from) return "ranged";
+    if (from.kind === "building") return "tower";
+    return (content.units[from.defId]?.range ?? 0) <= MELEE_RANGE ? "melee" : "ranged";
+  }
+
+  /** Whether a shot from this entity hits hard. */
+  private heavy(content: Content, from: Entity | undefined): boolean {
+    if (!from) return false;
+    if (from.kind === "building") return (content.buildings[from.defId]?.attack?.damage ?? 0) >= HEAVY_DAMAGE;
+    const def = content.units[from.defId];
+    return (def?.damage ?? 0) >= HEAVY_DAMAGE || def?.siege !== undefined || (from.rank ?? 0) >= 2;
+  }
+
+  /**
+   * New shots: the target flinches when the hit lands (a bolt's flight time
+   * later), a melee attacker lunges, and something visible marks the hit.
+   */
+  private drawImpacts(frame: Frame, now: number): void {
+    const { content } = frame;
+    for (const shot of this.fired) {
+      if (!frame.fog.isVisible(shot.x1, shot.y1) && !frame.fog.isVisible(shot.x2, shot.y2)) continue;
+      const from = this.byId.get(shot.from);
+      const style = this.styleOf(content, from);
+      const heavy = this.heavy(content, from);
+      const color = teamColor(frame.world, shot.team);
+      const lands = style === "melee" ? now + LUNGE_MS * 0.5 : now + SHOT_TTL_MS;
+      const target = this.shown.get(shot.to);
+      if (target) {
+        target.hitAt = lands;
+        target.hitX = shot.x1;
+        target.hitY = shot.y1;
+      }
+      const attacker = this.shown.get(shot.from);
+      if (attacker && style === "melee") {
+        attacker.lungeAt = now;
+        attacker.lungeX = shot.x2;
+        attacker.lungeY = shot.y2;
+      }
+      const floor = this.terrain3d.floorAt(shot.x2, shot.y2);
+      const big = this.byId.get(shot.to)?.kind === "building";
+      const y = floor + (big ? 24 : 10);
+      if (style === "melee") {
+        // A strike: a tight white flash and a spray of the attacker's colour.
+        this.particles.burst(shot.x2, y, shot.y2, 2, 0xffffff, 0.35);
+        this.particles.burst(shot.x2, y, shot.y2, heavy ? 8 : 4, color, heavy ? 0.8 : 0.45);
+      } else {
+        // A muzzle flash where it leaves; the impact is drawn when the bolt arrives (drawShots).
+        const fy = this.terrain3d.floorAt(shot.x1, shot.y1) + (style === "tower" ? 40 : 18);
+        this.particles.burst(shot.x1, fy, shot.y1, style === "tower" ? 3 : 1, 0xffffff, 0.3);
+      }
+      if (heavy) this.shockwaves.push({ x: shot.x2, y: shot.y2, radius: big ? 34 : 20, color, age: SHOCKWAVE_S * 0.45 });
+    }
+    this.fired.length = 0;
+  }
+
+  /** Flinch when hit (squash and knock-back), lunge when swinging. */
+  private react(s: Shown, at: Point, now: number): void {
+    const object = s.object;
+    let scaleX = 1;
+    let scaleY = 1;
+    const hit = (now - s.hitAt) / FLINCH_MS;
+    if (hit >= 0 && hit < 1) {
+      const k = 1 - hit;
+      const dx = at.x - s.hitX;
+      const dy = at.y - s.hitY;
+      const d = Math.hypot(dx, dy) || 1;
+      // Buildings shudder; units get knocked back a step.
+      const push = s.kind === "building" ? 1.5 * Math.sin(hit * Math.PI * 6) : 4 * k;
+      object.position.x += (dx / d) * push;
+      object.position.z += (dy / d) * push;
+      if (s.kind === "unit") {
+        scaleY -= 0.22 * k;
+        scaleX += 0.14 * k;
+      }
+    }
+    const lunge = (now - s.lungeAt) / LUNGE_MS;
+    if (lunge >= 0 && lunge < 1) {
+      const dx = s.lungeX - at.x;
+      const dy = s.lungeY - at.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const reach = Math.sin(lunge * Math.PI) * Math.min(7, d * 0.4);
+      object.position.x += (dx / d) * reach;
+      object.position.z += (dy / d) * reach;
+    }
+    if (s.kind === "unit") object.scale.set(s.scale * scaleX, s.scale * scaleY, s.scale * scaleX);
+  }
+
   private drawDeaths(frame: Frame): void {
     for (const death of this.deaths) {
       if (!frame.fog.isVisible(death.x, death.y)) continue;
@@ -443,11 +604,22 @@ export class World3D implements WorldView {
       const floor = this.terrain3d.floorAt(death.x, death.y);
       const color = teamColor(frame.world, death.team);
       if (s?.kind === "building") {
+        const footprint = s.size * TILE;
         this.particles.burst(death.x, floor + 30, death.y, 90, color, 1.8);
         this.particles.burst(death.x, floor + 20, death.y, 60, 0xffb347, 1.4);
+        this.debris.burst(death.x, floor + 24, death.y, floor, 18 + s.size * 8, color, 5 + s.size * 1.5, 1.3);
+        this.shockwaves.push({ x: death.x, y: death.y, radius: footprint * 1.4, color: 0xffb347, age: 0 });
+        // Felt as well as seen: a short shake, harder for bigger buildings.
+        if (this.onScreen(death.x, death.y)) {
+          this.shake = SHAKE_S;
+          this.shakePower = Math.max(this.shake > 0 ? this.shakePower : 0, 3 + s.size * 2);
+        }
       } else {
-        const big = (s?.size ?? 8) > 14;
+        const size = s?.size ?? 8;
+        const big = size > 14;
         this.particles.burst(death.x, floor + 10, death.y, big ? 70 : 18, color, big ? 1.5 : 0.8);
+        this.particles.burst(death.x, floor + 10, death.y, big ? 12 : 4, 0xffffff, big ? 1 : 0.5);
+        this.debris.burst(death.x, floor + size, death.y, floor, big ? 14 : 5, color, Math.max(2.5, size * 0.45), big ? 1.1 : 0.7);
       }
     }
     this.deaths.length = 0;
@@ -473,12 +645,23 @@ export class World3D implements WorldView {
     this.bolts.begin();
     for (const shot of frame.shots) {
       if (!frame.fog.isVisible(shot.x1, shot.y1) && !frame.fog.isVisible(shot.x2, shot.y2)) continue;
+      const from = this.byId.get(shot.from);
+      const style = this.styleOf(frame.content, from);
+      // Melee is drawn as a strike at the target (drawImpacts), not a bolt.
+      if (style === "melee") continue;
       const progress = Math.min(1, shot.age / SHOT_TTL_MS);
-      const y1 = this.terrain3d.floorAt(shot.x1, shot.y1) + 22;
+      const tower = style === "tower";
+      const y1 = this.terrain3d.floorAt(shot.x1, shot.y1) + (tower ? 40 : 22);
       const y2 = this.terrain3d.floorAt(shot.x2, shot.y2) + 12;
-      this.bolts.add(shot.x1, y1, shot.y1, shot.x2, y2, shot.y2, progress, teamColor(frame.world, shot.team));
-      // A spark where it lands, once.
-      if (shot.age === 0) this.particles.burst(shot.x2, y2, shot.y2, 3, teamColor(frame.world, shot.team), 0.45);
+      const color = teamColor(frame.world, shot.team);
+      this.bolts.add(shot.x1, y1, shot.y1, shot.x2, y2, shot.y2, progress, color, tower ? 2.6 : 1.4);
+      // Sparks where it lands, once, when it gets there.
+      if (progress >= 0.75 && !this.landed.has(shot)) {
+        this.landed.add(shot);
+        const heavy = this.heavy(frame.content, from);
+        this.particles.burst(shot.x2, y2, shot.y2, heavy ? 10 : tower ? 6 : 4, color, heavy ? 0.9 : 0.55);
+        this.particles.burst(shot.x2, y2, shot.y2, 1, 0xffffff, heavy ? 0.8 : 0.4);
+      }
     }
     this.bolts.end();
   }

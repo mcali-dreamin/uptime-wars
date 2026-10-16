@@ -35,8 +35,8 @@ export class Bolts {
     this.count = 0;
   }
 
-  /** A bolt `t` (0..1) of the way from a to b, in team colour. */
-  add(ax: number, ay: number, az: number, bx: number, by: number, bz: number, t: number, color: number): void {
+  /** A bolt `t` (0..1) of the way from a to b, in team colour. `width` 1 is a unit's shot; towers fire thicker. */
+  add(ax: number, ay: number, az: number, bx: number, by: number, bz: number, t: number, color: number, width = 1): void {
     if (this.count >= MAX_BOLTS) return;
     this.dir.set(bx - ax, by - ay, bz - az);
     const length = this.dir.length();
@@ -46,7 +46,7 @@ export class Bolts {
     const head = Math.min(1, t * 1.25);
     this.p.set(ax, ay, az).addScaledVector(this.dir, head * length - streak / 2);
     this.q.setFromUnitVectors(this.fwd, this.dir);
-    this.s.set(1, 1, streak);
+    this.s.set(width, width, streak);
     this.mesh.setMatrixAt(this.count, this.m.compose(this.p, this.q, this.s));
     this.mesh.setColorAt(this.count, this.color.setHex(color).multiplyScalar(2.4));
     this.count += 1;
@@ -248,5 +248,103 @@ export class Rings {
     this.mesh.count = this.count;
     this.mesh.instanceMatrix.needsUpdate = true;
     if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
+  }
+}
+
+const MAX_DEBRIS = 900;
+
+/**
+ * Debris: small tumbling chunks thrown out when something dies, in its team
+ * colour. They arc, bounce once off the ground, rest a moment, and sink.
+ * Instanced boxes with simple CPU physics; pooled like the rest.
+ */
+export class Debris {
+  readonly mesh: THREE.InstancedMesh;
+  private readonly pos = new Float32Array(MAX_DEBRIS * 3);
+  private readonly vel = new Float32Array(MAX_DEBRIS * 3);
+  private readonly spin = new Float32Array(MAX_DEBRIS * 3);
+  private readonly rot = new Float32Array(MAX_DEBRIS * 3);
+  private readonly floor = new Float32Array(MAX_DEBRIS);
+  private readonly size = new Float32Array(MAX_DEBRIS);
+  private readonly life = new Float32Array(MAX_DEBRIS);
+  private readonly maxLife = new Float32Array(MAX_DEBRIS);
+  private readonly m = new THREE.Matrix4();
+  private readonly q = new THREE.Quaternion();
+  private readonly e = new THREE.Euler();
+  private readonly s = new THREE.Vector3();
+  private readonly p = new THREE.Vector3();
+  private readonly color = new THREE.Color();
+  private next = 0;
+
+  constructor() {
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.2, emissive: 0xffffff, emissiveIntensity: 0.06 });
+    this.mesh = new THREE.InstancedMesh(geometry, material, MAX_DEBRIS);
+    this.mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_DEBRIS * 3), 3);
+    this.mesh.frustumCulled = false;
+    this.mesh.castShadow = true;
+    this.mesh.count = MAX_DEBRIS;
+    // Park every slot out of sight until it's used.
+    this.m.makeScale(0, 0, 0);
+    for (let i = 0; i < MAX_DEBRIS; i += 1) this.mesh.setMatrixAt(i, this.m);
+  }
+
+  /** Throw `count` chunks of `size` (world px) out from a point at height `y` over `floor`. */
+  burst(x: number, y: number, z: number, floor: number, count: number, color: number, size: number, power = 1): void {
+    for (let n = 0; n < count; n += 1) {
+      const i = this.next;
+      this.next = (this.next + 1) % MAX_DEBRIS;
+      const a = Math.random() * Math.PI * 2;
+      const out = (30 + Math.random() * 110) * power;
+      this.pos.set([x + Math.cos(a) * size * 0.5, y, z + Math.sin(a) * size * 0.5], i * 3);
+      this.vel.set([Math.cos(a) * out, (90 + Math.random() * 160) * power, Math.sin(a) * out], i * 3);
+      this.spin.set([(Math.random() - 0.5) * 18, (Math.random() - 0.5) * 18, (Math.random() - 0.5) * 18], i * 3);
+      this.rot.set([Math.random() * 6, Math.random() * 6, Math.random() * 6], i * 3);
+      this.floor[i] = floor;
+      this.size[i] = size * (0.5 + Math.random() * 0.7);
+      const life = 1.1 + Math.random() * 0.8;
+      this.life[i] = life;
+      this.maxLife[i] = life;
+      // Some chunks keep the team colour, some are scorched dark.
+      this.color.setHex(Math.random() < 0.7 ? color : 0x2a2f38);
+      this.mesh.setColorAt(i, this.color);
+    }
+    if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
+  }
+
+  update(dt: number): void {
+    let moved = false;
+    for (let i = 0; i < MAX_DEBRIS; i += 1) {
+      if (this.life[i]! <= 0) continue;
+      moved = true;
+      this.life[i]! -= dt;
+      const v = i * 3;
+      const ground = this.floor[i]! + this.size[i]! * 0.5;
+      const resting = this.pos[v + 1]! <= ground + 0.01 && Math.abs(this.vel[v + 1]!) < 1;
+      if (!resting) {
+        this.vel[v + 1]! -= 520 * dt;
+        for (let k = 0; k < 3; k += 1) {
+          this.pos[v + k]! += this.vel[v + k]! * dt;
+          this.rot[v + k]! += this.spin[v + k]! * dt;
+        }
+        if (this.pos[v + 1]! < ground) {
+          // One dull bounce, then it lies there.
+          this.pos[v + 1] = ground;
+          const bounce = this.vel[v + 1]! < -60;
+          this.vel[v + 1] = bounce ? -this.vel[v + 1]! * 0.3 : 0;
+          this.vel[v]! *= 0.45;
+          this.vel[v + 2]! *= 0.45;
+          for (let k = 0; k < 3; k += 1) this.spin[v + k]! *= 0.4;
+        }
+      }
+      // The last third of its life it shrinks away.
+      const left = this.life[i]! / this.maxLife[i]!;
+      const scale = left <= 0 ? 0 : this.size[i]! * Math.min(1, left * 3);
+      this.p.set(this.pos[v]!, this.pos[v + 1]!, this.pos[v + 2]!);
+      this.q.setFromEuler(this.e.set(this.rot[v]!, this.rot[v + 1]!, this.rot[v + 2]!));
+      this.s.set(scale, scale, scale);
+      this.mesh.setMatrixAt(i, this.m.compose(this.p, this.q, this.s));
+    }
+    if (moved) this.mesh.instanceMatrix.needsUpdate = true;
   }
 }
