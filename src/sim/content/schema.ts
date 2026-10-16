@@ -98,6 +98,12 @@ export interface BuildingDef {
   tier?: number;
   /** At most this many per player, by core tier (counting ones under construction). */
   limitPerTier?: number[];
+  /**
+   * At the top core tier the limit turns soft: you may build past it, and
+   * each one past it costs this much more again (permille of the base cost),
+   * on top of costGrowthPermille. So late $ can still buy compute.
+   */
+  pastLimitGrowthPermille?: number;
   /** Tiles around this building (once finished) where you may build. */
   buildRadius?: number;
 }

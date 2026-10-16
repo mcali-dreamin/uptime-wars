@@ -28,6 +28,8 @@ export interface Team {
   overload: number;
   /** A spawner of this team was held back by the compute cap this tick. */
   capped?: boolean;
+  /** Users stopped arriving last second for want of free compute (after what squads need). */
+  waitingOnCompute?: boolean;
   peakUsers: number;
   /** Fractions carried between seconds so nothing is lost to rounding. */
   revenueCarry: number;

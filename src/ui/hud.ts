@@ -51,7 +51,12 @@ export class Hud {
     const core = this.session.core();
     this.money.textContent = String(team.money);
     this.updateBanked();
-    this.users.textContent = team.coreId === -1 ? "0" : `${team.users} / ${userCapacity(world, this.session.content, team)}`;
+    const waiting = team.waitingOnCompute === true;
+    this.users.textContent =
+      team.coreId === -1 ? "0" : `${team.users} / ${userCapacity(world, this.session.content, team)}${waiting ? " · need compute" : ""}`;
+    this.users.title = waiting
+      ? "New users are waiting for compute: your army's squads get theirs first. Build a generator (past the limit at the top core tier, at a price) or field fewer spawners."
+      : "Users pay $ every second. They arrive toward your capacity (core + Web Apps) while you have compute free to serve them.";
     this.updateIncome();
     this.updateCompute();
     const cores = world.entities.filter((e) => e.hp > 0 && isCore(this.session.content, team, e)).length;
@@ -133,14 +138,16 @@ export class Hud {
     this.compute.textContent = over
       ? `${demand} / ${supply} · over: users leaving, ${Math.max(1, Math.round(team.overload / 10))}% slow`
       : capped
-        ? `${demand} / ${supply} · army cap`
+        ? `${demand} / ${supply} · army cap: build compute`
         : `${demand} / ${supply}`;
     this.computeStat.classList.toggle("overloaded", over);
     this.computeStat.title =
       `In use / supplied. Each user uses ${content.economy.compute.perUser}, each unit about ${content.economy.compute.perUnit}. ` +
       "Compute is also your army cap: a spawner or a Function's burst only adds a unit if its upkeep fits in what's free, so more spawners reinforce faster but never field more. " +
       "Generators are limited per core tier: tech up the core to raise the cap, or rank spawners up (U) for better units per compute. " +
-      "Over capacity (users growing past it), users stop arriving and start leaving, and your towers, spawners and research slow down.";
+      "New users only take compute your squads don't need, so a bigger army means fewer users, never the other way round. " +
+      "At the top core tier generators have no hard limit: each one past it just costs more. " +
+      "Over capacity (a generator lost), users leave and your towers, spawners and research slow down.";
   }
 
   /** The win condition, always in view: farms left, then the nest's health. */

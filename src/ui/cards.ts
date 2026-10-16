@@ -32,7 +32,10 @@ export function buildingCard(content: Content, raceId: string, buildingId: strin
   if (def.compute) does.push(`+${def.compute} compute`);
   if (def.userCapacity) does.push(`+${def.userCapacity} users`);
   if (def.buildRadius) does.push(`network ${def.buildRadius}`);
-  if (def.limitPerTier) does.push(`max ${def.limitPerTier.join(" / ")} by core tier`);
+  if (def.limitPerTier) {
+    const soft = def.pastLimitGrowthPermille ? `, then +${def.pastLimitGrowthPermille / 10}% each past that` : "";
+    does.push(`max ${def.limitPerTier.join(" / ")} by core tier${soft}`);
+  }
   const lines = [does.join(" · ") || `${def.hp} HP`];
   if (def.buildable) lines.push(`$${Math.round(def.cost * race.modifiers.costMultiplier)}${def.tier ? ` · needs ${content.economy.tiers[def.tier]!.name}` : ""}`);
   return { title: def.name, lines };
