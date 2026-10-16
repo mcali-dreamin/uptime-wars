@@ -2,7 +2,7 @@
   "name": "uptime-wars",
   "private": true,
   "license": "MIT",
-  "version": "0.57.0",
+  "version": "0.57.1",
   "description": "Tech-themed castle defense. Build compute, auto-spawn processes, keep your core online.",
   "type": "module",
   "scripts": {
