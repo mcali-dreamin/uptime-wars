@@ -18,8 +18,8 @@ import {
 } from "../sim";
 
 import { playerColor, type PlayerColor } from "./colors";
+import { skirmishSetup } from "./skirmish";
 
-const HORDE_RACE = "botnet";
 const INPUT_DELAY_TICKS = 2;
 const RACE_KEY = "uptime:race";
 const COLOR_KEY = "uptime:color";
@@ -142,6 +142,7 @@ export class Session {
     // `?seed=N` replays a specific map (tests, bug reports); otherwise random.
     const fixed = Number(new URLSearchParams(location.search).get("seed"));
     const seed = Number.isInteger(fixed) && fixed !== 0 ? fixed : (Math.random() * 2 ** 31) | 0;
-    return createWorld(this.content, { seed, races: [this.raceId, HORDE_RACE], heroes: [this.heroFor(this.raceId)] });
+    // `?ai=hard,...` adds computer players (see skirmish.ts); otherwise you and the horde.
+    return createWorld(this.content, skirmishSetup(this.content, location.search, seed, this.raceId, this.heroFor(this.raceId)));
   }
 }

@@ -36,6 +36,7 @@ import { tickResearch } from "./upgrades";
 import { spawnHero, tickHeroes } from "./heroes";
 import { tickWaveDirector } from "./waves";
 import { tickTaunts } from "./traits";
+import { tickAi } from "./ai";
 
 export interface MatchSetup {
   seed: number;
@@ -51,6 +52,11 @@ export interface MatchSetup {
   startWithCore?: boolean;
   /** co-op (default) or ffa. FFA needs two or more players; the horde is optional. */
   mode?: MatchMode;
+  /**
+   * Per team (in team order): a difficulty id makes that player a computer
+   * player; omitted or undefined is a person. Only players can be computers.
+   */
+  ai?: (string | undefined)[];
 }
 
 export function createWorld(content: Content, setup: MatchSetup): World {
@@ -63,7 +69,7 @@ export function createWorld(content: Content, setup: MatchSetup): World {
     terrain,
     nav: { goals: new Map() },
     nextId: 1,
-    teams: setup.races.map((race, id) => makeTeam(content, id, race, setup.heroes?.[id])),
+    teams: setup.races.map((race, id) => makeTeam(content, id, race, setup.heroes?.[id], setup.ai?.[id])),
     entities: [],
     commands: [],
     waves: {
@@ -86,6 +92,9 @@ export function createWorld(content: Content, setup: MatchSetup): World {
   if (world.mode === "ffa" && humans.length < 2) throw new Error("Free-for-all needs at least 2 players");
   if (world.mode === "coop" && !hordeTeam(world)) throw new Error("Co-op needs the horde");
   for (const team of world.teams) {
+    if (team.ai && team.controller !== "human") throw new Error(`Team ${team.id} isn't a player, so it can't be a computer player`);
+  }
+  for (const team of world.teams) {
     const { col, row } = team.controller === "human" ? terrain.starts[team.id]! : terrain.nest;
     const race = content.races[team.raceId]!;
     if (race.builder && !setup.startWithCore) {
@@ -105,9 +114,10 @@ export function createWorld(content: Content, setup: MatchSetup): World {
   return world;
 }
 
-function makeTeam(content: Content, id: TeamId, raceId: string, heroId: string | undefined) {
+function makeTeam(content: Content, id: TeamId, raceId: string, heroId: string | undefined, difficulty: string | undefined) {
   const race = content.races[raceId];
   if (!race) throw new Error(`Unknown race ${raceId}`);
+  if (difficulty !== undefined && !content.difficulties[difficulty]) throw new Error(`Unknown difficulty ${difficulty}`);
   if (heroId !== undefined && !(race.heroes ?? []).includes(heroId)) throw new Error(`${raceId} has no hero ${heroId}`);
   return {
     id,
@@ -129,12 +139,15 @@ function makeTeam(content: Content, id: TeamId, raceId: string, heroId: string |
     downTick: null,
     heroId: heroId ?? race.heroes?.[0] ?? null,
     hero: null,
+    ai: difficulty === undefined ? null : { difficulty, next: 0, casts: 0 },
   };
 }
 
 export function step(world: World, content: Content): void {
   if (world.outcome) return;
   world.events = [];
+  // Computer players decide on the world as the last tick left it, then act this tick like anyone.
+  tickAi(world, content);
 
   const ctx = makeContext(world, content);
   applyCommands(ctx);

@@ -28,7 +28,16 @@ export interface MatchReport {
   wave: number;
   tier: number;
   peakUsers: number;
-  summary: { built: Record<string, number>; ranked: number; researched: Record<string, number>; heroLevel: number; ticks: number; players: number };
+  summary: {
+    built: Record<string, number>;
+    ranked: number;
+    researched: Record<string, number>;
+    heroLevel: number;
+    ticks: number;
+    players: number;
+    /** Computer players' difficulty per team (null = a person or the horde), when there are any. Replays need it. */
+    ai?: (string | null)[];
+  };
   log: World["log"];
 }
 
@@ -63,7 +72,8 @@ export function buildReport(content: Content, world: World, team: number, player
       researched: { ...t.upgrades },
       heroLevel: t.hero?.level ?? 0,
       ticks: world.tick,
-      players: world.teams.filter((x) => x.controller === "human").length,
+      players: world.teams.filter((x) => x.controller === "human" && !x.ai).length,
+      ...(world.teams.some((x) => x.ai) ? { ai: world.teams.map((x) => x.ai?.difficulty ?? null) } : {}),
     },
     log: world.log,
   };

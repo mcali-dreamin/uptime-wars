@@ -247,7 +247,8 @@ any world you build with it, such as a reported match replayed to some minute.
 
 ```
 src/
-  content/        JSON: races, buildings, units, waves, upgrades, economy, damage
+  content/        JSON: races, buildings, units, waves, upgrades, economy, damage,
+                  computer-player difficulties
   sim/            deterministic simulation (no DOM, no clock, no Math.random)
     world.ts        createWorld, step() (the order systems run in), outcome
     commands.ts     player commands: build, move, found, rally, research
@@ -262,6 +263,7 @@ src/
     spawners.ts / waves.ts
     terrain/        map generation: tiles, generate, elevation, scatter, grid
     content/        schema, load, validate
+    ai/             computer players: decide inside step(), send ordinary commands
     nav.ts          flow fields, line of sight, walkability
   game/           the player's side: Session (match, issuing commands) and
                   Selection (what a click means for what you have selected)
@@ -342,6 +344,25 @@ enemy, there's no shared vision, and the last player with a core up wins. The
 horde is optional; with it, the nest is just one more enemy (taking it down
 ends the waves, not the match). FFA needs at least two players.
 
+**Playing the computer.** A computer player is a player like any other: the
+same economy and the same rules, only its commands come from `src/sim/ai`
+instead of a mouse. It decides inside `step()` from the world alone, so it's
+deterministic: co-op peers and replays all compute the same moves, which is
+why its commands aren't written to the match log. Its skill is data
+(`src/content/difficulty.json`): Easy, Normal, Hard, Insane set how quickly it
+acts, how far it techs, and how freely it spends. The one bent rule is
+Insane's, and it's in the open: `revenuePermille`, more $ per user.
+For now computers build and defend; they don't attack yet (see #123). Until
+the lobby lands, add them from the address bar:
+
+- `?ai=hard` · one Hard opponent, free-for-all with the horde
+- `?ai=easy,insane:serverless` · two opponents, the second playing Serverless
+- `&horde=0` · free-for-all without the horde
+- `&mode=coop` · the computers join you against the horde
+
+The balance runs (`npm run balance`, `BALANCE_DIFFICULTY=hard`) are a computer
+player alone against the horde, so a better AI is also a better balance test.
+
 **Playing with friends.** On the race picker press `H` (or **Play with
 friends**) and pick **Co-op** or **Free-for-all** (with or without the horde).
 Send a friend the invite link (it ends in a six-letter code); they open it,
@@ -413,6 +434,7 @@ Direction: survival on a procedurally generated open web.
 - [x] Spawner ranks: upgrade a spawner in place for fewer, stronger units
 - [x] Co-op over WebRTC (invite links, lockstep)
 - [x] A win condition: break the Botnet Farms, then take the nest offline
+- [x] Computer players with difficulties (build and defend; attacking and a skirmish lobby next, #123)
 - More races: Hacker crew, State actor / APT
 - [x] Anonymous match reports (with replayable command logs) via Spacefast Zero
 - [x] Public at https://dist-xrbnhsmrf.view.fast/, source at https://github.com/mcali-dreamin/uptime-wars

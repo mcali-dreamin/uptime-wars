@@ -88,6 +88,32 @@ export function canPlace(
   return null;
 }
 
+const openCache = new WeakMap<World, { key: string; open: Uint8Array }>();
+
+/**
+ * Ground nothing stands on (walls and gates left out: they're how you close
+ * a gap). Rebuilt only when the buildings standing change: placement checks
+ * run for every spot a player hovers or a computer considers.
+ */
+function openGround(world: World, content: Content): Uint8Array {
+  let key = "";
+  for (const e of world.entities) {
+    if (e.kind === "building" && e.hp > 0 && !content.buildings[e.defId]?.blocks) key += `${e.id},`;
+  }
+  const cached = openCache.get(world);
+  if (cached && cached.key === key) return cached.open;
+  const { terrain } = world;
+  const { cols } = terrain;
+  const open = new Uint8Array(terrain.tiles.length);
+  for (let i = 0; i < open.length; i += 1) if (!walls(terrain.tiles[i])) open[i] = 1;
+  for (const e of world.entities) {
+    if (e.kind !== "building" || e.hp <= 0 || content.buildings[e.defId]?.blocks) continue;
+    for (let r = e.row; r < e.row + e.footprint; r += 1) for (let c = e.col; c < e.col + e.footprint; c += 1) open[r * cols + c] = 0;
+  }
+  openCache.set(world, { key, open });
+  return open;
+}
+
 /**
  * Would a building here cut ground off from the rest of the map? Buildings
  * are solid, so a ring of them would wall in whoever's inside, your own
@@ -95,17 +121,9 @@ export function canPlace(
  * left out of the search (and can't seal anything here themselves).
  */
 export function sealsOff(world: World, content: Content, col: number, row: number, footprint: number): boolean {
-  const { terrain } = world;
-  const { cols, rows } = terrain;
-  const open = new Uint8Array(cols * rows);
-  for (let i = 0; i < open.length; i += 1) if (!walls(terrain.tiles[i])) open[i] = 1;
-  const fill = (c0: number, r0: number, size: number) => {
-    for (let r = r0; r < r0 + size; r += 1) for (let c = c0; c < c0 + size; c += 1) open[r * cols + c] = 0;
-  };
-  for (const e of world.entities) {
-    if (e.kind === "building" && e.hp > 0 && !content.buildings[e.defId]?.blocks) fill(e.col, e.row, e.footprint);
-  }
-  fill(col, row, footprint);
+  const { cols, rows } = world.terrain;
+  const open = openGround(world, content).slice();
+  for (let r = row; r < row + footprint; r += 1) for (let c = col; c < col + footprint; c += 1) open[r * cols + c] = 0;
   // The ground right round the footprint, which the new building could cut off.
   const edge: number[] = [];
   for (let r = row - 1; r <= row + footprint; r += 1) {
@@ -118,10 +136,10 @@ export function sealsOff(world: World, content: Content, col: number, row: numbe
   // is fine to close off (nobody's in it); anything bigger on two sides of
   // the building means it would cut real ground in two.
   const seen = new Uint8Array(cols * rows);
-  const flood = (start: number, limit: number, need?: Set<number>): number[] => {
+  const flood = (start: number, limit: number): number[] => {
     const tiles = [start];
     seen[start] = 1;
-    for (let q = 0; q < tiles.length && tiles.length <= limit && need?.size !== 0; q += 1) {
+    for (let q = 0; q < tiles.length && tiles.length <= limit; q += 1) {
       const i = tiles[q]!;
       const c = i % cols;
       const r = (i - c) / cols;
@@ -134,7 +152,6 @@ export function sealsOff(world: World, content: Content, col: number, row: numbe
           // Diagonals can't cut a corner, the same as walking.
           if (seen[n] || !open[n] || (dc !== 0 && dr !== 0 && (!open[r * cols + nc] || !open[nr * cols + c]))) continue;
           seen[n] = 1;
-          need?.delete(n);
           tiles.push(n);
         }
       }
@@ -155,10 +172,67 @@ export function sealsOff(world: World, content: Content, col: number, row: numbe
   }
   if (big.length <= 1) return false;
   // Two or more big pieces of ground touch the footprint: are they still one?
-  seen.fill(0);
-  const need = new Set(big.slice(1));
-  flood(big[0]!, Infinity, need);
-  return need.size > 0;
+  return !stillOne(open, cols, rows, big);
+}
+
+/**
+ * Do these starting tiles all lie in one connected piece of open ground?
+ * Floods from every start at once, a tile each in turn, merging floods that
+ * meet. It stops when they're all one (yes) or when one runs out of ground
+ * before meeting the rest (no: that piece is cut off). So it costs about the
+ * smallest piece, not the whole map: a building closing off a pocket is
+ * judged by the pocket.
+ */
+function stillOne(open: Uint8Array, cols: number, rows: number, starts: number[]): boolean {
+  const label = new Int32Array(cols * rows).fill(-1);
+  const parent = starts.map((_, i) => i);
+  const root = (i: number): number => {
+    while (parent[i] !== i) i = parent[i] = parent[parent[i]!]!;
+    return i;
+  };
+  let pieces = starts.length;
+  const queues = starts.map((start, i) => {
+    if (label[start] !== -1 && root(label[start]!) !== root(i)) {
+      parent[root(i)] = root(label[start]!);
+      pieces -= 1;
+    }
+    label[start] = i;
+    return { tiles: [start], at: 0 };
+  });
+  if (pieces === 1) return true;
+  for (;;) {
+    // A merged flood is out of ground only when every queue in it is.
+    const live = new Set<number>();
+    for (let i = 0; i < queues.length; i += 1) if (queues[i]!.at < queues[i]!.tiles.length) live.add(root(i));
+    for (let i = 0; i < queues.length; i += 1) if (!live.has(root(i))) return false;
+    for (let q = 0; q < queues.length; q += 1) {
+      const queue = queues[q]!;
+      if (queue.at >= queue.tiles.length) continue;
+      const i = queue.tiles[queue.at]!;
+      queue.at += 1;
+      const c = i % cols;
+      const r = (i - c) / cols;
+      for (let dr = -1; dr <= 1; dr += 1) {
+        for (let dc = -1; dc <= 1; dc += 1) {
+          const nc = c + dc;
+          const nr = r + dr;
+          if ((dc === 0 && dr === 0) || nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+          const n = nr * cols + nc;
+          // Diagonals can't cut a corner, the same as walking.
+          if (!open[n] || (dc !== 0 && dr !== 0 && (!open[r * cols + nc] || !open[nr * cols + c]))) continue;
+          const other = label[n]!;
+          if (other === -1) {
+            label[n] = q;
+            queue.tiles.push(n);
+          } else if (root(other) !== root(q)) {
+            parent[root(other)] = root(q);
+            pieces -= 1;
+            if (pieces === 1) return true;
+          }
+        }
+      }
+    }
+  }
 }
 
 /** Why a core can't be founded on this footprint, or null when it can. */
