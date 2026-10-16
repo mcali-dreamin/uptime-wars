@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { TICK_RATE, createWorld, hashWorld, step, type Content, type Unit, type World } from "../src/sim";
-import { playArmy } from "../src/sim/ai/army";
+import { moveHero, playArmy } from "../src/sim/ai/army";
 import { content as base } from "./fixtures";
 
 /** The same difficulties, but every attack may start after a minute: tests don't wait ten. */
@@ -81,6 +81,34 @@ describe("computer players attack", () => {
     core.hp = core.maxHp * (plan.recallBelowPermille / 1000) * 0.9;
     playArmy(world, content, team, plan, issue);
     expect(team.ai!.phase).toBe("retreat");
+  });
+
+  it("its hero goes with an attack, and heads home when hurt", () => {
+    const world = createWorld(content, { seed: 1, mode: "ffa", races: ["open-source", "hyperscaler"], startWithCore: true, ai: [undefined, "normal"] });
+    run(world, 3);
+    const team = world.teams[1]!;
+    const plan = content.difficulties.normal!.attack!;
+    const hero = world.entities.find((e): e is Unit => e.id === team.hero?.unitId)!;
+    const core = world.entities.find((e) => e.id === team.coreId)!;
+    const army = world.entities.filter((e): e is Unit => e.kind === "unit" && e.team === 1 && e.mode === "guard");
+    expect(hero).toBeDefined();
+    // Its army is out across the map.
+    const far = { x: core.x + 3000, y: core.y };
+    for (const u of army) Object.assign(u, far);
+    Object.assign(team.ai!, { phase: "attack", group: army.map((u) => u.id) });
+    team.hero!.cast = null;
+    hero.moveTo = null;
+    const moves: { x: number; y: number }[] = [];
+    const issue = (c: { type: string; x?: number; y?: number }) => c.type === "move" && moves.push({ x: c.x!, y: c.y! });
+
+    moveHero(world, team, plan, issue);
+    expect(moves).toEqual([far]);
+
+    moves.length = 0;
+    Object.assign(hero, far);
+    hero.hp = hero.maxHp * (plan.heroRetreatPermille / 1000) * 0.5;
+    moveHero(world, team, plan, issue);
+    expect(moves).toEqual([{ x: core.x, y: core.y }]);
   });
 
   it("a computer free-for-all is deterministic", () => {

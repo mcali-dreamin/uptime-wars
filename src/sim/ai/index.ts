@@ -13,12 +13,7 @@
 import type { Content, DifficultyDef } from "../content";
 import { queueCommand } from "../commands";
 import { moveHero, playArmy } from "./army";
-import {
-  computeBalance,
-  squadReserve,
-  unitUpkeep,
-  userCapacity,
-} from "../economy";
+import { userCapacity } from "../economy";
 import { castBlocker, learnBlocker } from "../heroes";
 import { buildCost, canFound, canPlace } from "../placement";
 import { rankBlocker } from "../ranks";
@@ -32,7 +27,7 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
   : never;
 type Order = DistributiveOmit<Command, "tick" | "team">;
 
-/** Not in its build rotation: walls need a plan it doesn't have; cores and network nodes it builds only to make room (expand). */
+/** Buildings it never builds on its own: walls and network need a plan it doesn't have. */
 const SKIP = new Set(["core", "mesh-node", "edge-pop", "garden-wall"]);
 
 /** The difficulty a team plays at, or undefined for a person. */
@@ -165,91 +160,22 @@ function playBase(
   const rotation = content.races[team.raceId]!.buildings.filter(
     (b) => !SKIP.has(b),
   );
-  // Compute its squads still need beyond what's spare (asked once, only if a spawner comes up).
-  let short: number | undefined;
-  const unmanned = () => {
-    if (short === undefined) {
-      const { supply, demand } = computeBalance(world, content, team);
-      short = squadReserve(world, content, team) - (supply - demand);
-    }
-    return short;
-  };
-  const anchors = anchorsOf(world, content, team, core);
-  // Something it wanted and could pay for had nowhere to go: the base is full.
-  let roomless = false;
   for (let tries = 0; tries < rotation.length; tries += 1) {
     const b = rotation[(ai.next + tries) % rotation.length]!;
-    if (!habitAllows(world, content, team, b, unmanned)) continue;
+    if (!habitAllows(world, content, team, b)) continue;
     // Saving: what grows the economy may dip into the savings (down to a
     // share of the price); anything else waits until the tier is paid for.
     const def = content.buildings[b]!;
     const grows = (def.compute ?? 0) > 0 || (def.userCapacity ?? 0) > 0;
     const keep = grows ? (saving * level.savingKeepPermille) / 1000 : saving;
     if (saving && team.money - def.cost < keep) continue;
-    const spot = findSpot(world, content, team, b, anchors);
+    const spot = findSpot(world, content, team, b, core);
     if (spot) {
       issue({ type: "build", building: b, col: spot.col, row: spot.row });
       ai.next = (ai.next + tries + 1) % rotation.length;
       return;
     }
     if (team.money < buildCost(world, content, team.id, b)) break;
-    if (!tierBlocker(content, team, b, countOf(world, team, b)))
-      roomless = true;
-  }
-  if (roomless) expand(world, content, team, anchors, issue);
-}
-
-/** Its own finished buildings that make room to build around them (cores, network nodes), nearest the core first. */
-function anchorsOf(
-  world: World,
-  content: Content,
-  team: Team,
-  core: Building,
-): Building[] {
-  const anchors = world.entities.filter(
-    (e): e is Building =>
-      e.kind === "building" &&
-      e.team === team.id &&
-      e.hp > 0 &&
-      e.buildRemaining === 0 &&
-      (content.buildings[e.defId]!.buildRadius ?? 0) > 0,
-  );
-  const d = (b: Building) =>
-    (b.x - core.x) * (b.x - core.x) + (b.y - core.y) * (b.y - core.y);
-  return anchors.sort((a, b) => d(a) - d(b) || a.id - b.id);
-}
-
-/**
- * The base is full: build what makes room (its race's cheapest building with
- * a build radius: a network node, or another core), as far out as it'll go.
- */
-function expand(
-  world: World,
-  content: Content,
-  team: Team,
-  anchors: Building[],
-  issue: (c: Order) => unknown,
-): void {
-  const options = content.races[team.raceId]!.buildings.filter(
-    (b) => (content.buildings[b]!.buildRadius ?? 0) > 0,
-  ).sort(
-    (a, b) =>
-      buildCost(world, content, team.id, a) -
-      buildCost(world, content, team.id, b),
-  );
-  for (const b of options) {
-    const spot = findSpot(
-      world,
-      content,
-      team,
-      b,
-      [...anchors].reverse(),
-      true,
-    );
-    if (spot) {
-      issue({ type: "build", building: b, col: spot.col, row: spot.row });
-      return;
-    }
   }
 }
 
@@ -281,7 +207,6 @@ function habitAllows(
   content: Content,
   team: Team,
   building: string,
-  unmanned: () => number,
 ): boolean {
   const def = content.buildings[building]!;
   if (def.invoke) {
@@ -307,19 +232,10 @@ function habitAllows(
     ).length;
     return have < 4 + 4 * tierOf(content, team);
   }
-  // No spawner it can't man: if spare compute won't cover the squads it
-  // already has to fill plus this one's, it would only sink money (and the
-  // tier it's saving for) into an empty building.
-  if (
-    def.spawn &&
-    unmanned() + def.spawn.maxAlive * unitUpkeep(content, def.spawn.unit) > 0
-  )
-    return false;
   return true;
 }
 
-/** The nearest open spot around the core, walking outward ring by ring. */
-/** Square rings of tile offsets around an anchor, nearest first: every tile 2 to 10 out. */
+/** Square rings of tile offsets, nearest first: every tile 2 to 10 out. */
 const RINGS: [number, number][][] = [];
 for (let d = 2; d <= 10; d += 1) {
   const ring: [number, number][] = [];
@@ -331,14 +247,13 @@ for (let d = 2; d <= 10; d += 1) {
   RINGS.push(ring);
 }
 
-/** The first spot around its anchors (in order) where this building may go, nearest each anchor first (or farthest, outward). */
+/** The nearest spot to its core where this building may go, ring by ring (every tile, not a few lines out). */
 function findSpot(
   world: World,
   content: Content,
   team: Team,
   building: string,
-  anchors: Building[],
-  outward = false,
+  core: Building,
 ) {
   // What doesn't depend on the spot, once: an unaffordable or capped building
   // would fail at every spot, after canPlace's costlier checks.
@@ -346,17 +261,12 @@ function findSpot(
   if (team.money < cost) return null;
   if (tierBlocker(content, team, building, countOf(world, team, building)))
     return null;
-  for (const anchor of anchors) {
-    for (let step = 0; step < RINGS.length; step += 1) {
-      const ring = RINGS[outward ? RINGS.length - 1 - step : step]!;
-      for (const [dc, dr] of ring) {
-        const col = anchor.col + dc;
-        const row = anchor.row + dr;
-        if (
-          canPlace(world, content, team.id, building, col, row, cost) === null
-        )
-          return { col, row };
-      }
+  for (const ring of RINGS) {
+    for (const [dc, dr] of ring) {
+      const col = core.col + dc;
+      const row = core.row + dr;
+      if (canPlace(world, content, team.id, building, col, row, cost) === null)
+        return { col, row };
     }
   }
   return null;

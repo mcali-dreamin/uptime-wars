@@ -157,6 +157,42 @@ describe("computer players", () => {
   });
 });
 
+describe("computer players grow on their own income", () => {
+  // No horde, so no creep bounties to cover its mistakes: it has to save for
+  // its core tiers, not sink the money into spawners it can't man or towers,
+  // and keep finding room as the base fills. Every race.
+  const races = ["open-source", "hyperscaler", "serverless", "walled-garden"];
+  const world = createWorld(content, {
+    seed: 42,
+    mode: "ffa",
+    races,
+    startWithCore: true,
+    ai: ["normal", "normal", "normal", "normal"],
+  });
+  minutes(world, 6);
+  const tiers = world.teams.map((t) => tierOf(content, t));
+  minutes(world, 5);
+  const defences = (team: number) =>
+    world.entities.filter((e) => {
+      if (e.kind !== "building" || e.team !== team || e.hp <= 0) return false;
+      const def = content.buildings[e.defId]!;
+      return (def.attack !== undefined || def.blocks) && !def.spawn && !def.invoke && !def.compute && !def.userCapacity && !def.buildRadius;
+    }).length;
+
+  it.each(races.map((race, team) => [race, team] as const))("%s saves up for its top tier in good time", (_race, team) => {
+    expect(tiers[team]).toBe(content.difficulties.normal!.maxTier);
+  });
+
+  it.each(races.map((race, team) => [race, team] as const))("%s finds room to spend what it earns", (_race, team) => {
+    expect(world.teams[team]!.money).toBeLessThan(2000);
+    expect(buildings(world, team)).toBeGreaterThan(25);
+  });
+
+  it.each(races.map((race, team) => [race, team] as const))("%s keeps its defences to a few per tier", (_race, team) => {
+    expect(defences(team)).toBeLessThanOrEqual(4 + 4 * tierOf(content, world.teams[team]!));
+  });
+});
+
 describe("skirmish setup from the address bar", () => {
   it("no ?ai is you and the horde, as before", () => {
     expect(skirmishSetup(content, "", 5, "serverless", "x")).toEqual({
