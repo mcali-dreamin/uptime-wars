@@ -73,9 +73,12 @@ describe("free-for-all", () => {
     expect(world.waves.nextIndex).toBe(0);
   });
 
-  it("FFA needs two players; co-op needs the horde", () => {
-    expect(() => createWorld(content, setup("ffa", ["open-source", "botnet"]))).toThrow(/at least 2/);
-    expect(() => createWorld(content, setup("coop", ["open-source", "hyperscaler"]))).toThrow(/horde/);
+  it("a match needs an enemy: co-op without the horde has none", () => {
+    expect(() => createWorld(content, setup("coop", ["open-source", "hyperscaler"]))).toThrow(/needs an enemy/);
+    // Alone against a botnet that needn't fall: no win, you play for uptime.
+    const solo = createWorld(content, setup("ffa", ["open-source", "botnet"]));
+    run(solo, 5);
+    expect(solo.outcome).toBeNull();
   });
 
   it("is deterministic, and the mode is part of the state", () => {

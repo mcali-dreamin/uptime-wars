@@ -10,11 +10,11 @@ import { canResearch, nextLevel, slotOf } from "./upgrades";
 import { invoke, invokeBlocker } from "./functions";
 import { applyFork } from "./mechanics";
 import { heroOf, learnBlocker, orderCast } from "./heroes";
-import { hostile } from "./teams";
+import { allyBlocker, breakAlliance, hostile, offerAlliance, unallyBlocker } from "./teams";
 import { TILE_OPEN, isWalkableTile, tileAt } from "./terrain";
 import { nearestFit } from "./nav";
 import { MAX_ORDER_UNITS, MAX_WAYPOINTS, ORDER_SPREAD_MAX, ORDER_SPREAD_PER_UNIT, RALLY_SPREAD } from "./tuning";
-import type { Command, OrderCommand, RallyCommand, World } from "./types";
+import type { Command, Entity, OrderCommand, RallyCommand, World } from "./types";
 
 /**
  * Schedule a command. Commands must target the current tick or later; in
@@ -56,6 +56,25 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
   if (!issuer || issuer.controller !== "human") return "no such player";
   if (issuer.downTick !== null) return "offline";
   switch (command.type) {
+    case "ally": {
+      const reason = allyBlocker(world, command.team, command.with);
+      if (reason) return reason;
+      if (offerAlliance(world, command.team, command.with)) {
+        world.events.push({ type: "allied", team: command.team, with: command.with });
+        alliancesChanged(ctx);
+      } else {
+        world.events.push({ type: "ally-offer", team: command.team, with: command.with });
+      }
+      return null;
+    }
+    case "unally": {
+      const reason = unallyBlocker(world, command.team, command.with);
+      if (reason) return reason;
+      breakAlliance(world, command.team, command.with);
+      world.events.push({ type: "unallied", team: command.team, with: command.with });
+      alliancesChanged(ctx);
+      return null;
+    }
     case "build": {
       const reason = canPlace(world, content, command.team, command.building, command.col, command.row);
       if (reason) return reason;
@@ -123,6 +142,29 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
     case "found":
       return moveBuilder(ctx, command);
   }
+}
+
+/**
+ * Sides changed: nobody keeps fighting a new ally, and gates open (or shut)
+ * for the new sides, so paths are worked out again.
+ */
+function alliancesChanged(ctx: TickContext): void {
+  const { world } = ctx;
+  const friendly = (owner: Entity, id: number | null | undefined) => {
+    const other = id === null || id === undefined ? undefined : ctx.byId.get(id);
+    return other !== undefined && !hostile(world, owner.team, other.team);
+  };
+  for (const entity of world.entities) {
+    if (friendly(entity, entity.targetId)) entity.targetId = null;
+    if (entity.kind !== "unit") continue;
+    if (friendly(entity, entity.provokedBy)) entity.provokedBy = undefined;
+    if (friendly(entity, entity.tauntedBy)) entity.tauntedBy = undefined;
+  }
+  for (const team of world.teams) {
+    const target = team.hero?.focusId == null ? undefined : ctx.byId.get(team.hero.focusId);
+    if (target && !hostile(world, team.id, target.team)) team.hero!.focusId = null;
+  }
+  world.nav.builtKey = undefined;
 }
 
 function applyOrder(ctx: TickContext, command: OrderCommand): string | null {
