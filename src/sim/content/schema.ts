@@ -253,11 +253,15 @@ export interface WavesDef {
   packSize: { min: number; max: number };
   /** Gap between waves: starts at startTicks, shrinks each wave, never below minTicks. */
   interval: { startTicks: number; minTicks: number; shrinkPerWave: number };
-  /** Points to spend on wave n: start * growth^(n-1). */
-  budget: { start: number; growth: number };
+  /**
+   * Points to spend on wave n: start * growth^(n-1), and from wave `lateFrom`
+   * on each wave grows by `lateGrowth` instead (late waves come ranked rather
+   * than bigger: see `ranks`).
+   */
+  budget: { start: number; growth: number; lateFrom?: number; lateGrowth?: number };
   /** Creep HP multiplier grows by this much per wave. */
   hpGrowthPerWave: number;
-  /** Never let more than this many creeps be alive; overflow waits its turn. */
+  /** Never let more than this much creep worth be alive (a plain creep is 1, a ranked one its rank's worth); overflow waits its turn. */
   maxAlive: number;
   /**
    * Late incidents get tougher, not bigger. A wave rolled with more than

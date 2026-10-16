@@ -7,7 +7,7 @@ import type { Content } from "../src/sim/content";
 import { dealDamage } from "../src/sim/combat";
 import { makeContext } from "../src/sim/context";
 import { spawnUnit } from "../src/sim/entities";
-import { stampRank } from "../src/sim/ranks";
+import { rankWorth, stampRank } from "../src/sim/ranks";
 import { content, SETUP } from "./fixtures";
 
 const ranks = content.waves.ranks!;
@@ -34,7 +34,7 @@ describe("creep ranks", () => {
   });
 
   it("a big wave comes as at most maxUnits ranked creeps, worth about the same", () => {
-    for (const wave of [10, 12, 14, 16]) {
+    for (const wave of [20, 30, 40, 50]) {
       const plain = planWave(createWorld(unranked, SETUP), unranked, wave);
       const plan = planWave(createWorld(content, SETUP), content, wave);
       expect(plain.units.length, `wave ${wave}`).toBeGreaterThan(ranks.maxUnits);
@@ -48,16 +48,18 @@ describe("creep ranks", () => {
 
   it("a late incident's creeps arrive ranked: tougher, harder-hitting, worth more", () => {
     const world = createWorld(content, SETUP);
-    world.waves.nextIndex = 13;
+    world.waves.nextIndex = 30;
     world.waves.nextWaveTick = world.tick;
     world.waves.nextTrickleTick = 1e9;
     step(world, content);
-    const creeps = world.entities.filter((e): e is Unit => e.kind === "unit" && e.team === 1 && e.defId === "bot");
-    expect(creeps.length).toBeGreaterThan(0);
-    const level = creeps[0]!.rank!;
-    expect(level).toBeGreaterThan(0);
-    const plain = Math.round(content.units.bot!.hp * (1 + content.waves.hpGrowthPerWave * 13));
-    expect(creeps[0]!.maxHp).toBeCloseTo((plain * ranks.levels[level - 1]!.hpPermille) / 1000, -1);
+    while (world.waves.pending.length > 0 && world.tick < 600) step(world, content);
+    const creeps = world.entities.filter((e): e is Unit => e.kind === "unit" && e.team === 1);
+    // (Infector escorts come plain; the incident's own creeps are ranked.)
+    const ranked = creeps.filter((c) => c.rank);
+    expect(ranked.length).toBeGreaterThan(creeps.length / 2);
+    const creep = ranked[0]!;
+    const plain = Math.round(content.units[creep.defId]!.hp * (1 + content.waves.hpGrowthPerWave * 30));
+    expect(creep.maxHp).toBeCloseTo((plain * ranks.levels[creep.rank! - 1]!.hpPermille) / 1000, -1);
   });
 
   it("killing a ranked creep pays its worth in bounty", () => {
@@ -74,5 +76,33 @@ describe("creep ranks", () => {
     const plain = paid(0);
     expect(plain).toBeGreaterThan(0);
     expect(paid(3)).toBe(plain * ranks.levels[2]!.worth!);
+  });
+
+  it("the alive cap counts worth, not heads: ranked creeps don't multiply the horde", () => {
+    const world = createWorld(content, SETUP);
+    world.waves.nextIndex = 16;
+    world.waves.nextTrickleTick = 1e9;
+    const top = Math.max(...ranks.levels.map((l) => l.worth!));
+    let peak = 0;
+    for (let i = 0; i < 1200; i += 1) {
+      // An incident every 5 seconds: far more than the cap holds.
+      if (i % 100 === 0) world.waves.nextWaveTick = world.tick;
+      step(world, content);
+      let worth = 0;
+      for (const e of world.entities) if (e.kind === "unit" && e.team === 1) worth += rankWorth(content, world, e);
+      peak = Math.max(peak, worth);
+    }
+    expect(peak).toBeGreaterThan(content.waves.maxAlive / 2);
+    expect(peak).toBeLessThan(content.waves.maxAlive + top);
+  });
+
+  it("late incidents don't queue up forever: each arrives soon after it's announced", () => {
+    // Waves past budget.lateFrom grow gently, so the botnet's backlog stays short.
+    let scale = 1;
+    const b = content.waves.budget;
+    for (let w = 2; w <= 40; w += 1) scale *= w > b.lateFrom! ? b.lateGrowth! : b.growth;
+    const units = b.start * scale;
+    const levels = ranks.levels;
+    expect(units / levels[levels.length - 1]!.worth!).toBeLessThan(ranks.maxUnits * 2);
   });
 });

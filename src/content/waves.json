@@ -28,8 +28,7 @@
   },
   "budget": {
     "start": 110,
-    "growth": 1.36
-  },
+    "growth": 1.36, "lateFrom": 8, "lateGrowth": 1.05 },
   "hpGrowthPerWave": 0.12,
   "maxAlive": 500,
   "ranks": {
