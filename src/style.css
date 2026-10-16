@@ -632,7 +632,7 @@ body {
   display: none !important;
 }
 
-.hero-card ul {
+.race-card ul {
   margin: 0.4rem 0 0;
   padding-left: 1rem;
   color: var(--muted);
@@ -640,7 +640,11 @@ body {
   line-height: 1.35;
 }
 
-.hero-card ul b {
+.race-card ul span {
+  color: var(--text);
+}
+
+.race-card ul b {
   color: var(--accent);
   font-weight: 600;
 }

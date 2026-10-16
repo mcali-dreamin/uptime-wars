@@ -8,8 +8,9 @@
 
 import type { Session } from "../game/session";
 import { TICK_RATE, type Team } from "../sim";
-import { abilityAmount, castBlocker, heroOf, learnBlocker, levelForRank, skillPoints, xpForLevel } from "../sim/heroes";
+import { castBlocker, heroOf, learnBlocker, levelForRank, skillPoints, xpForLevel } from "../sim/heroes";
 import { $ } from "./dom";
+import { abilityEffect } from "./text";
 
 export interface HeroBarEvents {
   select(): void;
@@ -119,39 +120,7 @@ export class HeroBar {
     const ability = content.heroes.abilities[id]!;
     const rank = team.hero?.ranks[id] ?? 0;
     const lines = [ability.description];
-    const shown = Math.max(1, rank);
-    const amount = abilityAmount(ability, shown);
-    const secs = Math.round((ability.durationTicks ?? 0) / TICK_RATE);
-    const effect = (() => {
-      switch (ability.effect) {
-        case "blast":
-          return `${Math.round(amount)} damage in a ${ability.radius}px area`;
-        case "strike":
-          return `${Math.round(amount)} damage to one target`;
-        case "heal":
-          return `Heals ${Math.round(amount)} within ${ability.radius}px`;
-        case "decoy":
-          return `Decoy with ${Math.round(amount)} hp for ${secs}s`;
-        case "summon":
-          return `${Math.round(amount)} × ${content.units[ability.unit!]!.name} for ${secs}s`;
-        case "buff":
-          return `Your units deal +${Math.round(amount * 100)}% damage for ${secs}s`;
-        case "shield":
-          return `Buildings within ${ability.radius}px take ${Math.round(amount / 10)}% less damage for ${secs}s`;
-        case "build":
-          return `Finishes construction and mends ${Math.round(amount)} within ${ability.radius}px`;
-        case "trigger":
-          return `Runs every function within ${ability.radius}px now, free`;
-        case "discount":
-          return `Function runs are free for ${secs}s`;
-        case "funds":
-          return `+$${Math.round(amount)}`;
-        case "stun":
-          return `Freezes creeps within ${ability.radius}px for ${secs}s${amount ? ` · ${Math.round(amount)} damage` : ""}`;
-        case "users":
-          return `Up to ${Math.round(amount)} users arrive now`;
-      }
-    })();
+    const effect = abilityEffect(content, ability, rank);
     lines.push(`${effect}${rank ? ` (rank ${rank})` : ""}`);
     lines.push(`Cooldown ${Math.round(ability.cooldownTicks / TICK_RATE)}s${ability.range ? ` · range ${ability.range}` : ""}`);
     if (rank < ability.maxRank) lines.push(`Rank ${rank + 1} needs hero level ${levelForRank(content, ability, rank + 1)}`);

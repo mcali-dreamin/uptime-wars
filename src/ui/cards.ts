@@ -5,27 +5,25 @@
 // two of numbers) and full detail for the Guide.
 
 import { upgradeName, TICK_RATE, levelOf, nextLevel, type Content, type SpawnerRank, type Team } from "../sim";
+import { HIGH_GROUND_DAMAGE } from "../sim/tuning";
+import { burstLine, perkChanges, rankChange, secs as seconds, traitLine, unitRuleLines } from "./text";
 
 export interface InfoCard {
   title: string;
   lines: string[];
 }
 
-const seconds = (ticks: number) => `${+(ticks / TICK_RATE).toFixed(1)}s`;
 
 /** One line of what a building does, plus cost. */
 export function buildingCard(content: Content, raceId: string, buildingId: string): InfoCard {
   const def = content.buildings[buildingId]!;
   const race = content.races[raceId]!;
   const does: string[] = [];
-  if (def.spawn) {
+  if (def.invoke) does.push(burstLine(content, raceId, buildingId));
+  else if (def.spawn) {
     const unit = content.units[def.spawn.unit]!;
     const interval = Math.round(def.spawn.intervalTicks * race.modifiers.spawnIntervalMultiplier);
-    does.push(`${def.spawn.count}× ${unit.name} / ${seconds(interval)}`);
-  }
-  if (def.invoke) {
-    const unit = content.units[def.invoke.unit]!;
-    does.push(`+${def.invoke.count}× ${unit.name} burst · $${def.invoke.cost} / scale-up`);
+    does.push(`${def.spawn.count}× ${unit.name} / ${seconds(interval)}, squad of ${def.spawn.maxAlive}`);
   }
   if (def.attack) does.push(`tower · ${def.attack.damage} dmg · range ${def.attack.range}`);
   if (def.income) does.push(`+$${def.income.amount} / ${seconds(def.income.intervalTicks)}`);
@@ -44,7 +42,7 @@ export function buildingCard(content: Content, raceId: string, buildingId: strin
 export function unitCard(content: Content, unitId: string, hp: number, maxHp: number, rank: string | null = null): InfoCard {
   const unit = content.units[unitId]!;
   const role = unit.damage <= 0 ? "can't attack" : unit.range > 60 ? "ranged" : "melee";
-  return { title: rank ? `${rank} ${unit.name}` : unit.name, lines: [`${Math.ceil(hp)} / ${maxHp} HP · ${role}`] };
+  return { title: rank ? `${rank} ${unit.name}` : unit.name, lines: [`${Math.ceil(hp)} / ${maxHp} HP · ${role}`, ...unitRuleLines(unit)] };
 }
 
 // --- guide detail -----------------------------------------------------------
@@ -63,15 +61,17 @@ export function buildingDetail(content: Content, raceId: string, buildingId: str
     const unit = content.units[def.spawn.unit]!;
     const interval = Math.round(def.spawn.intervalTicks * race.modifiers.spawnIntervalMultiplier);
     stats.push(`Spawns ${def.spawn.count}× ${unit.name} every ${seconds(interval)}, up to ${def.spawn.maxAlive} alive`);
-    stats.push(`${unit.name}: ${unitStats(unit, race.modifiers.unitHpMultiplier)}`);
   }
-  if (def.invoke) {
-    const i = def.invoke;
-    const unit = content.units[i.unit]!;
-    stats.push(
-      `Autoscales: when creeps within ${i.triggerRange} outnumber its squad (or you scale it up, V), bursts ${i.count}× ${unit.name} more for ${seconds(i.ttlTicks)}, then cools down for ${seconds(i.cooldownTicks)}. Each scale-up costs $${i.cost}; no $, no burst.`,
-    );
-    stats.push(`${unit.name}: ${unitStats(unit, race.modifiers.unitHpMultiplier)}`);
+  if (def.invoke) stats.push(`Autoscales: ${burstLine(content, raceId, buildingId)}`);
+  const unitId = def.spawn?.unit ?? def.invoke?.unit;
+  if (unitId) {
+    const unit = content.units[unitId]!;
+    stats.push(`${unit.name}: ${unitStats(unit, race.modifiers.unitHpMultiplier)}`, ...unitRuleLines(unit));
+    let from: SpawnerRank | null = null;
+    for (const [i, rank] of (race.spawnerRanks ?? []).entries()) {
+      stats.push(`Rank ${i + 1}, ${rank.name} (${content.economy.tiers[rank.tier]!.name}, $${Math.round((def.cost * rank.costPermille) / 1000)}): ${rankChange(content, raceId, buildingId, from, rank)}`);
+      from = rank;
+    }
   }
   if (def.attack) {
     const a = def.attack;
@@ -84,6 +84,11 @@ export function buildingDetail(content: Content, raceId: string, buildingId: str
     stats.push(`Serves up to ${def.userCapacity} users (up to +$${+perSecond.toFixed(1)}/s when full, if you have the compute to serve them)`);
   }
   if (def.buildRadius) stats.push(`Extends your network: you can build within ${def.buildRadius} tiles of it`);
+  if (def.limitPerTier) {
+    const soft = def.pastLimitGrowthPermille ? `, then +${def.pastLimitGrowthPermille / 10}% of its price for each one past that` : "";
+    stats.push(`Up to ${def.limitPerTier.join(" / ")} by core tier (${content.economy.tiers.map((t) => t.name).join(" / ")})${soft}`);
+  }
+  if (def.tier) stats.push(`Needs ${content.economy.tiers[def.tier]!.name}`);
   stats.push(`${def.hp} HP, ${def.armor} armor`);
   if (def.buildable) {
     const growth = def.costGrowthPermille ?? content.economy.costGrowthPermille ?? 0;
@@ -96,7 +101,7 @@ export function buildingDetail(content: Content, raceId: string, buildingId: str
 
 export function unitDetail(content: Content, unitId: string): GuideEntry {
   const unit = content.units[unitId]!;
-  return { title: unit.name, description: unit.description, stats: [unitStats(unit)] };
+  return { title: unit.name, description: unit.description, stats: [unitStats(unit), ...unitRuleLines(unit)] };
 }
 
 function unitStats(unit: Content["units"][string], hpMultiplier = 1): string {
@@ -110,7 +115,7 @@ function unitStats(unit: Content["units"][string], hpMultiplier = 1): string {
 export const TERRAIN_GUIDE: GuideEntry[] = [
   { title: "Open ground", description: "Walkable and buildable.", stats: [] },
   { title: "Dead link", description: "Light grey with a bright edge.", stats: ["Impassable", "Can't build", "Blocks line of sight"] },
-  { title: "Height", description: "Three levels: deep web (darkest), surface web, backbone (lightest).", stats: ["Units below can't see up a cliff unless they're right at its foot", "Attacking downhill deals 25% more damage", "Towers follow the same rules"] },
+  { title: "Height", description: "Three levels: deep web (darkest), surface web, backbone (lightest).", stats: ["Units below can't see up a cliff unless they're right at its foot", `Attacking downhill deals ${Math.round((HIGH_GROUND_DAMAGE - 1) * 100)}% more damage`, "Towers follow the same rules"] },
   { title: "Cliff", description: "Near-black band with a bright lip on the drop side.", stats: ["Impassable", "Can't build", "You can see and shoot across it"] },
   { title: "Ramp", description: "Striped gap in a cliff.", stats: ["The only way up or down", "Hold the ramp, hold the plateau"] },
 ];
@@ -130,10 +135,23 @@ const STAT_TEXT: Record<string, string> = {
   towerDamage: "tower damage",
 };
 
+const FLAT_STATS = new Set(["unitArmor", "buildingArmor", "buildRadius"]);
+
+/** A stat bonus at `levels` levels: "+30%" or "+2". */
+function bonusAt(def: { stat: string; perLevel: number }, levels: number): string {
+  const total = def.perLevel * levels;
+  return FLAT_STATS.has(def.stat) ? `+${+total.toFixed(2)}` : `+${Math.round(total * 100)}%`;
+}
+
 /** "+15% tower damage" or "+1 building armor" per level. */
 function effectText(def: { stat: string; perLevel: number }): string {
-  const flat = def.stat === "unitArmor" || def.stat === "buildingArmor" || def.stat === "buildRadius";
-  return `${flat ? `+${def.perLevel}` : `+${Math.round(def.perLevel * 100)}%`} ${STAT_TEXT[def.stat]} per level`;
+  return `${bonusAt(def, 1)} ${STAT_TEXT[def.stat]} per level`;
+}
+
+/** "Tower damage +15% → +30%": what the next level changes. */
+function levelChange(def: { stat: string; perLevel: number }, level: number): string {
+  const label = STAT_TEXT[def.stat]!;
+  return `${label[0]!.toUpperCase()}${label.slice(1)} ${bonusAt(def, level)} → ${bonusAt(def, level + 1)}`;
 }
 
 /** What reaching a core tier gives, as one line. */
@@ -164,7 +182,7 @@ export function upgradeCard(content: Content, team: Team, upgrade: string): Info
       title: `Upgrade to ${tiers[level + 1]!.name}`,
       lines: [
         tierLine(content, level + 1, team.raceId),
-        ...(perk ? [`Perk · ${perk.name}: ${perk.description}`] : []),
+        ...(perk ? [`Perk · ${perk.name}: ${perkChanges(content, team.raceId, level + 1).join(", ")}`] : []),
         `$${next.cost} · ${seconds(next.ticks)} · uses the core's research`,
       ],
     };
@@ -173,14 +191,13 @@ export function upgradeCard(content: Content, team: Team, upgrade: string): Info
   const needs = def.tiers?.[level];
   const gate = needs ? ` · needs ${content.economy.tiers[needs]!.name}` : "";
   if (def.stat === "trait") {
-    const unit = content.units[def.unit!]!.name;
-    if (level >= 1) return { title: name, lines: [def.description, `${unit} trait · researched`] };
-    return { title: name, lines: [def.description, `${unit} trait · $${def.cost} · ${seconds(def.researchTicks)}${gate}`] };
+    const effect = traitLine(content, def.unit!, def.trait ?? {});
+    if (level >= 1) return { title: name, lines: [def.description, effect, "Researched"] };
+    return { title: name, lines: [def.description, effect, `$${def.cost} · ${seconds(def.researchTicks)}${gate}`] };
   }
-  const effect = effectText(def);
-  if (level >= def.maxLevel) return { title: name, lines: [effect, "Fully researched"] };
+  if (level >= def.maxLevel) return { title: name, lines: [def.description, `${bonusAt(def, def.maxLevel)} ${STAT_TEXT[def.stat]}`, "Fully researched"] };
   const next = nextLevel(content, team, upgrade);
-  return { title: `${name} ${next.level}`, lines: [effect, `$${next.cost} · ${seconds(next.ticks)}${gate}`] };
+  return { title: `${name} ${next.level}`, lines: [def.description, levelChange(def, level), `$${next.cost} · ${seconds(next.ticks)}${gate}`] };
 }
 
 export function upgradeDetail(content: Content, upgrade: string, raceId?: string): GuideEntry {
@@ -191,7 +208,7 @@ export function upgradeDetail(content: Content, upgrade: string, raceId?: string
     return {
       title: raceId ? upgradeName(content, raceId, upgrade) : def.name,
       description: def.description,
-      stats: [`${content.units[def.unit!]!.name} trait · ${where}`, `Costs $${def.cost}${needs ? ` · needs ${content.economy.tiers[needs]!.name}` : ""}`],
+      stats: [traitLine(content, def.unit!, def.trait ?? {}), `${where} · costs $${def.cost}${needs ? ` · needs ${content.economy.tiers[needs]!.name}` : ""}`],
     };
   }
   if (def.stat === "tier") {
@@ -215,7 +232,7 @@ export function rankEffect(rank: SpawnerRank): string {
   const pct = (permille: number) => `${permille >= 1000 ? "+" : ""}${Math.round((permille - 1000) / 10)}%`;
   const parts = [`${pct(rank.hpPermille)} HP`, `${pct(rank.damagePermille)} damage`];
   if (rank.armor) parts.push(`+${rank.armor} armor`);
-  if (rank.maxAlive) parts.push(`${rank.maxAlive > 0 ? "+" : ""}${rank.maxAlive} squad`);
+  if (rank.maxAlive) parts.push(`${rank.maxAlive > 0 ? "+" : "−"}${Math.abs(rank.maxAlive)} squad`);
   if (rank.burst) parts.push(`+${rank.burst} per burst`);
   return `${parts.join(", ")} · ${rank.upkeepPermille / 1000}× compute`;
 }
@@ -230,5 +247,5 @@ export function rankLines(content: Content, raceId: string): string[] {
 /** A race's tier perks, one line each ("Data Center · Community: Forks cost 35%..."). */
 export function perkLines(content: Content, raceId: string): string[] {
   const perks = content.races[raceId]?.tierPerks ?? [];
-  return perks.flatMap((perk, tier) => (perk && tier > 0 ? [`${content.economy.tiers[tier]!.name} · ${perk.name}: ${perk.description}`] : []));
+  return perks.flatMap((perk, tier) => (perk && tier > 0 ? [`${content.economy.tiers[tier]!.name} · ${perk.name}: ${perkChanges(content, raceId, tier).join(", ")}`] : []));
 }

@@ -49,15 +49,25 @@ export function tierBlocker(content: Content, team: Team, buildingId: string, ha
 
 /** The perks a team has earned so far (tiers 1..its tier), in order. */
 export function earnedPerks(content: Content, team: Team) {
-  const perks = content.races[team.raceId]?.tierPerks ?? [];
-  return perks.slice(1, tierOf(content, team) + 1).filter((p): p is NonNullable<typeof p> => p !== null && p !== undefined);
+  return perksUpTo(content, team.raceId, tierOf(content, team));
+}
+
+/** A race's perks for tiers 1..tier, in order. */
+function perksUpTo(content: Content, raceId: string, tier: number) {
+  const perks = content.races[raceId]?.tierPerks ?? [];
+  return perks.slice(1, tier + 1).filter((p): p is NonNullable<typeof p> => p !== null && p !== undefined);
 }
 
 /** The race's mechanics with every earned tier perk applied. */
 export function raceMechanics(content: Content, team: Team): NonNullable<RaceDef["mechanics"]> {
+  return mechanicsAtTier(content, team.raceId, tierOf(content, team));
+}
+
+/** A race's mechanics at a core tier, its perks up to that tier applied. */
+export function mechanicsAtTier(content: Content, raceId: string, tier: number): NonNullable<RaceDef["mechanics"]> {
   const merged: Record<string, Record<string, unknown>> = {};
-  for (const [k, v] of Object.entries(content.races[team.raceId]?.mechanics ?? {})) merged[k] = { ...(v as object) };
-  for (const perk of earnedPerks(content, team)) {
+  for (const [k, v] of Object.entries(content.races[raceId]?.mechanics ?? {})) merged[k] = { ...(v as object) };
+  for (const perk of perksUpTo(content, raceId, tier)) {
     for (const [k, v] of Object.entries(perk.mechanics ?? {})) merged[k] = { ...(merged[k] ?? {}), ...(v as object) };
   }
   return merged as NonNullable<RaceDef["mechanics"]>;
@@ -65,7 +75,12 @@ export function raceMechanics(content: Content, team: Team): NonNullable<RaceDef
 
 /** The race's modifiers with every earned tier perk applied. */
 export function raceModifiers(content: Content, team: Team): RaceDef["modifiers"] {
-  let modifiers = { ...content.races[team.raceId]!.modifiers };
-  for (const perk of earnedPerks(content, team)) modifiers = { ...modifiers, ...perk.modifiers };
+  return modifiersAtTier(content, team.raceId, tierOf(content, team));
+}
+
+/** A race's modifiers at a core tier, its perks up to that tier applied. */
+export function modifiersAtTier(content: Content, raceId: string, tier: number): RaceDef["modifiers"] {
+  let modifiers = { ...content.races[raceId]!.modifiers };
+  for (const perk of perksUpTo(content, raceId, tier)) modifiers = { ...modifiers, ...perk.modifiers };
   return modifiers;
 }

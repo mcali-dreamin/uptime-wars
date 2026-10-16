@@ -147,7 +147,7 @@ describe("core reach composes", () => {
     expect(reachTiles(w)).toBe(base + tiers[2]!.buildRadius + 3);
     // A perk can set it, and research can add to it: same formula, no special cases.
     const perkContent = structuredClone(content);
-    perkContent.races["walled-garden"]!.tierPerks![1] = { name: "x", description: "x", modifiers: { buildRadiusBonus: 5 } };
+    perkContent.races["walled-garden"]!.tierPerks![1] = { name: "x", modifiers: { buildRadiusBonus: 5 } };
     perkContent.upgrades["reach"] = { name: "Reach", description: "", stat: "buildRadius", perLevel: 1, maxLevel: 2, cost: 1, researchTicks: 1 };
     team.upgrades["reach"] = 2;
     expect(coreReachBonus(perkContent, team)).toBe(tiers[2]!.buildRadius + 5 + 2);

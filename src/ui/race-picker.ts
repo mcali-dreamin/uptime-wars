@@ -5,6 +5,7 @@ import { PLAYER_COLORS } from "../game/colors";
 import type { Session } from "../game/session";
 import type { Telemetry } from "../game/telemetry";
 import { $ } from "./dom";
+import { abilityEffect, raceLines } from "./text";
 
 export class RacePicker {
   private readonly root = $("race-picker");
@@ -39,7 +40,8 @@ export class RacePicker {
         const race = content.races[id]!;
         const card = document.createElement("button");
         card.className = `race-card${id === raceId ? " last" : ""}`;
-        card.innerHTML = `<strong>${index + 1}. ${race.name}</strong><em>${race.specialty}</em>`;
+        const rules = raceLines(content, id).map((line) => `<li>${line}</li>`);
+        card.innerHTML = `<strong>${index + 1}. ${race.name}</strong><em>${race.specialty}</em><ul>${rules.join("")}</ul>`;
         card.addEventListener("click", () => this.pick(id));
         return card;
       }),
@@ -80,7 +82,7 @@ export class RacePicker {
         const unit = content.units[heroId]!;
         const abilities = content.heroes.heroes[heroId]!.abilities.map((id, i) => {
           const a = content.heroes.abilities[id]!;
-          return `<li>${i === 3 ? "<b>Ultimate</b> " : ""}${a.name}: ${a.description}</li>`;
+          return `<li>${i === 3 ? "<b>Ultimate</b> " : ""}${a.name}: ${a.description} <span>${abilityEffect(content, a, 1)}.</span></li>`;
         });
         const card = document.createElement("button");
         card.className = `race-card hero-card${heroId === last ? " last" : ""}`;

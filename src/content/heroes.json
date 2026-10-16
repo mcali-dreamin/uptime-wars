@@ -86,7 +86,7 @@
     },
     "fork-bomb": {
       "name": "Fork Bomb",
-      "description": "Fork four Processes that fight beside you for a while.",
+      "description": "Fork Processes that fight beside you for a while.",
       "effect": "summon",
       "target": "self",
       "unlockLevel": 1,
@@ -100,7 +100,7 @@
     },
     "release-day": {
       "name": "Release Day",
-      "description": "Ship it. All your units hit 50% harder for a while.",
+      "description": "Ship it. All your units hit harder for a while.",
       "effect": "buff",
       "target": "self",
       "unlockLevel": 6,
@@ -154,7 +154,7 @@
     },
     "autoscale": {
       "name": "Autoscale",
-      "description": "Traffic spike? Spin up three Load Balancers for a while.",
+      "description": "Traffic spike? Spin up Load Balancers for a while.",
       "effect": "summon",
       "target": "self",
       "unlockLevel": 6,
