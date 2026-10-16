@@ -131,14 +131,14 @@ export class Hud {
     const over = team.overload > 0;
     const capped = team.capped === true;
     this.compute.textContent = over
-      ? `${demand} / ${supply} · ${Math.max(1, Math.round(team.overload / 10))}% slow`
+      ? `${demand} / ${supply} · over: users leaving, ${Math.max(1, Math.round(team.overload / 10))}% slow`
       : capped
         ? `${demand} / ${supply} · army cap`
         : `${demand} / ${supply}`;
     this.computeStat.classList.toggle("overloaded", over);
     this.computeStat.title =
       `In use / supplied. Each user uses ${content.economy.compute.perUser}, each unit about ${content.economy.compute.perUnit}. ` +
-      "Compute is also your army cap: a spawner only adds a unit if its upkeep fits in what's free, so more spawners reinforce faster but never field more. " +
+      "Compute is also your army cap: a spawner or a Function's burst only adds a unit if its upkeep fits in what's free, so more spawners reinforce faster but never field more. " +
       "Generators are limited per core tier: tech up the core to raise the cap, or rank spawners up (U) for better units per compute. " +
       "Over capacity (users growing past it), users stop arriving and start leaving, and your towers, spawners and research slow down.";
   }

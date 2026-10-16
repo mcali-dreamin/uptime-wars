@@ -12,7 +12,8 @@ import { runsAreFree } from "./heroes";
 import { raceModifiers } from "./tiers";
 import { hostile } from "./teams";
 import { traitsFor } from "./traits";
-import { applyRank, rankedBurst, refitting } from "./ranks";
+import { applyRank, buildingRank, rankedBurst, rankedUpkeep, refitting } from "./ranks";
+import { computeBalance, unitUpkeep } from "./economy";
 
 /** Why this function can't run right now, or null if it can. */
 export function invokeBlocker(ctx: TickContext, building: Building): string | null {
@@ -24,8 +25,33 @@ export function invokeBlocker(ctx: TickContext, building: Building): string | nu
   if (building.jammedUntil !== undefined && ctx.world.tick < building.jammedUntil) return "jammed";
   const team = ctx.world.teams[building.team]!;
   if (team.downTick !== null) return "offline";
+  if (burstRoom(ctx, building) < 1) return "at army cap";
   if (!runsAreFree(team, ctx.world.tick) && team.money < invokeCost(ctx.content, team, def.cost)) return "not enough $";
   return null;
+}
+
+/** Units a full run spins up. */
+function burstSize(ctx: TickContext, building: Building): number {
+  const { world, content } = ctx;
+  const def = content.buildings[building.defId]!.invoke!;
+  const t = traitsFor(content, world.teams[building.team]!, def.unit);
+  return Math.round(rankedBurst(content, world, building, def.count) * (t.burstMult ?? 1)) + (t.squad ?? 0);
+}
+
+/**
+ * How many burst units fit: compute is the army cap for bursts too, the same
+ * rule every spawner follows. A burst past it would push the team over
+ * capacity and drive its users away.
+ */
+function burstRoom(ctx: TickContext, building: Building): number {
+  const { world, content } = ctx;
+  const team = world.teams[building.team]!;
+  const size = burstSize(ctx, building);
+  if (team.controller !== "human") return size;
+  const unit = content.buildings[building.defId]!.invoke!.unit;
+  const upkeep = rankedUpkeep(unitUpkeep(content, unit), buildingRank(content, world, building));
+  const { supply, demand } = computeBalance(world, content, team);
+  return Math.min(size, upkeep > 0 ? Math.floor((supply - demand) / upkeep) : size);
 }
 
 /** What one run costs this team (a race perk can make it cheaper). */
@@ -33,16 +59,19 @@ export function invokeCost(content: TickContext["content"], team: Team, base: nu
   return Math.max(0, Math.round(base * (raceModifiers(content, team).invokeCostMultiplier ?? 1)));
 }
 
-/** Run a function: pay, spin up its units, start its cooldown. Call only when invokeBlocker is null. */
+/**
+ * Run a function: pay, spin up as many of its units as compute has room for,
+ * start its cooldown. A partial run costs its share. Call only when invokeBlocker is null.
+ */
 export function invoke(ctx: TickContext, building: Building, auto: boolean, free = false): Unit[] {
   const { world, content } = ctx;
   const def = content.buildings[building.defId]!.invoke!;
   const team = world.teams[building.team]!;
-  if (!free && !runsAreFree(team, world.tick)) team.money -= invokeCost(content, team, def.cost);
+  const size = burstSize(ctx, building);
+  const count = Math.max(0, burstRoom(ctx, building));
+  if (!free && !runsAreFree(team, world.tick)) team.money -= Math.round((invokeCost(content, team, def.cost) * count) / Math.max(1, size));
   building.scaleTimer = Math.max(1, Math.round(def.cooldownTicks * (raceModifiers(content, team).invokeCooldownMultiplier ?? 1)));
   const units: Unit[] = [];
-  const t = traitsFor(content, team, def.unit);
-  const count = Math.round(rankedBurst(content, world, building, def.count) * (t.burstMult ?? 1)) + (t.squad ?? 0);
   for (let i = 0; i < count; i += 1) {
     const x = building.x + randomInt(world, -20, 20);
     const y = building.y + building.radius + 10 + randomInt(world, 0, 8);
