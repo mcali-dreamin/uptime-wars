@@ -19,7 +19,9 @@ import { hostile } from "../teams";
 import type { Building, Command, Team, Unit, World } from "../types";
 import { BUILDING_SIGHT } from "../tuning";
 
-type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
+  ? Omit<T, K>
+  : never;
 type Order = DistributiveOmit<Command, "tick" | "team">;
 type Point = { x: number; y: number };
 
@@ -34,22 +36,40 @@ const HERO_SLACK = 350;
 /** Most units in one order (the command's own limit is higher; this keeps orders small). */
 const ORDER_CHUNK = 60;
 
-const distSq = (a: Point, b: Point) => (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y);
+const distSq = (a: Point, b: Point) =>
+  (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y);
 
 /** Enemy players still in the match (not the horde). */
 function rivals(world: World, team: Team): Team[] {
-  return world.teams.filter((t) => t.id !== team.id && t.controller === "human" && t.downTick === null && hostile(world, t.id, team.id));
+  return world.teams.filter(
+    (t) =>
+      t.id !== team.id &&
+      t.controller === "human" &&
+      t.downTick === null &&
+      hostile(world, t.id, team.id),
+  );
 }
 
 /** Its standing army: alive, takes orders, and won't go cold (bursts stay home and defend). */
 function armyOf(world: World, team: Team): Unit[] {
-  return world.entities.filter((e): e is Unit => e.kind === "unit" && e.team === team.id && e.mode === "guard" && e.hp > 0 && e.expiresAt === undefined);
+  return world.entities.filter(
+    (e): e is Unit =>
+      e.kind === "unit" &&
+      e.team === team.id &&
+      e.mode === "guard" &&
+      e.hp > 0 &&
+      e.expiresAt === undefined,
+  );
 }
 
 /** An army's weight: the compute it costs, the same measure as the army cap. */
 function strength(content: Content, world: World, units: Unit[]): number {
   let total = 0;
-  for (const u of units) total += rankedUpkeep(unitUpkeep(content, u.defId), unitRank(content, world, u));
+  for (const u of units)
+    total += rankedUpkeep(
+      unitUpkeep(content, u.defId),
+      unitRank(content, world, u),
+    );
   return total;
 }
 
@@ -70,17 +90,37 @@ const spotPoint = (world: World, i: number): Point => {
 
 /** Standing buildings of these teams. */
 function buildingsOf(world: World, teams: Set<number>): Building[] {
-  return world.entities.filter((e): e is Building => e.kind === "building" && e.hp > 0 && teams.has(e.team));
+  return world.entities.filter(
+    (e): e is Building =>
+      e.kind === "building" && e.hp > 0 && teams.has(e.team),
+  );
 }
 
 /** Send units somewhere, in orders small enough for the command. */
-function order(units: Unit[], to: Point, attack: boolean, issue: (c: Order) => unknown): void {
+function order(
+  units: Unit[],
+  to: Point,
+  attack: boolean,
+  issue: (c: Order) => unknown,
+): void {
   for (let i = 0; i < units.length; i += ORDER_CHUNK) {
-    issue({ type: "order", unitIds: units.slice(i, i + ORDER_CHUNK).map((u) => u.id), x: to.x, y: to.y, attack });
+    issue({
+      type: "order",
+      unitIds: units.slice(i, i + ORDER_CHUNK).map((u) => u.id),
+      x: to.x,
+      y: to.y,
+      attack,
+    });
   }
 }
 
-export function playArmy(world: World, content: Content, team: Team, plan: AiAttackDef, issue: (c: Order) => unknown): void {
+export function playArmy(
+  world: World,
+  content: Content,
+  team: Team,
+  plan: AiAttackDef,
+  issue: (c: Order) => unknown,
+): void {
   const ai = team.ai!;
   const enemies = rivals(world, team);
   const core = world.entities.find((e) => e.id === team.coreId);
@@ -96,7 +136,11 @@ export function playArmy(world: World, content: Content, team: Team, plan: AiAtt
   ai.group = group.map((u) => u.id);
 
   if (ai.phase === "retreat") {
-    if (group.length === 0 || distSq(centroid(group), home) <= HOME_REACHED * HOME_REACHED || world.tick >= ai.until) {
+    if (
+      group.length === 0 ||
+      distSq(centroid(group), home) <= HOME_REACHED * HOME_REACHED ||
+      world.tick >= ai.until
+    ) {
       ai.phase = "gather";
       ai.group = [];
     }
@@ -109,8 +153,14 @@ export function playArmy(world: World, content: Content, team: Team, plan: AiAtt
     // stretches, whichever comes first.
     const weight = strength(content, world, army);
     const { supply, demand } = computeBalance(world, content, team);
-    const full = weight + Math.min(squadReserve(world, content, team), Math.max(0, supply - demand));
-    if (army.length < plan.minUnits || weight * 1000 < full * plan.armyPermille) return;
+    const full =
+      weight +
+      Math.min(
+        squadReserve(world, content, team),
+        Math.max(0, supply - demand),
+      );
+    if (army.length < plan.minUnits || weight * 1000 < full * plan.armyPermille)
+      return;
     ai.phase = "attack";
     ai.group = army.map((u) => u.id);
     ai.launched = weight;
@@ -124,20 +174,17 @@ export function playArmy(world: World, content: Content, team: Team, plan: AiAtt
   // Attacking.
   // Home under attack (the core low and losing hp), or the army spent: come back.
   const weight = strength(content, world, group);
-  const homeHit = core.hp < ai.coreHp && core.hp * 1000 < core.maxHp * plan.recallBelowPermille;
+  const homeHit =
+    core.hp < ai.coreHp &&
+    core.hp * 1000 < core.maxHp * plan.recallBelowPermille;
   ai.coreHp = core.hp;
-  if (group.length === 0 || weight * 1000 < ai.launched * plan.retreatPermille || homeHit) {
+  if (
+    group.length === 0 ||
+    weight * 1000 < ai.launched * plan.retreatPermille ||
+    homeHit
+  ) {
     retreat(world, team, home, plan, issue);
     return;
-  }
-  // Reinforcements: once enough have gathered at home, they join.
-  const fresh = army.filter((u) => !inGroup.has(u.id) && distSq(u, home) <= HOME_REACHED * HOME_REACHED);
-  if (fresh.length >= plan.minUnits) {
-    // The attack is now what's left plus them: losses count from here.
-    ai.group.push(...fresh.map((u) => u.id));
-    group.push(...fresh);
-    ai.launched = strength(content, world, group);
-    ai.goalId = -1; // re-issue so they get the order too
   }
   steer(world, team, group, enemies, issue);
 }
@@ -147,15 +194,26 @@ export function playArmy(world: World, content: Content, team: Team, plan: AiAtt
  * has found, else the nearest start spot it hasn't checked, else (every spot
  * checked) the nearest enemy building anywhere.
  */
-function steer(world: World, team: Team, group: Unit[], enemies: Team[], issue: (c: Order) => unknown): void {
+function steer(
+  world: World,
+  team: Team,
+  group: Unit[],
+  enemies: Team[],
+  issue: (c: Order) => unknown,
+): void {
   const ai = team.ai!;
   const at = centroid(group);
   const alive = new Set(enemies.map((t) => t.id));
   ai.known = ai.known.filter((id) => alive.has(id));
-  const sees = (p: Point, range: number) => group.some((u) => distSq(u, p) <= range * range);
+  const sees = (p: Point, range: number) =>
+    group.some((u) => distSq(u, p) <= range * range);
 
   // Any of its units reached the spot it was checking: it's been looked at.
-  if (ai.goal !== null && ai.goal >= 0 && sees(spotPoint(world, ai.goal), SPOT_REACHED)) {
+  if (
+    ai.goal !== null &&
+    ai.goal >= 0 &&
+    sees(spotPoint(world, ai.goal), SPOT_REACHED)
+  ) {
     if (!ai.checked.includes(ai.goal)) ai.checked.push(ai.goal);
     ai.goal = null;
   }
@@ -167,18 +225,28 @@ function steer(world: World, team: Team, group: Unit[], enemies: Team[], issue: 
   let target: Point | null = null;
   let targetId = -1;
   const known = buildingsOf(world, new Set(ai.known));
-  const spots = world.terrain.starts.map((_, i) => i).filter((i) => i !== team.id && !ai.checked.includes(i));
+  const spots = world.terrain.starts
+    .map((_, i) => i)
+    .filter((i) => i !== team.id && !ai.checked.includes(i));
   if (known.length > 0) {
     // Go for the nearest found enemy's core (attack-moving, so it fights
     // whatever's in the way); its other buildings only once the core is down.
     const b = nearest(known, at);
-    const core = world.entities.find((e) => e.id === world.teams[b.team]!.coreId && e.hp > 0);
+    const core = world.entities.find(
+      (e) => e.id === world.teams[b.team]!.coreId && e.hp > 0,
+    );
     const aim = core ?? b;
     target = { x: aim.x, y: aim.y };
     targetId = aim.id;
     ai.goal = null;
   } else if (spots.length > 0) {
-    const i = ai.goal !== null && ai.goal >= 0 && spots.includes(ai.goal) ? ai.goal : nearest(spots.map((s) => ({ s, ...spotPoint(world, s) })), at).s;
+    const i =
+      ai.goal !== null && ai.goal >= 0 && spots.includes(ai.goal)
+        ? ai.goal
+        : nearest(
+            spots.map((s) => ({ s, ...spotPoint(world, s) })),
+            at,
+          ).s;
     ai.goal = i;
     target = spotPoint(world, i);
     targetId = -2 - i;
@@ -209,7 +277,13 @@ function nearest<T extends Point>(items: T[], from: Point): T {
   return best;
 }
 
-function retreat(world: World, team: Team, home: Point, plan: AiAttackDef, issue: (c: Order) => unknown): void {
+function retreat(
+  world: World,
+  team: Team,
+  home: Point,
+  plan: AiAttackDef,
+  issue: (c: Order) => unknown,
+): void {
   const ai = team.ai!;
   const inGroup = new Set(ai.group);
   const group = armyOf(world, team).filter((u) => inGroup.has(u.id));
@@ -226,17 +300,32 @@ function retreat(world: World, team: Team, home: Point, plan: AiAttackDef, issue
  * or when there's no attack on. Move orders: a hero on the move doesn't stop
  * to fight, so it's only moved when it's well away from where it should be.
  */
-export function moveHero(world: World, team: Team, plan: AiAttackDef, issue: (c: Order) => unknown): void {
+export function moveHero(
+  world: World,
+  team: Team,
+  plan: AiAttackDef,
+  issue: (c: Order) => unknown,
+): void {
   const ai = team.ai!;
-  const hero = team.hero ? world.entities.find((e): e is Unit => e.id === team.hero!.unitId && e.kind === "unit") : undefined;
+  const hero = team.hero
+    ? world.entities.find(
+        (e): e is Unit => e.id === team.hero!.unitId && e.kind === "unit",
+      )
+    : undefined;
   const core = world.entities.find((e) => e.id === team.coreId);
   if (!hero || hero.hp <= 0 || !core || team.hero!.cast) return;
   const hurt = hero.hp * 1000 < hero.maxHp * plan.heroRetreatPermille;
   const inGroup = new Set(ai.group);
-  const group = ai.phase === "attack" && !hurt ? armyOf(world, team).filter((u) => inGroup.has(u.id)) : [];
+  const group =
+    ai.phase === "attack" && !hurt
+      ? armyOf(world, team).filter((u) => inGroup.has(u.id))
+      : [];
   const where = group.length > 0 ? centroid(group) : { x: core.x, y: core.y };
   const slack = group.length > 0 ? HERO_SLACK : HOME_REACHED;
-  if (distSq(hero, where) > slack * slack && !(hero.moveTo && distSq(hero.moveTo, where) <= HERO_SLACK * HERO_SLACK)) {
+  if (
+    distSq(hero, where) > slack * slack &&
+    !(hero.moveTo && distSq(hero.moveTo, where) <= HERO_SLACK * HERO_SLACK)
+  ) {
     issue({ type: "move", x: where.x, y: where.y });
   }
 }
