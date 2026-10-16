@@ -542,6 +542,26 @@ export interface DifficultyDef {
   /** Learns and casts hero abilities; off = the hero only auto-fights. */
   playsHero: boolean;
   revenuePermille: number;
+  /** How it attacks other players; null = it never does (it still defends). */
+  attack: AiAttackDef | null;
+}
+
+/** When a computer player sends its army at an enemy player, and when it pulls back. */
+export interface AiAttackDef {
+  /** No attacks before this tick. */
+  firstTicks: number;
+  /** Goes once its army is at least this share of the biggest it can field right now (squads full, or compute spent) (permille)... */
+  armyPermille: number;
+  /** ...and it has at least this many units. Also the size of a reinforcement wave. */
+  minUnits: number;
+  /** Retreats when the attacking army is down to this share of what it set out with (permille; 0 = never). */
+  retreatPermille: number;
+  /** Calls the army home when its core is being hit and below this share of its hp (permille). */
+  recallBelowPermille: number;
+  /** Ticks after a retreat before the next attack. */
+  cooldownTicks: number;
+  /** The hero heads home below this share of its hp (permille). */
+  heroRetreatPermille: number;
 }
 
 export interface Content {

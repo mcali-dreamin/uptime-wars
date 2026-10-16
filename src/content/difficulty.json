@@ -10,7 +10,16 @@
     "tierReserve": 60,
     "savingKeepPermille": 500,
     "playsHero": false,
-    "revenuePermille": 1000
+    "revenuePermille": 1000,
+    "attack": {
+      "firstTicks": 18000,
+      "armyPermille": 950,
+      "minUnits": 12,
+      "retreatPermille": 0,
+      "recallBelowPermille": 300,
+      "cooldownTicks": 3600,
+      "heroRetreatPermille": 200
+    }
   },
   "normal": {
     "name": "Normal",
@@ -23,7 +32,16 @@
     "tierReserve": 60,
     "savingKeepPermille": 500,
     "playsHero": true,
-    "revenuePermille": 1000
+    "revenuePermille": 1000,
+    "attack": {
+      "firstTicks": 12000,
+      "armyPermille": 900,
+      "minUnits": 10,
+      "retreatPermille": 350,
+      "recallBelowPermille": 500,
+      "cooldownTicks": 1800,
+      "heroRetreatPermille": 350
+    }
   },
   "hard": {
     "name": "Hard",
@@ -36,7 +54,16 @@
     "tierReserve": 30,
     "savingKeepPermille": 700,
     "playsHero": true,
-    "revenuePermille": 1000
+    "revenuePermille": 1000,
+    "attack": {
+      "firstTicks": 8400,
+      "armyPermille": 800,
+      "minUnits": 8,
+      "retreatPermille": 450,
+      "recallBelowPermille": 600,
+      "cooldownTicks": 1200,
+      "heroRetreatPermille": 400
+    }
   },
   "insane": {
     "name": "Insane",
@@ -49,6 +76,15 @@
     "tierReserve": 30,
     "savingKeepPermille": 700,
     "playsHero": true,
-    "revenuePermille": 1500
+    "revenuePermille": 1500,
+    "attack": {
+      "firstTicks": 8400,
+      "armyPermille": 800,
+      "minUnits": 8,
+      "retreatPermille": 450,
+      "recallBelowPermille": 600,
+      "cooldownTicks": 1200,
+      "heroRetreatPermille": 400
+    }
   }
 }
