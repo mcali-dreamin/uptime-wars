@@ -1,5 +1,6 @@
 // Targeting and damage.
 
+import { rankWorth } from "./ranks";
 import { creditKill } from "./heroes";
 import { hostile } from "./teams";
 import { GRID_CELL, GRID_STRIDE, type TickContext } from "./context";
@@ -151,7 +152,7 @@ export function dealDamage(
     if (target.kind === "building" && target.defId === content.waves.fortress.farms.building) retaliate(ctx, attacker);
     world.events.push({ type: "death", id: target.id, x: target.x, y: target.y, team: target.team, kind: target.kind, defId: target.defId });
     if (target.kind === "unit") {
-      world.teams[attacker.team]!.money += content.units[target.defId]!.bounty;
+      world.teams[attacker.team]!.money += content.units[target.defId]!.bounty * rankWorth(content, world, target);
       creditKill(ctx, target);
     }
   }

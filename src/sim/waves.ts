@@ -11,6 +11,7 @@ import { TILE } from "./map";
 import { goalField } from "./movement";
 import { ORTHOGONAL, UNREACHABLE, bodyFits } from "./nav";
 import { randomInt } from "./rng";
+import { rankWorth, stampRank } from "./ranks";
 import { liveNodes, sendInfectors } from "./spread";
 import { humanTeams } from "./teams";
 import type { Building, Point, TeamId, World } from "./types";
@@ -56,6 +57,7 @@ export function tickWaveDirector(ctx: TickContext): void {
     let packs = 0;
     // The botnet's spread: some packs come out of its infected nodes instead of the nest.
     const nodes = liveNodes(world, content, team.id);
+    const ranked = plan.rank > 0 ? { rank: plan.rank } : {};
     for (let i = 0; i < plan.units.length; ) {
       const size = randomInt(world, waves.packSize.min, waves.packSize.max);
       const packId = state.nextPackId++;
@@ -64,7 +66,7 @@ export function tickWaveDirector(ctx: TickContext): void {
       const fromNode = entry === undefined && nodes.length > 0 && randomInt(world, 1, 1000) <= waves.spread.sharePermille;
       const from = fromNode ? nodes[randomInt(world, 0, nodes.length - 1)]!.id : undefined;
       for (const unit of plan.units.slice(i, i + size)) {
-        const spawn = { tick: at, unit, packId, wave };
+        const spawn = { tick: at, unit, packId, wave, ...ranked };
         state.pending.push(entry ? { ...spawn, at: entry.at, target: entry.core } : from === undefined ? spawn : { ...spawn, from });
       }
       i += size;
@@ -92,8 +94,9 @@ export function tickWaveDirector(ctx: TickContext): void {
     state.nextWaveTick = world.tick + waveInterval(content, wave);
   }
 
+  // The cap counts worth, not heads: a rank-3 creep fills eight slots.
   let alive = 0;
-  for (const entity of world.entities) if (entity.kind === "unit" && entity.team === team.id) alive += 1;
+  for (const entity of world.entities) if (entity.kind === "unit" && entity.team === team.id) alive += rankWorth(content, world, entity);
   while (state.pending.length > 0 && state.pending[0]!.tick <= world.tick && alive < waves.maxAlive) {
     const spawn = state.pending.shift()!;
     // At its door (the opening), out of its node if that still stands, else the nest.
@@ -104,6 +107,9 @@ export function tickWaveDirector(ctx: TickContext): void {
     const y = source.y + randomInt(world, -spread, spread);
     const hp = 1 + waves.hpGrowthPerWave * (spawn.wave - 1);
     const unit = spawnUnit(ctx, team.id, spawn.unit, source, x, y, spawn.infect ? "infector" : "roam", hp);
+    const level = spawn.rank ? content.waves.ranks?.levels[spawn.rank - 1] : undefined;
+    if (level) stampRank(unit, spawn.rank!, level);
+    alive += (level?.worth ?? 1) - 1;
     unit.packId = spawn.packId;
     if (spawn.infect) unit.foundAt = { ...spawn.infect };
     // Marching on a base: no wandering first.
@@ -243,7 +249,7 @@ export function planWave(world: World, content: Content, wave: number, budgetPer
   // Repeated multiplication, not Math.pow: the spec lets pow be approximate,
   // and two browsers disagreeing on a wave size would desync a match.
   let scale = 1;
-  for (let i = 1; i < wave; i += 1) scale *= budget.growth;
+  for (let i = 1; i < wave; i += 1) scale *= i + 1 > (budget.lateFrom ?? Infinity) ? budget.lateGrowth! : budget.growth;
   let points = Math.round((budget.start * scale * playerScale(world, content, "incident") * budgetPermille) / 1000);
   const units: string[] = [];
 
@@ -275,7 +281,27 @@ export function planWave(world: World, content: Content, wave: number, budgetPer
     const j = randomInt(world, 0, i);
     [units[i], units[j]] = [units[j]!, units[i]!];
   }
-  return { units, bosses: bossCount, name: waveName(content, wave) };
+  const { kept, rank } = condense(content, units);
+  return { units: kept, rank, bosses: bossCount, name: waveName(content, wave) };
+}
+
+/**
+ * Tougher, not bigger: a wave past `ranks.maxUnits` keeps one creep in 2^r
+ * (every boss stays), all at rank r, the smallest rank that fits. The list
+ * is already shuffled, so keeping every 2^r-th is a fair sample.
+ */
+function condense(content: Content, units: string[]): { kept: string[]; rank: number } {
+  const ranks = content.waves.ranks;
+  if (!ranks || units.length <= ranks.maxUnits) return { kept: units, rank: 0 };
+  const boss = content.waves.bosses.unit;
+  let rank = 0;
+  let every = 1;
+  while (rank < ranks.levels.length && Math.ceil(units.length / every) > ranks.maxUnits) {
+    rank += 1;
+    every *= 2;
+  }
+  const kept = units.filter((unit, i) => unit === boss || i % every === 0);
+  return { kept: kept.slice(0, ranks.maxUnits), rank };
 }
 
 /** What wave n will bring, without rolling it. */

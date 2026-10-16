@@ -6,6 +6,7 @@
 // commands like any other (move, attack, cast), so heroes are as
 // deterministic as the rest of the sim.
 
+import { rankWorth } from "./ranks";
 import { dealDamage } from "./combat";
 import type { TickContext } from "./context";
 import type { AbilityDef, Content } from "./content";
@@ -132,7 +133,7 @@ export function heroDamage(content: Content, heroId: string, level: number): num
 export function creditKill(ctx: TickContext, victim: Entity): void {
   const { world, content } = ctx;
   if (victim.kind !== "unit") return;
-  const bounty = content.units[victim.defId]!.bounty;
+  const bounty = content.units[victim.defId]!.bounty * rankWorth(content, world, victim);
   if (bounty <= 0) return;
   for (const team of world.teams) {
     if (!team.hero || !hostile(world, team.id, victim.team)) continue;
