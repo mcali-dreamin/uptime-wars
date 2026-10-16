@@ -3,7 +3,7 @@
 // selected. Nothing else pops up. The full story lives in the Guide.
 
 import { invokeCost, upgradeName, earnedPerks, tierDef, TICK_RATE, forkCost, isCore, regionShield, buildingRank, nextRank, rankBlocker, rankCost, unitRank } from "../sim";
-import { armyUnits, groundOrderLabel, selectedEntity, type Selection } from "../game/selection";
+import { armyUnits, groundOrderLabel, selectedEntity, spawnerGroup, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { heightAtTile, TILE, type Building, type Entity } from "../sim";
 import { HIGH_GROUND_DAMAGE } from "../sim/tuning";
@@ -61,6 +61,7 @@ export class InfoPanel {
     if (building) return this.show(buildingCard(content, raceId, building));
 
     if (selection.kind === "army") return this.showArmy(selection);
+    if (selection.kind === "spawners") return this.showSpawners(selection);
     const entity = selectedEntity(this.session, selection);
     if (!entity) return this.show(null);
     if (entity.kind === "building") {
@@ -143,7 +144,7 @@ export class InfoPanel {
   private showAction(selection: Selection): void {
     const label = groundOrderLabel(this.session, selection);
     if (!label) return;
-    const armed = (selection.kind === "entity" || selection.kind === "army") && Boolean(selection.armed);
+    const armed = (selection.kind === "entity" || selection.kind === "army" || selection.kind === "spawners") && Boolean(selection.armed);
     this.action.hidden = false;
     this.action.textContent = armed ? "Click the ground… (Esc)" : `${label} (T)`;
     this.action.classList.toggle("armed", armed);
@@ -173,6 +174,21 @@ export class InfoPanel {
     this.show({
       title: `${units.length} units`,
       lines: [mix, `${Math.round((100 * hp) / maxHp)}% health`, "Right-click: attack-move · F: move"],
+    });
+  }
+
+  /** Several of your spawners: what's in the group, and one rally for all of them. */
+  private showSpawners(selection: Selection): void {
+    const buildings = spawnerGroup(this.session, selection);
+    if (buildings.length === 0) return this.show(null);
+    const { content } = this.session;
+    const counts = new Map<string, number>();
+    for (const b of buildings) counts.set(b.defId, (counts.get(b.defId) ?? 0) + 1);
+    const mix = [...counts].map(([id, n]) => `${n}× ${content.buildings[id]!.name}`).join(" · ");
+    this.showAction(selection);
+    this.show({
+      title: `${buildings.length} buildings`,
+      lines: [mix, "Right-click: one rally point for all of them", "Shift-click: add or remove one"],
     });
   }
 

@@ -132,6 +132,35 @@ await run("smoke test", async ({ check, open }) => {
     check(set, `${name} sets the rally`);
   }
 
+  // Several spawners at once: Shift-click the fork onto the selection, then one right-click rallies both.
+  const fork = await state(
+    (id) => {
+      const f = window.uptime.world.entities.find((e) => e.kind === "building" && e.defId === "server-rack" && e.id !== id);
+      return f && { id: f.id, x: f.x, y: f.y };
+    },
+    spawner,
+  );
+  await page.waitForTimeout(400);
+  await click(fork, {}, "Shift");
+  check(
+    await waitFor(() => state((ids) => window.uptime.selection.kind === "spawners" && ids.every((id) => window.uptime.selection.ids.includes(id)), [spawner, fork.id])),
+    "Shift-click adds a second spawner to the selection",
+  );
+  const both = await openNear(spot.x, spot.y, 9, 16);
+  await click(both, { button: "right" });
+  const rallied = await waitFor(() =>
+    state(
+      ([ids, x, y]) => ids.every((id) => {
+        const r = window.uptime.world.entities.find((e) => e.id === id)?.rally;
+        return r && Math.hypot(r.x - x, r.y - y) < 40;
+      }),
+      [[spawner, fork.id], both.x, both.y],
+    ),
+  );
+  check(rallied, "right-click rallies every selected spawner");
+  await click(spot);
+  await waitFor(() => state((id) => window.uptime.selection.id === id, spawner));
+
   // The hero you picked: Q selects it, + learns, right-click moves it, 1 casts.
   await page.keyboard.press("Escape");
   const hero = await state(() => {

@@ -224,6 +224,10 @@ export class Hud {
     if (selection.kind === "place") {
       return "Click inside the ring to build";
     }
+    if (selection.kind === "spawners") {
+      if (selection.armed) return "Click the ground: rally all of them · Esc to cancel";
+      return "Right-click or T, then click: rally all of them · Shift-click a building: add or remove";
+    }
     if (selection.kind === "army") {
       if (selection.armed) return `Click the ground: ${selection.armed === "move" ? "move (ignores enemies)" : "attack-move"} · Esc to cancel`;
       return "Right-click: attack-move · F then click: move · Shift: add · Z: whole army";

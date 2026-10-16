@@ -64,6 +64,14 @@ export class World2D implements WorldView {
       this.overlay.circle(at.x, at.y, entity.radius + 6).stroke({ width: 2, color: HIGHLIGHT, alpha: 0.9 });
       if (entity.order) this.overlay.circle(entity.homeX, entity.homeY, 5).stroke({ width: 1.5, color: entity.order === "attack" ? INVALID : VALID, alpha: 0.8 });
     }
+    // A group of buildings (spawners rallied together): an outline on each, a marker at each rally.
+    for (const entity of frame.world.entities) {
+      if (entity.kind !== "building" || entity.hp <= 0 || !frame.selectedIds.has(entity.id) || entity.id === frame.selectedId) continue;
+      const size = entity.footprint * TILE + 6;
+      this.overlay.rect(entity.x - size / 2, entity.y - size / 2, size, size).stroke({ width: 2, color: HIGHLIGHT, alpha: 0.9 });
+      const rally = entity.rally ?? frame.world.teams[entity.team]!.rally;
+      if (rally) this.overlay.circle(rally.x, rally.y, 10).stroke({ width: 1.5, color: HIGHLIGHT, alpha: entity.rally ? 0.9 : 0.45 });
+    }
     this.drawPings(frame);
     this.drawPlacement(frame);
   }
