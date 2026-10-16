@@ -6,7 +6,7 @@ import { TILE, footprintCenter } from "./map";
 import { TILE_OPEN, tileAt, walls } from "./terrain";
 import type { Building, Entity, Team, TeamId, World } from "./types";
 import { unitInTheWay } from "./walls";
-import { raceModifiers, tierBlocker, tierDef } from "./tiers";
+import { pastLimit, raceModifiers, tierBlocker, tierDef } from "./tiers";
 import { bonus } from "./upgrades";
 import { NOTCH_TILES } from "./tuning";
 
@@ -22,13 +22,18 @@ export function owned(world: World, teamId: TeamId, buildingId: string): number 
   return n;
 }
 
-/** What the next one costs: each one you already own adds costGrowthPermille. */
+/**
+ * What the next one costs: each one you already own adds costGrowthPermille,
+ * and each one past a soft top-tier limit adds pastLimitGrowthPermille more.
+ */
 export function buildCost(world: World, content: Content, teamId: TeamId, buildingId: string): number {
   const team = world.teams[teamId]!;
   const def = content.buildings[buildingId]!;
   const growth = def.costGrowthPermille ?? content.economy.costGrowthPermille ?? 0;
   const base = baseCost(content, team.raceId, buildingId);
-  return Math.round((base * (1000 + growth * owned(world, teamId, buildingId))) / 1000);
+  const have = owned(world, teamId, buildingId);
+  const past = pastLimit(content, team, buildingId, have) * (def.pastLimitGrowthPermille ?? 0);
+  return Math.round((base * (1000 + growth * have + past)) / 1000);
 }
 
 export function isOccupied(world: World, col: number, row: number, footprint: number): boolean {

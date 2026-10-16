@@ -11,7 +11,8 @@ import type { Team, World } from "./types";
 import { multiplier } from "./upgrades";
 import { BASE_INCOME, CONSTRUCTION_START_HP } from "./tuning";
 import { raceMechanics, tierDef } from "./tiers";
-import { rankedUpkeep, unitRank } from "./ranks";
+import { buildingRank, rankedMaxAlive, rankedUpkeep, refitting, unitRank } from "./ranks";
+import { squadBonus } from "./traits";
 
 export function tickCooldowns(ctx: TickContext): void {
   const { world } = ctx;
@@ -103,6 +104,30 @@ export function tickConstruction(ctx: TickContext): void {
   }
 }
 
+/**
+ * Compute your spawners still need to refill their standing squads. Arriving
+ * users don't take it: the army you built gets its compute first, so growing
+ * your user base never quietly starves it.
+ */
+export function squadReserve(world: World, content: TickContext["content"], team: Team): number {
+  const alive = new Map<number, number>();
+  for (const e of world.entities) {
+    if (e.kind === "unit" && e.team === team.id && e.hp > 0 && e.spawnerId >= 0 && e.expiresAt === undefined) {
+      alive.set(e.spawnerId, (alive.get(e.spawnerId) ?? 0) + 1);
+    }
+  }
+  let reserve = 0;
+  for (const e of world.entities) {
+    if (e.kind !== "building" || e.team !== team.id || e.hp <= 0 || e.buildRemaining > 0 || refitting(e)) continue;
+    const spawn = content.buildings[e.defId]!.spawn;
+    if (!spawn) continue;
+    const squad = rankedMaxAlive(content, world, e, spawn.maxAlive) + squadBonus(content, team, spawn.unit);
+    const missing = squad - (alive.get(e.id) ?? 0);
+    if (missing > 0) reserve += missing * rankedUpkeep(unitUpkeep(content, spawn.unit), buildingRank(content, world, e));
+  }
+  return reserve;
+}
+
 /** Total users your finished buildings can serve. */
 export function userCapacity(world: World, content: TickContext["content"], team: Team): number {
   let capacity = 0;
@@ -128,6 +153,7 @@ export function tickUsers(ctx: TickContext): void {
       continue;
     }
     team.overload = overloadOf(world, content, team);
+    team.waitingOnCompute = false;
     const capacity = userCapacity(world, content, team);
     if (team.overload > 0) {
       // Over capacity: nobody new arrives, and users leave in proportion.
@@ -136,9 +162,13 @@ export function tickUsers(ctx: TickContext): void {
       team.churnCarry -= lost;
       team.users = Math.max(0, Math.min(capacity, team.users - lost));
     } else if (team.users < capacity) {
+      // Only as many as there's compute to serve, after what the squads need.
+      const { supply, demand } = computeBalance(world, content, team);
+      const room = Math.floor((supply - demand - squadReserve(world, content, team)) / economy.compute.perUser);
       const gap = capacity - team.users;
-      const arrivals = Math.max(economy.minArrivalsPerSecond, Math.floor(gap * economy.growthPerSecond));
-      team.users = Math.min(capacity, team.users + arrivals);
+      const arrivals = Math.min(room, Math.max(economy.minArrivalsPerSecond, Math.floor(gap * economy.growthPerSecond)));
+      team.waitingOnCompute = arrivals < Math.min(gap, economy.minArrivalsPerSecond);
+      if (arrivals > 0) team.users = Math.min(capacity, team.users + arrivals);
     } else if (team.users > capacity) {
       // Lost a building: the users it served have nowhere to go.
       team.users = capacity;

@@ -23,12 +23,24 @@ export function tierDef(content: Content, team: Team | undefined) {
   return tiers[Math.min(tierOf(content, team), tiers.length - 1)]!;
 }
 
+/** At the last core tier: nothing left to grow into. */
+export function atTopTier(content: Content, team: Team): boolean {
+  return tierOf(content, team) >= content.economy.tiers.length - 1;
+}
+
+/** How many of this building past its top-tier limit the next one would be (0 if within it). */
+export function pastLimit(content: Content, team: Team, buildingId: string, have: number): number {
+  const def = content.buildings[buildingId]!;
+  if (!def.limitPerTier || !def.pastLimitGrowthPermille || !atTopTier(content, team)) return 0;
+  return Math.max(0, have + 1 - def.limitPerTier[def.limitPerTier.length - 1]!);
+}
+
 /** Why a team's tier keeps it from building this, or null. */
 export function tierBlocker(content: Content, team: Team, buildingId: string, have: number): string | null {
   const def = content.buildings[buildingId]!;
   const tier = tierOf(content, team);
   if ((def.tier ?? 0) > tier) return `needs ${content.economy.tiers[def.tier!]!.name}`;
-  if (def.limitPerTier) {
+  if (def.limitPerTier && !(def.pastLimitGrowthPermille && atTopTier(content, team))) {
     const limit = def.limitPerTier[Math.min(tier, def.limitPerTier.length - 1)]!;
     if (have >= limit) return `only ${limit} at ${content.economy.tiers[tier]!.name}`;
   }

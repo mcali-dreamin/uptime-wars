@@ -80,6 +80,7 @@
     "buildable": true,
     "sight": 260,
     "compute": 60,
+    "pastLimitGrowthPermille": 600,
     "limitPerTier": [
       2,
       4,
@@ -194,6 +195,7 @@
     "buildable": true,
     "sight": 240,
     "compute": 150,
+    "pastLimitGrowthPermille": 600,
     "limitPerTier": [
       1,
       2,
@@ -366,6 +368,7 @@
     "buildable": true,
     "sight": 240,
     "compute": 110,
+    "pastLimitGrowthPermille": 600,
     "limitPerTier": [
       1,
       2,
@@ -499,6 +502,7 @@
     "buildable": true,
     "sight": 240,
     "compute": 90,
+    "pastLimitGrowthPermille": 600,
     "limitPerTier": [
       1,
       3,
