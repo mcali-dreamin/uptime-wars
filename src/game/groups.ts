@@ -20,8 +20,8 @@ export class ControlGroups {
 
   /** Save `selection` as group n. Only things that can be groups are kept. */
   assign(n: number, selection: Selection): boolean {
-    if (selection.kind === "army" && selection.ids.length > 0) {
-      this.groups.set(n, { kind: "army", ids: [...selection.ids] });
+    if ((selection.kind === "army" || selection.kind === "spawners") && selection.ids.length > 0) {
+      this.groups.set(n, { kind: selection.kind, ids: [...selection.ids] });
       return true;
     }
     if (selection.kind === "entity") {
@@ -44,9 +44,9 @@ export class ControlGroups {
     const group = this.groups.get(n);
     if (!group) return null;
     let selection: Selection | null = null;
-    if (group.kind === "army") {
+    if (group.kind === "army" || group.kind === "spawners") {
       const ids = group.ids.filter(alive);
-      if (ids.length > 0) selection = { kind: "army", ids };
+      if (ids.length > 0) selection = group.kind === "spawners" && ids.length === 1 ? { kind: "entity", id: ids[0]! } : { kind: group.kind, ids };
     } else if (group.kind === "entity" && alive(group.id)) {
       selection = group;
     }

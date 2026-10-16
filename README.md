@@ -39,7 +39,9 @@ npm run dev
   says what a click will do. Everything else is in the **Guide** (`G`).
 - Click one of your buildings to select it. Right-click sets where its units
   gather; right-click with the **core** selected sets a global rally point for
-  every spawner that doesn't have its own. Units fight whatever gets in their
+  every spawner that doesn't have its own. To rally several spawners at once,
+  Shift-click them, double-click one (every one of its kind on screen), or drag
+  a box with no units in it. Units fight whatever gets in their
   way there, then guard the spot. Right-click is any secondary click: a
   two-finger tap or click on a trackpad, Ctrl-click and Cmd-click work too. Or skip it:
   press `T` (or the button on the info card), then left-click the ground.
@@ -374,7 +376,7 @@ Direction: survival on a procedurally generated open web.
 - [x] Wandering creep packs that only attack what they see
 - [x] Endless escalating pressure from a nest in the middle (background traffic + incidents); uptime score
 - [x] Elevation: plateaus, cliffs, ramps; high-ground sight and damage
-- [x] Rally points: per spawner, with a global default on the core
+- [x] Rally points: per spawner, with a global default on the core, and several spawners at once
 - [x] Upgrades researched at the core
 - [x] Core tech tiers: Core, Data Center, Region
 - [x] Network expansion (per race) and redundant cores

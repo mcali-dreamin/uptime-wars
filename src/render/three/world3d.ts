@@ -361,7 +361,7 @@ export class World3D implements WorldView {
       const grow = owner && isCore(frame.content, owner, entity) ? 1 + 0.18 * tierOf(frame.content, owner) : 1 + 0.14 * (entity.rank ?? 0);
       s.object.scale.set(grow, building ? Math.max(0.08, entity.hp / entity.maxHp) * grow : grow, grow);
       const top = s.top ?? BUILDING_TOP[entity.defId] ?? 50;
-      const selected = frame.selectedId === entity.id;
+      const selected = frame.selectedId === entity.id || frame.selectedIds.has(entity.id);
       if (entity.hp < entity.maxHp || selected) {
         this.bars.add(at.x, floor + top * s.object.scale.y + 12, at.y, entity.footprint * TILE * 0.8, entity.hp / entity.maxHp);
       }
@@ -513,6 +513,20 @@ export class World3D implements WorldView {
         destinations.add(key);
         this.thinRings.add(wp.x, ground(wp.x, wp.y), wp.y, 4, wp.attack ? INVALID : VALID, 0.6);
       }
+    }
+
+    // A group of buildings (spawners rallied together): a ring under each, a marker at each rally.
+    const rallies = new Set<string>();
+    for (const entity of world.entities) {
+      if (entity.kind !== "building" || entity.hp <= 0 || !frame.selectedIds.has(entity.id) || entity.id === frame.selectedId) continue;
+      const at = frame.position(entity);
+      this.rings.add(at.x, ground(at.x, at.y), at.y, (entity.footprint * TILE) / 2 + 10, HIGHLIGHT, 0.9);
+      const rally = entity.rally ?? world.teams[entity.team]!.rally;
+      if (!rally) continue;
+      const key = `${Math.round(rally.x / 24)}:${Math.round(rally.y / 24)}`;
+      if (rallies.has(key)) continue;
+      rallies.add(key);
+      this.thinRings.add(rally.x, ground(rally.x, rally.y), rally.y, 10, HIGHLIGHT, entity.rally ? 0.9 : 0.45);
     }
 
     if (frame.selectedId !== null) {

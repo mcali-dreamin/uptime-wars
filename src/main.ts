@@ -9,8 +9,12 @@ import {
   armed,
   armyUnits,
   enemyAt,
-  groundOrder,
+  groundOrders,
+  isRallied,
   isSoldier,
+  spawnerGroup,
+  spawnerSelection,
+  toggleSpawner,
   leftClickOrders,
   ownEntityAt,
   placementAt,
@@ -258,15 +262,15 @@ function refreshPointer(): void {
         ? "crosshair"
         : ownEntityAt(session, pointer)
         ? "pointer"
-        : groundOrder(session, selection, pointer)
+        : groundOrders(session, selection, pointer).length > 0
           ? "crosshair"
           : "";
 }
 
 function order(point: Point, queue = false): void {
-  const next = groundOrder(session, selection, point, queue);
-  if (!next) return;
-  session.issue(next);
+  const next = groundOrders(session, selection, point, queue);
+  if (next.length === 0) return;
+  for (const one of next) session.issue(one);
   renderer.ping(point.x, point.y);
   sound.ui("order");
   // An armed order is one-shot: back to the plain selection.
@@ -308,11 +312,12 @@ function arm(how: "attack" | "move" = "attack"): boolean {
 }
 
 function isArmed(): boolean {
-  return (selection.kind === "entity" || selection.kind === "army") && Boolean(selection.armed);
+  return (selection.kind === "entity" || selection.kind === "army" || selection.kind === "spawners") && Boolean(selection.armed);
 }
 
 function disarmed(s: Selection): Selection {
   if (s.kind === "entity") return { kind: "entity", id: s.id };
+  if (s.kind === "spawners") return { kind: "spawners", ids: s.ids };
   if (s.kind === "army") return { kind: "army", ids: s.ids };
   return s;
 }
@@ -323,6 +328,22 @@ function soldiersIn(rect: { left: number; top: number; right: number; bottom: nu
     const at = renderer.toScreen(unit.x, unit.y);
     return at.x >= rect.left && at.x <= rect.right && at.y >= rect.top && at.y <= rect.bottom;
   });
+}
+
+/** Your spawners and functions whose middle is drawn inside a screen rectangle (client pixels). */
+function spawnersIn(rect: { left: number; top: number; right: number; bottom: number }) {
+  return session.world.entities.filter((entity) => {
+    if (!isRallied(session, entity)) return false;
+    const at = renderer.toScreen(entity.x, entity.y);
+    return at.x >= rect.left && at.x <= rect.right && at.y >= rect.top && at.y <= rect.bottom;
+  });
+}
+
+/** Select these spawners (or add them, with shift, to the spawners already selected). */
+function selectSpawners(ids: number[], add: boolean): void {
+  const base = !add ? [] : selection.kind === "spawners" ? selection.ids : selection.kind === "entity" && isRallied(session, session.entity(selection.id)) ? [selection.id] : [];
+  const merged = [...new Set([...base, ...ids])];
+  select(merged.length > 0 ? spawnerSelection(merged) : add ? selection : NOTHING);
 }
 
 /** Select these units (or add them, with shift). */
@@ -374,6 +395,16 @@ const gameInput: GameInput = {
       }
       return select({ kind: "army", ids: [own.id] });
     }
+    if (own && isRallied(session, own)) {
+      const now = performance.now();
+      const double = lastUnitClick.id === own.id && now - lastUnitClick.at < DOUBLE_CLICK_MS;
+      lastUnitClick = { id: own.id, at: now };
+      // Double-click: every one of its kind on screen, to rally them together.
+      if (double) return selectSpawners(spawnersIn(screenRect()).filter((b) => b.defId === own.defId).map((b) => b.id), shift);
+      // Shift-click adds it to the selected spawners (or takes it out).
+      const toggled = shift ? toggleSpawner(session, selection, own) : null;
+      return select(toggled ?? { kind: "entity", id: own.id });
+    }
     if (own) return select({ kind: "entity", id: own.id });
     if (leftClickOrders(session, selection)) return order(point);
     select(NOTHING);
@@ -404,6 +435,11 @@ const gameInput: GameInput = {
     if (selection.kind === "place" || selection.kind === "found") return;
     const ids = soldiersIn(rect).map((u) => u.id);
     if (ids.length === 0 && session.deploying) return;
+    // Units win; a box with none in it picks up your spawners instead, to rally them together.
+    if (ids.length === 0 && !(shift && selection.kind === "army")) {
+      const spawners = spawnersIn(rect).map((b) => b.id);
+      if (spawners.length > 0) return selectSpawners(spawners, shift);
+    }
     selectUnits(ids, shift);
   },
 
@@ -439,7 +475,10 @@ const gameInput: GameInput = {
         if (recalled) {
           select(recalled.selection);
           if (recalled.doubleTap) {
-            const first = recalled.selection.kind === "army" ? session.entity(recalled.selection.ids[0]!) : session.entity((recalled.selection as { id: number }).id);
+            const first =
+              recalled.selection.kind === "army" || recalled.selection.kind === "spawners"
+                ? session.entity(recalled.selection.ids[0]!)
+                : session.entity((recalled.selection as { id: number }).id);
             if (first) renderer.camera.centerOn(first.x, first.y);
           }
           return true;
@@ -659,6 +698,10 @@ renderer.app.ticker.add((ticker) => {
     const alive = armyUnits(session, selection);
     if (alive.length === 0) select(fallback());
     else if (alive.length !== selection.ids.length) select({ ...selection, ids: alive.map((u) => u.id) });
+  }
+  if (selection.kind === "spawners") {
+    const standing = spawnerGroup(session, selection);
+    if (standing.length !== selection.ids.length) select(spawnerSelection(standing.map((b) => b.id)));
   }
   if (selection.kind === "cast" && !heroUnit(session)) select(NOTHING);
 

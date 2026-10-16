@@ -2,7 +2,7 @@
 // it. Every "what does clicking here do?" question is answered in this file,
 // so the input code, the cursor, the hint line, and the info panel agree.
 
-import { TILE, buildCost, canFound, canPlace, forkBlocker, hostile, isCore, tierBlocker, type Content, type Entity, type Point, type Unit } from "../sim";
+import { TILE, buildCost, type Building, canFound, canPlace, forkBlocker, hostile, isCore, tierBlocker, type Content, type Entity, type Point, type Unit } from "../sim";
 import type { Order, Session } from "./session";
 
 export type Selection =
@@ -19,6 +19,12 @@ export type Selection =
    * attack-move (T) or a plain move that ignores enemies (F).
    */
   | { kind: "army"; ids: number[]; armed?: "attack" | "move" }
+  /**
+   * Several of your spawners and functions (shift-click, double-click, or a
+   * box with no units in it). Right-click sets one rally point for all of
+   * them; `armed` makes the next left-click do it.
+   */
+  | { kind: "spawners"; ids: number[]; armed?: boolean }
   /** Placing a building from the build bar. */
   /** `fork`: copying that building of yours (fork mechanic) instead of buying new. */
   | { kind: "place"; building: string; fork?: number }
@@ -31,6 +37,7 @@ export const NOTHING: Selection = { kind: "none" };
 
 /** What right-clicking the ground does for this selection, as a short verb, or null. */
 export function groundOrderLabel(session: Session, selection: Selection): string | null {
+  if (selection.kind === "spawners") return spawnerGroup(session, selection).length > 0 ? "Set rally" : null;
   if (selection.kind === "army") {
     if (armyUnits(session, selection).length === 0) return null;
     return selection.armed === "move" ? "Move here" : "Attack-move here";
@@ -43,8 +50,19 @@ export function groundOrderLabel(session: Session, selection: Selection): string
   return def.spawn || def.invoke ? "Set rally" : null;
 }
 
+/**
+ * The orders for right-clicking (or, for the deploy agent, clicking) the
+ * ground at `point`: one, or a rally for each building in a group. Empty if none.
+ */
+export function groundOrders(session: Session, selection: Selection, point: Point, queue = false): Order[] {
+  if (selection.kind === "spawners") return spawnerGroup(session, selection).map((b) => ({ type: "rally", buildingId: b.id, x: point.x, y: point.y }));
+  const order = groundOrder(session, selection, point, queue);
+  return order ? [order] : [];
+}
+
 /** The order for right-clicking (or, for the deploy agent, clicking) the ground at `point`. */
 export function groundOrder(session: Session, selection: Selection, point: Point, queue = false): Order | null {
+  if (selection.kind === "spawners") return groundOrders(session, selection, point, queue)[0] ?? null;
   if (selection.kind === "army") {
     const units = armyUnits(session, selection);
     if (units.length === 0) return null;
@@ -61,6 +79,7 @@ export function groundOrder(session: Session, selection: Selection, point: Point
  * deploy agent always; for anything else once it's armed (T or the panel button).
  */
 export function leftClickOrders(session: Session, selection: Selection): boolean {
+  if (selection.kind === "spawners") return selection.armed === true && spawnerGroup(session, selection).length > 0;
   if (selection.kind === "army") return selection.armed !== undefined && armyUnits(session, selection).length > 0;
   const entity = selectedEntity(session, selection);
   if (!entity || !groundOrderLabel(session, selection)) return false;
@@ -69,6 +88,7 @@ export function leftClickOrders(session: Session, selection: Selection): boolean
 
 /** The selection with its ground order armed, or null if it has none to arm. */
 export function armed(session: Session, selection: Selection, how: "attack" | "move" = "attack"): Selection | null {
+  if (selection.kind === "spawners") return how === "attack" && spawnerGroup(session, selection).length > 0 ? { kind: "spawners", ids: selection.ids, armed: true } : null;
   if (selection.kind === "army") return armyUnits(session, selection).length > 0 ? { kind: "army", ids: selection.ids, armed: how } : null;
   if (how === "move" || selection.kind !== "entity" || !groundOrderLabel(session, selection)) return null;
   return { kind: "entity", id: selection.id, armed: true };
@@ -92,6 +112,48 @@ export function armyUnits(session: Session, selection: Selection): Unit[] {
   return session.world.entities.filter((e): e is Unit => wanted.has(e.id) && isSoldier(session, e));
 }
 
+/** A building of yours that takes a rally point of its own: a spawner or a function (not the core). */
+export function isRallied(session: Session, entity: Entity | undefined): boolean {
+  if (!entity || entity.kind !== "building" || entity.team !== session.local || entity.hp <= 0) return false;
+  if (isCore(session.content, session.team, entity)) return false;
+  const def = session.content.buildings[entity.defId]!;
+  return Boolean(def.spawn || def.invoke);
+}
+
+/** The standing buildings of a spawner group. */
+export function spawnerGroup(session: Session, selection: Selection): Building[] {
+  if (selection.kind !== "spawners") return [];
+  const wanted = new Set(selection.ids);
+  return session.world.entities.filter((e): e is Building => wanted.has(e.id) && isRallied(session, e));
+}
+
+/**
+ * Select these spawners: none is nothing, one is that building (its full
+ * card), more is a group.
+ */
+export function spawnerSelection(ids: number[]): Selection {
+  if (ids.length === 0) return NOTHING;
+  if (ids.length === 1) return { kind: "entity", id: ids[0]! };
+  return { kind: "spawners", ids };
+}
+
+/**
+ * Shift-click on one of your spawners: add it to the selected spawner (or
+ * group), or take it out if it's already in. Null if shift-click doesn't
+ * group here (nothing rallied selected, or it isn't a spawner).
+ */
+export function toggleSpawner(session: Session, selection: Selection, building: Entity): Selection | null {
+  if (!isRallied(session, building)) return null;
+  const current =
+    selection.kind === "spawners"
+      ? selection.ids
+      : selection.kind === "entity" && isRallied(session, session.entity(selection.id))
+        ? [selection.id]
+        : null;
+  if (!current) return null;
+  return spawnerSelection(current.includes(building.id) ? current.filter((id) => id !== building.id) : [...current, building.id]);
+}
+
 /** Every unit you can command. */
 export function allSoldiers(session: Session): Unit[] {
   return session.world.entities.filter((e): e is Unit => isSoldier(session, e));
@@ -99,7 +161,7 @@ export function allSoldiers(session: Session): Unit[] {
 
 /** The ids a selection highlights. */
 export function selectedIds(selection: Selection): number[] {
-  return selection.kind === "army" ? selection.ids : selection.kind === "entity" ? [selection.id] : [];
+  return selection.kind === "army" || selection.kind === "spawners" ? selection.ids : selection.kind === "entity" ? [selection.id] : [];
 }
 
 /** An enemy the local player can see under a world point, if any. Units first: they're what you aim at. */
