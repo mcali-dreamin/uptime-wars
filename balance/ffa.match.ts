@@ -4,7 +4,7 @@
 //
 //   FFA="hard:serverless,normal:hyperscaler" FFA_SEEDS=1,42 FFA_HORDE=1 npm run balance:ffa
 //
-// Writes balance-results/ffa.json and prints one line per match.
+// Writes balance-results/ffa/results.json (its own folder: npm run balance reports the rest) and prints one line per match.
 
 // @ts-expect-error: Node built-ins; the project ships no Node types (runs under vitest).
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -41,8 +41,8 @@ it("ffa", () => {
         .join(" | ");
       console.log(`seed ${seed} ${world.outcome ? fmt(world.outcome.tick) : `${MINUTES}:00+`}  ${line}`);
       results.push({ setup, seed, ticks: world.outcome?.tick ?? world.tick, winners, players });
-      mkdirSync("balance-results", { recursive: true });
-      writeFileSync("balance-results/ffa.json", JSON.stringify(results, null, 1));
+      mkdirSync("balance-results/ffa", { recursive: true });
+      writeFileSync("balance-results/ffa/results.json", JSON.stringify(results, null, 1));
     }
   }
 });
