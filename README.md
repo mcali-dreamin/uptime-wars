@@ -28,7 +28,7 @@ npm run dev
   - **Hyperscaler**: rich and tough, +$75 to start and units 15% tougher.
     Buildings packed into a region shield each other.
   - **Serverless**: an army that autoscales. Functions keep a small squad warm
-    and burst it bigger when creeps show up; every scale-up costs $.
+    and burst it bigger when creeps show up; every burst costs $.
   - **Walled Garden**: real walls that block every path, with towers and
     Moderators firing over them. Loyal users, and no network nodes: you build
     around your cores.
@@ -56,7 +56,7 @@ npm run dev
   repair), Hyperscaler (Load Balancer, CDN Swarm, Mainframe; stronger region
   shield, tougher units), Serverless (Lambda, Inference Call, Step Function,
   each kept warm as a small squad that bursts bigger when creeps come near;
-  faster scale-ups, cheaper scale-ups), Walled Garden (Moderator, Gatekeeper, Legal
+  faster bursts, cheaper bursts), Walled Garden (Moderator, Gatekeeper, Legal
   Team; walls hit back, near-zero churn). Perks live in `races.json` →
   `tierPerks`.
 - **Grow your core.** The first research, **Upgrade core**, takes it from
@@ -285,6 +285,14 @@ build if that changes: `sim` imports nothing outside itself (and can't touch
 browser globals, so it can run headless for replays and lockstep peers);
 `game` and `render` import `sim`; `ui` imports `game` and `sim`; `input.ts` and
 `main.ts` wire everything together.
+
+**Text is generated from the data.** A `description` in content JSON is a line
+of flavor; every number the player reads (cards, the Guide, the race picker,
+perks as before → after, what a rank does to its units) is written by
+`ui/text.ts` and `ui/cards.ts` from the values the simulation runs on.
+`tests/text.test.ts` fails if a description quotes a quantity or the UI
+hardcodes one, so changing a number in JSON changes every place it's shown.
+A new trait, creep role, or race mechanic won't typecheck until it has words.
 
 **Adding things.** A race, unit, building, upgrade, or wave rule is usually a
 JSON edit. A new unit behaviour is a file in `sim/units/` plus one line in its

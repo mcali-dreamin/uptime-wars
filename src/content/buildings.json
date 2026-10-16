@@ -71,7 +71,7 @@
   },
   "solar-array": {
     "name": "Solar Array",
-    "description": "Supplies 60 compute: enough to serve a Web App's worth of users. Cheap and fragile.",
+    "description": "Cheap, fragile compute.",
     "cost": 75,
     "buildTicks": 80,
     "hp": 320,
@@ -137,7 +137,7 @@
   },
   "infected-node": {
     "name": "Infected Node",
-    "description": "A compromised machine the botnet has taken over. Incidents pour out of it as well as the nest, so the more nodes stand, the more directions you're hit from. Takes 20 seconds to build: clear it and the botnet has to send another infector.",
+    "description": "A compromised machine the botnet has taken over. Incidents pour out of it as well as the nest, so the more nodes stand, the more directions you're hit from. Clear it before it's finished and the botnet has to send another infector.",
     "cost": 0,
     "buildTicks": 400,
     "hp": 1600,
@@ -186,7 +186,7 @@
   },
   "power-plant": {
     "name": "Power Plant",
-    "description": "Supplies 150 compute. Expensive, and a big hole in your capacity if it falls.",
+    "description": "Lots of compute. Expensive, and a big hole in your capacity if it falls.",
     "cost": 160,
     "buildTicks": 120,
     "hp": 575,
@@ -247,7 +247,7 @@
   },
   "function": {
     "name": "Function",
-    "description": "Keeps a squad of three Lambdas warm. When creeps nearby outnumber the squad (or you scale it up, V), it bursts four more for 20 seconds. Each scale-up costs $.",
+    "description": "Event-driven. Keeps a small squad of Lambdas warm and bursts more when creeps outnumber them. Every burst costs $.",
     "cost": 60,
     "buildTicks": 50,
     "hp": 280,
@@ -272,7 +272,7 @@
   },
   "inference-endpoint": {
     "name": "Inference Endpoint",
-    "description": "Keeps two ranged Inference Calls warm, and bursts three more when creeps come near. Scale-ups cost more, hit from range. Needs a Data Center.",
+    "description": "A Function for ranged Inference Calls: pricier bursts that hit from range.",
     "cost": 130,
     "buildTicks": 80,
     "hp": 335,
@@ -359,7 +359,7 @@
   },
   "private-cloud": {
     "name": "Private Cloud",
-    "description": "Supplies 110 compute, inside your walls where nobody else can reach it.",
+    "description": "Compute inside your walls, where nobody else can reach it.",
     "cost": 130,
     "buildTicks": 100,
     "hp": 700,
@@ -377,7 +377,7 @@
   },
   "monorepo": {
     "name": "Monorepo",
-    "description": "Compiles a Kernel: slow and enormous, it mends every unit and building near it. Needs a Region.",
+    "description": "Compiles a Kernel: slow and enormous, it mends every unit and building near it.",
     "cost": 320,
     "buildTicks": 160,
     "hp": 900,
@@ -395,7 +395,7 @@
   },
   "edge-fleet": {
     "name": "Edge Fleet",
-    "description": "Pushes out CDN Swarms three at a time: fast raiders. Needs a Data Center.",
+    "description": "Pushes out CDN Swarms in packs: fast raiders.",
     "cost": 150,
     "buildTicks": 100,
     "hp": 560,
@@ -413,7 +413,7 @@
   },
   "mainframe-bay": {
     "name": "Mainframe Bay",
-    "description": "Rolls out Mainframes: siege iron that tears buildings apart. Needs a Region.",
+    "description": "Rolls out Mainframes: siege iron that tears buildings apart.",
     "cost": 340,
     "buildTicks": 180,
     "hp": 1100,
@@ -431,7 +431,7 @@
   },
   "state-machine": {
     "name": "State Machine",
-    "description": "Keeps one Step Function running, and bursts two more when creeps come near: tough, ranged. Needs a Region.",
+    "description": "A Function for whole workflows: a tough, ranged Step Function, and more of them when creeps come near.",
     "cost": 260,
     "buildTicks": 120,
     "hp": 520,
@@ -457,7 +457,7 @@
   },
   "trust-safety": {
     "name": "Trust & Safety",
-    "description": "Trains Gatekeepers: heavy melee that holds a wall gap. Needs a Data Center.",
+    "description": "Trains Gatekeepers: heavy melee that holds a wall gap.",
     "cost": 160,
     "buildTicks": 100,
     "hp": 820,
@@ -475,7 +475,7 @@
   },
   "legal-dept": {
     "name": "Legal Department",
-    "description": "Retains a Legal Team: ranged, and whatever it hits slows to half speed. Needs a Region.",
+    "description": "Retains a Legal Team: ranged, and whatever it hits slows down.",
     "cost": 280,
     "buildTicks": 140,
     "hp": 760,
@@ -493,7 +493,7 @@
   },
   "compute-pool": {
     "name": "Compute Pool",
-    "description": "Provisioned concurrency: supplies 90 compute for your warm squads and their bursts.",
+    "description": "Provisioned concurrency: compute for your warm squads and their bursts.",
     "cost": 90,
     "buildTicks": 80,
     "hp": 420,

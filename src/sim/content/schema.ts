@@ -143,9 +143,9 @@ export interface SpawnerRank extends UnitRank {
   burst?: number;
 }
 
+/** What a tier perk changes; its text is generated from these (see ui/text.ts). */
 export interface TierPerk {
   name: string;
-  description: string;
   mechanics?: { [K in keyof NonNullable<RaceDef["mechanics"]>]?: Partial<NonNullable<NonNullable<RaceDef["mechanics"]>[K]>> };
   modifiers?: Partial<RaceDef["modifiers"]>;
 }

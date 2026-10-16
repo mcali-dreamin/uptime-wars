@@ -1,7 +1,7 @@
 {
   "open-source": {
     "name": "Open Source Collective",
-    "specialty": "Cheap swarms that spawn 15% faster. Fork any building for half price, and buildings repair themselves when nothing's hitting them.",
+    "specialty": "Cheap swarms, built by the community. Fork anything you've built, and your buildings mend themselves.",
     "controller": "human",
     "look": "scrappy",
     "core": "core",
@@ -40,7 +40,6 @@
       null,
       {
         "name": "Community",
-        "description": "Forks cost 35% instead of half.",
         "mechanics": {
           "fork": {
             "costPermille": 350
@@ -49,7 +48,6 @@
       },
       {
         "name": "Upstream",
-        "description": "Buildings repair twice as fast.",
         "mechanics": {
           "repair": {
             "permillePerSecond": 30
@@ -83,7 +81,7 @@
   },
   "hyperscaler": {
     "name": "Hyperscaler",
-    "specialty": "Rich and tough: +$75, units 15% tougher. Buildings packed into a region shield each other: up to 30% less damage.",
+    "specialty": "Rich and tough. Pack your buildings into regions and they shield each other.",
     "controller": "human",
     "look": "monolith",
     "core": "core",
@@ -119,7 +117,6 @@
       null,
       {
         "name": "Availability Zones",
-        "description": "Regions shield up to 55% instead of 40%.",
         "mechanics": {
           "region": {
             "maxPermille": 550
@@ -128,7 +125,6 @@
       },
       {
         "name": "Global Footprint",
-        "description": "Units 50% tougher instead of 30%.",
         "modifiers": {
           "unitHpMultiplier": 1.5
         }
@@ -160,7 +156,7 @@
   },
   "serverless": {
     "name": "Serverless",
-    "specialty": "An army that autoscales. Functions keep a small squad warm and burst it bigger when creeps show up, then scale back down. Every scale-up costs $, so long fights add up.",
+    "specialty": "An army that autoscales: Functions keep a small squad warm and burst it bigger when creeps show up. Every burst costs $, so long fights add up.",
     "controller": "human",
     "look": "ephemeral",
     "core": "core",
@@ -188,14 +184,12 @@
       null,
       {
         "name": "Warm Pools",
-        "description": "Scale-ups cool down 30% faster.",
         "modifiers": {
           "invokeCooldownMultiplier": 0.7
         }
       },
       {
         "name": "Reserved Capacity",
-        "description": "Every scale-up costs 40% less.",
         "modifiers": {
           "invokeCostMultiplier": 0.6
         }
@@ -229,7 +223,7 @@
   },
   "walled-garden": {
     "name": "Walled Garden",
-    "specialty": "Builds real walls that block every path; towers and Moderators fire over them. Users are loyal: they leave 60% slower when you're hit. No network nodes, but its cores reach 3 tiles further: you build around your cores, nowhere else.",
+    "specialty": "Builds real walls; towers and Moderators fire over them. Loyal users, and a base that grows around its cores.",
     "controller": "human",
     "look": "garden",
     "core": "core",
@@ -265,7 +259,6 @@
       null,
       {
         "name": "Hardened Walls",
-        "description": "Walls hit back: melee attackers take 12 damage per blow.",
         "mechanics": {
           "thorns": {
             "damage": 12,
@@ -277,7 +270,6 @@
       },
       {
         "name": "Ecosystem Lock-in",
-        "description": "Users leave at 15% of the usual rate when you're hit (was 40%).",
         "mechanics": {
           "loyalty": {
             "churnPermille": 150

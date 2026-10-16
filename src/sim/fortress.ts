@@ -101,6 +101,8 @@ export function fortify(world: World, content: Content, team: TeamId, wave: numb
 
 /** Botnet Farms (2x2) stand this far out from the nest, one per quarter. */
 const FARM_OFFSETS = [[-8, -8], [7, -8], [-8, 7], [7, 7]] as const;
+/** How many Botnet Farms garrison the fortress. */
+export const FARM_COUNT = FARM_OFFSETS.length;
 
 /** Top-left tiles of the Botnet Farms: clear of the nest, the C2 Servers, and each other. */
 export function farmSpots(terrain: Terrain): TilePoint[] {

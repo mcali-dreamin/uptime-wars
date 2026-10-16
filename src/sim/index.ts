@@ -11,7 +11,7 @@ export { queueCommand } from "./commands";
 export { canPlace, canFound, baseCost, buildCost, owned, isOccupied, isCore, inNetwork, networkProviders, teamCores } from "./placement";
 export { threatPermille, planWave, playerScale, previewWave, trickleBudget, waveInterval, type WavePreview } from "./waves";
 export { STARTING_MONEY, BASE_INCOME } from "./tuning";
-export { computeBalance, incomeRate, trafficRadius, userCapacity } from "./economy";
+export { computeBalance, incomeRate, unitUpkeep, trafficRadius, userCapacity } from "./economy";
 export { canResearch, levelOf, multiplier, nextLevel } from "./upgrades";
 export { hashWorld, hashTerrain } from "./hash";
 
@@ -32,12 +32,12 @@ export function simulate(
   while (world.tick < maxTicks && !world.outcome) step(world, content);
   return world;
 }
-export { farmSpots, farmsDown, farmsStanding, fortressGates, fortressSpots, nestShielded } from "./fortress";
+export { FARM_COUNT, farmSpots, farmsDown, farmsStanding, fortressGates, fortressSpots, nestShielded } from "./fortress";
 export { invokeBlocker, invokeCost } from "./functions";
 export { forkBlocker, forkCost, regionShield } from "./mechanics";
 export { isJammed } from "./roles";
 export { coreReachBonus, reachOf } from "./placement";
-export { earnedPerks, raceMechanics, raceModifiers, tierBlocker, tierDef, tierOf, tierUpgrade } from "./tiers";
+export { earnedPerks, mechanicsAtTier, modifiersAtTier, raceMechanics, raceModifiers, tierBlocker, tierDef, tierOf, tierUpgrade } from "./tiers";
 export { traitsFor } from "./traits";
 export { bonus, centerOf, slotOf, upgradeName, upgradesAt } from "./upgrades";
 export { buildingMaxHp } from "./entities";

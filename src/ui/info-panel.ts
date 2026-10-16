@@ -9,6 +9,7 @@ import { heightAtTile, TILE, type Building, type Entity } from "../sim";
 import { HIGH_GROUND_DAMAGE } from "../sim/tuning";
 import { upgradeOf } from "./build-bar";
 import { buildingCard, rankEffect, unitCard, upgradeCard, type InfoCard } from "./cards";
+import { rankChange } from "./text";
 import { $ } from "./dom";
 
 export class InfoPanel {
@@ -17,7 +18,7 @@ export class InfoPanel {
   private readonly lines = $("info-lines");
   /** "Set rally (T)": the ground order without a right-click. */
   private readonly action = $("info-action");
-  /** "Scale up now (V)" for a serverless function. */
+  /** "Burst now (V)" for a serverless function. */
   private readonly invokeButton = $("info-invoke");
   /** "Fork · $N (X)" for races that can copy a building. */
   private readonly forkButton = $("info-fork");
@@ -81,9 +82,9 @@ export class InfoPanel {
       if (entity.jammedUntil !== undefined && this.session.world.tick < entity.jammedUntil) lines.push("Jammed by a DDoS · can't shoot, spawn or run");
       const fn = content.buildings[entity.defId]!.invoke;
       if (fn && entity.buildRemaining <= 0) {
-        lines.push((entity.scaleTimer ?? 0) > 0 ? `Scale-up cooling down · ${Math.ceil(entity.scaleTimer! / TICK_RATE)}s` : "Scale-up ready · bursts when a creep comes near");
+        lines.push((entity.scaleTimer ?? 0) > 0 ? `Burst cooling down · ${Math.ceil(entity.scaleTimer! / TICK_RATE)}s` : "Burst ready · fires when creeps nearby outnumber its units");
         this.invokeButton.hidden = false;
-        this.invokeButton.textContent = `Scale up now · $${invokeCost(content, this.session.team, fn.cost)} (V)`;
+        this.invokeButton.textContent = `Burst now · $${invokeCost(content, this.session.team, fn.cost)} (V)`;
         (this.invokeButton as HTMLButtonElement).disabled = (entity.scaleTimer ?? 0) > 0 || this.session.team.money < invokeCost(content, this.session.team, fn.cost);
       }
       this.showRank(entity, lines);
@@ -134,7 +135,7 @@ export class InfoPanel {
     const price = rankCost(content, world, entity);
     if (!next || price === null) return;
     const blocker = rankBlocker(content, world, this.session.local, entity);
-    lines.push(`Next · ${next.name}: ${rankEffect(next)}`);
+    lines.push(`Next · ${next.name}: ${rankChange(content, this.session.team.raceId, entity.defId, rank, next)}`);
     this.rankButton.hidden = false;
     this.rankButton.textContent = blocker && blocker.startsWith("needs") ? `${next.name} ${blocker}` : `Upgrade to ${next.name} · $${price} (U)`;
     (this.rankButton as HTMLButtonElement).disabled = blocker !== null;
