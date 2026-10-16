@@ -43,8 +43,8 @@ describe("computer players attack", () => {
     const others = [0, 2, 3];
     expect(firstGoal).toBe(others.reduce((a, b) => (far(b) < far(a) ? b : a)));
     expect(ai.known).toEqual([0]);
-    // Any spot it ruled out on the way was an empty one.
-    for (const spot of ai.checked) expect(spot).not.toBe(0);
+    // Every spot it looked at was empty, or it found who's there.
+    for (const spot of ai.checked) expect(spot === 0 ? ai.known.includes(0) : [2, 3].includes(spot)).toBe(true);
   });
 
   it("never attacks alone against the horde, or in co-op: balance runs and allies are untouched", () => {
