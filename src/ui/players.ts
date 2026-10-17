@@ -6,6 +6,7 @@
 import { allied, allyBlocker, hasOffered, humanTeams, unallyBlocker, type TeamId, type World } from "../sim";
 import type { Session } from "../game/session";
 import { $ } from "./dom";
+import { difficultyName, playerName } from "./names";
 
 export class PlayersPanel {
   private readonly root = $("players");
@@ -37,7 +38,8 @@ export class PlayersPanel {
         const swatch = document.createElement("i");
         swatch.style.background = `#${this.colorOf(world, team.id).toString(16).padStart(6, "0")}`;
         const name = document.createElement("span");
-        name.textContent = `${team.id === local ? "You" : `Player ${team.id + 1}`} · ${this.session.content.races[team.raceId]!.name}`;
+        const level = difficultyName(this.session.content, world, team.id);
+        name.textContent = `${team.id === local ? "You" : playerName(world, team.id)} · ${level ? `${level} · ` : ""}${this.session.content.races[team.raceId]!.name}`;
         const state = document.createElement("small");
         state.textContent = standing(world, local, team.id);
         state.className = state.textContent.split(" ")[0]!.toLowerCase();
@@ -54,6 +56,8 @@ export class PlayersPanel {
     const button = document.createElement("button");
     button.type = "button";
     if (allyBlocker(world, local, other) === null) {
+      // Computers keep the side they start on: no offer to make them.
+      if (world.teams[other]!.ai) return null;
       const theyAsked = hasOffered(world, other, local);
       button.textContent = theyAsked ? "Accept" : "Ally";
       button.title = theyAsked ? "They offered an alliance: accept it" : "Offer an alliance. It forms once they accept.";

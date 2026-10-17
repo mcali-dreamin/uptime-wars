@@ -17,7 +17,7 @@
 // No browser globals here: transports are plain callbacks, so tests can wire
 // peers together in memory.
 
-import { hashWorld, humanTeams, queueCommand, step, type Command, type Content, type TeamId, type World } from "../../sim";
+import { hashWorld, humanTeams, queueCommand, step, type Command, type Content, type Team, type TeamId, type World } from "../../sim";
 
 /** Ticks between issuing a command and it taking effect: room for the network. */
 export const NET_DELAY_TICKS = 4;
@@ -72,7 +72,7 @@ export class Lockstep {
     this.delay = options.delay ?? NET_DELAY_TICKS;
     // Ticks before the first delay are empty for everyone.
     this.committed = this.delay - 1;
-    for (const team of humanTeams(world)) this.lastTurn.set(team.id, this.delay - 1);
+    for (const team of players(world)) this.lastTurn.set(team.id, this.delay - 1);
   }
 
   /** Queue a command; it goes out with our next turn. */
@@ -133,7 +133,7 @@ export class Lockstep {
   }
 
   private expected(tick: number): TeamId[] {
-    return humanTeams(this.world)
+    return players(this.world)
       .map((team) => team.id)
       .filter((team) => {
         const after = this.droppedAfter.get(team);
@@ -184,4 +184,12 @@ export class Lockstep {
     }
     this.peerHashes.delete(tick);
   }
+}
+
+/**
+ * Whose turns a tick waits on: the people. A computer player sends none;
+ * every peer works its moves out inside step(), the same on each.
+ */
+function players(world: World): Team[] {
+  return humanTeams(world).filter((team) => !team.ai);
 }

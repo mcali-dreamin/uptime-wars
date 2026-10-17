@@ -6,6 +6,7 @@ const RULES_NAME = { coop: "Co-op", ffa: "Free-for-all", custom: "Custom rules" 
 import { groundOrderLabel, leftClickOrders, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { $ } from "./dom";
+import { playerNames } from "./names";
 
 /** Later incidents show the big countdown for their last this-many seconds. */
 const COUNTDOWN_LAST = 15;
@@ -78,7 +79,7 @@ export class Hud {
       this.status.textContent = paused
         ? "PAUSED (P)"
         : waiting.length > 0
-          ? `Waiting for ${waiting.map((team) => `Player ${team + 1}`).join(", ")}…`
+          ? `Waiting for ${playerNames(world, waiting).replaceAll(" & ", ", ")}…`
           : this.session.net
             ? `${RULES_NAME[rulesLabel(world)]} · you're Player ${this.session.local + 1}`
             : "";
@@ -260,7 +261,7 @@ export class Hud {
     const won = outcome.winners.includes(this.session.local);
     // Your uptime ends when you go offline, even if others played on.
     const uptime = clock((this.session.team.downTick ?? outcome.tick) / TICK_RATE);
-    const names = (teams: number[]) => teams.map((t) => `Player ${t + 1}`).join(" & ");
+    const names = (teams: number[]) => playerNames(world, teams);
     const others = outcome.winners.filter((t) => t !== this.session.local);
     const hordeWon = outcome.winners.some((t) => world.teams[t]?.controller !== "human");
     if (outcome.reason === "last-standing" || (!won && !hordeWon && outcome.winners.length > 0)) {

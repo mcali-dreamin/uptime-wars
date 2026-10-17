@@ -19,11 +19,13 @@ export class RacePicker {
   constructor(
     private readonly session: Session,
     private readonly onPick: (raceId: string, heroId?: string) => void,
-    private readonly onCoop: () => void,
+    /** Open the lobby; `computer` starts it with a computer opponent. */
+    private readonly onCoop: (computer: boolean) => void,
     private readonly onColor: () => void = () => {},
     telemetry?: Telemetry,
   ) {
     $("coop-host").addEventListener("click", () => this.coop());
+    $("vs-computer").addEventListener("click", () => this.coop(true));
     const share = $("share-stats") as HTMLInputElement;
     if (telemetry) {
       share.checked = telemetry.enabled;
@@ -104,15 +106,16 @@ export class RacePicker {
       return true;
     }
     if (key === "h") return this.coop(), true;
+    if (key === "c") return this.coop(true), true;
     const id = this.session.playable[Number(key) - 1];
     if (id) this.pick(id);
     return true;
   }
 
-  private coop(): void {
+  private coop(computer = false): void {
     this.root.hidden = true;
     this.open = false;
-    this.onCoop();
+    this.onCoop(computer);
   }
 
   private pick(id: string): void {

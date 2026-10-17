@@ -230,7 +230,7 @@ describe("skirmish setup from the address bar", () => {
       "serverless",
       undefined,
     );
-    expect(setup.mode).toBe("ffa");
+    expect(setup.rules?.sides).toEqual([0, 1, 2, 3]);
     expect(setup.races).toEqual([
       "serverless",
       "open-source",
@@ -252,7 +252,7 @@ describe("skirmish setup from the address bar", () => {
       "serverless",
       undefined,
     );
-    expect(coop.mode).toBe("coop");
+    expect(coop.rules?.sides).toEqual([0, 0]);
     expect(coop.races).toContain("botnet");
     const world = createWorld(content, { ...coop, startWithCore: true });
     expect(world.teams[1]!.ai).not.toBeNull();

@@ -13,9 +13,9 @@
 
 import type { Content, MatchSetup } from "../sim";
 import { MAX_PLAYERS } from "../sim";
-import { composeRules } from "./net/lobby";
+import { HORDE_RACE, lobbySetup } from "./net/lobby";
 
-export const HORDE_RACE = "botnet";
+export { HORDE_RACE };
 
 export function skirmishSetup(
   content: Content,
@@ -48,22 +48,11 @@ export function skirmishSetup(
   const mode = params.get("mode") === "coop" ? "coop" : "ffa";
   const sides = params.get("sides")?.split(",").map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n < MAX_PLAYERS);
   const nest = params.get("nest");
-  const { rules, horde } = composeRules(
-    {
-      mode,
-      horde: params.get("horde") !== "0",
-      ...(sides?.length ? { sides } : {}),
-      ...(params.get("diplomacy") === "open" ? { diplomacy: "open" as const } : {}),
-      ...(nest === "0" || nest === "1" ? { nestMustFall: nest === "1" } : {}),
-    },
-    slots.length + 1,
-  );
-  return {
-    seed,
+  return lobbySetup(seed, [{ race, hero }], slots, {
     mode,
-    rules,
-    races: [race, ...slots.map((s) => s.race), ...(horde ? [HORDE_RACE] : [])],
-    heroes: [hero],
-    ai: [undefined, ...slots.map((s) => s.difficulty)],
-  };
+    horde: params.get("horde") !== "0",
+    ...(sides?.length ? { sides } : {}),
+    ...(params.get("diplomacy") === "open" ? { diplomacy: "open" as const } : {}),
+    ...(nest === "0" || nest === "1" ? { nestMustFall: nest === "1" } : {}),
+  });
 }

@@ -12,6 +12,7 @@ import {
   type Building,
   type Command,
   type Content,
+  type MatchSetup,
   type TeamId,
   type Unit,
   type World,
@@ -79,6 +80,14 @@ export class Session {
   pick(raceId: string): void {
     this.raceId = raceId;
     localStorage.setItem(RACE_KEY, raceId);
+  }
+
+  /** Play a match set up in the lobby, here: you and the computers. */
+  startLocal(setup: MatchSetup): void {
+    this.net = null;
+    this.local = 0;
+    this.world = createWorld(this.content, setup);
+    this.raceId = this.team.raceId;
   }
 
   /** Play a co-op match someone (maybe us) set up. */
