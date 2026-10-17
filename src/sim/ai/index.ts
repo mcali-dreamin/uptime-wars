@@ -13,7 +13,12 @@
 import type { Content, DifficultyDef } from "../content";
 import { queueCommand } from "../commands";
 import { moveHero, playArmy } from "./army";
-import { userCapacity } from "../economy";
+import {
+  computeBalance,
+  squadReserve,
+  unitUpkeep,
+  userCapacity,
+} from "../economy";
 import { castBlocker, learnBlocker } from "../heroes";
 import { buildCost, canFound, canPlace } from "../placement";
 import { rankBlocker } from "../ranks";
@@ -160,9 +165,18 @@ function playBase(
   const rotation = content.races[team.raceId]!.buildings.filter(
     (b) => !SKIP.has(b),
   );
+  // Compute its squads still need beyond what's spare (asked once, only if a spawner comes up).
+  let short: number | undefined;
+  const unmanned = () => {
+    if (short === undefined) {
+      const { supply, demand } = computeBalance(world, content, team);
+      short = squadReserve(world, content, team) - (supply - demand);
+    }
+    return short;
+  };
   for (let tries = 0; tries < rotation.length; tries += 1) {
     const b = rotation[(ai.next + tries) % rotation.length]!;
-    if (!habitAllows(world, content, team, b)) continue;
+    if (!habitAllows(world, content, team, b, unmanned)) continue;
     // Saving: what grows the economy may dip into the savings (down to a
     // share of the price); anything else waits until the tier is paid for.
     const def = content.buildings[b]!;
@@ -207,6 +221,7 @@ function habitAllows(
   content: Content,
   team: Team,
   building: string,
+  unmanned: () => number,
 ): boolean {
   const def = content.buildings[building]!;
   if (def.invoke) {
@@ -232,6 +247,14 @@ function habitAllows(
     ).length;
     return have < 4 + 4 * tierOf(content, team);
   }
+  // No spawner it can't man: if spare compute won't cover the squads it
+  // already has to fill plus this one's, it would only sink money into an
+  // empty building, and its army would be no bigger for it.
+  if (
+    def.spawn &&
+    unmanned() + def.spawn.maxAlive * unitUpkeep(content, def.spawn.unit) > 0
+  )
+    return false;
   return true;
 }
 

@@ -13,6 +13,7 @@ import {
   tierOf,
   type World,
 } from "../src/sim";
+import { computeBalance, squadReserve } from "../src/sim/economy";
 import { skirmishSetup } from "../src/game/skirmish";
 
 const content = loadDefaultContent();
@@ -190,6 +191,26 @@ describe("computer players grow on their own income", () => {
 
   it.each(races.map((race, team) => [race, team] as const))("%s keeps its defences to a few per tier", (_race, team) => {
     expect(defences(team)).toBeLessThanOrEqual(4 + 4 * tierOf(content, world.teams[team]!));
+  });
+});
+
+describe("computer players man what they build", () => {
+  // A spawner it has no compute to fill is money sunk into an empty
+  // building. Worse, a base of them is a wall of hp no attack gets through,
+  // so an FFA against a weak computer turns into a stalemate.
+  it("builds no spawner that spare compute can't fill", () => {
+    const world = createWorld(content, {
+      seed: 1,
+      mode: "ffa",
+      races: ["serverless", "walled-garden"],
+      startWithCore: true,
+      ai: ["normal", "easy"],
+    });
+    minutes(world, 9);
+    for (const team of world.teams.slice(0, 2)) {
+      const { supply, demand } = computeBalance(world, content, team);
+      expect(squadReserve(world, content, team) - (supply - demand)).toBeLessThanOrEqual(0);
+    }
   });
 });
 
