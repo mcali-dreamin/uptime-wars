@@ -359,9 +359,14 @@ body {
   justify-content: center;
 }
 
+#quick-match,
 #coop-host,
 #vs-computer {
   margin-top: 0.5rem;
+}
+
+#quick-match,
+#coop-host {
   padding: 0.5rem 1rem;
   background: var(--panel);
   color: var(--text);
@@ -371,6 +376,7 @@ body {
   cursor: pointer;
 }
 
+#quick-match:hover,
 #coop-host:hover,
 #vs-computer:hover {
   border-color: var(--accent);

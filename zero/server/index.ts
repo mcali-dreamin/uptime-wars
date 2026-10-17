@@ -6,11 +6,16 @@
 // polls for the answer with its key. After that the browsers talk directly;
 // nothing about the match ever touches this server.
 //
+// Quick Match is the same thing in public: a host with nobody to invite lists
+// its open invite under the game version, and a stranger looking for a match
+// is handed the code of whoever has waited longest. From there it's an
+// ordinary invite.
+//
 // Everything else in this space is the static game build.
 
 import { capsule, endpoint, json, number, string, table } from "@spacefast/zero/server";
 import { parseMatch } from "./matches";
-import { KEY_LENGTH, codeFromPath, expired, makeCode, validBlob } from "./rules";
+import { KEY_LENGTH, codeFromPath, expired, fresh, makeCode, pickHost, validBlob, validCode, validVersion, type Listing } from "./rules";
 
 const notFound = () => json({ error: "not_found" }, { status: 404 });
 const bad = (error: string) => json({ error }, { status: 400 });
@@ -25,6 +30,15 @@ export default capsule({
       offer: string(),
       answer: string().default(""),
     }).index("by_code", ["code"]),
+    // Quick Match: open invites from hosts waiting for strangers (see rules.ts).
+    queue: table({
+      code: string(),
+      version: string(),
+      since: number(),
+      seen: number(),
+    })
+      .index("by_code", ["code"])
+      .index("by_version", ["version"]),
     // One row per finished (or abandoned) match, as each player's browser reports it.
     matches: table({
       player: string(),
@@ -72,6 +86,47 @@ export default capsule({
       return json({ ok: true });
     }),
 
+    // Host: list (or keep listing) an open invite for Quick Match. Called
+    // every few seconds while waiting. Answers with an older host to join
+    // instead, if there is one, so two searchers don't both sit and wait.
+    listInvite: endpoint({ method: "POST", path: "/api/queue" }, async (ctx, req) => {
+      const body = await req.json<{ code?: unknown; key?: unknown; version?: unknown }>().catch(() => ({}) as Record<string, unknown>);
+      if (!validCode(body.code) || !validVersion(body.version)) return bad("bad_listing");
+      const invite = await live(ctx, body.code);
+      if (!invite || body.key !== invite.key) return notFound();
+      const now = Date.now();
+      const row = (await ctx.db.queue!.withIndex("by_code", (r: Ctx) => r.eq("code", body.code)).first()) as (Listing & { id: string }) | null;
+      if (invite.answer !== "") {
+        if (row) await ctx.db.queue!.delete(row.id);
+        return json({ ok: true, join: null });
+      }
+      const mine: Listing = row ? { ...row, seen: now } : { code: body.code, version: body.version, since: now, seen: now };
+      if (row) await ctx.db.queue!.update(row.id, { seen: now });
+      else await ctx.db.queue!.insert(mine);
+      const older = pickHost(await waiting(ctx, body.version, now), body.version, now, mine);
+      return json({ ok: true, join: older?.code ?? null });
+    }),
+
+    // Host: stop listing (the match started, or they gave up).
+    unlistInvite: endpoint({ method: "POST", path: "/api/queue/leave" }, async (ctx, req) => {
+      const body = await req.json<{ code?: unknown; key?: unknown }>().catch(() => ({}) as Record<string, unknown>);
+      const invite = validCode(body.code) ? await find(ctx, body.code) : null;
+      if (!invite || body.key !== invite.key) return notFound();
+      const row = await ctx.db.queue!.withIndex("by_code", (r: Ctx) => r.eq("code", body.code)).first();
+      if (row) await ctx.db.queue!.delete(row.id);
+      return json({ ok: true });
+    }),
+
+    // Looking for a match: the code of the host waiting longest on this
+    // version, or null (then become a host and list yourself).
+    findMatch: endpoint({ method: "POST", path: "/api/queue/find" }, async (ctx, req) => {
+      const body = await req.json<{ version?: unknown }>().catch(() => ({}) as Record<string, unknown>);
+      if (!validVersion(body.version)) return bad("bad_version");
+      const now = Date.now();
+      const host = pickHost(await waiting(ctx, body.version, now), body.version, now);
+      return json({ code: host?.code ?? null });
+    }),
+
     // Guest: read the offer behind a code.
     readOffer: endpoint({ method: "GET", path: "/api/invites/:code" }, async (ctx, req) => {
       const invite = await live(ctx, codeFromPath(req.path));
@@ -105,6 +160,18 @@ type Ctx = any;
 
 async function find(ctx: Ctx, code: string) {
   return ctx.db.invites!.withIndex("by_code", (range: Ctx) => range.eq("code", code)).first();
+}
+
+/** Fresh listings on a version; sweeps the stale and the already-answered on the way. */
+async function waiting(ctx: Ctx, version: string, now: number): Promise<Listing[]> {
+  const rows = await ctx.db.queue!.withIndex("by_version", (r: Ctx) => r.eq("version", version)).take(50);
+  const out: Listing[] = [];
+  for (const row of rows) {
+    const invite = fresh(row, now) ? await live(ctx, row.code) : null;
+    if (invite && invite.answer === "") out.push(row);
+    else await ctx.db.queue.delete(row.id);
+  }
+  return out;
 }
 
 async function live(ctx: Ctx, code: string | null) {

@@ -1,7 +1,8 @@
 // The lobby in real browsers: Play vs computer starts a local match against
 // computers; invites connect over both signalling paths, then one match
 // (with a computer seat) runs in lockstep, stays in sync, and survives a
-// guest leaving. Lockstep rules themselves are covered in tests/lockstep.test.ts
+// guest leaving. Last, two strangers press Quick Match and land in one
+// match. Lockstep rules themselves are covered in tests/lockstep.test.ts
 // and the relay handlers in tests/invites.test.ts.
 //
 //   npm run build && node e2e/coop.mjs dist
@@ -16,8 +17,10 @@ import { game, run, serve, waitFor } from "./harness.mjs";
 let relayOn = false;
 const invites = new Map();
 let nextCode = 0;
+/** Quick Match listings: code -> { version, since }. Heartbeat freshness is the relay's job (tests/invites.test.ts). */
+const queue = new Map();
 const { server, url } = await serve(async (req, res, path) => {
-  if (!path.startsWith("/api/invites")) return false;
+  if (!path.startsWith("/api/invites") && !path.startsWith("/api/queue")) return false;
   const send = (status, body) => (res.writeHead(status, { "content-type": "application/json" }), res.end(JSON.stringify(body)), true);
   if (!relayOn) return send(404, { error: "not_found" });
   const body = async () => {
@@ -25,6 +28,17 @@ const { server, url } = await serve(async (req, res, path) => {
     for await (const chunk of req) raw += chunk;
     return JSON.parse(raw || "{}");
   };
+  if (path.startsWith("/api/queue")) {
+    const b = await body();
+    for (const [code] of queue) if (invites.get(code)?.answer) queue.delete(code);
+    const oldest = (version, than) =>
+      [...queue].filter(([c, l]) => l.version === version && c !== than?.code && (!than || l.since < than.since)).sort((a, z) => a[1].since - z[1].since)[0]?.[0] ?? null;
+    if (path === "/api/queue/find") return send(200, { code: oldest(b.version) });
+    if (invites.get(b.code)?.key !== b.key) return send(404, { error: "not_found" });
+    if (path === "/api/queue/leave") return queue.delete(b.code), send(200, { ok: true });
+    if (!queue.has(b.code)) queue.set(b.code, { version: b.version, since: Date.now() });
+    return send(200, { ok: true, join: oldest(b.version, { code: b.code, ...queue.get(b.code) }) });
+  }
   const [, , code, sub] = path.split("/").filter(Boolean);
   const invite = invites.get(code);
   if (req.method === "POST" && !code) {
@@ -164,6 +178,28 @@ await run(
     await guest.context().close();
     const tick = await host.evaluate(() => window.uptime.world.tick);
     check(await waitFor(() => host.evaluate((t) => window.uptime.world.tick > t + 40, tick), 120000), "the host plays on after the guest leaves");
+    await host.context().close();
+
+    // Quick Match: two strangers press Q. The first finds nobody and hosts;
+    // the second finds them. Co-op against the botnet, started on its own.
+    const first = await open(`${url}?debug&2d`);
+    await first.waitForTimeout(500);
+    await first.keyboard.press("q");
+    check(await waitFor(async () => (await first.textContent("#coop-status"))?.includes("Waiting for players"), 30000), "quick match: nobody around, so the first player hosts");
+    check(await waitFor(() => queue.size === 1, 15000), "quick match: the host is listed");
+    const second = await open(`${url}?debug&2d`);
+    await second.waitForTimeout(500);
+    await second.keyboard.press("q");
+    check(await waitFor(async () => (await first.textContent("#coop-status"))?.includes("Starting in"), 30000), "quick match: the second player joins the first, and a countdown starts");
+    const playing = (page) => page.evaluate(() => ({ net: window.uptime.session.net !== null, tick: window.uptime.world.tick, local: window.uptime.session.local, races: window.uptime.world.teams.map((t) => t.raceId).join(), rules: JSON.stringify(window.uptime.world.rules) }));
+    const both = await waitFor(async () => {
+      const [a, b] = [await playing(first), await playing(second)];
+      return a.net && b.net && a.tick > 20 && b.tick > 20 ? [a, b] : null;
+    }, 60000);
+    check(
+      both && both[0].local === 0 && both[1].local === 1 && both[0].races === both[1].races && both[0].races.endsWith("botnet") && both[0].rules.includes('"sides":[0,0]'),
+      `quick match: it starts on its own, one co-op match in both browsers (${both?.[0].races})`,
+    );
   },
   {
     // Real host candidates instead of mDNS names, so two headless contexts reach each other.

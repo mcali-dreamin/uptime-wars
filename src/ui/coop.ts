@@ -6,17 +6,30 @@
 // give any seat to a computer instead. With no friend joined, the match is
 // played locally (it can pause); with one, it's a network match and every
 // browser works out the computers' moves the same way.
+//
+// Quick Match is the same lobby with strangers: ask the server for a host
+// waiting on this exact build and join it like an invite; if there's none,
+// host one and list it. Co-op against the botnet; it starts a little after
+// the first stranger arrives, or at once when the match is full.
 
 import { MAX_PLAYERS } from "../sim";
 import type { MatchSetup } from "../sim";
-import { HostLobby, composeRules, joinHost, lobbySetup, type ComputerSeat, type LobbyRules, type NetMatch } from "../game/net/lobby";
+import { COOP, HostLobby, composeRules, joinHost, lobbySetup, type ComputerSeat, type LobbyRules, type NetMatch } from "../game/net/lobby";
 import { answerOffer, createOffer } from "../game/net/rtc";
-import { fetchOffer, isCode, postAnswer, publishOffer, type HostedInvite } from "../game/net/signal";
+import { fetchOffer, findMatch, isCode, listInvite, postAnswer, publishOffer, unlistInvite, type HostedInvite } from "../game/net/signal";
 import type { Session } from "../game/session";
 import { $ } from "./dom";
 
 const JOIN_PARAM = "join";
 const SIDE_NAMES = ["A", "B", "C", "D"];
+/** Quick Match: how often a waiting host refreshes its listing. */
+const HEARTBEAT_MS = 4000;
+/** Quick Match: after the first stranger arrives, wait this long for more. */
+export const QUICK_START_MS = 15_000;
+/** Quick Match: say so if nobody turns up for this long. */
+const LONELY_MS = 60_000;
+/** A peer link that hasn't opened by now isn't going to (no relay for this pair). */
+const CONNECT_MS = 20_000;
 
 /** Starting points for the rules: each just sets the toggles below it. */
 const PRESETS = {
@@ -34,12 +47,17 @@ export class CoopLobby {
   private sides: number[] = [0, 0, 0, 0];
   /** Seats given to computers, each with its own starting side. They sit after the people. */
   private computers: (ComputerSeat & { side: number })[] = [];
+  /** Set while in Quick Match (searching, hosting or joining). */
+  private quick: { run: number; since: number; startAt: number | null; timer: number } | null = null;
+  private quickRuns = 0;
   open = false;
 
   constructor(
     private readonly session: Session,
     private readonly onStart: (match: NetMatch) => void,
     private readonly onCancel: () => void,
+    /** The build: Quick Match only pairs players on the very same one. */
+    private readonly version: string,
     /** No friend joined: play it here, against the computers. */
     private readonly onLocal: (setup: MatchSetup) => void = () => {},
   ) {
@@ -59,7 +77,7 @@ export class CoopLobby {
     this.computers = [];
     this.sides = [0, 0, 0, 0];
     const lobby = (this.host = new HostLobby(this.session.content));
-    lobby.onChange = () => this.renderHost();
+    lobby.onChange = () => this.render();
     this.renderHost();
     if (computer) {
       this.addComputer();
@@ -108,29 +126,33 @@ export class CoopLobby {
 
   private async invite(): Promise<void> {
     const lobby = this.host;
-    if (!lobby || lobby.full) return this.renderHost();
-    const invite = $("coop-invite") as HTMLInputElement;
-    invite.value = "Preparing an invite…";
+    if (!lobby || lobby.full) return this.render();
+    const invite = document.getElementById("coop-invite") as HTMLInputElement | null;
+    if (invite) invite.value = "Preparing an invite…";
     const { offer, accept } = await createOffer();
     if (this.host !== lobby) return;
     const hosted = (this.hosted = await publishOffer(offer));
     if (this.host !== lobby) return hosted?.cancel();
-    const url = new URL(location.href);
-    url.hash = `${JOIN_PARAM}=${hosted ? hosted.token : offer}`;
-    invite.value = url.toString();
-    $("coop-manual").hidden = hosted !== null;
+    if (this.quick && !hosted) return this.status("Quick Match needs the game's server, and it isn't reachable. Play with friends instead.");
+    if (this.quick) void this.heartbeat();
+    if (invite) {
+      const url = new URL(location.href);
+      url.hash = `${JOIN_PARAM}=${hosted ? hosted.token : offer}`;
+      invite.value = url.toString();
+      $("coop-manual").hidden = hosted !== null;
+    }
     if (hosted) {
-      this.status("Waiting for your friend to open the link…");
+      if (!this.quick) this.status("Waiting for your friend to open the link…");
       try {
         const answer = await hosted.answer;
         if (this.host !== lobby) return;
         this.status("Connecting…");
-        const link = await accept(answer);
+        const link = await within(accept(answer), CONNECT_MS);
         // Every seat went to a computer while the invite was out.
         if (lobby.full) {
           link.close();
           this.status("The match filled up before your friend got in.");
-          return this.renderHost();
+          return this.render();
         }
         lobby.add(link);
         this.status("");
@@ -164,6 +186,11 @@ export class CoopLobby {
         await this.invite();
       }
     };
+  }
+
+  private render(): void {
+    if (this.quick) this.renderQuick();
+    else this.renderHost();
   }
 
   private renderHost(): void {
@@ -251,6 +278,8 @@ export class CoopLobby {
   private startHost(): void {
     const lobby = this.host;
     if (!lobby || lobby.ready.length + this.computers.length === 0) return;
+    const rules = this.quick ? COOP : this.rules();
+    this.stopQuick();
     this.hosted?.cancel();
     this.hosted = null;
     const seed = (Math.random() * 2 ** 31) | 0;
@@ -262,9 +291,9 @@ export class CoopLobby {
       lobby.close();
       this.host = null;
       this.hide();
-      return this.onLocal(lobbySetup(seed, [{ race, hero }], computers, this.rules()));
+      return this.onLocal(lobbySetup(seed, [{ race, hero }], computers, rules));
     }
-    const match = lobby.start(race, seed, hero, this.rules(), computers);
+    const match = lobby.start(race, seed, hero, rules, computers);
     lobby.onLeave = (team) => this.onLeave(team);
     this.hide();
     this.onStart(match);
@@ -307,18 +336,121 @@ export class CoopLobby {
     $("coop-rules-note").textContent = composed.horde ? "Everyone starts on one side, so the botnet plays." : "";
   }
 
-  // --- guest ------------------------------------------------------------
+  // --- quick match ------------------------------------------------------
 
-  async join(token: string): Promise<void> {
+  /** Find strangers on this build: join the longest-waiting host, else become one. */
+  async quickMatch(): Promise<void> {
+    this.stopQuick();
+    this.host?.close();
+    this.host = null;
+    const run = ++this.quickRuns;
+    this.quick = { run, since: Date.now(), startAt: null, timer: 0 };
     this.show();
-    history.replaceState(null, "", location.pathname + location.search);
-    const races = this.session.playable
+    this.body.innerHTML = `<h2>Quick Match</h2><p id="coop-status">Looking for players…</p>`;
+    // A host can fill up or vanish between being found and being joined: try a few.
+    for (let tries = 0; tries < 3; tries += 1) {
+      const code = await findMatch(this.version);
+      if (this.quick?.run !== run) return;
+      if (!code) break;
+      if (await this.join(code, true)) return;
+      if (this.quick?.run !== run) return;
+    }
+    this.hostQuick(run);
+  }
+
+  private hostQuick(run: number): void {
+    this.computers = [];
+    const lobby = (this.host = new HostLobby(this.session.content));
+    lobby.onChange = () => this.render();
+    this.quick = { run, since: Date.now(), startAt: null, timer: window.setInterval(() => this.renderQuick(), 1000) };
+    this.renderQuick();
+    void this.nextInvite();
+  }
+
+  /** Keep this host's open invite listed; give way to an older host while nobody's here yet. */
+  private async heartbeat(): Promise<void> {
+    const quick = this.quick;
+    const hosted = this.hosted;
+    if (!quick || !hosted || this.hosted !== hosted) return;
+    const older = await listInvite(hosted, this.version);
+    if (this.quick !== quick || this.hosted !== hosted) return;
+    if (typeof older === "string" && this.host && this.host.guests.length === 0) {
+      // Someone else started searching first: join them instead of both waiting.
+      void unlistInvite(hosted);
+      hosted.cancel();
+      this.hosted = null;
+      this.host.close();
+      this.host = null;
+      window.clearInterval(quick.timer);
+      if (!(await this.join(older, true)) && this.quick === quick) void this.quickMatch();
+      return;
+    }
+    window.setTimeout(() => void this.heartbeat(), HEARTBEAT_MS);
+  }
+
+  private renderQuick(): void {
+    const lobby = this.host;
+    const quick = this.quick;
+    if (!lobby || !quick) return;
+    if (!document.getElementById("coop-players")) {
+      this.body.innerHTML = `
+        <h2>Quick Match</h2>
+        <p>Co-op against the botnet with whoever's around, up to ${MAX_PLAYERS} players.</p>
+        <p>Your race: <select id="coop-race">${this.raceOptions()}</select></p>
+        <ol id="coop-players"></ol>
+        <p id="coop-status"></p>
+        <button id="coop-start" class="coop-primary">Start now</button>`;
+      $("coop-race").addEventListener("change", () => this.session.pick(($("coop-race") as HTMLSelectElement).value));
+      $("coop-start").addEventListener("click", () => this.startHost());
+    }
+    const name = (id: string | null) => (id ? this.session.content.races[id]!.name : "joining…");
+    $("coop-players").replaceChildren(
+      ...[`You (${name(this.session.raceId)})`, ...lobby.guests.map((g, i) => `Player ${i + 2} (${name(g.race)})`)].map((text) =>
+        Object.assign(document.createElement("li"), { textContent: text }),
+      ),
+    );
+    const ready = lobby.ready.length;
+    ($("coop-start") as HTMLButtonElement).disabled = ready === 0;
+    if (ready === 0) quick.startAt = null;
+    else quick.startAt ??= Date.now() + QUICK_START_MS;
+    if (ready > 0 && (lobby.full || Date.now() >= quick.startAt!)) return this.startHost();
+    const waited = Date.now() - quick.since;
+    this.status(
+      ready > 0
+        ? `Starting in ${Math.ceil((quick.startAt! - Date.now()) / 1000)}s · waiting for more players`
+        : waited < LONELY_MS
+          ? "Waiting for players…"
+          : "Nobody else is looking right now. Keep waiting, or close this and play solo.",
+    );
+  }
+
+  private stopQuick(): void {
+    if (!this.quick) return;
+    window.clearInterval(this.quick.timer);
+    if (this.hosted) void unlistInvite(this.hosted);
+    this.quick = null;
+  }
+
+  private raceOptions(): string {
+    return this.session.playable
       .map((id) => `<option value="${id}"${id === this.session.raceId ? " selected" : ""}>${this.session.content.races[id]!.name}</option>`)
       .join("");
+  }
+
+  // --- guest ------------------------------------------------------------
+
+  /**
+   * Join a host by invite token. Resolves true once connected (then waits for
+   * the host to start), false if it couldn't. `quick`: a Quick Match host.
+   */
+  async join(token: string, quick = false): Promise<boolean> {
+    this.show();
+    history.replaceState(null, "", location.pathname + location.search);
+    const run = this.quick?.run;
     this.body.innerHTML = `
-      <h2>Join a match</h2>
-      <p>Your race: <select id="coop-race">${races}</select></p>
-      <p id="coop-status">Connecting to your host…</p>
+      <h2>${quick ? "Quick Match" : "Join a match"}</h2>
+      <p>Your race: <select id="coop-race">${this.raceOptions()}</select></p>
+      <p id="coop-status">${quick ? "Found a match. Connecting…" : "Connecting to your host…"}</p>
       <div class="coop-row" id="coop-answer-row" hidden><input id="coop-answer" readonly><button id="coop-copy">Copy</button></div>`;
     $("coop-copy").addEventListener("click", () => copy($("coop-answer") as HTMLInputElement));
     const relayed = isCode(token);
@@ -327,24 +459,38 @@ export class CoopLobby {
       answer = await answerOffer(relayed ? await fetchOffer(token) : token);
       if (relayed) await postAnswer(token, answer.answer);
     } catch (error) {
-      return this.status(relayed ? (error as Error).message : "This invite link is broken. Ask your host for a new one.");
+      this.status(relayed ? (error as Error).message : "This invite link is broken. Ask your host for a new one.");
+      return false;
     }
     if (!relayed) {
       ($("coop-answer") as HTMLInputElement).value = answer.answer;
       $("coop-answer-row").hidden = false;
       this.status("Send this reply code to your host, then wait here.");
     }
-    const link = await answer.link;
-    this.status("Connected. Waiting for the host to start…");
+    let link: Awaited<typeof answer.link>;
+    try {
+      link = await within(answer.link, relayed ? CONNECT_MS : Infinity);
+    } catch (error) {
+      this.status(`${(error as Error).message} Ask your host for a new invite.`);
+      return false;
+    }
+    if (quick && this.quick?.run !== run) {
+      link.close();
+      return true;
+    }
+    this.status(quick ? "Connected. The match starts soon…" : "Connected. Waiting for the host to start…");
     const race = ($("coop-race") as HTMLSelectElement).value;
     this.session.pick(race);
     ($("coop-race") as HTMLSelectElement).disabled = true;
-    link.onClose = () => this.status("The host left.");
+    // A Quick Match host that leaves before starting: just look again.
+    link.onClose = () => (quick && this.quick?.run === run ? void this.quickMatch() : this.status("The host left."));
     joinHost(this.session.content, link, race, this.session.heroFor(race), (match) => {
+      this.quick = null;
       link.onClose = () => this.onLeave(0);
       this.hide();
       this.onStart(match);
     });
+    return true;
   }
 
   // --- shared -----------------------------------------------------------
@@ -368,6 +514,7 @@ export class CoopLobby {
   }
 
   private cancel(): void {
+    this.stopQuick();
     this.hosted?.cancel();
     this.hosted = null;
     this.host?.close();
@@ -375,6 +522,18 @@ export class CoopLobby {
     this.hide();
     this.onCancel();
   }
+}
+
+/** `promise`, or a rejection once `ms` pass without it settling. */
+function within<T>(promise: Promise<T>, ms: number): Promise<T> {
+  if (!Number.isFinite(ms)) return promise;
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Couldn't connect to the other player.")), ms);
+    promise.then(
+      (value) => (clearTimeout(timer), resolve(value)),
+      (error) => (clearTimeout(timer), reject(error)),
+    );
+  });
 }
 
 function copy(input: HTMLInputElement): void {

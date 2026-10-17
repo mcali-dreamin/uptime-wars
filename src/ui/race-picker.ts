@@ -7,6 +7,9 @@ import type { Telemetry } from "../game/telemetry";
 import { $ } from "./dom";
 import { abilityEffect, raceLines } from "./text";
 
+/** How the lobby opens from the picker. */
+export type LobbyStart = "friends" | "computer" | "quick";
+
 export class RacePicker {
   private readonly root = $("race-picker");
   private readonly cards = $("race-cards");
@@ -19,13 +22,14 @@ export class RacePicker {
   constructor(
     private readonly session: Session,
     private readonly onPick: (raceId: string, heroId?: string) => void,
-    /** Open the lobby; `computer` starts it with a computer opponent. */
-    private readonly onCoop: (computer: boolean) => void,
+    /** Open the lobby: to invite friends, against computers, or Quick Match with strangers. */
+    private readonly onCoop: (how: LobbyStart) => void,
     private readonly onColor: () => void = () => {},
     telemetry?: Telemetry,
   ) {
-    $("coop-host").addEventListener("click", () => this.coop());
-    $("vs-computer").addEventListener("click", () => this.coop(true));
+    $("coop-host").addEventListener("click", () => this.coop("friends"));
+    $("vs-computer").addEventListener("click", () => this.coop("computer"));
+    $("quick-match").addEventListener("click", () => this.coop("quick"));
     const share = $("share-stats") as HTMLInputElement;
     if (telemetry) {
       share.checked = telemetry.enabled;
@@ -105,17 +109,18 @@ export class RacePicker {
       if (hero) this.pickHero(hero);
       return true;
     }
-    if (key === "h") return this.coop(), true;
-    if (key === "c") return this.coop(true), true;
+    if (key === "h") return this.coop("friends"), true;
+    if (key === "c") return this.coop("computer"), true;
+    if (key === "q") return this.coop("quick"), true;
     const id = this.session.playable[Number(key) - 1];
     if (id) this.pick(id);
     return true;
   }
 
-  private coop(computer = false): void {
+  private coop(how: LobbyStart): void {
     this.root.hidden = true;
     this.open = false;
-    this.onCoop(computer);
+    this.onCoop(how);
   }
 
   private pick(id: string): void {

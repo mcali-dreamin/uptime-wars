@@ -345,6 +345,13 @@ enemy, there's no shared vision, and the last player with a core up wins. The
 horde is optional; with it, the nest is just one more enemy (taking it down
 ends the waves, not the match). FFA needs at least two players.
 
+**Quick Match.** Press Q on the race picker to play co-op against the botnet
+with strangers. The game's relay (`zero/server`) hands you the invite of
+whoever has waited longest on the exact same build; if nobody's waiting, you
+host and your invite is listed. The match starts 15 s after the first player
+joins, or at once with four. After that it's an ordinary co-op match, peer to
+peer.
+
 **Playing the computer.** A computer player is a player like any other: the
 same economy and the same rules, only its commands come from `src/sim/ai`
 instead of a mouse. It decides inside `step()` from the world alone, so it's

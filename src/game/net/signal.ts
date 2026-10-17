@@ -13,6 +13,8 @@ const CODE = /^[A-Z0-9]{6}$/;
 export interface HostedInvite {
   /** What the friend needs: a short code, or the whole offer in manual mode. */
   token: string;
+  /** The secret that proves this host owns the invite (relay only). */
+  key: string;
   /** Resolves with the friend's answer once they post it. Manual mode: never; paste it. */
   answer: Promise<string>;
   cancel(): void;
@@ -49,7 +51,7 @@ export async function publishOffer(offer: string): Promise<HostedInvite | null> 
     };
     void poll();
   });
-  return { token: created.code, answer, cancel: () => (stopped = true) };
+  return { token: created.code, key: created.key, answer, cancel: () => (stopped = true) };
 }
 
 /** Guest: is this invite token a relay code (rather than a whole offer)? */
@@ -76,4 +78,38 @@ export async function postAnswer(code: string, answer: string): Promise<void> {
   });
   if (response.status === 409) throw new Error("Someone already used this invite. Ask for a new one.");
   if (!response.ok) throw new Error("Couldn't reach the invite server.");
+}
+
+// --- Quick Match ------------------------------------------------------------
+
+async function post<T>(path: string, body: unknown): Promise<T | null> {
+  try {
+    const response = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    if (!response.ok || !response.headers.get("content-type")?.includes("json")) return null;
+    return (await response.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+/** Looking for a match: the code of a host waiting on this version, or null. */
+export async function findMatch(version: string): Promise<string | null> {
+  const found = await post<{ code: string | null }>("api/queue/find", { version });
+  return found?.code && CODE.test(found.code) ? found.code : null;
+}
+
+/**
+ * Host: list an open invite for Quick Match, or refresh the listing. Resolves
+ * with an older host's code if one should be joined instead; false if the
+ * relay refused (no relay here, or the invite is gone).
+ */
+export async function listInvite(invite: HostedInvite, version: string): Promise<string | null | false> {
+  const listed = await post<{ ok: boolean; join: string | null }>("api/queue", { code: invite.token, key: invite.key, version });
+  if (!listed) return false;
+  return listed.join && CODE.test(listed.join) ? listed.join : null;
+}
+
+/** Host: take the listing down. */
+export async function unlistInvite(invite: HostedInvite): Promise<void> {
+  await post("api/queue/leave", { code: invite.token, key: invite.key });
 }
