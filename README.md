@@ -264,6 +264,7 @@ src/
     terrain/        map generation: tiles, generate, elevation, scatter, grid
     content/        schema, load, validate
     ai/             computer players: decide inside step(), send ordinary commands
+                    (index: economy and hero; army: gather, attack, retreat)
     nav.ts          flow fields, line of sight, walkability
   game/           the player's side: Session (match, issuing commands) and
                   Selection (what a click means for what you have selected)
@@ -352,8 +353,13 @@ why its commands aren't written to the match log. Its skill is data
 (`src/content/difficulty.json`): Easy, Normal, Hard, Insane set how quickly it
 acts, how far it techs, and how freely it spends. The one bent rule is
 Insane's, and it's in the open: `revenuePermille`, more $ per user.
-For now computers build and defend; they don't attack yet (see #123). Until
-the lobby lands, add them from the address bar:
+Against other players a computer also attacks. It gathers an army, sends it
+in waves and brings it home when the wave is spent or its base is in trouble.
+Like you, it knows where the start spots are but not who's at them, so it
+scouts. Its hero goes with the army and comes home to heal. When it attacks,
+how big a wave it waits for and when it gives up are also difficulty
+(`attack`). Alone against the horde or in co-op it only defends. Until the
+lobby lands (#123), add computers from the address bar:
 
 - `?ai=hard` · one Hard opponent, free-for-all with the horde
 - `?ai=easy,insane:serverless` · two opponents, the second playing Serverless
@@ -362,6 +368,9 @@ the lobby lands, add them from the address bar:
 
 The balance runs (`npm run balance`, `BALANCE_DIFFICULTY=hard`) are a computer
 player alone against the horde, so a better AI is also a better balance test.
+`npm run balance:ffa` plays computers against each other
+(`FFA="hard:serverless,normal:hyperscaler;..."`, `FFA_SEEDS`, `FFA_MINUTES`,
+`FFA_HORDE=1`) and writes `balance-results/ffa/results.json`.
 
 **Playing with friends.** On the race picker press `H` (or **Play with
 friends**) and pick **Co-op** or **Free-for-all** (with or without the horde).
@@ -434,7 +443,7 @@ Direction: survival on a procedurally generated open web.
 - [x] Spawner ranks: upgrade a spawner in place for fewer, stronger units
 - [x] Co-op over WebRTC (invite links, lockstep)
 - [x] A win condition: break the Botnet Farms, then take the nest offline
-- [x] Computer players with difficulties (build and defend; attacking and a skirmish lobby next, #123)
+- [x] Computer players with difficulties: they build, defend and attack (a skirmish lobby next, #123)
 - More races: Hacker crew, State actor / APT
 - [x] Anonymous match reports (with replayable command logs) via Spacefast Zero
 - [x] Public at https://dist-xrbnhsmrf.view.fast/, source at https://github.com/mcali-dreamin/uptime-wars

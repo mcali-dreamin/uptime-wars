@@ -7,11 +7,18 @@
 // needs, and plays its hero. Its difficulty (content/difficulty.json) sets how
 // often it acts, how far it techs, and how freely it spends.
 //
-// It defends: it builds, grows, and survives. Attacking is next (issue #123).
+// It builds, grows, and defends; with enemy players in the match it also
+// attacks them (army.ts).
 
 import type { Content, DifficultyDef } from "../content";
 import { queueCommand } from "../commands";
-import { userCapacity } from "../economy";
+import { moveHero, playArmy } from "./army";
+import {
+  computeBalance,
+  squadReserve,
+  unitUpkeep,
+  userCapacity,
+} from "../economy";
 import { castBlocker, learnBlocker } from "../heroes";
 import { buildCost, canFound, canPlace } from "../placement";
 import { rankBlocker } from "../ranks";
@@ -63,8 +70,14 @@ export function tickAi(world: World, content: Content): void {
     }
     if (level.playsHero && world.tick % level.heroEveryTicks === 0)
       team.ai!.casts += playHero(world, content, team, issue);
-    if (world.tick % level.buildEveryTicks === 0)
+    if (world.tick % level.buildEveryTicks === 0) {
       playBase(world, content, team, level, issue);
+      if (level.attack) {
+        playArmy(world, content, team, level.attack, issue);
+        if (level.playsHero && team.ai!.phase !== "gather")
+          moveHero(world, team, level.attack, issue);
+      }
+    }
   }
 }
 
@@ -127,9 +140,12 @@ function playBase(
     if (upgrade) issue({ type: "research", upgrade });
   }
   // Saving for the next tier: don't spend below what it costs.
+  // (Between the price and price plus reserve it can afford the tier but
+  // won't start it yet: that's still saving, or it spends down every time.)
+  const tierBlocked = canResearch(content, team, tier);
   const saving =
-    !grown && canResearch(content, team, tier) === "not enough $"
-      ? tierPrice
+    !grown && (tierBlocked === "not enough $" || tierBlocked === null)
+      ? tierPrice + level.tierReserve
       : 0;
   // Once comfortable, rank a spawner up: at the compute cap better units beat more of them.
   if (!saving && level.rankAbove !== null && team.money > level.rankAbove) {
@@ -149,28 +165,52 @@ function playBase(
   const rotation = content.races[team.raceId]!.buildings.filter(
     (b) => !SKIP.has(b),
   );
+  // Compute its squads still need beyond what's spare (asked once, only if a spawner comes up).
+  let short: number | undefined;
+  const unmanned = () => {
+    if (short === undefined) {
+      const { supply, demand } = computeBalance(world, content, team);
+      short = squadReserve(world, content, team) - (supply - demand);
+    }
+    return short;
+  };
   for (let tries = 0; tries < rotation.length; tries += 1) {
     const b = rotation[(ai.next + tries) % rotation.length]!;
-    if (!habitAllows(world, content, team, b)) continue;
-    if (
-      saving &&
-      team.money - content.buildings[b]!.cost <
-        (saving * level.savingKeepPermille) / 1000
-    )
-      break;
+    if (!habitAllows(world, content, team, b, unmanned)) continue;
+    // Saving: what grows the economy may dip into the savings (down to a
+    // share of the price); anything else waits until the tier is paid for.
+    const def = content.buildings[b]!;
+    const grows = (def.compute ?? 0) > 0 || (def.userCapacity ?? 0) > 0;
+    const keep = grows ? (saving * level.savingKeepPermille) / 1000 : saving;
+    if (saving && team.money - def.cost < keep) continue;
     const spot = findSpot(world, content, team, b, core);
     if (spot) {
       issue({ type: "build", building: b, col: spot.col, row: spot.row });
       ai.next = (ai.next + tries + 1) % rotation.length;
-      break;
+      return;
     }
-    if (
-      canPlace(world, content, team.id, b, core.col + 3, core.row) ===
-      "not enough $"
-    )
-      break;
+    if (team.money < buildCost(world, content, team.id, b)) break;
   }
 }
+
+function countOf(world: World, team: Team, building: string): number {
+  return world.entities.filter(
+    (e) =>
+      e.kind === "building" &&
+      e.team === team.id &&
+      e.defId === building &&
+      e.hp > 0,
+  ).length;
+}
+
+/** A tower, wall or gate: no compute, users or units, just in the way or shooting. */
+const isDefence = (def: Content["buildings"][string]) =>
+  (def.attack !== undefined || def.blocks === true) &&
+  !def.spawn &&
+  !def.invoke &&
+  !def.compute &&
+  !def.userCapacity &&
+  !def.buildRadius;
 
 /**
  * The one race habit the basics lack. Serverless: functions bill per run, so
@@ -181,6 +221,7 @@ function habitAllows(
   content: Content,
   team: Team,
   building: string,
+  unmanned: () => number,
 ): boolean {
   const def = content.buildings[building]!;
   if (def.invoke) {
@@ -193,10 +234,43 @@ function habitAllows(
     ).length;
     return have < 2 + 2 * tierOf(content, team);
   }
+  // Defences (towers, walls and gates) up to a few per tier: past that the
+  // money does more as economy and army, and a base of nothing but towers
+  // is one nobody can ever break, it included.
+  if (isDefence(def)) {
+    const have = world.entities.filter(
+      (e) =>
+        e.kind === "building" &&
+        e.team === team.id &&
+        e.hp > 0 &&
+        isDefence(content.buildings[e.defId]!),
+    ).length;
+    return have < 4 + 4 * tierOf(content, team);
+  }
+  // No spawner it can't man: if spare compute won't cover the squads it
+  // already has to fill plus this one's, it would only sink money into an
+  // empty building, and its army would be no bigger for it.
+  if (
+    def.spawn &&
+    unmanned() + def.spawn.maxAlive * unitUpkeep(content, def.spawn.unit) > 0
+  )
+    return false;
   return true;
 }
 
-/** The nearest open spot around the core, walking outward ring by ring. */
+/** Square rings of tile offsets, nearest first: every tile 2 to 10 out. */
+const RINGS: [number, number][][] = [];
+for (let d = 2; d <= 10; d += 1) {
+  const ring: [number, number][] = [];
+  for (let dr = -d; dr <= d; dr += 1) {
+    for (let dc = -d; dc <= d; dc += 1) {
+      if (Math.max(Math.abs(dc), Math.abs(dr)) === d) ring.push([dc, dr]);
+    }
+  }
+  RINGS.push(ring);
+}
+
+/** The nearest spot to its core where this building may go, ring by ring (every tile, not a few lines out). */
 function findSpot(
   world: World,
   content: Content,
@@ -208,41 +282,14 @@ function findSpot(
   // would fail at every spot, after canPlace's costlier checks.
   const cost = buildCost(world, content, team.id, building);
   if (team.money < cost) return null;
-  const have = world.entities.filter(
-    (e) =>
-      e.kind === "building" &&
-      e.team === team.id &&
-      e.defId === building &&
-      e.hp > 0,
-  ).length;
-  if (tierBlocker(content, team, building, have)) return null;
-  for (let d = 2; d <= 10; d += 1) {
-    for (const [dc, dr] of [
-      [d, 0],
-      [-d, 0],
-      [0, d],
-      [0, -d],
-      [d, d],
-      [-d, -d],
-      [d, -d],
-      [-d, d],
-      [d, 1],
-      [-d, 1],
-      [1, d],
-      [1, -d],
-    ] as const) {
-      if (
-        canPlace(
-          world,
-          content,
-          team.id,
-          building,
-          core.col + dc,
-          core.row + dr,
-          cost,
-        ) === null
-      )
-        return { col: core.col + dc, row: core.row + dr };
+  if (tierBlocker(content, team, building, countOf(world, team, building)))
+    return null;
+  for (const ring of RINGS) {
+    for (const [dc, dr] of ring) {
+      const col = core.col + dc;
+      const row = core.row + dr;
+      if (canPlace(world, content, team.id, building, col, row, cost) === null)
+        return { col, row };
     }
   }
   return null;

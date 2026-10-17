@@ -13,6 +13,7 @@ import {
   tierOf,
   type World,
 } from "../src/sim";
+import { computeBalance, squadReserve } from "../src/sim/economy";
 import { skirmishSetup } from "../src/game/skirmish";
 
 const content = loadDefaultContent();
@@ -154,6 +155,62 @@ describe("computer players", () => {
       (person! * content.difficulties.insane!.revenuePermille) / 1000,
     );
     expect(insane).toBeGreaterThan(person!);
+  });
+});
+
+describe("computer players grow on their own income", () => {
+  // No horde, so no creep bounties to cover its mistakes: it has to save for
+  // its core tiers, not sink the money into spawners it can't man or towers,
+  // and keep finding room as the base fills. Every race.
+  const races = ["open-source", "hyperscaler", "serverless", "walled-garden"];
+  const world = createWorld(content, {
+    seed: 42,
+    mode: "ffa",
+    races,
+    startWithCore: true,
+    ai: ["normal", "normal", "normal", "normal"],
+  });
+  minutes(world, 6);
+  const tiers = world.teams.map((t) => tierOf(content, t));
+  minutes(world, 5);
+  const defences = (team: number) =>
+    world.entities.filter((e) => {
+      if (e.kind !== "building" || e.team !== team || e.hp <= 0) return false;
+      const def = content.buildings[e.defId]!;
+      return (def.attack !== undefined || def.blocks) && !def.spawn && !def.invoke && !def.compute && !def.userCapacity && !def.buildRadius;
+    }).length;
+
+  it.each(races.map((race, team) => [race, team] as const))("%s saves up for its top tier in good time", (_race, team) => {
+    expect(tiers[team]).toBe(content.difficulties.normal!.maxTier);
+  });
+
+  it.each(races.map((race, team) => [race, team] as const))("%s finds room to spend what it earns", (_race, team) => {
+    expect(world.teams[team]!.money).toBeLessThan(2000);
+    expect(buildings(world, team)).toBeGreaterThan(25);
+  });
+
+  it.each(races.map((race, team) => [race, team] as const))("%s keeps its defences to a few per tier", (_race, team) => {
+    expect(defences(team)).toBeLessThanOrEqual(4 + 4 * tierOf(content, world.teams[team]!));
+  });
+});
+
+describe("computer players man what they build", () => {
+  // A spawner it has no compute to fill is money sunk into an empty
+  // building. Worse, a base of them is a wall of hp no attack gets through,
+  // so an FFA against a weak computer turns into a stalemate.
+  it("builds no spawner that spare compute can't fill", () => {
+    const world = createWorld(content, {
+      seed: 1,
+      mode: "ffa",
+      races: ["serverless", "walled-garden"],
+      startWithCore: true,
+      ai: ["normal", "easy"],
+    });
+    minutes(world, 9);
+    for (const team of world.teams.slice(0, 2)) {
+      const { supply, demand } = computeBalance(world, content, team);
+      expect(squadReserve(world, content, team) - (supply - demand)).toBeLessThanOrEqual(0);
+    }
   });
 });
 

@@ -62,6 +62,24 @@ export interface AiState {
   next: number;
   /** Hero abilities cast so far. */
   casts: number;
+  /** Its army: building up at home, out attacking, or on its way back. */
+  phase: "gather" | "attack" | "retreat";
+  /** Unit ids in the current attack. */
+  group: number[];
+  /** The attack's strength (compute) when it set out, reinforcements added. */
+  launched: number;
+  /** The start spot it's checking, if any. */
+  goal: number | null;
+  /** What it last ordered the army at (a building id, or -2 - spot), so orders aren't repeated. */
+  goalId: number;
+  /** Start spots it has checked. */
+  checked: number[];
+  /** Enemy teams it has found. */
+  known: number[];
+  /** No new attack before this tick (after a retreat). */
+  until: number;
+  /** Its core's hp when it last looked, to tell when home is being hit. */
+  coreHp: number;
 }
 
 export interface HeroState {
