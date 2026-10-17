@@ -3,15 +3,19 @@
 
 import { describe, expect, it, vi } from "vitest";
 import server from "../zero/server/index";
-import { CODE_LENGTH, INVITE_TTL_MS, MAX_BLOB, codeFromPath, makeCode, validCode } from "../zero/server/rules";
+import { CODE_LENGTH, INVITE_TTL_MS, MAX_BLOB, QUEUE_FRESH_MS, codeFromPath, makeCode, pickHost, validCode } from "../zero/server/rules";
 
 type Row = { id: string; createdAt: string; updatedAt: string; [field: string]: unknown };
 
 function fakeDb() {
+  return { invites: fakeTable({ answer: "" }), queue: fakeTable({}) };
+}
+
+function fakeTable(defaults: Record<string, unknown>) {
   const rows: Row[] = [];
   let next = 1;
   const range = (filters: [string, unknown][]) => ({ eq: (field: string, value: unknown) => (filters.push([field, value]), range(filters)) });
-  const invites = {
+  return {
     rows,
     withIndex(_name: string, build?: (r: ReturnType<typeof range>) => unknown) {
       const filters: [string, unknown][] = [];
@@ -30,7 +34,7 @@ function fakeDb() {
     },
     insert: async (value: Record<string, unknown>) => {
       const now = new Date().toISOString();
-      const row = { answer: "", ...value, id: String(next++), createdAt: now, updatedAt: now } as Row;
+      const row = { ...defaults, ...value, id: String(next++), createdAt: now, updatedAt: now } as Row;
       rows.push(row);
       return row;
     },
@@ -45,7 +49,6 @@ function fakeDb() {
       return i >= 0;
     },
   };
-  return { invites };
 }
 
 function relay() {
@@ -149,3 +152,89 @@ describe("invite relay", () => {
     expect(codeFromPath("/api/other/K7QF2M")).toBeNull();
   });
 });
+
+describe("quick match queue", () => {
+  const V = "0.65.0";
+  /** A host with an open invite, listed for Quick Match. */
+  async function listed(call: ReturnType<typeof relay>["call"], version = V) {
+    const { code, key } = (await call("POST", "/api/invites", { offer: OFFER })).body as { code: string; key: string };
+    const res = await call("POST", "/api/queue", { code, key, version });
+    return { code, key, res };
+  }
+  const later = async (ms: number, fn: () => Promise<void>) => {
+    vi.useFakeTimers({ now: Date.now() + ms, toFake: ["Date"] });
+    try {
+      await fn();
+    } finally {
+      vi.useRealTimers();
+    }
+  };
+
+  it("nobody waiting: find comes back empty; a listed host is found, on its version only", async () => {
+    const { call } = relay();
+    expect((await call("POST", "/api/queue/find", { version: V })).body).toEqual({ code: null });
+    const host = await listed(call);
+    expect(host.res.body).toEqual({ ok: true, join: null });
+    expect((await call("POST", "/api/queue/find", { version: V })).body).toEqual({ code: host.code });
+    expect((await call("POST", "/api/queue/find", { version: "0.64.0" })).body).toEqual({ code: null });
+  });
+
+  it("listing needs the invite's key", async () => {
+    const { call } = relay();
+    const { code } = (await call("POST", "/api/invites", { offer: OFFER })).body as { code: string };
+    expect((await call("POST", "/api/queue", { code, key: "nope", version: V })).status).toBe(404);
+    expect((await call("POST", "/api/queue", { code, key: "x", version: "has spaces" })).status).toBe(400);
+    expect((await call("POST", "/api/queue/find", { version: V })).body).toEqual({ code: null });
+  });
+
+  it("an answered invite drops off the queue", async () => {
+    const { call, db } = relay();
+    const host = await listed(call);
+    await call("POST", `/api/invites/${host.code}/answer`, { answer: ANSWER });
+    expect((await call("POST", "/api/queue/find", { version: V })).body).toEqual({ code: null });
+    expect(db.queue.rows).toHaveLength(0);
+  });
+
+  it("a host that stops heartbeating is gone; one that keeps it up stays", async () => {
+    const { call } = relay();
+    const gone = await listed(call);
+    const staying = await listed(call);
+    await later(QUEUE_FRESH_MS / 2, async () => {
+      await call("POST", "/api/queue", { code: staying.code, key: staying.key, version: V });
+    });
+    await later(QUEUE_FRESH_MS + 1000, async () => {
+      expect((await call("POST", "/api/queue/find", { version: V })).body).toEqual({ code: staying.code });
+    });
+    expect(gone.code).not.toBe(staying.code);
+  });
+
+  it("two searching at once: the later host is told to join the earlier one", async () => {
+    const { call } = relay();
+    const first = await listed(call);
+    await later(50, async () => {
+      const second = await listed(call);
+      expect(second.res.body).toEqual({ ok: true, join: first.code });
+      // ...and the earlier one is never told to give way.
+      expect((await call("POST", "/api/queue", { code: first.code, key: first.key, version: V })).body).toEqual({ ok: true, join: null });
+    });
+  });
+
+  it("leaving takes the listing down", async () => {
+    const { call } = relay();
+    const host = await listed(call);
+    expect((await call("POST", "/api/queue/leave", { code: host.code, key: "nope" })).status).toBe(404);
+    expect((await call("POST", "/api/queue/leave", { code: host.code, key: host.key })).status).toBe(200);
+    expect((await call("POST", "/api/queue/find", { version: V })).body).toEqual({ code: null });
+  });
+
+  it("the longest wait wins; ties go by code, the same answer from both sides", () => {
+    const at = (code: string, since: number) => ({ code, version: V, since, seen: 1000 });
+    const a = at("AAAAAA", 10);
+    const b = at("BBBBBB", 10);
+    const c = at("CCCCCC", 5);
+    expect(pickHost([a, b, c], V, 1000)?.code).toBe("CCCCCC");
+    expect(pickHost([a, b], V, 1000, b)?.code).toBe("AAAAAA");
+    expect(pickHost([a, b], V, 1000, a)).toBeNull();
+  });
+});
+

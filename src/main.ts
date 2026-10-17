@@ -113,8 +113,8 @@ bar.hero = heroBar;
 info.describeAbility = (id) => heroBar.describe(id);
 const guide = new Guide(session);
 const telemetry = new Telemetry(content, version);
-const picker = new RacePicker(session, startMatch, (computer) => void coop.hostGame(computer), applyColor, telemetry);
-const coop = new CoopLobby(session, startNetMatch, () => picker.show(), (setup) => {
+const picker = new RacePicker(session, startMatch, (how) => void (how === "quick" ? coop.quickMatch() : coop.hostGame(how === "computer")), applyColor, telemetry);
+const coop = new CoopLobby(session, startNetMatch, () => picker.show(), version, (setup) => {
   leaveMatch();
   session.startLocal(setup);
   resetMatch();
