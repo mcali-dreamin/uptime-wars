@@ -3,16 +3,32 @@
 // host composed (sides, diplomacy, the botnet; see sim/teams.ts). From then
 // on the links carry lockstep turns (see lockstep.ts).
 
-import { MAX_PLAYERS, createWorld, rulesFor, type Content, type MatchMode, type MatchRules, type TeamId, type World } from "../../sim";
+import { MAX_PLAYERS, createWorld, rulesFor, type Content, type MatchMode, type MatchRules, type MatchSetup, type TeamId, type World } from "../../sim";
 import { Lockstep, type LockstepMessage } from "./lockstep";
 import type { PeerLink } from "./rtc";
 
-const HORDE_RACE = "botnet";
+export const HORDE_RACE = "botnet";
 
 type LobbyMessage =
   | { t: "hello"; race: string; hero?: string }
-  | { t: "start"; seed: number; races: string[]; heroes: (string | undefined)[]; you: TeamId; mode?: MatchMode; rules?: MatchRules }
+  | {
+      t: "start";
+      seed: number;
+      races: string[];
+      heroes: (string | null | undefined)[];
+      you: TeamId;
+      mode?: MatchMode;
+      rules?: MatchRules;
+      /** A difficulty per computer seat (null for people). */
+      ai?: (string | null | undefined)[];
+    }
   | LockstepMessage;
+
+/** A seat the host gave to a computer player. */
+export interface ComputerSeat {
+  race: string;
+  difficulty: string;
+}
 
 /**
  * How the host set the match up: a preset to start from, whether the botnet
@@ -39,6 +55,27 @@ export function composeRules(setup: LobbyRules, players: number): { rules: Match
   return { rules, horde: setup.horde || !enemyBesides };
 }
 
+/**
+ * The match a lobby sets up: the people first (host, then guests), then the
+ * computers, then the botnet if it plays. Sides cover every player, people
+ * and computers alike. The address bar's skirmish setup comes here too.
+ */
+export function lobbySetup(
+  seed: number,
+  people: { race: string; hero?: string }[],
+  computers: ComputerSeat[],
+  setup: LobbyRules,
+): MatchSetup {
+  const { rules, horde } = composeRules(setup, people.length + computers.length);
+  return {
+    seed,
+    rules,
+    races: [...people.map((p) => p.race), ...computers.map((c) => c.race), ...(horde ? [HORDE_RACE] : [])],
+    heroes: people.map((p) => p.hero),
+    ...(computers.length > 0 ? { ai: [...people.map(() => undefined), ...computers.map((c) => c.difficulty)] } : {}),
+  };
+}
+
 export interface NetMatch {
   world: World;
   lockstep: Lockstep;
@@ -59,10 +96,13 @@ export class HostLobby {
   onLeave: (team: TeamId) => void = () => {};
   private lockstep: Lockstep | null = null;
 
+  /** Seats the host gave to computers: they count against the seats left for friends. */
+  computers = 0;
+
   constructor(private readonly content: Content) {}
 
   get full(): boolean {
-    return this.guests.length >= MAX_PLAYERS - 1;
+    return this.guests.length + this.computers >= MAX_PLAYERS - 1;
   }
 
   /** Add a guest over an open link. */
@@ -98,16 +138,16 @@ export class HostLobby {
     return this.guests.filter((guest) => guest.race !== null);
   }
 
-  /** Start the match for everyone who's ready. The host is player 1. */
-  start(hostRace: string, seed: number, hostHero?: string, setup: LobbyRules = COOP): NetMatch {
+  /** Start the match for everyone who's ready. The host is player 1; computers come after the guests. */
+  start(hostRace: string, seed: number, hostHero?: string, setup: LobbyRules = COOP, computers: ComputerSeat[] = []): NetMatch {
     // Guests that never said hello don't get a seat.
     for (const guest of this.guests.filter((g) => g.race === null)) guest.link.close();
     this.guests.splice(0, this.guests.length, ...this.ready);
-    const { rules, horde } = composeRules(setup, this.guests.length + 1);
-    const races = [hostRace, ...this.guests.map((guest) => guest.race!), ...(horde ? [HORDE_RACE] : [])];
-    const heroes = [hostHero, ...this.guests.map((guest) => guest.hero)];
-    for (const [i, guest] of this.guests.entries()) guest.link.send({ t: "start", seed, races, heroes, you: i + 1, rules } satisfies LobbyMessage);
-    const world = createWorld(this.content, { seed, races, heroes, rules });
+    const match = lobbySetup(seed, [{ race: hostRace, hero: hostHero }, ...this.guests.map((g) => ({ race: g.race!, hero: g.hero }))], computers, setup);
+    for (const [i, guest] of this.guests.entries()) {
+      guest.link.send({ t: "start", seed, races: match.races, heroes: match.heroes ?? [], you: i + 1, rules: match.rules as MatchRules, ai: match.ai } satisfies LobbyMessage);
+    }
+    const world = createWorld(this.content, match);
     this.lockstep = new Lockstep(world, this.content, {
       local: 0,
       host: true,
@@ -133,7 +173,7 @@ export function joinHost(content: Content, link: PeerLink, race: string, hero: s
   link.onMessage = (raw) => {
     const message = raw as LobbyMessage;
     if (message.t !== "start") return;
-    const world = createWorld(content, { seed: message.seed, races: message.races, heroes: message.heroes ?? [], mode: message.mode ?? "coop", rules: message.rules });
+    const world = createWorld(content, { seed: message.seed, races: message.races, heroes: message.heroes ?? [], mode: message.mode ?? "coop", rules: message.rules, ai: message.ai });
     const lockstep = new Lockstep(world, content, { local: message.you, host: false, send: (m) => link.send(m) });
     link.onMessage = (next) => {
       const m = next as LobbyMessage;

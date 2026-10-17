@@ -358,8 +358,17 @@ in waves and brings it home when the wave is spent or its base is in trouble.
 Like you, it knows where the start spots are but not who's at them, so it
 scouts. Its hero goes with the army and comes home to heal. When it attacks,
 how big a wave it waits for and when it gives up are also difficulty
-(`attack`). Alone against the horde or in co-op it only defends. Until the
-lobby lands (#123), add computers from the address bar:
+(`attack`). Alone against the horde or in co-op it only defends.
+
+On the race picker press `C` (or **Play vs computer**). That's the same
+lobby as playing with friends, with a computer in the next seat. Each seat is
+a friend or a computer, and each computer gets a difficulty, a race and a
+starting side. Seat computers on your side for co-op, on their own for a
+free-for-all, or mix people and computers in teams. Computers keep the side
+they start on: they don't take alliance offers. With no friend joined, the
+match is played on your machine and can pause. With friends, it's a network
+match and every browser works out the computers' moves the same way, so
+nobody waits on them. The address bar works too, for quick tests:
 
 - `?ai=hard` · one Hard opponent, free-for-all with the horde
 - `?ai=easy,insane:serverless` · two opponents, the second playing Serverless
@@ -373,7 +382,8 @@ player alone against the horde, so a better AI is also a better balance test.
 `FFA_HORDE=1`) and writes `balance-results/ffa/results.json`.
 
 **Playing with friends.** On the race picker press `H` (or **Play with
-friends**) and pick **Co-op** or **Free-for-all** (with or without the horde).
+friends**) and start from **Co-op**, **Free-for-all** or **Teams**, then set
+the sides, the botnet and alliances. Any seat can go to a computer instead.
 Send a friend the invite link (it ends in a six-letter code); they open it,
 pick a race, and you're connected. One link per friend, up to three. Press
 **Start match** when everyone's in. The browsers connect directly over
@@ -443,7 +453,7 @@ Direction: survival on a procedurally generated open web.
 - [x] Spawner ranks: upgrade a spawner in place for fewer, stronger units
 - [x] Co-op over WebRTC (invite links, lockstep)
 - [x] A win condition: break the Botnet Farms, then take the nest offline
-- [x] Computer players with difficulties: they build, defend and attack (a skirmish lobby next, #123)
+- [x] Computer players with difficulties: they build, defend and attack, from a lobby seat or the address bar (#123)
 - More races: Hacker crew, State actor / APT
 - [x] Anonymous match reports (with replayable command logs) via Spacefast Zero
 - [x] Public at https://dist-xrbnhsmrf.view.fast/, source at https://github.com/mcali-dreamin/uptime-wars

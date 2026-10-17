@@ -1,6 +1,7 @@
-// Co-op in two real browsers: invites connect over both signalling paths,
-// then one match runs in lockstep, stays in sync, and survives a guest
-// leaving. Lockstep rules themselves are covered in tests/lockstep.test.ts
+// The lobby in real browsers: Play vs computer starts a local match against
+// computers; invites connect over both signalling paths, then one match
+// (with a computer seat) runs in lockstep, stays in sync, and survives a
+// guest leaving. Lockstep rules themselves are covered in tests/lockstep.test.ts
 // and the relay handlers in tests/invites.test.ts.
 //
 //   npm run build && node e2e/coop.mjs dist
@@ -68,6 +69,24 @@ await run(
       return { host, guest };
     };
 
+    // Play vs computer: the same lobby, a computer in the next seat. With no
+    // friend joined the match is played locally, so it can pause.
+    {
+      const solo = await open(`${url}?debug&2d`);
+      await solo.waitForTimeout(500);
+      await solo.keyboard.press("c");
+      check(await waitFor(() => solo.$$eval(".coop-computer", (rows) => rows.length === 1)), "Play vs computer opens the lobby with a computer seated");
+      await solo.selectOption(".coop-computer select[title='How well it plays']", "hard");
+      await solo.click("#coop-add-computer");
+      await solo.click("#coop-start");
+      const seats = await waitFor(() =>
+        solo.evaluate(() => (window.uptime.world.tick > 20 ? { net: window.uptime.session.net !== null, ai: window.uptime.world.teams.map((t) => t.ai?.difficulty ?? "-").join() } : null)),
+      30000);
+      check(seats && !seats.net && seats.ai.startsWith("-,hard,normal"), `you and two computers, played locally (${seats?.ai})`);
+      check(await waitFor(async () => (await solo.textContent("#players")).includes("Computer 2 · Hard"), 10000), "the players panel names the computers");
+      await solo.context().close();
+    }
+
     // Copy-paste signalling (the handshake is the part that differs), then a
     // composed match: free-for-all, no horde, open alliances. The host's rules
     // reach the guest, and the two ally from the players panel.
@@ -96,12 +115,16 @@ await run(
     await paste.guest.context().close();
 
     // Relay signalling, then the whole match.
+    // A computer takes the third seat: every browser plays it the same.
     const { host, guest } = await connect(true);
+    await host.click("#coop-add-computer");
     await host.click("#coop-start");
     check(await waitFor(() => guest.evaluate(() => window.uptime.world.tick > 20), 60000), "the match starts in both browsers");
-    const who = (page) => page.evaluate(() => ({ local: window.uptime.session.local, races: window.uptime.world.teams.map((t) => t.raceId).join() }));
+    const who = (page) =>
+      page.evaluate(() => ({ local: window.uptime.session.local, races: window.uptime.world.teams.map((t) => t.raceId).join(), ai: window.uptime.world.teams[2]?.ai?.difficulty }));
     const [h, g] = [await who(host), await who(guest)];
     check(h.local === 0 && g.local === 1 && h.races === g.races, `each browser plays its own team in the same match (${h.races})`);
+    check(h.ai === "normal" && g.ai === "normal", "the computer seat reaches the guest");
 
     // Each player founds its core with real input; both worlds see both.
     for (const page of [host, guest]) {
@@ -112,8 +135,8 @@ await run(
       await page.mouse.move(p.x, p.y);
       await page.mouse.click(p.x, p.y);
     }
-    const cores = (page) => page.evaluate(() => window.uptime.world.teams.slice(0, 2).every((t) => t.coreId !== -1));
-    check(await waitFor(async () => (await cores(host)) && (await cores(guest)), 120000), "each player's deploy reaches both worlds");
+    const cores = (page) => page.evaluate(() => window.uptime.world.teams.slice(0, 3).every((t) => t.coreId !== -1));
+    check(await waitFor(async () => (await cores(host)) && (await cores(guest)), 120000), "each player's deploy (and the computer's) reaches both worlds");
 
     // Lockstep compares world hashes every 100 ticks.
     const synced = await waitFor(() => host.evaluate(() => window.uptime.session.net.hashChecks >= 1), 240000);

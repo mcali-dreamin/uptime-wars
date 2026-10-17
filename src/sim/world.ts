@@ -46,8 +46,8 @@ export interface MatchSetup {
    * Player n starts at terrain.starts[n].
    */
   races: string[];
-  /** Hero unit per team (in team order); omitted or missing means the race's first. */
-  heroes?: (string | undefined)[];
+  /** Hero unit per team (in team order); omitted or missing (null: sent as JSON) means the race's first. */
+  heroes?: (string | null | undefined)[];
   /** Skip the builder phase: found every core at its start tile. */
   startWithCore?: boolean;
   /** A preset to start from: co-op (default) or ffa. `rules` overrides any part of it. */
@@ -56,14 +56,15 @@ export interface MatchSetup {
   rules?: Partial<MatchRules>;
   /**
    * Per team (in team order): a difficulty id makes that player a computer
-   * player; omitted or undefined is a person. Only players can be computers.
+   * player; omitted, undefined or null (sent as JSON) is a person. Only
+   * players can be computers.
    */
-  ai?: (string | undefined)[];
+  ai?: (string | null | undefined)[];
 }
 
 export function createWorld(content: Content, setup: MatchSetup): World {
   const terrain = generateTerrain(setup.seed);
-  const teams = setup.races.map((race, id) => makeTeam(content, id, race, setup.heroes?.[id], setup.ai?.[id]));
+  const teams = setup.races.map((race, id) => makeTeam(content, id, race, setup.heroes?.[id] ?? undefined, setup.ai?.[id] ?? undefined));
   const players = teams.filter((team) => team.controller === "human").length;
   const rules: MatchRules = { ...rulesFor(setup.mode ?? "coop", players), ...setup.rules };
   const world: World = {

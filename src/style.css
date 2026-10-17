@@ -353,7 +353,14 @@ body {
 }
 
 
-#coop-host {
+#picker-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+#coop-host,
+#vs-computer {
   margin-top: 0.5rem;
   padding: 0.5rem 1rem;
   background: var(--panel);
@@ -364,7 +371,8 @@ body {
   cursor: pointer;
 }
 
-#coop-host:hover {
+#coop-host:hover,
+#vs-computer:hover {
   border-color: var(--accent);
 }
 
@@ -914,10 +922,43 @@ body {
   font-size: 0.85rem;
 }
 
+#coop-players {
+  display: grid;
+  gap: 0.3rem;
+  padding-left: 0;
+}
+
 #coop-players li {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
   gap: 0.75rem;
+}
+
+#coop-players li > span {
+  margin-right: auto;
+}
+
+#coop-players .coop-computer {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+#coop-players .coop-computer > span {
+  white-space: nowrap;
+}
+
+#coop-players .coop-computer :is(select, button) {
+  min-width: 0;
+  padding: 0.25rem 0.4rem;
+}
+
+#coop-players .coop-computer select:nth-of-type(2) {
+  flex: 0 1 10.5rem;
+}
+
+#coop-add-computer {
+  align-self: flex-start;
 }
 
 #coop-rules-note {

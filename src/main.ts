@@ -44,6 +44,7 @@ import { metronome } from "./game/metronome";
 import { version } from "../package.json";
 import { HeroBar, heroUnit } from "./ui/hero-bar";
 import { castBlocker } from "./sim/heroes";
+import { playerName } from "./ui/names";
 
 const STEP_MS = 1000 / TICK_RATE;
 /** Two clicks on the same unit this close together select all of its kind on screen. */
@@ -112,11 +113,15 @@ bar.hero = heroBar;
 info.describeAbility = (id) => heroBar.describe(id);
 const guide = new Guide(session);
 const telemetry = new Telemetry(content, version);
-const picker = new RacePicker(session, startMatch, () => void coop.hostGame(), applyColor, telemetry);
-const coop = new CoopLobby(session, startNetMatch, () => picker.show());
+const picker = new RacePicker(session, startMatch, (computer) => void coop.hostGame(computer), applyColor, telemetry);
+const coop = new CoopLobby(session, startNetMatch, () => picker.show(), (setup) => {
+  leaveMatch();
+  session.startLocal(setup);
+  resetMatch();
+});
 coop.onLeave = (team) => {
   if (team === 0 && session.local !== 0) renderer.showBanner("The host left · match over");
-  else renderer.showBanner(`Player ${team + 1} disconnected · their base fights on`);
+  else renderer.showBanner(`${playerName(session.world, team)} disconnected · their base fights on`);
 };
 
 let selection: Selection = NOTHING;
@@ -644,15 +649,15 @@ function advance(now: number): void {
           renderer.showBanner(
             event.team === session.local
               ? alliesUp ? "You're offline · your allies play on" : "You're offline · spectating"
-              : allied(w, event.team, session.local) ? `Player ${event.team + 1} is offline` : `Player ${event.team + 1} is out`,
+              : allied(w, event.team, session.local) ? `${playerName(w, event.team)} is offline` : `${playerName(w, event.team)} is out`,
           );
         }
         // Diplomacy that involves you.
-        if (event.type === "ally-offer" && event.with === session.local) renderer.showBanner(`Player ${event.team + 1} offers an alliance · accept it top right`);
+        if (event.type === "ally-offer" && event.with === session.local) renderer.showBanner(`${playerName(session.world, event.team)} offers an alliance · accept it top right`);
         if (event.type === "allied" && (event.team === session.local || event.with === session.local)) {
-          renderer.showBanner(`Allied with Player ${(event.team === session.local ? event.with : event.team) + 1}`);
+          renderer.showBanner(`Allied with ${playerName(session.world, event.team === session.local ? event.with : event.team)}`);
         }
-        if (event.type === "unallied" && event.with === session.local) renderer.showBanner(`Player ${event.team + 1} broke the alliance`);
+        if (event.type === "unallied" && event.with === session.local) renderer.showBanner(`${playerName(session.world, event.team)} broke the alliance`);
         if (event.type === "hero-level" && event.team === session.local) renderer.showBanner(`Level ${event.level} · skill point ready (Q)`);
 
         if (event.type === "hero-up" && event.team === session.local) renderer.showBanner("Your hero is back");
