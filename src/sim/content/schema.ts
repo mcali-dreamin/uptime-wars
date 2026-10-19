@@ -336,6 +336,11 @@ export interface EconomyDef {
   /** Each building of a kind you own makes the next one cost this much more, permille. */
   costGrowthPermille: number;
   /**
+   * Share of what you paid for a finished building that decommissioning it
+   * gives back, permille. One still deploying gives back all of it.
+   */
+  decommissionRefundPermille: number;
+  /**
    * Compute is capacity, not money: buildings supply it, users and units use
    * it. Over capacity, the overload (the share of demand you can't serve)
    * scales the trouble: no new users, `churnPerSecond` x overload of them

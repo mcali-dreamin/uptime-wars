@@ -44,3 +44,4 @@ export { buildingMaxHp } from "./entities";
 export { buildingRank, nextRank, rankBlocker, rankCost, rankedUpkeep, ranksOf, refitting, unitRank } from "./ranks";
 export { infectionSites, liveNodes } from "./spread";
 export { difficultyOf, revenueFactor } from "./ai";
+export { decommissionBlocker, decommissionRefund, dismissable } from "./decommission";

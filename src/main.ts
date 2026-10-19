@@ -5,6 +5,7 @@ import { bindInput, type GameInput } from "./input";
 import { Renderer } from "./render/renderer";
 import {
   NOTHING,
+  removal,
   allSoldiers,
   armed,
   armyUnits,
@@ -85,7 +86,12 @@ const listener: Listener = {
   },
   visible: (p) => renderer.fog.isVisible(p.x, p.y),
 };
-const info = new InfoPanel(session, () => arm(), () => invokeSelected(), () => forkSelected(), () => rankSelected());
+/** A first Delete, waiting for the second that confirms it. */
+let pendingRemoval: { key: string; at: number } | null = null;
+const REMOVE_CONFIRM_MS = 2500;
+
+const info = new InfoPanel(session, () => arm(), () => invokeSelected(), () => forkSelected(), () => rankSelected(), () => removeSelected());
+info.removeArmed = () => pendingRemoval !== null && removal(session, selection)?.key === pendingRemoval.key && performance.now() - pendingRemoval.at < REMOVE_CONFIRM_MS;
 const bar = new BuildBar(session, {
   choose: (button) => {
     sound.ui("click");
@@ -299,6 +305,28 @@ function order(point: Point, queue = false): void {
  * Arm the selection's ground order, so the next left-click gives it: T (or the
  * panel button) for rally / attack-move, F for a plain move.
  */
+/**
+ * Decommission the selected buildings or dismiss the selected units (Delete,
+ * Backspace, or the info card's button). Takes two presses: the first says
+ * what would go, the second sends it.
+ */
+function removeSelected(): boolean {
+  const plan = removal(session, selection);
+  if (!plan) return false;
+  const now = performance.now();
+  if (pendingRemoval?.key === plan.key && now - pendingRemoval.at < REMOVE_CONFIRM_MS) {
+    pendingRemoval = null;
+    for (const order of plan.orders) session.issue(order);
+    sound.ui("order");
+    select(NOTHING);
+    return true;
+  }
+  pendingRemoval = { key: plan.key, at: now };
+  renderer.showBanner(`${plan.label}? Press Delete again to confirm`);
+  info.refresh(selection);
+  return true;
+}
+
 /** Start placing a fork of the selected building (X, or the info card's button). */
 function forkSelected(): boolean {
   const entity = selectedEntity(session, selection);
@@ -509,6 +537,7 @@ const gameInput: GameInput = {
     if (key === "v") return invokeSelected();
     if (key === "x") return forkSelected();
     if (key === "u") return rankSelected();
+    if (key === "delete" || key === "backspace") return removeSelected();
     if (key === "z") {
       // The whole army.
       const ids = allSoldiers(session).map((u) => u.id);
@@ -674,6 +703,13 @@ function advance(now: number): void {
         if (event.type === "hero-up" && event.team === session.local) renderer.showBanner("Your hero is back");
         // Something you asked for didn't happen: say why, not just the error sound.
         if (event.type === "rejected" && event.command.team === session.local) showRejection(event.reason);
+        if (event.type === "decommissioned" && event.team === session.local) {
+          renderer.showBanner(
+            event.buildings > 0
+              ? `Decommissioned ${event.buildings} building${event.buildings === 1 ? "" : "s"}${event.refund > 0 ? ` · +$${event.refund}` : ""}`
+              : `Dismissed ${event.units} unit${event.units === 1 ? "" : "s"}`,
+          );
+        }
         if (event.type === "researched" && event.team === session.team.id) {
           const def = content.upgrades[event.upgrade]!;
           const perk = def.stat === "tier" ? content.races[session.team.raceId]?.tierPerks?.[event.level] : undefined;

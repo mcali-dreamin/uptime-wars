@@ -98,7 +98,8 @@ export function tickIncome(ctx: TickContext): void {
 export function tickConstruction(ctx: TickContext): void {
   const { world, content } = ctx;
   for (const entity of world.entities) {
-    if (entity.kind !== "building" || entity.buildRemaining <= 0) continue;
+    // One that fell this tick stays down: building on it doesn't bring it back.
+    if (entity.kind !== "building" || entity.buildRemaining <= 0 || entity.hp <= 0) continue;
     const def = content.buildings[entity.defId]!;
     entity.hp = Math.min(entity.maxHp, entity.hp + (entity.maxHp * (1 - CONSTRUCTION_START_HP)) / def.buildTicks);
     entity.buildRemaining -= 1;

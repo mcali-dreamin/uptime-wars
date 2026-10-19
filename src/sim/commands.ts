@@ -9,6 +9,7 @@ import { buildCost, canFound, canPlace, isCore } from "./placement";
 import { canResearch, nextLevel, slotOf } from "./upgrades";
 import { invoke, invokeBlocker } from "./functions";
 import { applyFork } from "./mechanics";
+import { applyDecommission, applyDismiss } from "./decommission";
 import { heroOf, learnBlocker, orderCast } from "./heroes";
 import { allyBlocker, breakAlliance, hostile, offerAlliance, unallyBlocker } from "./teams";
 import { TILE_OPEN, isWalkableTile, tileAt } from "./terrain";
@@ -79,13 +80,19 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
       const reason = canPlace(world, content, command.team, command.building, command.col, command.row);
       if (reason) return reason;
       const team = world.teams[command.team]!;
-      team.money -= buildCost(world, content, team.id, command.building);
+      const cost = buildCost(world, content, team.id, command.building);
+      team.money -= cost;
       const building = placeBuilding(world, content, team.id, command.building, command.col, command.row, false);
+      building.paid = cost;
       ctx.byId.set(building.id, building);
       return null;
     }
     case "fork":
       return applyFork(ctx, command);
+    case "decommission":
+      return applyDecommission(ctx, command);
+    case "dismiss":
+      return applyDismiss(ctx, command);
     case "rally":
       return applyRally(ctx, command);
     case "order":

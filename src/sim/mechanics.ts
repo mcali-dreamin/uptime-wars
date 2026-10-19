@@ -33,8 +33,10 @@ export function applyFork(ctx: TickContext, command: ForkCommand): string | null
   const reason = forkBlocker(world, content, command.team, building, command.col, command.row);
   if (reason) return reason;
   const team = world.teams[command.team]!;
-  team.money -= forkCost(world, content, command.team, building)!;
+  const cost = forkCost(world, content, command.team, building)!;
+  team.money -= cost;
   const copy = placeBuilding(world, content, team.id, building!.defId, command.col, command.row, false);
+  copy.paid = cost;
   const fork = raceMechanics(content, team).fork!;
   copy.buildRemaining = Math.max(1, Math.floor((content.buildings[copy.defId]!.buildTicks * fork.buildPermille) / 1000));
   ctx.byId.set(copy.id, copy);

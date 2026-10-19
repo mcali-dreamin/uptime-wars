@@ -3,7 +3,7 @@
 // selected. Nothing else pops up. The full story lives in the Guide.
 
 import { invokeCost, upgradeName, earnedPerks, tierDef, TICK_RATE, forkCost, isCore, regionShield, buildingRank, nextRank, rankBlocker, rankCost, unitRank } from "../sim";
-import { armyUnits, groundOrderLabel, selectedEntity, spawnerGroup, type Selection } from "../game/selection";
+import { armyUnits, groundOrderLabel, removal, selectedEntity, spawnerGroup, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { heightAtTile, TILE, type Building, type Entity } from "../sim";
 import { HIGH_GROUND_DAMAGE } from "../sim/tuning";
@@ -24,6 +24,10 @@ export class InfoPanel {
   private readonly forkButton = $("info-fork");
   /** "Upgrade to <rank> · $N (U)" for a spawner. */
   private readonly rankButton = $("info-rank");
+  /** "Decommission · +$N (Del)" / "Dismiss (Del)": take your own things away. */
+  private readonly removeButton = $("info-remove");
+  /** Set while a first Delete waits for the second one, so the button asks to confirm. */
+  removeArmed: () => boolean = () => false;
   /** Build button under the pointer, or "found" for the deploy button. */
   hoverButton: string | null = null;
   /** Ability under the pointer in the hero's command card. */
@@ -37,7 +41,9 @@ export class InfoPanel {
     invoke: () => void = () => {},
     fork: () => void = () => {},
     rank: () => void = () => {},
+    remove: () => void = () => {},
   ) {
+    this.removeButton.addEventListener("click", () => remove());
     this.rankButton.addEventListener("click", () => rank());
     this.forkButton.addEventListener("click", () => fork());
     this.action.addEventListener("click", () => arm());
@@ -49,6 +55,7 @@ export class InfoPanel {
     this.invokeButton.hidden = true;
     this.forkButton.hidden = true;
     this.rankButton.hidden = true;
+    this.removeButton.hidden = true;
     const { content } = this.session;
     const raceId = this.session.team.raceId;
     const placing = selection.kind === "place" ? selection.building : selection.kind === "found" ? "found" : null;
@@ -61,6 +68,7 @@ export class InfoPanel {
     if (upgrade) return this.show(upgradeCard(content, this.session.team, upgrade));
     if (building) return this.show(buildingCard(content, raceId, building));
 
+    this.showRemoval(selection);
     if (selection.kind === "army") return this.showArmy(selection);
     if (selection.kind === "spawners") return this.showSpawners(selection);
     const entity = selectedEntity(this.session, selection);
@@ -149,6 +157,16 @@ export class InfoPanel {
     this.action.hidden = false;
     this.action.textContent = armed ? "Click the ground… (Esc)" : `${label} (T)`;
     this.action.classList.toggle("armed", armed);
+  }
+
+  /** Delete's button: what it would take away; once pressed, a second press confirms. */
+  private showRemoval(selection: Selection): void {
+    const plan = removal(this.session, selection);
+    if (!plan) return;
+    const armed = this.removeArmed();
+    this.removeButton.hidden = false;
+    this.removeButton.textContent = armed ? `${plan.label} · confirm (Del)` : `${plan.label} (Del)`;
+    this.removeButton.classList.toggle("armed", armed);
   }
 
   /** A group of your units: what's in it, and how to send it. */

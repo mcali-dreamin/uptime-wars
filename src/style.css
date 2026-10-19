@@ -217,6 +217,7 @@ body {
 #info-action,
 #info-fork,
 #info-rank,
+#info-remove,
 #info-invoke {
   pointer-events: auto;
   margin-top: 0.4rem;
@@ -231,6 +232,7 @@ body {
 
 #info-fork:hover,
 #info-rank:hover,
+#info-remove:hover,
 #info-invoke:hover,
 #info-action:hover,
 #info-action.armed {
@@ -239,9 +241,15 @@ body {
 
 #info-fork[hidden],
 #info-rank[hidden],
+#info-remove[hidden],
 #info-invoke[hidden],
 #info-action[hidden] {
   display: none;
+}
+
+#info-remove.armed {
+  border-color: #e05a4f;
+  color: #ffb3ab;
 }
 
 #info ul {

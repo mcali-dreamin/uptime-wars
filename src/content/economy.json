@@ -41,5 +41,6 @@
       "traffic": 3000
     }
   ],
-  "costGrowthPermille": 100
+  "costGrowthPermille": 100,
+  "decommissionRefundPermille": 500
 }
