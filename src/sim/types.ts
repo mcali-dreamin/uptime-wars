@@ -260,6 +260,12 @@ export interface OrderCommand {
   attack: boolean;
   /** Shift-queued: go here after the orders already given, instead of now. */
   queue?: boolean;
+  /**
+   * How many units the whole order is for, when a big selection is split
+   * over several commands (each holds at most MAX_ORDER_UNITS), so every part
+   * spreads out as wide as the whole group needs instead of piling up.
+   */
+  group?: number;
 }
 
 /** Start researching the next level of an upgrade at the core. */
