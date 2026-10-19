@@ -201,6 +201,8 @@ export interface Building extends EntityBase {
   rank?: number;
   /** Ticks left on a rank-up; it doesn't spawn or run meanwhile. */
   refitRemaining?: number;
+  /** $ its owner paid to build (or fork) it, refunded in part on decommission. Absent: it came free. */
+  paid?: number;
 }
 
 export type Entity = Unit | Building;
@@ -345,7 +347,23 @@ export interface UnallyCommand {
   with: TeamId;
 }
 
-export type Command = AllyCommand | UnallyCommand | RankCommand | ForkCommand | BuildCommand | MoveCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | AttackCommand | CastCommand | LearnCommand | InvokeCommand;
+/** Tear down some of your own buildings for part of what they cost (see decommission.ts). */
+export interface DecommissionCommand {
+  type: "decommission";
+  tick: number;
+  team: TeamId;
+  buildingIds: number[];
+}
+
+/** Send some of your own units away for good, freeing their compute. */
+export interface DismissCommand {
+  type: "dismiss";
+  tick: number;
+  team: TeamId;
+  unitIds: number[];
+}
+
+export type Command = DecommissionCommand | DismissCommand | AllyCommand | UnallyCommand | RankCommand | ForkCommand | BuildCommand | MoveCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | AttackCommand | CastCommand | LearnCommand | InvokeCommand;
 
 export interface WaveSpawn {
   tick: number;
@@ -407,6 +425,8 @@ export type SimEvent =
   | { type: "reported"; team: TeamId; x: number; y: number; packs: number }
   /** A short-lived unit's time ran out (not a kill: no bounty). */
   | { type: "expired"; id: number; x: number; y: number; team: TeamId }
+  /** A player tore down buildings or sent units away (each also gets an "expired"). */
+  | { type: "decommissioned"; team: TeamId; buildings: number; units: number; refund: number }
   | { type: "wave"; wave: number; name: string; packs: number; units: number; boss: boolean; entries?: { team: TeamId; x: number; y: number }[] }
   /** The botnet put fallen C2 Servers back up. */
   | { type: "fortified"; wave: number; rebuilt: number }

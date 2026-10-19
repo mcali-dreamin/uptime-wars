@@ -50,6 +50,12 @@ npm run dev
   them. Right-click the ground or an enemy to attack-move: they fight whatever
   they meet, then hold the spot. `F` then click is a plain move that ignores
   enemies (retreat). Units you've sent stay put when you change a rally.
+- **Take things back.** Select your own buildings and press `Delete` (or
+  `Backspace`, or the button on the info card) twice to decommission them: half
+  of what you paid comes back (all of it while one is still deploying,
+  `economy.json` → `decommissionRefundPermille`), and the next one of that kind
+  costs less again. Cores can't be decommissioned. With units selected, `Delete`
+  dismisses them: no refund, but their compute is free at once.
 - **Every race fields three units of its own, one per core tier**, and earns a
   fixed perk at Data Center and at Region (see the Guide's Races tab):
   Open Source (Process, Inference Drone, Kernel; cheaper forks, faster

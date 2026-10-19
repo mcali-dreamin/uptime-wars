@@ -158,6 +158,20 @@ await run("smoke test", async ({ check, open }) => {
     ),
   );
   check(rallied, "right-click rallies every selected spawner");
+
+  // Delete twice decommissions: the first press only asks.
+  await page.keyboard.press("Escape");
+  await click(fork);
+  await waitFor(() => state((id) => window.uptime.selection.id === id, fork.id));
+  const cash = await state(() => window.uptime.session.team.money);
+  await page.keyboard.press("Delete");
+  await page.waitForTimeout(300);
+  check(await state((id) => window.uptime.world.entities.some((e) => e.id === id), fork.id), "one Delete only asks to decommission");
+  await page.keyboard.press("Delete");
+  check(
+    await waitFor(() => state(([id, before]) => !window.uptime.world.entities.some((e) => e.id === id) && window.uptime.session.team.money > before, [fork.id, cash])),
+    "a second Delete decommissions the building and refunds part of it",
+  );
   await click(spot);
   await waitFor(() => state((id) => window.uptime.selection.id === id, spawner));
 

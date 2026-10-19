@@ -2,7 +2,7 @@
 // it. Every "what does clicking here do?" question is answered in this file,
 // so the input code, the cursor, the hint line, and the info panel agree.
 
-import { TILE, buildCost, type Building, canFound, canPlace, forkBlocker, hostile, isCore, MAX_ORDER_UNITS, tierBlocker, type Content, type Entity, type Point, type Unit } from "../sim";
+import { TILE, buildCost, type Building, canFound, canPlace, decommissionBlocker, decommissionRefund, dismissable, forkBlocker, hostile, isCore, MAX_ORDER_UNITS, tierBlocker, type Content, type Entity, type Point, type Unit } from "../sim";
 import type { Order, Session } from "./session";
 
 export type Selection =
@@ -275,4 +275,53 @@ export function tierLock(session: Session, building: string): string | null {
 
 export function affordable(session: Session, building: string): boolean {
   return session.team.money >= buildCost(session.world, session.content, session.local, building);
+}
+
+/** What Delete would take away for this selection: the orders, and how to say it. */
+export interface Removal {
+  orders: Order[];
+  /** "Decommission 3 buildings · +$450" */
+  label: string;
+  /** Identifies what's being removed, so a second Delete confirms the same thing. */
+  key: string;
+}
+
+/**
+ * Delete on a selection: your buildings are decommissioned (part of their
+ * cost back; never a core), your fighting units dismissed (their compute
+ * freed). Null when there's nothing of yours to take away.
+ */
+export function removal(session: Session, selection: Selection): Removal | null {
+  const { content, world } = session;
+  const chunks = (ids: number[]) => Array.from({ length: Math.ceil(ids.length / MAX_ORDER_UNITS) }, (_, i) => ids.slice(i * MAX_ORDER_UNITS, (i + 1) * MAX_ORDER_UNITS));
+  const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
+  let buildings: Building[] = [];
+  let units: Unit[] = [];
+  if (selection.kind === "army") units = armyUnits(session, selection);
+  else if (selection.kind === "spawners") buildings = spawnerGroup(session, selection);
+  else {
+    const entity = selectedEntity(session, selection);
+    if (entity?.kind === "building") buildings = [entity];
+    else if (entity?.kind === "unit") units = [entity];
+  }
+  buildings = buildings.filter((b) => decommissionBlocker({ world, content }, session.local, b) === null);
+  units = units.filter((u) => dismissable(session.local, u));
+  if (buildings.length > 0) {
+    const refund = buildings.reduce((sum, b) => sum + decommissionRefund(content, b), 0);
+    const what = buildings.length === 1 ? content.buildings[buildings[0]!.defId]!.name : plural(buildings.length, "building");
+    return {
+      orders: chunks(buildings.map((b) => b.id)).map((buildingIds) => ({ type: "decommission", buildingIds })),
+      label: `Decommission ${what}${refund > 0 ? ` · +$${refund}` : ""}`,
+      key: `b:${buildings.map((b) => b.id).join(",")}`,
+    };
+  }
+  if (units.length > 0) {
+    const what = units.length === 1 ? content.units[units[0]!.defId]!.name : plural(units.length, "unit");
+    return {
+      orders: chunks(units.map((u) => u.id)).map((unitIds) => ({ type: "dismiss", unitIds })),
+      label: `Dismiss ${what}`,
+      key: `u:${units.map((u) => u.id).join(",")}`,
+    };
+  }
+  return null;
 }
