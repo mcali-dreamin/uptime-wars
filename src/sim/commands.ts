@@ -180,9 +180,11 @@ function applyOrder(ctx: TickContext, command: OrderCommand): string | null {
   }
   if (units.length === 0) return "no units";
   const point = { x: command.x, y: command.y };
-  // A bigger group needs more room at the destination.
-  const spread = Math.min(ORDER_SPREAD_MAX, Math.max(RALLY_SPREAD / 2, Math.round(ORDER_SPREAD_PER_UNIT * Math.sqrt(units.length) * 2)));
-  const groupSpread = units.length === 1 ? 0 : spread;
+  // A bigger group needs more room at the destination. Part of a split order
+  // spreads for the whole group (see OrderCommand.group).
+  const group = Number.isInteger(command.group) ? Math.min(Math.max(command.group!, units.length), MAX_ORDER_UNITS * 10) : units.length;
+  const spread = Math.min(ORDER_SPREAD_MAX, Math.max(RALLY_SPREAD / 2, Math.round(ORDER_SPREAD_PER_UNIT * Math.sqrt(group) * 2)));
+  const groupSpread = group === 1 ? 0 : spread;
   for (const unit of units) {
     unit.commanded = true;
     // Queued behind an order still under way: wait its turn (see guard).

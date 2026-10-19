@@ -2,7 +2,7 @@
 // it. Every "what does clicking here do?" question is answered in this file,
 // so the input code, the cursor, the hint line, and the info panel agree.
 
-import { TILE, buildCost, type Building, canFound, canPlace, forkBlocker, hostile, isCore, tierBlocker, type Content, type Entity, type Point, type Unit } from "../sim";
+import { TILE, buildCost, type Building, canFound, canPlace, forkBlocker, hostile, isCore, MAX_ORDER_UNITS, tierBlocker, type Content, type Entity, type Point, type Unit } from "../sim";
 import type { Order, Session } from "./session";
 
 export type Selection =
@@ -56,18 +56,35 @@ export function groundOrderLabel(session: Session, selection: Selection): string
  */
 export function groundOrders(session: Session, selection: Selection, point: Point, queue = false): Order[] {
   if (selection.kind === "spawners") return spawnerGroup(session, selection).map((b) => ({ type: "rally", buildingId: b.id, x: point.x, y: point.y }));
+  if (selection.kind === "army") {
+    // A command holds at most MAX_ORDER_UNITS units: a bigger army goes out
+    // as several orders on the same tick, each spread for the whole group.
+    const units = armyUnits(session, selection);
+    const orders: Order[] = [];
+    for (let i = 0; i < units.length; i += MAX_ORDER_UNITS) {
+      orders.push({
+        type: "order",
+        unitIds: units.slice(i, i + MAX_ORDER_UNITS).map((u) => u.id),
+        x: point.x,
+        y: point.y,
+        attack: selection.armed !== "move",
+        ...(queue ? { queue: true } : {}),
+        ...(units.length > MAX_ORDER_UNITS ? { group: units.length } : {}),
+      });
+    }
+    return orders;
+  }
   const order = groundOrder(session, selection, point, queue);
   return order ? [order] : [];
 }
 
-/** The order for right-clicking (or, for the deploy agent, clicking) the ground at `point`. */
+/**
+ * The order for right-clicking (or, for the deploy agent, clicking) the ground
+ * at `point`. Only the first part of a split group order: use groundOrders to send it.
+ */
 export function groundOrder(session: Session, selection: Selection, point: Point, queue = false): Order | null {
   if (selection.kind === "spawners") return groundOrders(session, selection, point, queue)[0] ?? null;
-  if (selection.kind === "army") {
-    const units = armyUnits(session, selection);
-    if (units.length === 0) return null;
-    return { type: "order", unitIds: units.map((u) => u.id), x: point.x, y: point.y, attack: selection.armed !== "move", ...(queue ? { queue: true } : {}) };
-  }
+  if (selection.kind === "army") return groundOrders(session, selection, point, queue)[0] ?? null;
   const entity = selectedEntity(session, selection);
   if (!entity || !groundOrderLabel(session, selection)) return null;
   if (entity.kind === "unit") return { type: "move", x: point.x, y: point.y };

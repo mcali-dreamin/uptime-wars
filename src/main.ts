@@ -274,6 +274,17 @@ function refreshPointer(): void {
           : "";
 }
 
+/** The last rejection shown, so a burst of the same one is one banner. */
+let lastRejection = { reason: "", at: -Infinity };
+const REJECTION_REPEAT_MS = 1500;
+
+function showRejection(reason: string): void {
+  const now = performance.now();
+  if (reason === lastRejection.reason && now - lastRejection.at < REJECTION_REPEAT_MS) return;
+  lastRejection = { reason, at: now };
+  renderer.showBanner(reason.charAt(0).toUpperCase() + reason.slice(1));
+}
+
 function order(point: Point, queue = false): void {
   const next = groundOrders(session, selection, point, queue);
   if (next.length === 0) return;
@@ -661,6 +672,8 @@ function advance(now: number): void {
         if (event.type === "hero-level" && event.team === session.local) renderer.showBanner(`Level ${event.level} · skill point ready (Q)`);
 
         if (event.type === "hero-up" && event.team === session.local) renderer.showBanner("Your hero is back");
+        // Something you asked for didn't happen: say why, not just the error sound.
+        if (event.type === "rejected" && event.command.team === session.local) showRejection(event.reason);
         if (event.type === "researched" && event.team === session.team.id) {
           const def = content.upgrades[event.upgrade]!;
           const perk = def.stat === "tier" ? content.races[session.team.raceId]?.tierPerks?.[event.level] : undefined;
