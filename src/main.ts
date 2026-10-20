@@ -629,6 +629,11 @@ function resetMatch(): void {
   select(fallback());
 }
 
+// Presence for the match report: any mouse or key input, at most once a game second.
+for (const type of ["pointerdown", "pointermove", "keydown", "wheel"] as const) {
+  window.addEventListener(type, () => telemetry.noteInput(session.world), { capture: true, passive: true });
+}
+
 // Closing the tab mid-match still reports it.
 addEventListener("pagehide", () => {
   if (!session.world.outcome) telemetry.report(session.world, session.local, false, true);
