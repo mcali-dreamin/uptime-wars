@@ -71,7 +71,7 @@ export class CoopLobby {
 
   // --- host -------------------------------------------------------------
 
-  /** Open the lobby. `computer`: start with one computer opponent, free-for-all. */
+  /** Open the lobby (a custom match). `computer`: start with one computer opponent, free-for-all. */
   async hostGame(computer = false): Promise<void> {
     this.show();
     this.computers = [];
@@ -198,7 +198,7 @@ export class CoopLobby {
     const raceName = (id: string | null) => (id ? this.session.content.races[id]!.name : "joining…");
     if (!document.getElementById("coop-invite")) {
       this.body.innerHTML = `
-        <h2>New match</h2>
+        <h2>Custom match</h2>
         <div class="coop-mode">
           <div class="coop-presets">Start from ${Object.entries(PRESETS)
             .map(([id, p]) => `<button type="button" data-preset="${id}">${p.label}</button>`)
@@ -396,11 +396,9 @@ export class CoopLobby {
       this.body.innerHTML = `
         <h2>Quick Match</h2>
         <p>Co-op against the botnet with whoever's around, up to ${MAX_PLAYERS} players.</p>
-        <p>Your race: <select id="coop-race">${this.raceOptions()}</select></p>
         <ol id="coop-players"></ol>
         <p id="coop-status"></p>
         <button id="coop-start" class="coop-primary">Start now</button>`;
-      $("coop-race").addEventListener("change", () => this.session.pick(($("coop-race") as HTMLSelectElement).value));
       $("coop-start").addEventListener("click", () => this.startHost());
     }
     const name = (id: string | null) => (id ? this.session.content.races[id]!.name : "joining…");
@@ -449,7 +447,7 @@ export class CoopLobby {
     const run = this.quick?.run;
     this.body.innerHTML = `
       <h2>${quick ? "Quick Match" : "Join a match"}</h2>
-      <p>Your race: <select id="coop-race">${this.raceOptions()}</select></p>
+      ${quick ? "" : `<p>Your race: <select id="coop-race">${this.raceOptions()}</select></p>`}
       <p id="coop-status">${quick ? "Found a match. Connecting…" : "Connecting to your host…"}</p>
       <div class="coop-row" id="coop-answer-row" hidden><input id="coop-answer" readonly><button id="coop-copy">Copy</button></div>`;
     $("coop-copy").addEventListener("click", () => copy($("coop-answer") as HTMLInputElement));
@@ -479,9 +477,11 @@ export class CoopLobby {
       return true;
     }
     this.status(quick ? "Connected. The match starts soon…" : "Connected. Waiting for the host to start…");
-    const race = ($("coop-race") as HTMLSelectElement).value;
+    // Quick Match plays the race picked on the home screen; an invite link skips that screen, so it asks.
+    const select = document.getElementById("coop-race") as HTMLSelectElement | null;
+    const race = select?.value ?? this.session.raceId;
     this.session.pick(race);
-    ($("coop-race") as HTMLSelectElement).disabled = true;
+    if (select) select.disabled = true;
     // A Quick Match host that leaves before starting: just look again.
     link.onClose = () => (quick && this.quick?.run === run ? void this.quickMatch() : this.status("The host left."));
     joinHost(this.session.content, link, race, this.session.heroFor(race), (match) => {

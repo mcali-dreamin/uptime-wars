@@ -119,7 +119,7 @@ bar.hero = heroBar;
 info.describeAbility = (id) => heroBar.describe(id);
 const guide = new Guide(session);
 const telemetry = new Telemetry(content, version);
-const picker = new RacePicker(session, startMatch, (how) => void (how === "quick" ? coop.quickMatch() : coop.hostGame(how === "computer")), applyColor, telemetry);
+const picker = new RacePicker(session, startMatch, (how) => void (how === "quick" ? coop.quickMatch() : coop.hostGame()), applyColor, telemetry, () => guide.show());
 const coop = new CoopLobby(session, startNetMatch, () => picker.show(), version, (setup) => {
   leaveMatch();
   session.startLocal(setup);
@@ -497,8 +497,9 @@ const gameInput: GameInput = {
   key(key, event) {
     // M works anywhere, menus included.
     if (key === "m") return cycleSound(), true;
-    if (picker.key(key)) return true;
+    // The guide opens over the home screen too, so it hears keys first.
     if (guide.key(key)) return true;
+    if (picker.key(key, event)) return true;
     if (key === "g") return guide.show(), true;
     if (key === "escape") {
       // Esc backs out one step: aiming or an armed order first, then the selection.
@@ -669,7 +670,8 @@ function advance(now: number): void {
   lastAdvance = now;
   const { world } = session;
   // Co-op never pauses: the others are waiting on our turns.
-  const running = session.net ? !coop.open : !paused && !guide.open;
+  // A solo match waits behind the lobby (it's the home screen's backdrop, not a game yet).
+  const running = session.net ? !coop.open : !paused && !guide.open && !coop.open;
   if (running && !picker.open && !world.outcome) {
     accumulator += delta;
     let steps = 0;
@@ -753,6 +755,8 @@ renderer.app.ticker.add((ticker) => {
     const now = performance.now() / 1000;
     renderer.setMinimapFlashes(alerts.recent.map((a) => ({ x: a.x, y: a.y, age: now - a.at, color: ALERT_COLOR[a.kind] })));
   }
+  // On the home screen and in the lobby, the match's own HUD steps aside.
+  document.body.classList.toggle("home", picker.open || coop.open);
   telemetry.checkpoint(world, session.local);
   if (world.outcome && !announced) {
     announced = true;
