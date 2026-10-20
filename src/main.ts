@@ -753,6 +753,7 @@ renderer.app.ticker.add((ticker) => {
     const now = performance.now() / 1000;
     renderer.setMinimapFlashes(alerts.recent.map((a) => ({ x: a.x, y: a.y, age: now - a.at, color: ALERT_COLOR[a.kind] })));
   }
+  telemetry.checkpoint(world, session.local);
   if (world.outcome && !announced) {
     announced = true;
     renderer.showBanner(hud.announce());

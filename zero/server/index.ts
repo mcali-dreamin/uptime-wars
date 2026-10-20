@@ -14,7 +14,7 @@
 // Everything else in this space is the static game build.
 
 import { capsule, endpoint, json, number, string, table } from "@spacefast/zero/server";
-import { parseMatch } from "./matches";
+import { mergeMatch, parseMatch, type MatchRow } from "./matches";
 import { KEY_LENGTH, codeFromPath, expired, fresh, makeCode, pickHost, validBlob, validCode, validVersion, type Listing } from "./rules";
 
 const notFound = () => json({ error: "not_found" }, { status: 404 });
@@ -42,6 +42,7 @@ export default capsule({
     // One row per finished (or abandoned) match, as each player's browser reports it.
     matches: table({
       player: string(),
+      match: string().default(""),
       version: string(),
       seed: number(),
       mode: string(),
@@ -57,6 +58,7 @@ export default capsule({
       summary: string(),
       log: string(),
     })
+      .index("by_match", ["match"])
       .index("by_race", ["race"])
       .index("by_version", ["version"]),
   },
@@ -77,12 +79,18 @@ export default capsule({
       return json({ code, key });
     }),
 
-    // The game: a match ended. Anonymous; write-only from the outside.
+    // The game: a match ended, or a long one checked in. Anonymous;
+    // write-only from the outside. Reports with the same match id update one row.
     reportMatch: endpoint({ method: "POST", path: "/api/matches" }, async (ctx, req) => {
       const body = await req.json<unknown>().catch(() => null);
       const row = parseMatch(body);
       if (typeof row === "string") return bad(row);
-      await ctx.db.matches!.insert(row);
+      const stored = row.match ? ((await ctx.db.matches!.withIndex("by_match", (r: Ctx) => r.eq("match", row.match)).first()) as (MatchRow & { id: string }) | null) : null;
+      if (!stored) await ctx.db.matches!.insert(row);
+      else {
+        const patch = mergeMatch(stored, row);
+        if (patch) await ctx.db.matches!.update(stored.id, patch);
+      }
       return json({ ok: true });
     }),
 
