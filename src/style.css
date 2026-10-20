@@ -266,8 +266,11 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
+  /* "safe": on a short screen it scrolls from the top instead of cutting the title off. */
+  justify-content: safe center;
+  gap: 0.9rem;
+  padding: 1.5rem 1rem;
+  overflow-y: auto;
   background: rgba(11, 15, 20, 0.92);
   text-align: center;
 }
@@ -288,10 +291,10 @@ body {
 }
 
 #race-cards {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 1rem;
-  flex-wrap: wrap;
-  justify-content: center;
+  width: 100%;
   max-width: 1100px;
 }
 
@@ -299,7 +302,6 @@ body {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-top: 0.5rem;
 }
 
 #color-swatches {
@@ -331,7 +333,6 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  width: 260px;
   padding: 1rem 1.1rem;
   background: var(--panel);
   color: var(--text);
@@ -340,11 +341,20 @@ body {
   font: inherit;
   text-align: left;
   cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s, border-color 0.15s;
 }
 
-.race-card:hover,
-.race-card.last {
+.race-card:hover {
+  opacity: 1;
+  border-color: var(--muted);
+}
+
+/* The race you'll play: every way to play below uses it. */
+.race-card.chosen {
+  opacity: 1;
   border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 24px -8px var(--accent);
 }
 
 .race-card strong {
@@ -363,31 +373,106 @@ body {
 
 #picker-actions {
   display: flex;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
   justify-content: center;
 }
 
-#quick-match,
-#coop-host,
-#vs-computer {
-  margin-top: 0.5rem;
+#picker-actions[hidden] {
+  display: none;
 }
 
-#quick-match,
-#coop-host {
-  padding: 0.5rem 1rem;
+.picker-mode {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  min-width: 220px;
+  padding: 0.7rem 1.1rem;
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--line);
   border-radius: 8px;
   font: inherit;
+  text-align: left;
   cursor: pointer;
 }
 
-#quick-match:hover,
-#coop-host:hover,
-#vs-computer:hover {
+.picker-mode strong {
+  font-size: 1.05rem;
+}
+
+#race-picker .picker-mode small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.picker-mode:hover,
+.picker-mode:focus-visible {
   border-color: var(--accent);
+}
+
+.picker-mode.primary {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+}
+
+#picker-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 1.5rem;
+  margin-top: 0.25rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+  width: 100%;
+  max-width: 1100px;
+}
+
+#picker-guide {
+  padding: 0.3rem 0.8rem;
+  background: none;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+#picker-guide:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* The home screen and the lobby: the match behind is a backdrop, so its HUD steps aside.
+   visibility, not display, so the stage keeps its size. */
+body.home #hud,
+body.home #build-bar,
+body.home #hint,
+body.home #info,
+body.home #hero-card,
+body.home #players,
+body.home #countdown {
+  visibility: hidden;
+}
+
+/* ...and the home screen and lobby take the whole window, bars included. */
+body.home #race-picker,
+body.home #coop {
+  position: fixed;
+}
+
+/* A short window: the race's one-line pitch stays, the details are in the guide. */
+@media (max-height: 760px) {
+  .race-card ul {
+    display: none;
+  }
+
+  .race-card em {
+    margin-bottom: 0;
+  }
 }
 
 #coop {

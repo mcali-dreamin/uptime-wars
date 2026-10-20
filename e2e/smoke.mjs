@@ -26,9 +26,19 @@ await run("smoke test", async ({ check, open }) => {
   check((await page.$$eval("#stage canvas", (c) => c.length)) === 2, "the 3D view boots (WebGL canvas + overlay)");
   await page.click('.color-swatch[data-color="purple"]');
   check(await state(() => window.uptime.session.color.id === "purple"), "a colour swatch picks the colour");
+  // Home screen: the match's HUD steps aside; a race is picked, then how to play.
+  check(await page.$eval("#hud", (el) => getComputedStyle(el).visibility === "hidden"), "the home screen hides the match HUD");
+  await page.keyboard.press("2");
+  check(
+    await state(() => window.uptime.session.raceId === window.uptime.session.playable[1] && !document.querySelector("#race-picker").hidden),
+    "a number key picks a race without starting anything",
+  );
+  check(await page.$eval(".race-card.chosen", (el) => el.dataset.race === window.uptime.session.playable[1]), "the picked race's card is marked");
   await page.keyboard.press("1");
-  // One hero per race: picking the race starts the match, no hero step.
-  check(await waitFor(() => state(() => window.uptime.session.builder() !== undefined)), "picking a race starts the match");
+  await page.keyboard.press("Enter");
+  // One hero per race: no hero step.
+  check(await waitFor(() => state(() => window.uptime.session.builder() !== undefined && window.uptime.session.raceId === window.uptime.session.playable[0])), "Enter plays solo as the picked race");
+  check(await page.$eval("#hud", (el) => getComputedStyle(el).visibility === "visible"), "the HUD is back in the match");
   const heroes = [await state(() => window.uptime.content.races[window.uptime.session.raceId].heroes[0])];
 
   // Deploy: the agent starts selected; a click walks it; C + click founds the core.

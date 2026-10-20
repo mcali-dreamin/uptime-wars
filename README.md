@@ -274,7 +274,7 @@ src/
     nav.ts          flow fields, line of sight, walkability
   game/           the player's side: Session (match, issuing commands) and
                   Selection (what a click means for what you have selected)
-  ui/             HUD, build bar, info panel, guide, race picker
+  ui/             HUD, build bar, info panel, guide, home screen (race-picker.ts)
   render/         reads the world, never writes it
     renderer.ts     shell: camera, fog, minimap, banner, interpolation, effects
     frame.ts        the Frame / WorldView contract every world view implements
@@ -351,8 +351,16 @@ enemy, there's no shared vision, and the last player with a core up wins. The
 horde is optional; with it, the nest is just one more enemy (taking it down
 ends the waves, not the match). FFA needs at least two players.
 
-**Quick Match.** Press Q on the race picker to play co-op against the botnet
-with strangers. The game's relay (`zero/server`) hands you the invite of
+**The home screen.** Pick a race (number keys or click; your last one is
+picked already), then how to play: **Play solo** (`Enter`, or double-click a
+race) is you against the botnet, **Quick Match** (`Q`) is co-op with
+strangers, and **Custom match** (`C`) is the lobby for friends, computers,
+free-for-all and teams. All three play the race you picked. Your colour, the
+Guide (`G`) and the stats checkbox are underneath. While it's open, the
+match's HUD steps aside and nothing behind it runs.
+
+**Quick Match.** Press Q on the home screen to play co-op against the botnet
+with strangers, as the race you picked. The game's relay (`zero/server`) hands you the invite of
 whoever has waited longest on the exact same build; if nobody's waiting, you
 host and your invite is listed. The match starts 15 s after the first player
 joins, or at once with four. After that it's an ordinary co-op match, peer to
@@ -373,8 +381,8 @@ scouts. Its hero goes with the army and comes home to heal. When it attacks,
 how big a wave it waits for and when it gives up are also difficulty
 (`attack`). Alone against the horde or in co-op it only defends.
 
-On the race picker press `C` (or **Play vs computer**). That's the same
-lobby as playing with friends, with a computer in the next seat. Each seat is
+On the home screen press `C` (or **Custom match**) and **Add a computer**.
+That's the same lobby as playing with friends. Each seat is
 a friend or a computer, and each computer gets a difficulty, a race and a
 starting side. Seat computers on your side for co-op, on their own for a
 free-for-all, or mix people and computers in teams. Computers keep the side
@@ -394,8 +402,8 @@ player alone against the horde, so a better AI is also a better balance test.
 (`FFA="hard:serverless,normal:hyperscaler;..."`, `FFA_SEEDS`, `FFA_MINUTES`,
 `FFA_HORDE=1`) and writes `balance-results/ffa/results.json`.
 
-**Playing with friends.** On the race picker press `H` (or **Play with
-friends**) and start from **Co-op**, **Free-for-all** or **Teams**, then set
+**Playing with friends.** On the home screen press `C` (or **Custom
+match**) and start from **Co-op**, **Free-for-all** or **Teams**, then set
 the sides, the botnet and alliances. Any seat can go to a computer instead.
 Send a friend the invite link (it ends in a six-letter code); they open it,
 pick a race, and you're connected. One link per friend, up to three. Press
@@ -424,7 +432,7 @@ the tab can only send 64 KB, so a long match's final report may go without
 its log (`summary.logComplete: false`), and the row keeps the log from the
 last check-in. Rows land in the `matches` table; the server only
 accepts them, nothing reads them back from outside. Turn it off with the
-checkbox on the race picker. Never sent from localhost or with `?debug`. `npm run build` stages it
+checkbox on the home screen. Never sent from localhost or with `?debug`. `npm run build` stages it
 into `dist/` next to the static game. Where there's no relay (`npm run dev`, a
 plain static host), co-op falls back to copy and paste: the link carries the
 whole offer and the friend sends back a reply code.

@@ -83,13 +83,17 @@ await run(
       return { host, guest };
     };
 
-    // Play vs computer: the same lobby, a computer in the next seat. With no
-    // friend joined the match is played locally, so it can pause.
+    // Custom match against computers: the lobby, a computer in each seat
+    // given. With no friend joined the match is played locally, so it can pause.
     {
       const solo = await open(`${url}?debug&2d`);
       await solo.waitForTimeout(500);
       await solo.keyboard.press("c");
-      check(await waitFor(() => solo.$$eval(".coop-computer", (rows) => rows.length === 1)), "Play vs computer opens the lobby with a computer seated");
+      await solo.click("#coop-add-computer");
+      check(await waitFor(() => solo.$$eval(".coop-computer", (rows) => rows.length === 1)), "a custom match seats a computer");
+      const tick = await solo.evaluate(() => window.uptime.world.tick);
+      await solo.waitForTimeout(1500);
+      check((await solo.evaluate(() => window.uptime.world.tick)) === tick, "nothing runs behind the lobby");
       await solo.selectOption(".coop-computer select[title='How well it plays']", "hard");
       await solo.click("#coop-add-computer");
       await solo.click("#coop-start");
