@@ -418,7 +418,11 @@ input, per game minute, and the stretches with none: when do people stop
 playing?), and the command log. Only that input happened is counted, never
 what it was or where. Seed + setup + command log replays the match
 exactly (`simulate`, `tests/replay.test.ts`), so any reported match can be
-re-run and inspected. Rows land in the `matches` table; the server only
+re-run and inspected. A long match also checks in every two game minutes
+with a random match id, and each report updates that match's row: closing
+the tab can only send 64 KB, so a long match's final report may go without
+its log (`summary.logComplete: false`), and the row keeps the log from the
+last check-in. Rows land in the `matches` table; the server only
 accepts them, nothing reads them back from outside. Turn it off with the
 checkbox on the race picker. Never sent from localhost or with `?debug`. `npm run build` stages it
 into `dist/` next to the static game. Where there's no relay (`npm run dev`, a

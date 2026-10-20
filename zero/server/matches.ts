@@ -11,6 +11,12 @@ const OUTCOMES = ["won", "lost", "abandoned"] as const;
 
 export interface MatchRow {
   player: string;
+  /**
+   * Random id for this match, from the player's browser. A long match is
+   * reported every few minutes and each report updates the same row, so
+   * closing the tab never loses more than the last few minutes. "" = one-off.
+   */
+  match: string;
   version: string;
   seed: number;
   mode: string;
@@ -40,6 +46,7 @@ export function parseMatch(body: unknown): MatchRow | string {
   if (!body || typeof body !== "object") return "bad_body";
   const b = body as Record<string, unknown>;
   if (typeof b.player !== "string" || !ID.test(b.player)) return "bad_player";
+  if (b.match !== undefined && (typeof b.match !== "string" || !ID.test(b.match))) return "bad_match";
   if (typeof b.version !== "string" || !/^\d+\.\d+\.\d+$/.test(b.version)) return "bad_version";
   if (!isInt(b.seed, -(2 ** 31), 2 ** 32)) return "bad_seed";
   if (b.mode !== "coop" && b.mode !== "ffa" && b.mode !== "custom") return "bad_mode";
@@ -55,6 +62,7 @@ export function parseMatch(body: unknown): MatchRow | string {
   if (log.length > MAX_LOG) return "log_too_big";
   return {
     player: b.player,
+    match: (b.match as string | undefined) ?? "",
     version: b.version,
     seed: b.seed,
     mode: b.mode,
@@ -70,4 +78,26 @@ export function parseMatch(body: unknown): MatchRow | string {
     summary,
     log,
   };
+}
+
+const ticksOf = (summary: string): number => {
+  try {
+    const ticks = (JSON.parse(summary) as { ticks?: unknown }).ticks;
+    return typeof ticks === "number" ? ticks : 0;
+  } catch {
+    return 0;
+  }
+};
+
+/**
+ * A later report of a match already stored: what to write over the row, or
+ * null to keep it. An older report (one that arrived late) never overwrites
+ * a newer one. A report sent without its log (too big to send as the tab
+ * closed) keeps the log the row already has.
+ */
+export function mergeMatch(stored: MatchRow, incoming: MatchRow): Partial<MatchRow> | null {
+  if (stored.player !== incoming.player) return null;
+  if (ticksOf(incoming.summary) < ticksOf(stored.summary)) return null;
+  const { player: _player, match: _match, ...patch } = incoming;
+  return incoming.log === "[]" && stored.log !== "[]" ? { ...patch, log: stored.log } : patch;
 }

@@ -13,6 +13,13 @@ const PLAYER_KEY = "uptime:player";
 /** Matches shorter than this aren't worth a report (game seconds). */
 const MIN_SECONDS = 20;
 const ENDPOINT = "api/matches";
+/** A long match checks in this often (game seconds), so a closed tab loses at most this much. */
+export const CHECKPOINT_SECONDS = 120;
+/**
+ * What a request sent as the page closes can carry (sendBeacon and keepalive
+ * fetch allow 64 KB in all, for everything in flight), with room to spare.
+ */
+export const LEAVING_LIMIT = 60_000;
 /** This long (game seconds) with no input at all counts as looking away. */
 export const IDLE_SECONDS = 60;
 
@@ -69,6 +76,8 @@ export function engagement(world: World, team: number, inputSeconds?: readonly n
 
 export interface MatchReport {
   player: string;
+  /** Random per match: later reports of the same match update its row. */
+  match?: string;
   version: string;
   seed: number;
   /** The preset the rules match, or "custom" (then summary.rules has them). */
@@ -94,6 +103,8 @@ export interface MatchReport {
     /** Computer players' difficulty per team (null = a person or the horde), when there are any. Replays need it. */
     ai?: (string | null)[];
     engagement: Engagement;
+    /** False when the log was left off (too big to send as the tab closed); the server keeps the last one it got. */
+    logComplete?: boolean;
   };
   log: World["log"];
 }
@@ -144,6 +155,11 @@ export class Telemetry {
   private watched: World | null = null;
   /** Game seconds that saw any input, ascending. */
   private inputSeconds: number[] = [];
+  /** Each match's id, made when it's first reported. */
+  private readonly matchIds = new WeakMap<World, string>();
+  /** The match last checked in, and when. */
+  private checked: World | null = null;
+  private checkedTick = 0;
 
   constructor(
     private readonly content: Content,
@@ -169,21 +185,64 @@ export class Telemetry {
   }
 
   /** Report a match once: when it ends, or when it's left unfinished (new match, page closed). */
-  report(world: World, team: number, ended: boolean, beacon = false): void {
-    if (this.sent === world || !this.enabled || !reportable()) return;
-    if (world.tick < MIN_SECONDS * 20 || world.teams[team]?.coreId === -1) return;
+  report(world: World, team: number, ended: boolean, leaving = false): void {
+    if (this.sent === world || !this.reportable(world, team)) return;
     this.sent = world;
-    const body = JSON.stringify(buildReport(this.content, world, team, playerId(), this.version, ended, this.watched === world ? this.inputSeconds : []));
+    this.send(reportBody(this.build(world, team, ended), leaving), leaving);
+  }
+
+  /**
+   * Called every frame: a long match checks in every CHECKPOINT_SECONDS, as
+   * an unfinished report the final one overwrites. Closing the tab can't
+   * always send a long match's whole log; this way little is lost.
+   */
+  checkpoint(world: World, team: number): void {
+    if (this.sent === world || world.outcome || !this.reportable(world, team)) return;
+    if (this.checked !== world) {
+      this.checked = world;
+      this.checkedTick = 0;
+    }
+    if (world.tick - this.checkedTick < CHECKPOINT_SECONDS * 20) return;
+    this.checkedTick = world.tick;
+    this.send(reportBody(this.build(world, team, false), false), false);
+  }
+
+  private reportable(world: World, team: number): boolean {
+    return this.enabled && reportable() && world.tick >= MIN_SECONDS * 20 && world.teams[team]?.coreId !== -1;
+  }
+
+  private build(world: World, team: number, ended: boolean): MatchReport {
+    let match = this.matchIds.get(world);
+    if (!match) {
+      match = crypto.randomUUID();
+      this.matchIds.set(world, match);
+    }
+    return { ...buildReport(this.content, world, team, playerId(), this.version, ended, this.watched === world ? this.inputSeconds : []), match };
+  }
+
+  private send(body: string, leaving: boolean): void {
     try {
-      if (beacon && navigator.sendBeacon) {
+      if (leaving && navigator.sendBeacon) {
         navigator.sendBeacon(ENDPOINT, new Blob([body], { type: "application/json" }));
         return;
       }
-      void fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body, keepalive: true }).catch(() => {});
+      // keepalive only fits small bodies; the page isn't going anywhere otherwise.
+      void fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body, keepalive: body.length <= LEAVING_LIMIT }).catch(() => {});
     } catch {
       // No server here; that's fine.
     }
   }
+}
+
+/**
+ * The request body for a report. As the page closes, a report too big to
+ * send goes without its log: the server keeps the log from the last
+ * checkpoint, and the rest (outcome, stats, engagement) is still current.
+ */
+export function reportBody(report: MatchReport, leaving: boolean): string {
+  const body = JSON.stringify(report);
+  if (!leaving || body.length <= LEAVING_LIMIT) return body;
+  return JSON.stringify({ ...report, log: [], summary: { ...report.summary, logComplete: false } });
 }
 
 /** Real players only: not a dev server, not the test harness. */
