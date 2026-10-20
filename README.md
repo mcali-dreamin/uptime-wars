@@ -413,7 +413,10 @@ through it while you play.
 seconds), the game posts one anonymous report to `POST /api/matches`: a random
 player id kept in your browser, the version, seed, mode, races and hero, the
 outcome, uptime, incident, core tier and peak users, what was built and
-researched, and the command log. Seed + setup + command log replays the match
+researched, how present you were (commands and seconds with any mouse or key
+input, per game minute, and the stretches with none: when do people stop
+playing?), and the command log. Only that input happened is counted, never
+what it was or where. Seed + setup + command log replays the match
 exactly (`simulate`, `tests/replay.test.ts`), so any reported match can be
 re-run and inspected. Rows land in the `matches` table; the server only
 accepts them, nothing reads them back from outside. Turn it off with the
