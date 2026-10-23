@@ -4,7 +4,7 @@
 // Two sizes: a compact card for the on-screen panel (a name and a line or
 // two of numbers) and full detail for the Guide.
 
-import { upgradeName, TICK_RATE, levelOf, nextLevel, type Content, type SpawnerRank, type Team } from "../sim";
+import { upgradeName, TICK_RATE, levelOf, nextQueued, queuedCount, type Content, type SpawnerRank, type Team } from "../sim";
 import { HIGH_GROUND_DAMAGE } from "../sim/tuning";
 import { burstLine, perkChanges, rankChange, secs as seconds, traitLine, unitRuleLines } from "./text";
 
@@ -170,34 +170,36 @@ function tierLine(content: Content, tier: number, raceId?: string): string {
   ].filter(Boolean).join(" · ");
 }
 
+/** What clicking this upgrade would queue, as a card: the level it will be, its price, and what's waiting. */
 export function upgradeCard(content: Content, team: Team, upgrade: string): InfoCard {
   const def = content.upgrades[upgrade]!;
   const level = levelOf(team, upgrade);
+  const next = nextQueued(content, team, upgrade);
+  const waiting = queuedCount(content, team, upgrade);
+  const queued = waiting > 0 ? ` · ${waiting} in the queue` : "";
   if (def.stat === "tier") {
     const tiers = content.economy.tiers;
-    if (level >= def.maxLevel) return { title: tiers[level]!.name, lines: ["Top tier"] };
-    const next = nextLevel(content, team, upgrade);
-    const perk = content.races[team.raceId]?.tierPerks?.[level + 1];
+    if (next.level > def.maxLevel) return { title: tiers[level]!.name, lines: ["Top tier"] };
+    const perk = content.races[team.raceId]?.tierPerks?.[next.level];
     return {
-      title: `Upgrade to ${tiers[level + 1]!.name}`,
+      title: `Upgrade to ${tiers[next.level]!.name}`,
       lines: [
-        tierLine(content, level + 1, team.raceId),
-        ...(perk ? [`Perk · ${perk.name}: ${perkChanges(content, team.raceId, level + 1).join(", ")}`] : []),
-        `$${next.cost} · ${seconds(next.ticks)} · uses the core's research`,
+        tierLine(content, next.level, team.raceId),
+        ...(perk ? [`Perk · ${perk.name}: ${perkChanges(content, team.raceId, next.level).join(", ")}`] : []),
+        `$${next.cost} · ${seconds(next.ticks)} · queues at the core${queued}`,
       ],
     };
   }
   const name = upgradeName(content, team.raceId, upgrade);
-  const needs = def.tiers?.[level];
+  const needs = def.tiers?.[next.level - 1];
   const gate = needs ? ` · needs ${content.economy.tiers[needs]!.name}` : "";
   if (def.stat === "trait") {
     const effect = traitLine(content, def.unit!, def.trait ?? {});
-    if (level >= 1) return { title: name, lines: [def.description, effect, "Researched"] };
-    return { title: name, lines: [def.description, effect, `$${def.cost} · ${seconds(def.researchTicks)}${gate}`] };
+    if (next.level > def.maxLevel) return { title: name, lines: [def.description, effect, "Researched"] };
+    return { title: name, lines: [def.description, effect, `$${next.cost} · ${seconds(next.ticks)}${gate}${queued}`] };
   }
-  if (level >= def.maxLevel) return { title: name, lines: [def.description, `${bonusAt(def, def.maxLevel)} ${STAT_TEXT[def.stat]}`, "Fully researched"] };
-  const next = nextLevel(content, team, upgrade);
-  return { title: `${name} ${next.level}`, lines: [def.description, levelChange(def, level), `$${next.cost} · ${seconds(next.ticks)}${gate}`] };
+  if (next.level > def.maxLevel) return { title: name, lines: [def.description, `${bonusAt(def, def.maxLevel)} ${STAT_TEXT[def.stat]}`, "Fully researched"] };
+  return { title: `${name} ${next.level}`, lines: [def.description, levelChange(def, next.level - 1), `$${next.cost} · ${seconds(next.ticks)}${gate}${queued}`] };
 }
 
 export function upgradeDetail(content: Content, upgrade: string, raceId?: string): GuideEntry {

@@ -4,6 +4,8 @@
 
 /** Shift-queued orders a unit holds at most. */
 export const MAX_WAYPOINTS = 16;
+/** Entries a research queue holds at most: the one researching plus this minus 1 waiting (WC3 style). */
+export const RESEARCH_QUEUE = 5;
 export const STARTING_MONEY = 200;
 /** A trickle so you're never stuck. Users are the real income (see economy.json). */
 export const BASE_INCOME = { amount: 2, intervalTicks: 20 };
