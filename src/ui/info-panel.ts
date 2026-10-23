@@ -3,7 +3,7 @@
 // selected. Nothing else pops up. The full story lives in the Guide.
 
 import { invokeCost, upgradeName, earnedPerks, tierDef, TICK_RATE, forkCost, isCore, regionShield, buildingRank, nextRank, rankBlocker, rankCost, unitRank } from "../sim";
-import { armyUnits, groundOrderLabel, removal, selectedEntity, spawnerGroup, type Selection } from "../game/selection";
+import { armyUnits, buildingGroup, groundOrderLabel, isRallied, removal, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { heightAtTile, TILE, type Building, type Entity } from "../sim";
 import { HIGH_GROUND_DAMAGE } from "../sim/tuning";
@@ -70,7 +70,7 @@ export class InfoPanel {
 
     this.showRemoval(selection);
     if (selection.kind === "army") return this.showArmy(selection);
-    if (selection.kind === "spawners") return this.showSpawners(selection);
+    if (selection.kind === "buildings") return this.showBuildings(selection);
     const entity = selectedEntity(this.session, selection);
     if (!entity) return this.show(null);
     if (entity.kind === "building") {
@@ -153,7 +153,7 @@ export class InfoPanel {
   private showAction(selection: Selection): void {
     const label = groundOrderLabel(this.session, selection);
     if (!label) return;
-    const armed = (selection.kind === "entity" || selection.kind === "army" || selection.kind === "spawners") && Boolean(selection.armed);
+    const armed = (selection.kind === "entity" || selection.kind === "army" || selection.kind === "buildings") && Boolean(selection.armed);
     this.action.hidden = false;
     this.action.textContent = armed ? "Click the ground… (Esc)" : `${label} (T)`;
     this.action.classList.toggle("armed", armed);
@@ -196,18 +196,22 @@ export class InfoPanel {
     });
   }
 
-  /** Several of your spawners: what's in the group, and one rally for all of them. */
-  private showSpawners(selection: Selection): void {
-    const buildings = spawnerGroup(this.session, selection);
+  /** Several of your buildings: what's in the group, one rally for the rallied ones, and how to grow or shrink it. */
+  private showBuildings(selection: Selection): void {
+    const buildings = buildingGroup(this.session, selection);
     if (buildings.length === 0) return this.show(null);
     const { content } = this.session;
     const counts = new Map<string, number>();
     for (const b of buildings) counts.set(b.defId, (counts.get(b.defId) ?? 0) + 1);
     const mix = [...counts].map(([id, n]) => `${n}× ${content.buildings[id]!.name}`).join(" · ");
+    const one = counts.size === 1 ? content.buildings[buildings[0]!.defId]!.name : null;
+    const lines = [one ?? mix];
+    if (buildings.some((b) => isRallied(this.session, b))) lines.push("Right-click: one rally point for all of them");
+    lines.push("Shift-click: add or remove one", "Delete: decommission all of them");
     this.showAction(selection);
     this.show({
-      title: `${buildings.length} buildings`,
-      lines: [mix, "Right-click: one rally point for all of them", "Shift-click: add or remove one"],
+      title: one ? `${buildings.length}× ${one}` : `${buildings.length} buildings`,
+      lines,
     });
   }
 

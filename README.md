@@ -37,7 +37,9 @@ npm run dev
   click to choose where your core goes; the agent walks there and becomes the
   core. Lose the agent first and it's over. The hint line over the map always
   says what a click will do. Everything else is in the **Guide** (`G`).
-- Click one of your buildings to select it. Right-click sets where its units
+- Click one of your buildings to select it; double-click one (any but the
+  core) to grab every one of its kind on screen, and Shift-click adds buildings
+  to the selection. Right-click sets where its units
   gather; right-click with the **core** selected sets a global rally point for
   every spawner that doesn't have its own. To rally several spawners at once,
   Shift-click them, double-click one (every one of its kind on screen), or drag

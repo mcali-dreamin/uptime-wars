@@ -153,7 +153,7 @@ await run("smoke test", async ({ check, open }) => {
   await page.waitForTimeout(400);
   await click(fork, {}, "Shift");
   check(
-    await waitFor(() => state((ids) => window.uptime.selection.kind === "spawners" && ids.every((id) => window.uptime.selection.ids.includes(id)), [spawner, fork.id])),
+    await waitFor(() => state((ids) => window.uptime.selection.kind === "buildings" && ids.every((id) => window.uptime.selection.ids.includes(id)), [spawner, fork.id])),
     "Shift-click adds a second spawner to the selection",
   );
   const both = await openNear(spot.x, spot.y, 9, 16);
