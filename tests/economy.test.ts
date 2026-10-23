@@ -239,16 +239,19 @@ describe("upgrades", () => {
     expect(nextLevel(content, world.teams[0]!, "anycast")).toMatchObject({ level: 2, cost: content.upgrades.anycast!.cost * 2 });
   });
 
-  it("one research at a time, no buying past max, and it must be affordable", () => {
+  it("a queue of five at the core, no buying past max, and it must be affordable", () => {
     const world = createWorld(content, SETUP);
-    world.teams[0]!.money = 5000;
-    expect(research(world, "anycast")).toEqual([]);
-    expect(research(world, "edge-caching")).toEqual(["already researching"]);
-    world.teams[0]!.research = null;
+    world.teams[0]!.money = 100_000;
+    const core = ["anycast", "edge-caching", "premium-tier", "tower-damage", "building-hp"];
+    for (const upgrade of core) expect(research(world, upgrade)).toEqual([]);
+    expect(world.teams[0]!.researchQueue).toHaveLength(4);
+    expect(research(world, "building-armor")).toEqual(["queue full"]);
     world.teams[0]!.upgrades["anycast"] = content.upgrades.anycast!.maxLevel;
+    world.teams[0]!.research = null;
+    world.teams[0]!.researchQueue = [];
     expect(research(world, "anycast")).toEqual(["fully researched"]);
     world.teams[0]!.money = 0;
-    expect(research(world, "premium-tier")).toEqual(["not enough $"]);
+    expect(research(world, "building-armor")).toEqual(["not enough $"]);
   });
 
   it("upgrades change unit HP, spawn speed, and user capacity", () => {

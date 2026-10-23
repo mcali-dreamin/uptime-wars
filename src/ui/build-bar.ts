@@ -9,7 +9,7 @@
 
 import { affordable, tierLock } from "../game/selection";
 import type { Session } from "../game/session";
-import { buildCost, canResearch, levelOf, nextLevel, slotOf, tierOf, upgradeName, upgradesAt } from "../sim";
+import { buildCost, canResearch, levelOf, nextLevel, nextQueued, projectedTier, queuedCount, slotOf, upgradeName, upgradesAt } from "../sim";
 import { $ } from "./dom";
 import type { HeroBar } from "./hero-bar";
 
@@ -56,7 +56,9 @@ export class BuildBar {
       if (upgrade) {
         const slot = team[slotOf(content, upgrade)];
         const researching = slot?.upgrade === upgrade;
-        button.disabled = !researching && canResearch(content, team, upgrade, this.session.world) !== null;
+        // Queueable is enough to click: while something researches, the next
+        // level (or the next upgrade) queues behind it.
+        button.disabled = canResearch(content, team, upgrade, this.session.world) !== null;
         button.classList.toggle("researching", researching);
         const detail = button.querySelector("small")!;
         detail.textContent = this.upgradeDetail(upgrade);
@@ -116,26 +118,30 @@ export class BuildBar {
     return upgradesAt(this.session.content, this.session.team, mode === "armory" ? "center" : "core");
   }
 
+  /** The level a click would queue, its price, and what's waiting. */
   private upgradeDetail(upgrade: string): string {
     const { content, team } = this.session;
     const def = content.upgrades[upgrade]!;
     const level = levelOf(team, upgrade);
     const index = this.upgrades(def.at === "center" ? "armory" : "research").indexOf(upgrade) + 1;
-    const slot = team[slotOf(content, upgrade)];
+    const head = team[slotOf(content, upgrade)];
+    const next = nextQueued(content, team, upgrade);
+    const waiting = queuedCount(content, team, upgrade) - (head?.upgrade === upgrade ? 1 : 0);
+    const suffix = waiting > 0 ? ` · ${waiting} queued` : "";
     if (def.stat === "tier") {
       const tiers = content.economy.tiers;
-      if (level >= def.maxLevel) return `${index} · ${tiers[level]!.name}`;
-      if (slot?.upgrade === upgrade) return `${index} · building ${tiers[level + 1]!.name}`;
-      return `${index} · → ${tiers[level + 1]!.name} · ${nextLevel(content, team, upgrade).cost}`;
+      if (head?.upgrade === upgrade) return `${index} · building ${tiers[level + 1]!.name}${suffix}`;
+      if (next.level > def.maxLevel) return `${index} · ${tiers[level]!.name}`;
+      return `${index} · → ${tiers[next.level]!.name} · ${next.cost}${suffix}`;
     }
-    if (level >= def.maxLevel) return `${index} · ${def.stat === "trait" ? "done" : "max"}`;
-    if (slot?.upgrade === upgrade) return `${index} · researching`;
-    const needs = def.tiers?.[level];
-    if (needs !== undefined && tierOf(content, team) < needs) {
+    if (next.level > def.maxLevel) return `${index} · ${def.stat === "trait" ? "done" : "max"}`;
+    if (head?.upgrade === upgrade) return `${index} · researching${suffix}`;
+    const needs = def.tiers?.[next.level - 1];
+    if (needs !== undefined && projectedTier(content, team) < needs) {
       return `${index} · needs ${content.economy.tiers[needs]!.name}`;
     }
-    if (def.stat === "trait") return `${index} · trait · ${nextLevel(content, team, upgrade).cost}`;
-    return `${index} · Lv ${level}/${def.maxLevel} · ${nextLevel(content, team, upgrade).cost}`;
+    if (def.stat === "trait") return `${index} · trait · ${next.cost}${suffix}`;
+    return `${index} · Lv ${next.level}/${def.maxLevel} · ${next.cost}${suffix}`;
   }
 
   private button(id: string, text: string, detail: string): HTMLButtonElement {

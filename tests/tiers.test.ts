@@ -51,13 +51,14 @@ describe("core tiers", () => {
     expect(tiers.length).toBe(content.upgrades[TIER]!.maxLevel + 1);
   });
 
-  it("you start at tier 0 and research up through every tier, one research at a time", () => {
+  it("you start at tier 0 and research up through every tier, queueing the rest meanwhile", () => {
     const world = createWorld(content, SETUP);
     expect(tierOf(content, team0(world))).toBe(0);
     team0(world).money += 100_000;
     queueCommand(world, { type: "research", tick: world.tick, team: 0, upgrade: TIER });
     step(world, content);
-    expect(canResearch(content, team0(world), "anycast")).toBe("already researching");
+    // One research at a time became a queue: the next upgrade waits its turn.
+    expect(canResearch(content, team0(world), "anycast")).toBeNull();
     advance(world);
     expect(tierOf(content, team0(world))).toBe(1);
     advance(world);

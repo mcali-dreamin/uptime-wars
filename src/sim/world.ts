@@ -32,7 +32,7 @@ import { MAX_PLAYERS, generateTerrain } from "./terrain";
 import { BASE_INCOME, STARTING_MONEY } from "./tuning";
 import type { TeamId, World } from "./types";
 import { tickHealers, tickUnits } from "./units";
-import { tickResearch } from "./upgrades";
+import { headPaid, tickResearch, waitingOf } from "./upgrades";
 import { spawnHero, tickHeroes } from "./heroes";
 import { tickWaveDirector } from "./waves";
 import { tickTaunts } from "./traits";
@@ -149,6 +149,8 @@ function makeTeam(content: Content, id: TeamId, raceId: string, heroId: string |
     upgrades: {},
     research: null,
     labResearch: null,
+    researchQueue: [],
+    labResearchQueue: [],
     downTick: null,
     heroId: heroId ?? race.heroes?.[0] ?? null,
     hero: null,
@@ -223,8 +225,14 @@ function checkOutcome(ctx: TickContext): void {
     }
     if (!alive) {
       team.downTick = world.tick;
-      team.research = null;
-      team.labResearch = null;
+      // Out of the match: both queues are cancelled and refunded (the entry
+      // running included), then dropped.
+      for (const slot of ["research", "labResearch"] as const) {
+        if (team[slot]) team.money += headPaid(content, team, team[slot]!);
+        for (const entry of waitingOf(team, slot)) team.money += entry.paid;
+        team[slot] = null;
+        waitingOf(team, slot).length = 0;
+      }
       if (team.controller === "human") world.events.push({ type: "offline", team: team.id });
       if (team.controller === "wave-director") collapseHorde(world, team.id);
     }

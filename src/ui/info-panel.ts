@@ -2,7 +2,7 @@
 // the build button you're hovering, what you're placing, or what you have
 // selected. Nothing else pops up. The full story lives in the Guide.
 
-import { invokeCost, upgradeName, earnedPerks, tierDef, TICK_RATE, forkCost, isCore, regionShield, buildingRank, nextRank, rankBlocker, rankCost, unitRank } from "../sim";
+import { invokeCost, upgradeName, earnedPerks, tierDef, TICK_RATE, forkCost, isCore, levelOf, queueOf, regionShield, buildingRank, nextRank, rankBlocker, rankCost, tierOf, unitRank } from "../sim";
 import { armyUnits, buildingGroup, groundOrderLabel, isRallied, removal, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { heightAtTile, TILE, type Building, type Entity } from "../sim";
@@ -34,6 +34,8 @@ export class InfoPanel {
   hoverAbility: string | null = null;
   /** Set once the hero bar exists, to describe abilities. */
   describeAbility: ((id: string) => InfoCard) | null = null;
+  /** Research queue entries of the selected building, shown under the card's lines; clicking one cancels it. */
+  private queueEntries: { label: string; slot: "research" | "labResearch"; index: number }[] = [];
 
   constructor(
     private readonly session: Session,
@@ -56,6 +58,7 @@ export class InfoPanel {
     this.forkButton.hidden = true;
     this.rankButton.hidden = true;
     this.removeButton.hidden = true;
+    this.queueEntries = [];
     const { content } = this.session;
     const raceId = this.session.team.raceId;
     const placing = selection.kind === "place" ? selection.building : selection.kind === "found" ? "found" : null;
@@ -77,16 +80,12 @@ export class InfoPanel {
       const card = buildingCard(content, raceId, entity.defId);
       const hp = `${Math.ceil(entity.hp)} / ${entity.maxHp} HP`;
       const lines = [card.lines[0]!, entity.buildRemaining > 0 ? `building · ${hp}` : hp];
-      const research = this.session.team.research;
       if (isCore(content, this.session.team, entity)) {
         const perks = earnedPerks(content, this.session.team).map((p) => p.name);
         lines.push(`Tier: ${tierDef(content, this.session.team).name}${perks.length ? ` · ${perks.join(", ")}` : ""}`);
       }
-      const lab = this.session.team.labResearch;
-      const doing = isCore(content, this.session.team, entity) ? research : entity.defId === content.races[raceId]!.center ? lab : null;
-      if (doing) {
-        lines.push(`Researching ${upgradeName(content, raceId, doing.upgrade)} · ${Math.ceil(doing.remaining / TICK_RATE)}s`);
-      }
+      const doing = isCore(content, this.session.team, entity) ? "research" as const : entity.defId === content.races[raceId]!.center && entity.team === this.session.local ? "labResearch" as const : null;
+      if (doing && entity.team === this.session.local) this.showQueue(doing);
       if (entity.jammedUntil !== undefined && this.session.world.tick < entity.jammedUntil) lines.push("Jammed by a DDoS · can't shoot, spawn or run");
       const fn = content.buildings[entity.defId]!.invoke;
       if (fn && entity.buildRemaining <= 0) {
@@ -215,6 +214,31 @@ export class InfoPanel {
     });
   }
 
+  /** The research queue of the selected core or upgrade center: the entry running (with its progress), then the waiting ones. */
+  private showQueue(slot: "research" | "labResearch"): void {
+    const { content, team } = this.session;
+    const raceId = team.raceId;
+    const levels = new Map<string, number>();
+    for (const [index, entry] of queueOf(team, slot).entries()) {
+      // The level this entry will land at: the team's level plus everything queued ahead of it.
+      const level = (levels.get(entry.upgrade) ?? levelOf(team, entry.upgrade)) + 1;
+      levels.set(entry.upgrade, level);
+      const name = upgradeName(content, raceId, entry.upgrade);
+      const head = index === 0 ? team[slot] : null;
+      if (head && head.upgrade === entry.upgrade) {
+        const needs = content.upgrades[entry.upgrade]!.tiers?.[levelOf(team, entry.upgrade)];
+        const gate = needs !== undefined && tierOf(content, team) < needs ? `waiting for ${content.economy.tiers[needs]!.name} · ` : "";
+        this.queueEntries.push({
+          label: `${gate}Researching ${name} ${level} · ${Math.ceil(head.remaining / TICK_RATE)}s · click to cancel`,
+          slot,
+          index,
+        });
+      } else {
+        this.queueEntries.push({ label: `Queued ${name} ${level} · $${entry.paid} · click to cancel`, slot, index });
+      }
+    }
+  }
+
   private show(card: InfoCard | null): void {
     if (!card) {
       this.root.hidden = true;
@@ -226,6 +250,13 @@ export class InfoPanel {
       ...card.lines.map((line) => {
         const li = document.createElement("li");
         li.textContent = line;
+        return li;
+      }),
+      ...this.queueEntries.map((entry) => {
+        const li = document.createElement("li");
+        li.textContent = entry.label;
+        li.className = "cancel";
+        li.addEventListener("click", () => this.session.issue({ type: "cancelResearch", slot: entry.slot, index: entry.index }));
         return li;
       }),
     );

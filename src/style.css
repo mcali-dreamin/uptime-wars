@@ -259,6 +259,17 @@ body {
   color: var(--muted);
 }
 
+/* A research queue entry on a core or upgrade center card: click cancels it (full refund). */
+#info li.cancel {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+#info li.cancel:hover {
+  color: var(--text);
+  text-decoration: line-through;
+}
+
 #race-picker {
   position: absolute;
   inset: 0;

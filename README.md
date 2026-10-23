@@ -74,17 +74,24 @@ npm run dev
   build radius, and toughens them. A bigger base also draws crawlers from
   further away. Tiers live in `economy.json` → `tiers`; gates are `tier` and
   `limitPerTier` on a building.
-- **Two places research**, one thing at a time each. Your **core** upgrades
-  the race and its base: core tier, building armor and HP, tower damage and
-  range, users and revenue. Your race's **upgrade center** (Open Source: CI
-  Server, Hyperscaler: R&D Lab, Serverless: Build Pipeline, Walled Garden:
-  Design Studio; one per player) upgrades the army: weapons, unit armor, unit
-  HP, spawn speed in three levels (Core, Data Center, Region), and **three
-  unit traits only your race has**, one per unit, unlocked with that unit's
-  tier: Fork on Exit, Open Weights, Self-Hosting; Sticky Sessions, Edge
-  Routing, Batch Jobs; Provisioned Concurrency, Batching, Parallel State;
-  Shadowban, Hold the Line, Cease and Desist. Each race names the shared
-  upgrades its own way. Tuning lives in `src/content/upgrades.json`.
+- **Two places research**, each with a queue of five: the one running plus
+  four waiting. Your **core** upgrades the race and its base: core tier,
+  building armor and HP, tower damage and range, users and revenue. Your
+  race's **upgrade center** (Open Source: CI Server, Hyperscaler: R&D Lab,
+  Serverless: Build Pipeline, Walled Garden: Design Studio; one per player)
+  upgrades the army: weapons, unit armor, unit HP, spawn speed in three
+  levels (Core, Data Center, Region), and **three unit traits only your race
+  has**, one per unit, unlocked with that unit's tier: Fork on Exit, Open
+  Weights, Self-Hosting; Sticky Sessions, Edge Routing, Batch Jobs;
+  Provisioned Concurrency, Batching, Parallel State; Shadowban, Hold the
+  Line, Cease and Desist. Each race names the shared upgrades its own way.
+  You pay when you queue (WC3 style), the next levels of an upgrade stack
+  behind each other at their own price, and requirements are judged with
+  everything queued at both buildings counted — queue the core tier, then the
+  upgrade that needs it. An entry whose tier isn't there yet waits at the
+  head, and clicking an entry on the building's card cancels it for a full
+  refund. Tuning lives in `src/content/upgrades.json` (queue size in
+  `src/sim/tuning.ts`).
 - `1`-`5` or click: pick a building. Click near your core (the ring shows your
   build radius) to place it. Shift-click to place several.
 - `WASD` / arrows, middle-drag or Alt-drag, or the very edge of the window: pan (`E` toggles edge

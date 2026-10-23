@@ -10,6 +10,15 @@ export interface Point {
   y: number;
 }
 
+/** An upgrade waiting in a research queue: paid for when it was queued. */
+export interface QueuedResearch {
+  upgrade: string;
+  /** Ticks it takes once it's the one researching. */
+  ticks: number;
+  /** What was paid to queue it, refunded in full on cancel. */
+  paid: number;
+}
+
 export interface Team {
   id: TeamId;
   /** The builder unit before the core is founded, else -1. */
@@ -40,6 +49,10 @@ export interface Team {
   research: { upgrade: string; remaining: number } | null;
   /** What the upgrade center is researching right now, if anything. */
   labResearch: { upgrade: string; remaining: number } | null;
+  /** The core's waiting queue, behind `research` (at most RESEARCH_QUEUE - 1). */
+  researchQueue: QueuedResearch[];
+  /** The upgrade center's waiting queue, behind `labResearch`. */
+  labResearchQueue: QueuedResearch[];
   /**
    * The tick this team went offline (every core, or the builder before one),
    * else null. An offline team is out: its commands are ignored, but its
@@ -278,6 +291,20 @@ export interface ResearchCommand {
   upgrade: string;
 }
 
+/**
+ * Take an entry off a research queue (0 is the one researching, then the
+ * waiting ones) and refund what it cost. Every later entry whose requirement
+ * no longer holds without it is cancelled and refunded too.
+ */
+export interface CancelResearchCommand {
+  type: "cancelResearch";
+  tick: number;
+  team: TeamId;
+  /** Which building's queue: the core's or the upgrade center's. */
+  slot: "research" | "labResearch";
+  index: number;
+}
+
 /** Send the hero after one enemy. */
 export interface AttackCommand {
   type: "attack";
@@ -363,7 +390,7 @@ export interface DismissCommand {
   unitIds: number[];
 }
 
-export type Command = DecommissionCommand | DismissCommand | AllyCommand | UnallyCommand | RankCommand | ForkCommand | BuildCommand | MoveCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | AttackCommand | CastCommand | LearnCommand | InvokeCommand;
+export type Command = DecommissionCommand | DismissCommand | AllyCommand | UnallyCommand | RankCommand | ForkCommand | BuildCommand | MoveCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | CancelResearchCommand | AttackCommand | CastCommand | LearnCommand | InvokeCommand;
 
 export interface WaveSpawn {
   tick: number;

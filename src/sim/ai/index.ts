@@ -25,7 +25,7 @@ import { rankBlocker } from "../ranks";
 import { hostile } from "../teams";
 import { tierBlocker, tierOf, tierUpgrade } from "../tiers";
 import type { Building, Command, Entity, Team, Unit, World } from "../types";
-import { canResearch, nextLevel } from "../upgrades";
+import { canResearch, nextLevel, slotOf } from "../upgrades";
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
   ? Omit<T, K>
@@ -121,8 +121,11 @@ function playBase(
   const tierPrice = nextLevel(content, team, tier).cost;
 
   // Grow the core whenever it's affordable with a little to spare; research the rest once rich.
+  // Both only into an empty slot: the queue is a player's tool, and the AI's
+  // habits (and so its balance) are tuned around one research at a time.
   if (
     !grown &&
+    !team.research &&
     canResearch(content, team, tier) === null &&
     team.money >= tierPrice + level.tierReserve
   ) {
@@ -135,14 +138,15 @@ function playBase(
     team.money > level.researchAbove
   ) {
     const upgrade = Object.keys(content.upgrades).find(
-      (u) => u !== tier && canResearch(content, team, u) === null,
+      (u) => u !== tier && !team[slotOf(content, u)] && canResearch(content, team, u) === null,
     );
     if (upgrade) issue({ type: "research", upgrade });
   }
   // Saving for the next tier: don't spend below what it costs.
   // (Between the price and price plus reserve it can afford the tier but
   // won't start it yet: that's still saving, or it spends down every time.)
-  const tierBlocked = canResearch(content, team, tier);
+  // A busy core blocks the tier like before (canResearch would let it queue).
+  const tierBlocked = team.research ? "already researching" : canResearch(content, team, tier);
   const saving =
     !grown && (tierBlocked === "not enough $" || tierBlocked === null)
       ? tierPrice + level.tierReserve

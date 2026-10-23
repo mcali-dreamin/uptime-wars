@@ -6,7 +6,7 @@ import type { TickContext } from "./context";
 import { placeBuilding, sendHome } from "./entities";
 import { TILE, footprintCenter } from "./map";
 import { buildCost, canFound, canPlace, isCore } from "./placement";
-import { canResearch, nextLevel, slotOf } from "./upgrades";
+import { canResearch, nextQueued, slotOf, waitingOf, cancelQueued } from "./upgrades";
 import { invoke, invokeBlocker } from "./functions";
 import { applyFork } from "./mechanics";
 import { applyDecommission, applyDismiss } from "./decommission";
@@ -101,10 +101,19 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
       const team = world.teams[command.team]!;
       const reason = canResearch(content, team, command.upgrade, world);
       if (reason) return reason;
-      const next = nextLevel(content, team, command.upgrade);
+      // WC3 style: the entry is paid for as it's queued, priced and timed for
+      // the level it will be once everything queued ahead finishes.
+      const next = nextQueued(content, team, command.upgrade);
       team.money -= next.cost;
-      team[slotOf(content, command.upgrade)] = { upgrade: command.upgrade, remaining: next.ticks };
+      const slot = slotOf(content, command.upgrade);
+      const entry = { upgrade: command.upgrade, ticks: next.ticks, paid: next.cost };
+      if (team[slot]) waitingOf(team, slot).push(entry);
+      else team[slot] = { upgrade: command.upgrade, remaining: next.ticks };
       return null;
+    }
+    case "cancelResearch": {
+      const team = world.teams[command.team]!;
+      return cancelQueued(content, team, command.slot, command.index);
     }
     case "attack": {
       const team = world.teams[command.team]!;

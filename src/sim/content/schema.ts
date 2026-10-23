@@ -425,8 +425,9 @@ export interface TraitDef {
 
 /**
  * Researched at the core (the race and its base) or at the race's upgrade
- * center (its army), one at a time at each. Level n costs cost * n and takes
- * researchTicks * n; each level adds perLevel to the stat's multiplier.
+ * center (its army), each through a queue of a few entries (RESEARCH_QUEUE).
+ * Level n costs cost * n and takes researchTicks * n; each level adds
+ * perLevel to the stat's multiplier.
  */
 export interface UpgradeDef {
   name: string;
