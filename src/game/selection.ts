@@ -3,6 +3,7 @@
 // so the input code, the cursor, the hint line, and the info panel agree.
 
 import { TILE, buildCost, type Building, canFound, canPlace, decommissionBlocker, decommissionRefund, dismissable, forkBlocker, hostile, isCore, MAX_ORDER_UNITS, tierBlocker, type Content, type Entity, type Point, type Unit } from "../sim";
+import { heroOf } from "../sim/heroes";
 import type { Order, Session } from "./session";
 
 export type Selection =
@@ -40,7 +41,7 @@ export const NOTHING: Selection = { kind: "none" };
 export function groundOrderLabel(session: Session, selection: Selection): string | null {
   if (selection.kind === "buildings") return buildingGroup(session, selection).some((b) => isRallied(session, b)) ? "Set rally" : null;
   if (selection.kind === "army") {
-    if (armyUnits(session, selection).length === 0) return null;
+    if (armyUnits(session, selection).length === 0) return armyHero(session, selection) ? "Move here" : null;
     return selection.armed === "move" ? "Move here" : "Attack-move here";
   }
   const entity = selectedEntity(session, selection);
@@ -58,25 +59,40 @@ export function groundOrderLabel(session: Session, selection: Selection): string
 export function groundOrders(session: Session, selection: Selection, point: Point, queue = false): Order[] {
   if (selection.kind === "buildings") return buildingGroup(session, selection).filter((b) => isRallied(session, b)).map((b) => ({ type: "rally", buildingId: b.id, x: point.x, y: point.y }));
   if (selection.kind === "army") {
-    // A command holds at most MAX_ORDER_UNITS units: a bigger army goes out
-    // as several orders on the same tick, each spread for the whole group.
-    const units = armyUnits(session, selection);
-    const orders: Order[] = [];
-    for (let i = 0; i < units.length; i += MAX_ORDER_UNITS) {
-      orders.push({
-        type: "order",
-        unitIds: units.slice(i, i + MAX_ORDER_UNITS).map((u) => u.id),
-        x: point.x,
-        y: point.y,
-        attack: selection.armed !== "move",
-        ...(queue ? { queue: true } : {}),
-        ...(units.length > MAX_ORDER_UNITS ? { group: units.length } : {}),
-      });
-    }
+    const orders = soldierOrders(session, selection, point, queue);
+    // The hero marches with the group. It has no attack-move and no waypoint
+    // queue, so it always gets a plain move to the same point — a shift-queued
+    // order included (it just walks there right away, no queueing).
+    if (armyHero(session, selection)) orders.push({ type: "move", x: point.x, y: point.y });
     return orders;
   }
   const order = groundOrder(session, selection, point, queue);
   return order ? [order] : [];
+}
+
+/**
+ * The `order` commands for an army's soldiers alone — no hero move. An army
+ * with the hero in it moves it with groundOrders; right-clicking an enemy
+ * sends these plus an `attack` for the hero instead.
+ */
+export function soldierOrders(session: Session, selection: Selection, point: Point, queue = false): Order[] {
+  if (selection.kind !== "army") return [];
+  // A command holds at most MAX_ORDER_UNITS units: a bigger army goes out
+  // as several orders on the same tick, each spread for the whole group.
+  const units = armyUnits(session, selection);
+  const orders: Order[] = [];
+  for (let i = 0; i < units.length; i += MAX_ORDER_UNITS) {
+    orders.push({
+      type: "order",
+      unitIds: units.slice(i, i + MAX_ORDER_UNITS).map((u) => u.id),
+      x: point.x,
+      y: point.y,
+      attack: selection.armed !== "move",
+      ...(queue ? { queue: true } : {}),
+      ...(units.length > MAX_ORDER_UNITS ? { group: units.length } : {}),
+    });
+  }
+  return orders;
 }
 
 /**
@@ -97,7 +113,7 @@ export function groundOrder(session: Session, selection: Selection, point: Point
  */
 export function leftClickOrders(session: Session, selection: Selection): boolean {
   if (selection.kind === "buildings") return selection.armed === true && groundOrderLabel(session, selection) !== null;
-  if (selection.kind === "army") return selection.armed !== undefined && armyUnits(session, selection).length > 0;
+  if (selection.kind === "army") return selection.armed !== undefined && (armyUnits(session, selection).length > 0 || armyHero(session, selection) !== undefined);
   const entity = selectedEntity(session, selection);
   if (!entity || !groundOrderLabel(session, selection)) return false;
   return (selection.kind === "entity" && selection.armed === true) || (entity.kind === "unit" && entity.mode === "builder");
@@ -106,7 +122,7 @@ export function leftClickOrders(session: Session, selection: Selection): boolean
 /** The selection with its ground order armed, or null if it has none to arm. */
 export function armed(session: Session, selection: Selection, how: "attack" | "move" = "attack"): Selection | null {
   if (selection.kind === "buildings") return how === "attack" && groundOrderLabel(session, selection) !== null ? { kind: "buildings", ids: selection.ids, armed: true } : null;
-  if (selection.kind === "army") return armyUnits(session, selection).length > 0 ? { kind: "army", ids: selection.ids, armed: how } : null;
+  if (selection.kind === "army") return armyUnits(session, selection).length > 0 || armyHero(session, selection) !== undefined ? { kind: "army", ids: selection.ids, armed: how } : null;
   if (how === "move" || selection.kind !== "entity" || !groundOrderLabel(session, selection)) return null;
   return { kind: "entity", id: selection.id, armed: true };
 }
@@ -122,11 +138,33 @@ export function isSoldier(session: Session, entity: Entity | undefined): entity 
   return entity?.kind === "unit" && entity.team === session.local && entity.mode === "guard" && entity.hp > 0;
 }
 
-/** The living units of an army selection. */
+/** The living units of an army selection. The hero is not a soldier: see armyHero. */
 export function armyUnits(session: Session, selection: Selection): Unit[] {
   if (selection.kind !== "army") return [];
   const wanted = new Set(selection.ids);
   return session.world.entities.filter((e): e is Unit => wanted.has(e.id) && isSoldier(session, e));
+}
+
+/**
+ * The local hero when it belongs to an army selection: alive and among its
+ * ids. An army may hold the hero (it moves with the group) next to its
+ * soldiers, but the hero is never a soldier: it isn't dismissed, doesn't take
+ * `order` commands, and a hero-only army has no attack-move.
+ */
+export function armyHero(session: Session, selection: Selection): Unit | undefined {
+  if (selection.kind !== "army") return undefined;
+  const hero = heroOf(session.world, session.team);
+  return hero && selection.ids.includes(hero.id) ? hero : undefined;
+}
+
+/**
+ * Select these unit ids as an army. The hero on its own becomes its entity
+ * instead: its card, with its abilities, not a one-member army.
+ */
+export function armySelection(ids: number[], heroId?: number): Selection {
+  if (ids.length === 0) return NOTHING;
+  if (heroId !== undefined && ids.length === 1 && ids[0] === heroId) return { kind: "entity", id: heroId };
+  return { kind: "army", ids };
 }
 
 /** A building of yours that takes a rally point of its own: a spawner or a function (not the core). */
@@ -178,9 +216,41 @@ export function toggleBuilding(session: Session, selection: Selection, building:
   return buildingSelection(current.includes(building.id) ? current.filter((id) => id !== building.id) : [...current, building.id]);
 }
 
+/**
+ * Shift-click on one of your fighting units or your hero: add it to the
+ * selected army (or take it out). A single unit selected counts as the group
+ * of one; the hero alone collapses to its entity. Null if shift-click doesn't
+ * group here (no army or unit of yours selected, or it isn't one that groups).
+ */
+export function toggleUnit(session: Session, selection: Selection, unit: Entity): Selection | null {
+  const hero = heroOf(session.world, session.team);
+  const selected = selectedEntity(session, selection);
+  const current =
+    selection.kind === "army"
+      ? selection.ids
+      : selection.kind === "entity" && (isSoldier(session, selected) || (hero !== undefined && selected?.id === hero.id))
+        ? [selection.id]
+        : null;
+  if (!current || (!isSoldier(session, unit) && unit.id !== hero?.id)) return null;
+  const ids = current.includes(unit.id) ? current.filter((id) => id !== unit.id) : [...current, unit.id];
+  return armySelection(ids, hero?.id);
+}
+
 /** Every unit you can command. */
 export function allSoldiers(session: Session): Unit[] {
   return session.world.entities.filter((e): e is Unit => isSoldier(session, e));
+}
+
+/**
+ * An army selection's ids still worth having selected: the living soldiers,
+ * plus the hero while it lives. Empty once everyone in it is gone. An army
+ * down to just the hero prunes to `[hero.id]`, which its holder (the frame
+ * loop) collapses to the hero's entity.
+ */
+export function livingArmyIds(session: Session, selection: Selection): number[] {
+  if (selection.kind !== "army") return [];
+  const hero = armyHero(session, selection);
+  return [...armyUnits(session, selection).map((u) => u.id), ...(hero ? [hero.id] : [])];
 }
 
 /** The ids a selection highlights. */
@@ -296,7 +366,9 @@ export interface Removal {
 /**
  * Delete on a selection: your buildings are decommissioned (part of their
  * cost back; never a core), your fighting units dismissed (their compute
- * freed). Null when there's nothing of yours to take away.
+ * freed). The hero is never taken away: it isn't a soldier, so an army with
+ * one in it dismisses its soldiers only, and a hero-only army dismisses
+ * nothing. Null when there's nothing of yours to take away.
  */
 export function removal(session: Session, selection: Selection): Removal | null {
   const { content, world } = session;

@@ -8,7 +8,8 @@ import {
   removal,
   allSoldiers,
   armed,
-  armyUnits,
+  armyHero,
+  armySelection,
   buildingGroup,
   buildingSelection,
   enemyAt,
@@ -16,7 +17,10 @@ import {
   groupable,
   isRallied,
   isSoldier,
+  livingArmyIds,
+  soldierOrders,
   toggleBuilding,
+  toggleUnit,
   leftClickOrders,
   ownEntityAt,
   placementAt,
@@ -377,6 +381,14 @@ function soldiersIn(rect: { left: number; top: number; right: number; bottom: nu
   });
 }
 
+/** The hero's id if it's drawn inside a screen rectangle (client pixels), else undefined. */
+function heroInBox(rect: { left: number; top: number; right: number; bottom: number }): number | undefined {
+  const hero = heroUnit(session);
+  if (!hero) return undefined;
+  const at = renderer.toScreen(hero.x, hero.y);
+  return at.x >= rect.left && at.x <= rect.right && at.y >= rect.top && at.y <= rect.bottom ? hero.id : undefined;
+}
+
 /** Your buildings (the core excepted) whose middle is drawn inside a screen rectangle (client pixels). */
 function buildingsIn(rect: { left: number; top: number; right: number; bottom: number }) {
   return session.world.entities.filter((entity) => {
@@ -393,11 +405,15 @@ function selectBuildings(ids: number[], add: boolean): void {
   select(merged.length > 0 ? buildingSelection(merged) : add ? selection : NOTHING);
 }
 
-/** Select these units (or add them, with shift). */
-function selectUnits(ids: number[], add: boolean): void {
+/**
+ * Select these units (or add them, with shift). `heroId` adds the hero to the
+ * group (a box or shift-click that caught it); the hero alone selects as its
+ * entity, not a one-member army.
+ */
+function selectUnits(ids: number[], add: boolean, heroId?: number): void {
   const base = add && selection.kind === "army" ? selection.ids : [];
-  const merged = [...new Set([...base, ...ids])];
-  select(merged.length > 0 ? { kind: "army", ids: merged } : add ? selection : NOTHING);
+  const merged = [...new Set([...base, ...ids, ...(heroId !== undefined ? [heroId] : [])])];
+  select(merged.length > 0 ? armySelection(merged, heroId) : add ? selection : NOTHING);
 }
 
 function screenRect() {
@@ -435,12 +451,12 @@ const gameInput: GameInput = {
       lastUnitClick = { id: own.id, at: now };
       // Double-click: every one of its kind on screen.
       if (double) return selectUnits(soldiersIn(screenRect()).filter((u) => u.defId === own.defId).map((u) => u.id), shift);
-      // Shift-click toggles it in or out of the group.
-      if (shift && selection.kind === "army") {
-        const ids = selection.ids.includes(own.id) ? selection.ids.filter((id) => id !== own.id) : [...selection.ids, own.id];
-        return select(ids.length > 0 ? { kind: "army", ids } : NOTHING);
+      // Shift-click toggles it in or out of the group (the hero alone becomes its entity).
+      if (shift) {
+        const toggled = toggleUnit(session, selection, own);
+        if (toggled) return select(toggled);
       }
-      return select({ kind: "army", ids: [own.id] });
+      return select(armySelection([own.id]));
     }
     if (own && groupable(session, own)) {
       const now = performance.now();
@@ -452,7 +468,16 @@ const gameInput: GameInput = {
       const toggled = shift ? toggleBuilding(session, selection, own) : null;
       return select(toggled ?? { kind: "entity", id: own.id });
     }
-    if (own) return select({ kind: "entity", id: own.id });
+    // Your hero (or anything else of yours, the core included): shift-click
+    // toggles the hero in or out of a selected army; a plain click selects it
+    // alone, with its abilities.
+    if (own) {
+      if (shift) {
+        const toggled = toggleUnit(session, selection, own);
+        if (toggled) return select(toggled);
+      }
+      return select({ kind: "entity", id: own.id });
+    }
     if (leftClickOrders(session, selection)) return order(point);
     select(NOTHING);
   },
@@ -463,11 +488,15 @@ const gameInput: GameInput = {
       const hero = heroUnit(session);
       return select(hero ? { kind: "entity", id: hero.id } : NOTHING);
     }
-    // Hero selected and an enemy under the pointer: attack it.
+    // Your hero — alone or marching with an army — and an enemy under the
+    // pointer: it attacks the enemy itself. Alone, that's the whole order;
+    // with an army, the soldiers still attack-move there as usual.
     const hero = heroUnit(session);
-    if (hero && selection.kind === "entity" && selection.id === hero.id) {
+    const heroInArmy = selection.kind === "army" && armyHero(session, selection) !== undefined;
+    if (hero && (heroInArmy || (selection.kind === "entity" && selection.id === hero.id))) {
       const enemy = enemyAt(session, point, (p) => renderer.fog.isVisible(p.x, p.y));
       if (enemy) {
+        if (selection.kind === "army") for (const one of soldierOrders(session, selection, point, queue === true)) session.issue(one);
         session.issue({ type: "attack", targetId: enemy.id });
         renderer.ping(enemy.x, enemy.y);
         return;
@@ -481,13 +510,15 @@ const gameInput: GameInput = {
   boxSelect(rect, shift) {
     if (selection.kind === "place" || selection.kind === "found") return;
     const ids = soldiersIn(rect).map((u) => u.id);
-    if (ids.length === 0 && session.deploying) return;
-    // Units win; a box with none in it picks up your spawners instead, to rally them together.
-    if (ids.length === 0 && !(shift && selection.kind === "army")) {
+    // The hero joins the group like any unit (a box with only it selects the hero).
+    const heroId = heroInBox(rect);
+    if (ids.length === 0 && heroId === undefined && session.deploying) return;
+    // Units win; a box with neither in it picks up your spawners instead, to rally them together.
+    if (ids.length === 0 && heroId === undefined && !(shift && selection.kind === "army")) {
       const spawners = buildingsIn(rect).filter((b) => isRallied(session, b)).map((b) => b.id);
       if (spawners.length > 0) return selectBuildings(spawners, shift);
     }
-    selectUnits(ids, shift);
+    selectUnits(ids, shift, heroId);
   },
 
   hover(point) {
@@ -769,9 +800,12 @@ renderer.app.ticker.add((ticker) => {
   if (selection.kind === "entity" && !selectedEntity(session, selection)) select(fallback());
   if (selection.kind === "found" && !session.deploying) select(NOTHING);
   if (selection.kind === "army") {
-    const alive = armyUnits(session, selection);
-    if (alive.length === 0) select(fallback());
-    else if (alive.length !== selection.ids.length) select({ ...selection, ids: alive.map((u) => u.id) });
+    // Dead soldiers drop out; the hero stays while it lives. An army down to
+    // just the hero collapses to its entity, with its abilities.
+    const hero = armyHero(session, selection);
+    const kept = livingArmyIds(session, selection);
+    if (kept.length === 0) select(fallback());
+    else if (kept.length !== selection.ids.length) select(hero && kept.length === 1 ? { kind: "entity", id: hero.id } : { ...selection, ids: kept });
   }
   if (selection.kind === "buildings") {
     const standing = buildingGroup(session, selection);
