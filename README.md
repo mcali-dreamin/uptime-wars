@@ -251,7 +251,9 @@ backbone plateau ringed by cliffs, every ramp up is guarded by a C2 Server,
 and more ring the nest itself. Every 2 incidents the botnet rebuilds the ones you
 knocked down, tougher (`waves.json` → `fortress`). The nest is **shielded**
 while its four **Botnet Farms** stand: break every farm (each one weakens later
-incidents), then the nest. Rebuilt farms shield it again, and the top bar's
+incidents), then the nest. A shielded nest is invulnerable, like Warcraft III's: units
+and towers ignore it and an attack order on it is refused, so nothing gets stuck on it.
+Rebuilt farms shield it again, and the top bar's
 Nest stat shows where you are. When the nest falls, the whole botnet collapses. Where they stand is a pure
 function of the seed. Hover anything (buttons, buildings, units, terrain) to see what it does.
 Add `?debug` to the URL to expose live state as `window.uptime`.

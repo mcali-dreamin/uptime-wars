@@ -11,6 +11,7 @@ import { invoke, invokeBlocker } from "./functions";
 import { applyFork } from "./mechanics";
 import { applyDecommission, applyDismiss } from "./decommission";
 import { heroOf, learnBlocker, orderCast } from "./heroes";
+import { INVULNERABLE, invulnerable } from "./fortress";
 import { allyBlocker, breakAlliance, hostile, offerAlliance, unallyBlocker } from "./teams";
 import { TILE_OPEN, isWalkableTile, tileAt } from "./terrain";
 import { nearestFit } from "./nav";
@@ -121,6 +122,7 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
       if (!hero) return "no hero";
       const target = ctx.byId.get(command.targetId);
       if (!target || target.hp <= 0 || !hostile(world, target.team, team.id)) return "not an enemy";
+      if (invulnerable(world, content, target)) return INVULNERABLE;
       team.hero!.focusId = target.id;
       team.hero!.cast = null;
       hero.moveTo = null;

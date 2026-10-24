@@ -7,6 +7,7 @@ import { dealDamage, edgeDistance, nearestEnemy } from "../combat";
 import { buffMultiplier, castPoint, heroDamage, resolveCast } from "../heroes";
 import { distance, walkTo } from "../movement";
 import { hostile } from "../teams";
+import { invulnerable } from "../fortress";
 import { MOVE_REACH } from "../tuning";
 import { multiplier } from "../upgrades";
 import type { Behavior } from "./index";
@@ -48,7 +49,7 @@ export const hero: Behavior = (ctx, unit, def) => {
 
   // 3. A focus target, else the nearest enemy that comes close.
   let target = state.focusId === null ? undefined : ctx.byId.get(state.focusId);
-  if (!target || target.hp <= 0 || !hostile(world, target.team, unit.team)) {
+  if (!target || target.hp <= 0 || !hostile(world, target.team, unit.team) || invulnerable(world, ctx.content, target)) {
     state.focusId = null;
     target = nearestEnemy(ctx, unit, def.aggro, (e) => e.kind === "unit" && e.mode !== "decoy") ?? undefined;
   }
