@@ -184,6 +184,19 @@ export function nestShielded(world: World, content: Content, target: Entity): bo
 }
 
 /**
+ * Can't be attacked at all (WC3's invulnerable): units and towers never pick
+ * it as a target, drop it if it becomes so, and orders to attack it are
+ * refused. Otherwise units park on a shielded nest and snap back to it after
+ * every move order. Today that's only the shielded nest.
+ */
+/** Why an attack order on an invulnerable target is refused (shown to the player). */
+export const INVULNERABLE = "invulnerable · destroy every Botnet Farm first";
+
+export function invulnerable(world: World, content: Content, target: Entity): boolean {
+  return nestShielded(world, content, target);
+}
+
+/**
  * The nest fell: the botnet goes down with it. Every building and creep it
  * still has collapses, and nothing more comes out.
  */

@@ -5,7 +5,7 @@ import { creditKill } from "./heroes";
 import { hostile } from "./teams";
 import { GRID_CELL, GRID_STRIDE, type TickContext } from "./context";
 import { regionShield } from "./mechanics";
-import { nestShielded, retaliate } from "./fortress";
+import { invulnerable, nestShielded, retaliate } from "./fortress";
 import { loseUsers } from "./economy";
 import { TILE } from "./map";
 import { hasLineOfSight } from "./nav";
@@ -70,6 +70,7 @@ export function nearestEnemy(
       if (!cell) continue;
       for (const entity of cell) {
         if (!hostile(ctx.world, entity.team, from.team) || entity.hp <= 0 || !filter(entity)) continue;
+        if (entity.kind === "building" && invulnerable(ctx.world, ctx.content, entity)) continue;
         const limit = entity.kind === "building" ? buildingDistance : maxDistance;
         const distance = edgeDistance(from, entity);
         if (distance > limit) continue;

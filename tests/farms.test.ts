@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createWorld, farmSpots, farmsDown, generateTerrain, planWave, step, type Building, type World } from "../src/sim";
+import { createWorld, farmSpots, farmsDown, generateTerrain, planWave, queueCommand, step, type Building, type World } from "../src/sim";
 import { makeContext } from "../src/sim/context";
 import { dealDamage } from "../src/sim/combat";
 import { spawnUnit } from "../src/sim/entities";
+import { INVULNERABLE } from "../src/sim/fortress";
+import { heroOf } from "../src/sim/heroes";
 import { content, SETUP } from "./fixtures";
 
 const SEEDS = Array.from({ length: 40 }, (_, i) => i * 7919 + 1);
@@ -74,6 +76,61 @@ describe("the nest's shield", () => {
     dealDamage(ctx, attacker, nest, 500);
     expect(nest.hp).toBe(hp);
     expect(world.events.some((e) => e.type === "nest-shielded" && e.team === 0)).toBe(true);
+  });
+
+  // WC3's invulnerable: a shielded nest can't be attacked at all, so units
+  // don't park on it, and don't snap back to it after a move order.
+  describe("can't be attacked while shielded", () => {
+    /** The nest, a lone unit of ours beside it, and no botnet units to distract it. */
+    const besideNest = () => {
+      const world = createWorld(content, SETUP);
+      world.waves.nextWaveTick = 1e9;
+      world.waves.nextTrickleTick = 1e9;
+      const nest = nestOf(world);
+      const { attacker } = attackerAt(world);
+      // Tough enough to outlast the fortress's towers for the test.
+      attacker.hp = attacker.maxHp = 1e9;
+      const quiet = () => {
+        world.entities = world.entities.filter((e) => !(e.kind === "unit" && e.team === 1));
+      };
+      quiet();
+      return { world, nest, unit: attacker, quiet };
+    };
+    const run = (world: World, quiet: () => void, ticks: number) => {
+      for (let i = 0; i < ticks; i++) {
+        quiet();
+        step(world, content);
+      }
+    };
+
+    it("units beside it never target it, so nothing holds them there", () => {
+      const { world, nest, unit, quiet } = besideNest();
+      const hp = nest.hp;
+      for (let i = 0; i < 200; i++) {
+        run(world, quiet, 1);
+        expect(unit.targetId).not.toBe(nest.id);
+      }
+      expect(nest.hp).toBe(hp);
+      expect(world.events.some((e) => e.type === "nest-shielded")).toBe(false);
+    });
+
+    it("refuses a hero's attack order on it", () => {
+      const world = createWorld(content, SETUP);
+      const nest = nestOf(world);
+      expect(heroOf(world, world.teams[0]!)).toBeDefined();
+      queueCommand(world, { type: "attack", tick: world.tick, team: 0, targetId: nest.id });
+      step(world, content);
+      expect(world.events.find((e) => e.type === "rejected")).toMatchObject({ reason: INVULNERABLE });
+      expect(world.teams[0]!.hero!.focusId).toBeNull();
+    });
+
+    it("becomes a target again once the last farm falls", () => {
+      const { world, nest, unit, quiet } = besideNest();
+      for (const f of farms(world)) f.hp = 0;
+      run(world, quiet, 60);
+      expect(unit.targetId).toBe(nest.id);
+      expect(nest.hp).toBeLessThan(nest.maxHp);
+    });
   });
 
   it("drops when the last farm falls, and the retaliation says so", () => {

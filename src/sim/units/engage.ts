@@ -13,6 +13,7 @@ import type { Entity, Unit } from "../types";
 import { multiplier } from "../upgrades";
 import { roleHit, roleTargets } from "../roles";
 import { hostile } from "../teams";
+import { invulnerable } from "../fortress";
 import { terrainFor } from "../walls";
 
 /**
@@ -71,6 +72,7 @@ export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
     lure !== undefined ||
     target !== undefined &&
     target.hp > 0 &&
+    !invulnerable(world, ctx.content, target) &&
     edgeDistance(unit, target) <= sight(target) * LEASH_MULTIPLIER &&
     guardCanHold(target) &&
     canSee(ctx, unit, target);

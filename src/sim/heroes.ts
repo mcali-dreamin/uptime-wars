@@ -16,6 +16,7 @@ import { invoke } from "./functions";
 import { distance } from "./movement";
 import { teamCores } from "./placement";
 import { hostile } from "./teams";
+import { INVULNERABLE, invulnerable } from "./fortress";
 import type { CastCommand, Entity, HeroState, Point, Team, Unit, World } from "./types";
 
 export function heroOf(world: World, team: Team): Unit | undefined {
@@ -204,6 +205,7 @@ export function orderCast(ctx: TickContext, team: Team, command: CastCommand): s
   if (ability.target === "enemy") {
     const target = command.targetId === null ? undefined : ctx.byId.get(command.targetId);
     if (!target || target.hp <= 0 || !hostile(world, target.team, team.id)) return "needs an enemy";
+    if (invulnerable(world, content, target)) return INVULNERABLE;
   }
   const state = team.hero!;
   state.cast = { ability: command.ability, x: command.x, y: command.y, targetId: command.targetId };
