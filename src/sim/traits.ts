@@ -9,6 +9,7 @@ import { spawnUnit } from "./entities";
 import { hostile } from "./teams";
 import { HOME_SLACK } from "./tuning";
 import { TICK_RATE } from "./map";
+import { multiplier } from "./upgrades";
 import type { Entity, Team, Unit, World } from "./types";
 
 const NONE: TraitDef = {};
@@ -26,11 +27,12 @@ export function traitsFor(content: Content, team: Team | undefined, unitId: stri
   return merged ?? NONE;
 }
 
-/** A unit's def with its speed and range traits applied. */
+/** A unit's def with its speed and range traits, and the team's Unit Speed upgrade, applied. */
 export function effectiveDef(content: Content, team: Team | undefined, unit: Unit, def: UnitDef): UnitDef {
   const t = traitsFor(content, team, unit.defId);
-  if (!t.speed && !t.range) return def;
-  return { ...def, speed: def.speed * (t.speed ?? 1), range: def.range * (t.range ?? 1) };
+  const faster = multiplier(content, team, "unitSpeed");
+  if (!t.speed && !t.range && faster === 1) return def;
+  return { ...def, speed: def.speed * (t.speed ?? 1) * faster, range: def.range * (t.range ?? 1) };
 }
 
 /** Is this unit holding its post (home, no order)? */

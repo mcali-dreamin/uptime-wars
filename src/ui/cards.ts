@@ -125,6 +125,7 @@ const STAT_TEXT: Record<string, string> = {
   unitDamage: "unit damage",
   towerRange: "tower range",
   spawnSpeed: "spawn speed",
+  unitSpeed: "unit speed",
   userCapacity: "user capacity",
   revenue: "revenue per user",
   buildRadius: "core reach (tiles)",
