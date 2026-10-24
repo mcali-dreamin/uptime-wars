@@ -102,14 +102,8 @@ export class Renderer {
         );
         this.ping(event.x, event.y);
       }
-      if (event.type === "infecting") {
-        this.showBanner("An Infector is heading out · stop it before it builds");
-        this.ping(event.x, event.y);
-      }
-      if (event.type === "infected") {
-        this.showBanner("The botnet is building an Infected Node");
-        this.ping(event.x, event.y);
-      }
+      // The banner for these comes from the alert (game/alerts.ts), with Space to look.
+      if (event.type === "infecting" || event.type === "infected") this.ping(event.x, event.y);
       if (event.type === "farms-rebuilt") this.showBanner(`The botnet rebuilt ${event.rebuilt} Botnet Farm${event.rebuilt > 1 ? "s" : ""} · the Nest is shielded again`);
       // Every bounced shot is an event: say it once in a while, not every frame.
       if (event.type === "nest-shielded" && event.team === this.localTeam && this.shieldNoticeAt + SHIELD_NOTICE_MS < performance.now()) {

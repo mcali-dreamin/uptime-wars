@@ -86,6 +86,10 @@ export class BuildBar {
 
   private render(mode: BarMode): void {
     this.mode = mode;
+    // The buttons are about to go: a hovered one never sees its pointerleave, so
+    // its card would stick on the info panel over whatever is selected next.
+    this.events.hover(null);
+    this.hero?.unhover();
     const { race, content } = this.session;
     const heroName = this.session.team.heroId ? content.units[this.session.team.heroId]!.name : "Hero";
     const center = race.center ? content.buildings[race.center]!.name : "Upgrade center";

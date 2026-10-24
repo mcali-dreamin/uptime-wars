@@ -67,6 +67,29 @@ export function rankBlocker(content: Content, world: World, teamId: number, buil
   return null;
 }
 
+/**
+ * Ranking up a group: which of these buildings can rank up now, the ones that
+ * could but don't fit what's left of the team's $ after the ones before them
+ * (`short`), and what the affordable ones cost together. In the given order,
+ * the way the commands will land.
+ */
+export function rankGroup(content: Content, world: World, teamId: number, buildings: readonly Building[]): { ids: number[]; cost: number; short: number } {
+  const team = world.teams[teamId];
+  const plan = { ids: [] as number[], cost: 0, short: 0 };
+  if (!team) return plan;
+  for (const building of buildings) {
+    const blocker = rankBlocker(content, world, teamId, building);
+    if (blocker !== null && blocker !== "not enough $") continue;
+    const price = rankCost(content, world, building)!;
+    if (plan.cost + price > team.money) plan.short += 1;
+    else {
+      plan.ids.push(building.id);
+      plan.cost += price;
+    }
+  }
+  return plan;
+}
+
 /** Pay and start the refit. Call only when rankBlocker is null. */
 export function startRank(content: Content, world: World, building: Building): void {
   const team = world.teams[building.team]!;

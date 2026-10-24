@@ -114,6 +114,11 @@ export class HeroBar {
     }
   }
 
+  /** Drop the hovered ability: its button is being taken off the bar. */
+  unhover(): void {
+    this.events.hover(null);
+  }
+
   /** Lines for the info card when hovering an ability. */
   describe(id: string): { title: string; lines: string[] } {
     const { content, team } = this.session;

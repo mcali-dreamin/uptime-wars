@@ -199,6 +199,15 @@ await run("smoke test", async ({ check, open }) => {
   check(abilities?.length === 4, `the hero's card shows its 4 abilities (${abilities?.join(", ")})`);
   await page.click(`.ability-btn[data-ability="${abilities[0]}"] .learn`, { timeout: 60000 });
   check(await waitFor(() => state((a) => window.uptime.session.team.hero.ranks[a] === 1, abilities[0])), "the + learns an ability");
+  // Hover an ability, then deselect with the pointer still there: its button
+  // goes away without a pointerleave, and its card mustn't stay behind.
+  const abilityName = await state((a) => window.uptime.content.heroes.abilities[a].name, abilities[0]);
+  const infoText = () => page.evaluate(() => (document.querySelector("#info").checkVisibility() ? document.querySelector("#info").innerText : ""));
+  await page.hover(`.ability-btn[data-ability="${abilities[0]}"]`);
+  check((await infoText()).includes(abilityName), "hovering an ability shows its card");
+  await page.keyboard.press("Escape");
+  check(await waitFor(async () => !(await infoText()).includes(abilityName)), "deselecting the hero drops the hovered ability's card");
+  await page.keyboard.press("q");
   const heroTo = await openNear(hero.x, hero.y, 3, 7);
   await click(heroTo, { button: "right" });
   const moving = await waitFor(() => state(([id, x, y]) => {
