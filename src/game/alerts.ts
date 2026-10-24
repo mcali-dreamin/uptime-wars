@@ -6,7 +6,7 @@
 
 import { isCore, type Content, type Point, type SimEvent, type TeamId, type World } from "../sim";
 
-export type AlertKind = "attack" | "core" | "lost" | "hero";
+export type AlertKind = "attack" | "core" | "lost" | "hero" | "spread";
 
 export interface Alert {
   kind: AlertKind;
@@ -18,7 +18,7 @@ export interface Alert {
 }
 
 /** Quiet time per kind (seconds) before the same kind, near the same place, alerts again. */
-const QUIET: Record<AlertKind, number> = { attack: 12, core: 8, lost: 0, hero: 0 };
+const QUIET: Record<AlertKind, number> = { attack: 12, core: 8, lost: 0, hero: 0, spread: 0 };
 /** Two alerts of a kind closer than this (world px) count as the same place. */
 const SAME_PLACE = 900;
 
@@ -62,6 +62,11 @@ export class Alerts {
         raise("lost", `${this.content.buildings[event.defId]?.name ?? "A building"} lost`, event.x, event.y, false);
       } else if (event.type === "hero-down" && event.team === local) {
         raise("hero", "Your hero has fallen", event.x, event.y, false);
+      } else if (event.type === "infecting") {
+        // Where it's headed, so Space takes you there to cut it off.
+        raise("spread", "An Infector is heading out · stop it before it builds", event.x, event.y, false);
+      } else if (event.type === "infected") {
+        raise("spread", "The botnet is building an Infected Node", event.x, event.y, false);
       }
     }
     return out;

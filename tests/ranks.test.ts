@@ -9,6 +9,7 @@ import {
   queueCommand,
   rankBlocker,
   rankCost,
+  rankGroup,
   step,
   tierUpgrade,
   type Building,
@@ -70,6 +71,26 @@ describe("spawner ranks", () => {
     w.teams[0]!.money = 5000;
     expect(rankBlocker(content, w, 0, b)).toBeNull();
     expect(rankBlocker(content, w, 1, b)).toBe("not your building");
+  });
+
+  it("a group ranks up every one that can, as far as the $ goes (U on a double-click)", () => {
+    const { w, b } = spawner("open-source", "server-rack");
+    const c = core(w);
+    const second = placeBuilding(w, content, 0, "server-rack", c.col - 4, c.row, true);
+    const third = placeBuilding(w, content, 0, "server-rack", c.col, c.row + 4, true);
+    const generator = placeBuilding(w, content, 0, "solar-array", c.col, c.row - 4, true);
+    const price = rankCost(content, w, b)!;
+    // Not a spawner: not in the plan, not counted short either.
+    expect(rankGroup(content, w, 0, [b, generator, second, third])).toEqual({ ids: [b.id, second.id, third.id], cost: price * 3, short: 0 });
+    w.teams[0]!.money = price * 2;
+    expect(rankGroup(content, w, 0, [b, second, third])).toEqual({ ids: [b.id, second.id], cost: price * 2, short: 1 });
+    w.teams[0]!.money = 0;
+    expect(rankGroup(content, w, 0, [b, second, third])).toEqual({ ids: [], cost: 0, short: 3 });
+    // The planned commands all land: the budget check matches the sim's.
+    w.teams[0]!.money = price * 2;
+    for (const id of rankGroup(content, w, 0, [b, second, third]).ids) queueCommand(w, { type: "rank", tick: w.tick, team: 0, buildingId: id });
+    run(w, 1);
+    expect([b, second, third].map((x) => (x.refitRemaining ?? 0) > 0)).toEqual([true, true, false]);
   });
 
   it("only spawners rank up", () => {

@@ -1,6 +1,6 @@
 // Top bar numbers, the status line, and the hint line over the map.
 
-import { TICK_RATE, threatPermille, computeBalance, farmSpots, farmsStanding, hashWorld, hordeTeam, incomeRate, isCore, previewWave, rulesLabel, userCapacity } from "../sim";
+import { TICK_RATE, threatPermille, computeBalance, farmSpots, farmsStanding, hashWorld, hordeTeam, incomeRate, isCore, previewWave, rulesLabel, userCapacity, type Content } from "../sim";
 
 const RULES_NAME = { coop: "Co-op", ffa: "Free-for-all", custom: "Custom rules" } as const;
 import { groundOrderLabel, leftClickOrders, selectedEntity, type Selection } from "../game/selection";
@@ -180,23 +180,16 @@ export class Hud {
   private updatePreview(wave: number): void {
     if (wave === this.previewed) return;
     this.previewed = wave;
-    const { units } = this.session.content;
     const preview = previewWave(this.session.content, wave);
     this.previewTitle.textContent = `Next: ${preview.name}`;
     this.previewTitle.title = `Incident ${wave}`;
-    const parts: HTMLElement[] = preview.creeps.map((id) => {
+    const parts = previewLine(this.session.content, wave).map(({ text, kind }) => {
       const span = document.createElement("span");
-      const fresh = preview.fresh.includes(id) && wave > 1;
-      span.textContent = fresh ? `${units[id]!.name} (new)` : units[id]!.name;
-      if (fresh) span.className = "new";
+      span.textContent = text;
+      if (kind) span.className = kind;
       return span;
     });
-    if (preview.bosses > 0) {
-      const boss = document.createElement("span");
-      boss.className = "boss";
-      boss.textContent = `${preview.bosses > 1 ? `${preview.bosses}× ` : ""}${units[preview.boss]!.name} BOSS`;
-      parts.push(boss);
-    }
+    this.previewCreeps.title = parts.map((part) => part.textContent).join(" · ");
     this.previewCreeps.replaceChildren(...parts.flatMap((part, i) => (i === 0 ? [part] : [document.createTextNode(" · "), part])));
   }
 
@@ -284,4 +277,19 @@ export class Hud {
     this.status.className = won ? "won" : "lost";
     return won ? "NEST OFFLINE" : `OUTAGE · uptime ${uptime}`;
   }
+}
+
+/**
+ * The next incident's creeps as the HUD lists them. What matters most goes
+ * first, since the list trails off when the bar is narrow: the boss, then
+ * what's new, then the rest.
+ */
+export function previewLine(content: Content, wave: number): { text: string; kind: "boss" | "new" | null }[] {
+  const preview = previewWave(content, wave);
+  const { units } = content;
+  const isFresh = (id: string) => preview.fresh.includes(id) && wave > 1;
+  const creeps = [...preview.creeps].sort((a, b) => Number(isFresh(b)) - Number(isFresh(a)));
+  const line: { text: string; kind: "boss" | "new" | null }[] = creeps.map((id) => (isFresh(id) ? { text: `${units[id]!.name} (new)`, kind: "new" as const } : { text: units[id]!.name, kind: null }));
+  if (preview.bosses > 0) line.unshift({ text: `${preview.bosses > 1 ? `${preview.bosses}× ` : ""}${units[preview.boss]!.name} BOSS`, kind: "boss" });
+  return line;
 }

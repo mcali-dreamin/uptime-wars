@@ -85,4 +85,13 @@ describe("alerts", () => {
     }
     expect(raised.length).toBeGreaterThan(0);
   });
+
+  it("an Infector heading out, and the node it builds, alert where they are, so Space takes you there", () => {
+    const { world } = base();
+    const alerts = new Alerts(content);
+    const heading = alerts.update(world, [{ type: "infecting", x: 4000, y: 3000 }], 0, 0, onScreen);
+    expect(heading.map(({ kind, x, y }) => ({ kind, x, y }))).toEqual([{ kind: "spread", x: 4000, y: 3000 }]);
+    expect(alerts.latest(1)).toMatchObject({ kind: "spread", x: 4000, y: 3000 });
+    expect(alerts.update(world, [{ type: "infected", x: 4000, y: 3000 }], 0, 40, offScreen).map((a) => a.text)).toEqual(["The botnet is building an Infected Node"]);
+  });
 });

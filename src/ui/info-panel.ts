@@ -2,7 +2,7 @@
 // the build button you're hovering, what you're placing, or what you have
 // selected. Nothing else pops up. The full story lives in the Guide.
 
-import { invokeCost, upgradeName, earnedPerks, tierDef, TICK_RATE, forkCost, isCore, levelOf, queueOf, regionShield, buildingRank, nextRank, rankBlocker, rankCost, tierOf, unitRank } from "../sim";
+import { invokeCost, upgradeName, earnedPerks, tierDef, TICK_RATE, forkCost, isCore, levelOf, queueOf, regionShield, buildingRank, nextRank, rankBlocker, rankCost, rankGroup, tierOf, unitRank } from "../sim";
 import { armyHero, armyUnits, buildingGroup, groundOrderLabel, isRallied, removal, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { heightAtTile, TILE, type Building, type Entity } from "../sim";
@@ -148,6 +148,17 @@ export class InfoPanel {
     (this.rankButton as HTMLButtonElement).disabled = blocker !== null;
   }
 
+  /** A group's rank-up: every one that can go up now, for what the $ covers. */
+  private showGroupRank(buildings: readonly Building[]): void {
+    const { content, world, local } = this.session;
+    const plan = rankGroup(content, world, local, buildings);
+    const ready = plan.ids.length + plan.short;
+    if (ready === 0) return;
+    this.rankButton.hidden = false;
+    this.rankButton.textContent = plan.ids.length === 0 ? `Upgrade ${ready} · not enough $` : `Upgrade ${plan.ids.length}${plan.short > 0 ? ` of ${ready}` : ""} · $${plan.cost} (U)`;
+    (this.rankButton as HTMLButtonElement).disabled = plan.ids.length === 0;
+  }
+
   /** Buildings with a ground order get a button for it; the deploy agent's is a plain click already. */
   private showAction(selection: Selection): void {
     const label = groundOrderLabel(this.session, selection);
@@ -215,6 +226,7 @@ export class InfoPanel {
     if (buildings.some((b) => isRallied(this.session, b))) lines.push("Right-click: one rally point for all of them");
     lines.push("Shift-click: add or remove one", "Delete: decommission all of them");
     this.showAction(selection);
+    this.showGroupRank(buildings);
     this.show({
       title: one ? `${buildings.length}× ${one}` : `${buildings.length} buildings`,
       lines,

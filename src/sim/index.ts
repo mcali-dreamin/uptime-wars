@@ -41,7 +41,7 @@ export { earnedPerks, mechanicsAtTier, modifiersAtTier, raceMechanics, raceModif
 export { traitsFor } from "./traits";
 export { bonus, centerOf, slotOf, upgradeName, upgradesAt } from "./upgrades";
 export { buildingMaxHp } from "./entities";
-export { buildingRank, nextRank, rankBlocker, rankCost, rankedUpkeep, ranksOf, refitting, unitRank } from "./ranks";
+export { buildingRank, nextRank, rankBlocker, rankCost, rankGroup, rankedUpkeep, ranksOf, refitting, unitRank } from "./ranks";
 export { infectionSites, liveNodes } from "./spread";
 export { difficultyOf, revenueFactor } from "./ai";
 export { decommissionBlocker, decommissionRefund, dismissable } from "./decommission";

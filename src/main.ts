@@ -29,7 +29,7 @@ import {
   type Placement,
   type Selection,
 } from "./game/selection";
-import { Alerts } from "./game/alerts";
+import { Alerts, type AlertKind } from "./game/alerts";
 import { ControlGroups } from "./game/groups";
 import { Session } from "./game/session";
 import { setLocalColor, teamColor } from "./render/palette";
@@ -40,7 +40,7 @@ import { Hud } from "./ui/hud";
 import { PlayersPanel } from "./ui/players";
 import { InfoPanel } from "./ui/info-panel";
 import { RacePicker } from "./ui/race-picker";
-import { allied, humanTeams, upgradeName, TICK_RATE, TILE, forkCost, isCore, nextRank, loadDefaultContent, type Point } from "./sim";
+import { allied, humanTeams, upgradeName, TICK_RATE, TILE, forkCost, isCore, nextRank, rankGroup, loadDefaultContent, type Point } from "./sim";
 import type { NetMatch } from "./game/net/lobby";
 import { Director, tension, type Listener } from "./audio/cues";
 import { SoundEngine, type SoundMode } from "./audio/engine";
@@ -67,7 +67,7 @@ const director = new Director(content);
 const alerts = new Alerts(content);
 const groups = new ControlGroups();
 /** Alert colours on the minimap. */
-const ALERT_COLOR = { attack: 0xfacc15, core: 0xf87171, lost: 0xf87171, hero: 0xfacc15 } as const;
+const ALERT_COLOR = { attack: 0xfacc15, core: 0xf87171, lost: 0xf87171, hero: 0xfacc15, spread: 0xf87171 } as const satisfies Record<AlertKind, number>;
 /** Is a world point on screen right now (and in sight)? */
 const onScreen = (p: Point) => renderer.onScreen(p.x, p.y);
 const soundButton = $("sound");
@@ -350,6 +350,17 @@ function invokeSelected(): boolean {
 
 /** Upgrade the selected spawner to its next rank (U, or the info card's button). */
 function rankSelected(): boolean {
+  if (selection.kind === "buildings") {
+    // Every one in the group that can rank up, as far as the $ goes.
+    const plan = rankGroup(content, session.world, session.local, buildingGroup(session, selection));
+    if (plan.ids.length === 0) {
+      if (plan.short === 0) return false;
+      showRejection("not enough $");
+      return true;
+    }
+    for (const id of plan.ids) session.issue({ type: "rank", buildingId: id });
+    return true;
+  }
   const entity = selectedEntity(session, selection);
   if (entity?.kind !== "building" || !nextRank(content, session.world, entity)) return false;
   session.issue({ type: "rank", buildingId: entity.id });
