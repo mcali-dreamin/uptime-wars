@@ -2,17 +2,18 @@
 // the build bar or with G; pauses the match while open.
 
 import type { Session } from "../game/session";
-import { TERRAIN_GUIDE, perkLines, rankLines, buildingDetail, unitDetail, upgradeDetail, type GuideEntry } from "./cards";
+import { TERRAIN_GUIDE, inventorySummary, itemEffectLines, perkLines, rankLines, buildingDetail, unitDetail, upgradeDetail, type GuideEntry } from "./cards";
 import { $ } from "./dom";
-import { FARM_COUNT, upgradesAt, type Content, type RaceDef, type Team } from "../sim";
+import { FARM_COUNT, sellValue, upgradesAt, type Content, type RaceDef, type Team } from "../sim";
 import { abilityEffect, permille, raceLines, secs } from "./text";
 
-export type Tab = "controls" | "heroes" | "buildings" | "upgrades" | "creeps" | "terrain" | "races";
+export type Tab = "controls" | "heroes" | "items" | "buildings" | "upgrades" | "creeps" | "terrain" | "races";
 
 const TABS: [Tab, string][] = [
   ["controls", "Controls"],
   ["buildings", "Buildings"],
   ["upgrades", "Upgrades"],
+  ["items", "Items"],
   ["creeps", "Creeps"],
   ["terrain", "Terrain"],
   ["races", "Races"],
@@ -35,6 +36,7 @@ function controls(content: Content): [string, string][] {
   return [
   ["Start", "Your deploy agent starts selected. Click the ground to walk it, then press C and click to deploy your core."],
   ["Build", "Number keys or click a button, then click inside your network (the green rings). Shift-click to place several."],
+  ["Items", `${inventorySummary()} With the hero within ${heal?.radius}px of a core, the shop opens: the core's card (or the hero's, while it's selected) lists the basics with price and effect — click to buy. Farms, C2 Servers and bosses leave rarer items glowing where they fall: right-click one with the hero selected and it walks there and takes it, if a slot is free. Everything is on the Items tab.`],
   ["Network", "Cores, Mesh Nodes (Open Source) and Edge PoPs (Hyperscaler) each extend where you can build. Build outward to hold ramps and push toward the nest."],
   ["Redundancy", "Build more cores inside your network. If your main core falls the next takes over; you only go down when every core is down. Extra cores add reach, not compute: only one core's compute counts."],
   ["Select", "Click one of your buildings or units. Drag a box to select units — the hero joins too (a box with only the hero selects the hero); Shift adds to the group, and Shift-click a unit or the hero toggles it in or out. Double-click a unit or a building (any of yours but the core): every one of its kind on screen, and Shift-click toggles buildings in or out of the group. A box with no units in it selects your spawners instead. Z: your whole army (no hero). Q: your hero."],
@@ -141,6 +143,25 @@ export function guideEntries(content: Content, tab: Tab, view: { raceId: string;
       }
       case "upgrades":
         return [...upgradesAt(content, team, "core"), ...upgradesAt(content, team, "center")].map((id) => upgradeDetail(content, id, raceId));
+      case "items": {
+        const rules: GuideEntry = {
+          title: "How items work",
+          description: inventorySummary(),
+          stats: [
+            "Shop: with the hero within a core's shop radius, the core's card and the hero's command card list the basics — click to buy",
+            `Selling anywhere in range gives back ${permille(content.items.sellPermille)} of the price`,
+            "Botnet Farms, C2 Servers and incident bosses drop one item where they die, from a table of rarer things",
+            "Right-click a glowing drop with the hero selected: it walks there and takes it, if a slot is free",
+            "Passive stats stack over every copy carried and stay on through death and respawn",
+          ],
+        };
+        const entries = Object.entries(content.items.items).map(([id, def]) => ({
+          title: def.shop ? `${def.name} · $${def.cost}` : `${def.name} · drop`,
+          description: def.description,
+          stats: [...itemEffectLines(content, id), ...(def.shop ? [] : [`Sells for $${sellValue(content, id)} at the shop`])],
+        }));
+        return [rules, ...entries];
+      }
       case "creeps": {
         const ids = [...content.waves.roster.map((r) => r.unit), content.waves.spread.unit, content.waves.bosses.unit];
         return [...new Set(ids)].map((id) => {

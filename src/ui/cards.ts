@@ -1,16 +1,59 @@
-// Text about buildings, units, and terrain, derived from content so it never
-// drifts from the numbers the simulation actually uses.
+// Text about buildings, units, items, and terrain, derived from content so it
+// never drifts from the numbers the simulation actually uses.
 //
 // Two sizes: a compact card for the on-screen panel (a name and a line or
 // two of numbers) and full detail for the Guide.
 
-import { upgradeName, TICK_RATE, levelOf, nextQueued, queuedCount, type Content, type SpawnerRank, type Team } from "../sim";
+import { MAX_ITEMS, upgradeName, TICK_RATE, levelOf, nextQueued, queuedCount, sellValue, type Content, type ItemDef, type SpawnerRank, type Team } from "../sim";
 import { HIGH_GROUND_DAMAGE } from "../sim/tuning";
 import { burstLine, perkChanges, rankChange, secs as seconds, traitLine, unitRuleLines } from "./text";
 
 export interface InfoCard {
   title: string;
   lines: string[];
+}
+
+/** The stat bonuses an item gives, in one line: "+8 damage · +2 armor". */
+export function itemStatsLine(def: ItemDef): string {
+  const parts: string[] = [];
+  const stats = def.stats ?? {};
+  if (stats.damage) parts.push(`+${stats.damage} damage`);
+  if (stats.armor) parts.push(`+${stats.armor} armor`);
+  if (stats.hp) parts.push(`+${stats.hp} max HP`);
+  if (stats.regen) parts.push(`+${stats.regen} HP/s`);
+  if (stats.speed) parts.push(`+${(stats.speed - 1000) / 10}% move speed`);
+  if (stats.attackSpeed) parts.push(`+${(stats.attackSpeed - 1000) / 10}% attack speed`);
+  return parts.join(" · ");
+}
+
+/** What using a charge does, in one line. */
+function itemActiveLine(def: ItemDef): string {
+  const active = def.active!;
+  return `Use: heals ${active.amount} of yours within ${active.radius}px of the hero`;
+}
+
+/** Everything an item does, one line per thing: stats, the active, and where it comes from. */
+export function itemEffectLines(content: Content, itemId: string): string[] {
+  const def = content.items.items[itemId]!;
+  const lines: string[] = [];
+  const stats = itemStatsLine(def);
+  if (stats) lines.push(stats);
+  if (def.active) lines.push(itemActiveLine(def));
+  lines.push(def.shop ? `Sold at your core · $${def.cost} · sells for $${sellValue(content, itemId)}` : `Drop only, from fallen Botnet Farms, C2 Servers and bosses · worth $${sellValue(content, itemId)} back at the shop`);
+  return lines;
+}
+
+/** A hero's item: flavor, what it does, and charges if it's a consumable. */
+export function itemCard(content: Content, itemId: string, charges?: number): InfoCard {
+  const def = content.items.items[itemId]!;
+  const lines = [def.description, ...itemEffectLines(content, itemId)];
+  if (def.charges) lines.push(`${charges ?? def.charges} of ${def.charges} charges left`);
+  return { title: def.name, lines };
+}
+
+/** What carrying items means, for the Guide. */
+export function inventorySummary(): string {
+  return `Carries at most ${MAX_ITEMS} items, kept through death. Click a slot (or Alt+1-6) to use a consumable; sell from the slots while at the shop.`;
 }
 
 

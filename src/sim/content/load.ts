@@ -8,9 +8,10 @@ import wavesJson from "../../content/waves.json";
 import economyJson from "../../content/economy.json";
 import upgradesJson from "../../content/upgrades.json";
 import heroesJson from "../../content/heroes.json";
+import itemsJson from "../../content/items.json";
 import difficultyJson from "../../content/difficulty.json";
 
-import type { BuildingDef, Content, DifficultyDef, EconomyDef, HeroesDef, RaceDef, UnitDef, UpgradeDef, WavesDef } from "./schema";
+import type { BuildingDef, Content, DifficultyDef, EconomyDef, HeroesDef, ItemsDef, RaceDef, UnitDef, UpgradeDef, WavesDef } from "./schema";
 import { validateContent } from "./validate";
 
 export function loadDefaultContent(): Content {
@@ -22,6 +23,7 @@ export function loadDefaultContent(): Content {
     economy: economyJson as EconomyDef,
     upgrades: upgradesJson as Record<string, UpgradeDef>,
     heroes: heroesJson as HeroesDef,
+    items: itemsJson as ItemsDef,
     difficulties: difficultyJson as Record<string, DifficultyDef>,
   };
   validateContent(content);

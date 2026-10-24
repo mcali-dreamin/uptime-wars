@@ -12,6 +12,7 @@ import { applyFork } from "./mechanics";
 import { applyDecommission, applyDismiss } from "./decommission";
 import { heroOf, learnBlocker, orderCast } from "./heroes";
 import { INVULNERABLE, invulnerable } from "./fortress";
+import { applyBuy, applyPickUp, applySell, applyUse } from "./items";
 import { allyBlocker, breakAlliance, hostile, offerAlliance, unallyBlocker } from "./teams";
 import { TILE_OPEN, isWalkableTile, tileAt } from "./terrain";
 import { nearestFit } from "./nav";
@@ -125,6 +126,7 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
       if (invulnerable(world, content, target)) return INVULNERABLE;
       team.hero!.focusId = target.id;
       team.hero!.cast = null;
+      team.hero!.pickup = null;
       hero.moveTo = null;
       return null;
     }
@@ -159,6 +161,14 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
       return moveBuilder(ctx, command);
     case "found":
       return moveBuilder(ctx, command);
+    case "buyItem":
+      return applyBuy(ctx, command);
+    case "sellItem":
+      return applySell(ctx, command);
+    case "useItem":
+      return applyUse(ctx, command);
+    case "pickUp":
+      return applyPickUp(ctx, command);
   }
 }
 
@@ -229,6 +239,7 @@ function moveHero(ctx: TickContext, command: Extract<Command, { type: "move" }>)
   hero.moveTo = landing(world, command.x, command.y, hero.radius);
   team.hero!.focusId = null;
   team.hero!.cast = null;
+  team.hero!.pickup = null;
   return null;
 }
 

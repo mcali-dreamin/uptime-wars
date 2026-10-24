@@ -13,6 +13,7 @@ import type { AbilityDef, Content } from "./content";
 import { userCapacity } from "./economy";
 import { spawnUnit } from "./entities";
 import { invoke } from "./functions";
+import { itemTotals, tickItemRegen } from "./items";
 import { distance } from "./movement";
 import { teamCores } from "./placement";
 import { hostile } from "./teams";
@@ -96,29 +97,31 @@ export function spawnHero(ctx: TickContext, team: Team, at: Point): Unit | undef
   const heroId = team.heroId;
   if (!heroId) return undefined;
   if (!team.hero) {
-    team.hero = { unitId: -1, level: 1, xp: 0, baseHp: 0, ranks: {}, cooldowns: {}, respawnAt: null, focusId: null, cast: null, temps: [], buff: null };
+    team.hero = { unitId: -1, level: 1, xp: 0, baseHp: 0, ranks: {}, cooldowns: {}, respawnAt: null, focusId: null, cast: null, temps: [], buff: null, items: [], pickup: null };
   }
   // Behind the core as the camera sees it (north), out of the way of the base you'll build in front.
   // Below the core (toward the camera), so its model never hides the hero.
   const unit = spawnUnit(ctx, team.id, heroId, at, at.x, at.y + 70, "hero");
   team.hero.baseHp = unit.maxHp;
-  applyLevel(content, unit, team.hero.level, heroId, unit.maxHp);
+  applyLevel(content, unit, team.hero.level, heroId, unit.maxHp, team.hero);
   unit.hp = unit.maxHp;
   team.hero.unitId = unit.id;
   team.hero.respawnAt = null;
   team.hero.focusId = null;
   team.hero.cast = null;
+  team.hero.pickup = null;
   return unit;
 }
 
 /**
  * Set a hero's max hp for its level, keeping the fraction of hp it had.
- * `baseHp` is its level-1 max hp as spawned (race and upgrades included).
+ * `baseHp` is its level-1 max hp as spawned (race and upgrades included);
+ * levels add to it, and so does whatever the hero carries (see items.ts).
  */
-function applyLevel(content: Content, unit: Unit, level: number, heroId: string, baseHp: number): void {
+function applyLevel(content: Content, unit: Unit, level: number, heroId: string, baseHp: number, state?: HeroState): void {
   const def = content.heroes.heroes[heroId]!;
   const ratio = unit.maxHp > 0 ? unit.hp / unit.maxHp : 1;
-  unit.maxHp = baseHp + def.hpPerLevel * (level - 1);
+  unit.maxHp = baseHp + def.hpPerLevel * (level - 1) + (state ? itemTotals(content, state).hp : 0);
   unit.hp = Math.max(1, Math.round(unit.maxHp * ratio));
 }
 
@@ -150,18 +153,19 @@ function gainXp(ctx: TickContext, team: Team, hero: Unit, xp: number): void {
   state.xp += xp;
   while (state.level < content.heroes.maxLevel && state.xp >= xpForLevel(content, state.level + 1)) {
     state.level += 1;
-    applyLevel(content, hero, state.level, hero.defId, state.baseHp);
+    applyLevel(content, hero, state.level, hero.defId, state.baseHp, state);
     world.events.push({ type: "hero-level", team: team.id, level: state.level });
   }
 }
 
-/** Each tick: cooldowns, decoys expiring, death and respawn. */
+/** Each tick: cooldowns, item regen, decoys expiring, death and respawn. */
 export function tickHeroes(ctx: TickContext): void {
   const { world, content } = ctx;
   for (const team of world.teams) {
     const state = team.hero;
     if (!state) continue;
     healAtCore(ctx, team, state);
+    tickItemRegen(ctx, team);
     for (const ability of Object.keys(state.cooldowns)) {
       if (state.cooldowns[ability]! > 0) state.cooldowns[ability]! -= 1;
     }
@@ -183,6 +187,7 @@ export function tickHeroes(ctx: TickContext): void {
         state.respawnAt = world.tick + def.respawnTicks + def.respawnPerLevel * (state.level - 1);
         state.focusId = null;
         state.cast = null;
+        state.pickup = null;
         world.events.push({ type: "hero-down", team: team.id, respawnAt: state.respawnAt, x: fellAt.x, y: fellAt.y });
       }
     }
@@ -210,6 +215,7 @@ export function orderCast(ctx: TickContext, team: Team, command: CastCommand): s
   const state = team.hero!;
   state.cast = { ability: command.ability, x: command.x, y: command.y, targetId: command.targetId };
   state.focusId = null;
+  state.pickup = null;
   return null;
 }
 

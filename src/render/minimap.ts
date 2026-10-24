@@ -7,6 +7,9 @@ import type { Fog } from "./fog";
 import { teamColor } from "./palette";
 import { drawTerrainBase } from "./pixi/terrain-art";
 
+/** The colour of items lying on the ground (see groundPickup in three/models). */
+const PICKUP = 0x22d3ee;
+
 const WIDTH = 240;
 const MARGIN = 12;
 
@@ -61,6 +64,11 @@ export class Minimap {
       } else {
         g.rect(entity.x * s - 1, entity.y * s - 1, 2, 2).fill({ color });
       }
+    }
+    // Items lying on the ground: a bright dot you can send the hero to collect.
+    for (const drop of world.groundItems) {
+      if (!this.fog.isVisible(drop.x, drop.y)) continue;
+      g.circle(drop.x * s, drop.y * s, 3).fill({ color: PICKUP }).stroke({ width: 1, color: 0xffffff, alpha: 0.7 });
     }
     // Alert flashes: an expanding ring that pulses for a few seconds.
     for (const f of this.flashes) {

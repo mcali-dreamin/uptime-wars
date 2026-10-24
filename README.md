@@ -137,6 +137,32 @@ attacks an enemy, `1`-`4` cast, `Shift`+`1`-`4` (or the `+`) learn.
 Heroes and abilities are JSON (`src/content/heroes.json`). An ability is one
 of six effects: blast, strike, heal, decoy, summon, or buff.
 
+**Items.** The hero carries up to six items (`HeroState.items`), kept through
+death and respawn. Passive stats — damage, armor, max HP, HP regen, move
+speed, attack speed — stack over every copy carried and apply wherever the
+hero's stats are computed.
+
+- **Shop at your core.** While the hero stands within the core-heal radius of
+  one of your cores, the shop is open: select the core (or the hero, while
+  it's in range) and the command card lists the basics with price and effect —
+  click to buy. No full inventory, no credit. Selling, from the inventory
+  slots on the hero card, gives back half the price anywhere in range.
+- **Drops reward pushing out.** A Botnet Farm, a C2 Server or an incident
+  boss killed by a player leaves one item glowing where it fell, rolled from a
+  table of drop-only rares (bigger stats, one with an active). Right-click a
+  drop with the hero selected: it walks there and takes it, if a slot is free.
+  Any allied hero can take it in co-op. Drops never spawn on their own: the
+  sim only changes through explicit commands.
+- **Consumables** (Patch Kit and the self-healing firmware) have charges:
+  click the slot, or `Alt`+`1`-`6` with the hero selected, to use one.
+
+Items are data (`src/content/items.json`, validated like the rest), the four
+commands are `buyItem`, `sellItem`, `useItem` and `pickUp`, and they are all
+deterministic and replayable like every other command. The drop roll is
+derived from the match seed and the dead entity's id, never `world.rngState`,
+so adding drops shifts no other random roll. The computer AI doesn't use
+items.
+
 **Army cap.** Compute caps your army: every unit uses some, and a spawner
 only adds one if it fits in what's free. Users use compute too, so a bigger
 army costs you users (income). Generators are limited per core tier (Solar
@@ -265,7 +291,7 @@ any world you build with it, such as a reported match replayed to some minute.
 
 ```
 src/
-  content/        JSON: races, buildings, units, waves, upgrades, economy, damage,
+  content/        JSON: races, buildings, units, waves, upgrades, items, economy,
                   computer-player difficulties
   sim/            deterministic simulation (no DOM, no clock, no Math.random)
     world.ts        createWorld, step() (the order systems run in), outcome
@@ -488,6 +514,7 @@ Direction: survival on a procedurally generated open web.
 - [x] Core tech tiers: Core, Data Center, Region
 - [x] Network expansion (per race) and redundant cores
 - [x] Heroes: one per race, levels, skill points, four abilities each
+- [x] Hero items: 6-slot inventory, a shop at your core, drops from farms, C2 Servers and bosses (#93)
 - [x] Compute is the army cap; generators are limited per core tier (soft at the top tier)
 - [x] Four races: Open Source Collective, Hyperscaler, Serverless, Walled Garden
 - [x] Spawner ranks: upgrade a spawner in place for fewer, stronger units

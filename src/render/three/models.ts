@@ -1501,3 +1501,37 @@ export function animate(root: THREE.Object3D, t: number, seed: number): void {
     }
   });
 }
+
+// --- ground items -------------------------------------------------------------
+
+/** The glow colour of an item lying on the ground: nothing else uses it. */
+export const PICKUP_COLOR = 0x22d3ee;
+
+let pickupTemplate: THREE.Group | null = null;
+
+/**
+ * A glowing pickup for an item lying on the ground: a floating gem over a
+ * soft ring, bright enough for bloom to catch it from across the field.
+ * Clones share the template's geometry and materials.
+ */
+export function groundPickup(): THREE.Group {
+  if (!pickupTemplate) {
+    const g = new THREE.Group();
+    const material = new THREE.MeshBasicMaterial({ color: PICKUP_COLOR, toneMapped: false });
+    const gem = new THREE.Mesh(geometry("pickup-gem", () => new THREE.OctahedronGeometry(7)), material);
+    gem.position.y = 14;
+    gem.scale.set(1, 1.5, 1);
+    anim(gem, { type: "spin", speed: 1.8, axis: "y" });
+    const halo = new THREE.Mesh(geometry("pickup-halo", () => new THREE.TorusGeometry(15, 1.2, 6, 32)), material);
+    halo.position.y = 2;
+    halo.rotation.x = Math.PI / 2;
+    anim(halo, { type: "pulse", amount: 0.2, speed: 2.4 });
+    g.add(gem, halo);
+    pickupTemplate = g;
+  }
+  const copy = pickupTemplate.clone(true);
+  copy.traverse((node) => {
+    if (node.userData.anim) node.userData = { ...node.userData };
+  });
+  return copy;
+}
