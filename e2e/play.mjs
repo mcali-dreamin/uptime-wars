@@ -65,7 +65,11 @@ async function look() {
   await page.screenshot({ path: shot });
   const seen = await page.evaluate(() => {
     const u = window.uptime;
-    const text = (id) => (document.getElementById(id)?.innerText ?? "").trim();
+    // Hidden elements still have innerText: only what's on screen counts.
+    const text = (id) => {
+      const el = document.getElementById(id);
+      return el && el.checkVisibility() ? el.innerText.trim() : "";
+    };
     return {
       tick: u ? u.world.tick : null,
       time: text("uptime"),
