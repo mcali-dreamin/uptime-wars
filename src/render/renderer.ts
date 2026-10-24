@@ -148,6 +148,11 @@ export class Renderer {
     this.bannerAge = 0;
   }
 
+  /** The banner's current text: drawn in the canvas, so not in the DOM for debug tooling to read. */
+  get bannerText(): string {
+    return this.banner.text;
+  }
+
   draw(world: World, content: Content, alpha: number, deltaMs: number, ghost: Ghost | null, selectedId: number | null = null, selected: readonly number[] = []): void {
     const { width, height } = this.app.screen;
     this.camera.setViewport(width, height);

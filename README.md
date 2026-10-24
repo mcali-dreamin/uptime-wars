@@ -524,6 +524,33 @@ npm run e2e       # browser smoke test + two-browser co-op against dist/ (needs:
 CI runs all four on every pull request, and the deploy workflow runs them
 again before publishing.
 
+## Playing from a script
+
+`node e2e/play.mjs [dist|URL]` keeps one Chromium page open and takes
+commands on a localhost control server, so an agent (or a shell loop) can
+play a full solo match turn by turn through the real UI: pause, look
+(screenshot + visible text), act with real mouse/keyboard input, step the
+game forward, repeat. Env: `PORT` (7357), `SHOTS` (`shots/play`), `VIEWPORT`
+(1440x900). Every action answers with a look: the shot's path plus the
+visible text of the HUD, info card, hint, banner, build bar and alerts.
+
+```sh
+npm run build && node e2e/play.mjs dist
+curl "http://127.0.0.1:7357/start?race=open-source&seed=1234"  # pick, play solo, pause
+curl "http://127.0.0.1:7357/advance?s=5"                       # step the paused match 5s
+curl "http://127.0.0.1:7357/click?x=700&y=430"                 # real mouse click
+curl "http://127.0.0.1:7357/drag?x1=600&y1=300&x2=800&y2=500"  # box select
+curl "http://127.0.0.1:7357/key?k=q"                           # real key press
+curl "http://127.0.0.1:7357/look"                              # shots/play/<n>.png + text
+curl "http://127.0.0.1:7357/quit"
+```
+
+`/click` also takes `button=right`, `shift=1`, `ctrl=1`, `double=1`; `/move`
+hovers for tooltips; `/advance` caps at 60s a call. Commands are real input
+only — the `?debug` API is used just to pause, step (`uptime.advance`), and
+read the tick and outcome — so the script sees what a player sees. It's a
+debug tool: nothing changes for normal players.
+
 ## License
 
 [MIT](LICENSE) © 2026 Chris Huber.

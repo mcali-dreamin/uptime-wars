@@ -157,6 +157,34 @@ if (new URLSearchParams(location.search).has("debug")) {
       renderer,
       content,
       TILE,
+      TICK_RATE,
+      /** The pause flag the harness drives; P toggles it too. */
+      pause() {
+        if (!session.net) paused = true;
+      },
+      resume() {
+        paused = false;
+      },
+      get paused() {
+        return paused;
+      },
+      /**
+       * Step a paused solo match forward by whole ticks (`seconds` of game
+       * time, exactly), through the same per-step path the frame loop uses.
+       * Resolves after the next drawn frame, so a screenshot right after
+       * shows the new state.
+       */
+      advance(seconds: number): Promise<{ tick: number; outcome: typeof session.world.outcome }> {
+        if (session.net) throw new Error("uptime.advance() is solo only: co-op can't be stepped from the sidelines");
+        if (!paused) throw new Error("uptime.advance() steps a paused match: call uptime.pause() first");
+        const world = session.world;
+        for (let left = Math.round(seconds * TICK_RATE); left > 0 && !world.outcome; left--) {
+          if (!stepOnce()) break;
+        }
+        return new Promise((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve({ tick: world.tick, outcome: world.outcome ?? null })));
+        });
+      },
       /** The simulation itself, for replays and checks: `await uptime.sim()`. */
       sim: () => import("./sim"),
       /** Watch a world built elsewhere (a replay at some tick) as player 1. */
@@ -677,64 +705,76 @@ function advance(now: number): void {
     accumulator += delta;
     let steps = 0;
     while (accumulator >= STEP_MS && steps < MAX_STEPS_PER_FRAME) {
-      renderer.capturePrevious(world);
-      if (!session.tryStep()) {
+      if (!stepOnce()) {
         // Waiting on another player's turn: hold, don't bank time to burst through later.
         accumulator = Math.min(accumulator, STEP_MS);
         break;
-      }
-      renderer.collectEvents(world);
-      for (const cue of director.cues(world, world.events, session.local, listener, performance.now() / 1000)) sound.play(cue);
-      for (const alert of alerts.update(world, world.events, session.local, performance.now() / 1000, onScreen)) {
-        renderer.showBanner(`${alert.text} · Space to look`);
-        sound.play({ name: alert.kind === "lost" ? "building-down" : alert.kind === "hero" ? "hero-down" : "alarm", volume: 0.6, pan: 0 });
-      }
-      for (const event of world.events) {
-        if (event.type === "failover" && event.team === session.team.id) renderer.showBanner("Core lost · failover");
-        if (event.type === "offline") {
-          const w = session.world;
-          const alliesUp = humanTeams(w).some((t) => t.id !== session.local && t.downTick === null && allied(w, t.id, session.local));
-          renderer.showBanner(
-            event.team === session.local
-              ? alliesUp ? "You're offline · your allies play on" : "You're offline · spectating"
-              : allied(w, event.team, session.local) ? `${playerName(w, event.team)} is offline` : `${playerName(w, event.team)} is out`,
-          );
-        }
-        // Diplomacy that involves you.
-        if (event.type === "ally-offer" && event.with === session.local) renderer.showBanner(`${playerName(session.world, event.team)} offers an alliance · accept it top right`);
-        if (event.type === "allied" && (event.team === session.local || event.with === session.local)) {
-          renderer.showBanner(`Allied with ${playerName(session.world, event.team === session.local ? event.with : event.team)}`);
-        }
-        if (event.type === "unallied" && event.with === session.local) renderer.showBanner(`${playerName(session.world, event.team)} broke the alliance`);
-        if (event.type === "hero-level" && event.team === session.local) renderer.showBanner(`Level ${event.level} · skill point ready (Q)`);
-
-        if (event.type === "hero-up" && event.team === session.local) renderer.showBanner("Your hero is back");
-        // Something you asked for didn't happen: say why, not just the error sound.
-        if (event.type === "rejected" && event.command.team === session.local) showRejection(event.reason);
-        if (event.type === "decommissioned" && event.team === session.local) {
-          renderer.showBanner(
-            event.buildings > 0
-              ? `Decommissioned ${event.buildings} building${event.buildings === 1 ? "" : "s"}${event.refund > 0 ? ` · +$${event.refund}` : ""}`
-              : `Dismissed ${event.units} unit${event.units === 1 ? "" : "s"}`,
-          );
-        }
-        if (event.type === "researched" && event.team === session.team.id) {
-          const def = content.upgrades[event.upgrade]!;
-          const perk = def.stat === "tier" ? content.races[session.team.raceId]?.tierPerks?.[event.level] : undefined;
-          renderer.showBanner(
-            def.stat === "tier"
-              ? `${content.economy.tiers[event.level]!.name} online${perk ? ` · ${perk.name}` : ""}`
-              : def.stat === "trait"
-                ? `${upgradeName(content, session.team.raceId, event.upgrade)} unlocked`
-                : `${upgradeName(content, session.team.raceId, event.upgrade)} ${event.level}`,
-          );
-        }
       }
       accumulator -= STEP_MS;
       steps += 1;
     }
     if (steps === MAX_STEPS_PER_FRAME) accumulator = 0;
   }
+}
+
+/**
+ * One simulation step and everything the player sees or hears because of it:
+ * interpolation capture, sounds, alerts and banners. The frame loop and the
+ * `?debug` harness's advance() both go through here, so they can't drift.
+ * Returns false when waiting on another player's turn (co-op).
+ */
+function stepOnce(): boolean {
+  const world = session.world;
+  renderer.capturePrevious(world);
+  if (!session.tryStep()) return false;
+  renderer.collectEvents(world);
+  for (const cue of director.cues(world, world.events, session.local, listener, performance.now() / 1000)) sound.play(cue);
+  for (const alert of alerts.update(world, world.events, session.local, performance.now() / 1000, onScreen)) {
+    renderer.showBanner(`${alert.text} · Space to look`);
+    sound.play({ name: alert.kind === "lost" ? "building-down" : alert.kind === "hero" ? "hero-down" : "alarm", volume: 0.6, pan: 0 });
+  }
+  for (const event of world.events) {
+    if (event.type === "failover" && event.team === session.team.id) renderer.showBanner("Core lost · failover");
+    if (event.type === "offline") {
+      const w = session.world;
+      const alliesUp = humanTeams(w).some((t) => t.id !== session.local && t.downTick === null && allied(w, t.id, session.local));
+      renderer.showBanner(
+        event.team === session.local
+          ? alliesUp ? "You're offline · your allies play on" : "You're offline · spectating"
+          : allied(w, event.team, session.local) ? `${playerName(w, event.team)} is offline` : `${playerName(w, event.team)} is out`,
+      );
+    }
+    // Diplomacy that involves you.
+    if (event.type === "ally-offer" && event.with === session.local) renderer.showBanner(`${playerName(session.world, event.team)} offers an alliance · accept it top right`);
+    if (event.type === "allied" && (event.team === session.local || event.with === session.local)) {
+      renderer.showBanner(`Allied with ${playerName(session.world, event.team === session.local ? event.with : event.team)}`);
+    }
+    if (event.type === "unallied" && event.with === session.local) renderer.showBanner(`${playerName(session.world, event.team)} broke the alliance`);
+    if (event.type === "hero-level" && event.team === session.local) renderer.showBanner(`Level ${event.level} · skill point ready (Q)`);
+
+    if (event.type === "hero-up" && event.team === session.local) renderer.showBanner("Your hero is back");
+    // Something you asked for didn't happen: say why, not just the error sound.
+    if (event.type === "rejected" && event.command.team === session.local) showRejection(event.reason);
+    if (event.type === "decommissioned" && event.team === session.local) {
+      renderer.showBanner(
+        event.buildings > 0
+          ? `Decommissioned ${event.buildings} building${event.buildings === 1 ? "" : "s"}${event.refund > 0 ? ` · +$${event.refund}` : ""}`
+          : `Dismissed ${event.units} unit${event.units === 1 ? "" : "s"}`,
+      );
+    }
+    if (event.type === "researched" && event.team === session.team.id) {
+      const def = content.upgrades[event.upgrade]!;
+      const perk = def.stat === "tier" ? content.races[session.team.raceId]?.tierPerks?.[event.level] : undefined;
+      renderer.showBanner(
+        def.stat === "tier"
+          ? `${content.economy.tiers[event.level]!.name} online${perk ? ` · ${perk.name}` : ""}`
+          : def.stat === "trait"
+            ? `${upgradeName(content, session.team.raceId, event.upgrade)} unlocked`
+            : `${upgradeName(content, session.team.raceId, event.upgrade)} ${event.level}`,
+      );
+    }
+  }
+  return true;
 }
 
 // Co-op in a hidden tab: no frames, but the match goes on.
