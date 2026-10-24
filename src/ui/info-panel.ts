@@ -3,7 +3,7 @@
 // selected. Nothing else pops up. The full story lives in the Guide.
 
 import { invokeCost, upgradeName, earnedPerks, tierDef, TICK_RATE, forkCost, isCore, levelOf, queueOf, regionShield, buildingRank, nextRank, rankBlocker, rankCost, tierOf, unitRank } from "../sim";
-import { armyUnits, buildingGroup, groundOrderLabel, isRallied, removal, selectedEntity, type Selection } from "../game/selection";
+import { armyHero, armyUnits, buildingGroup, groundOrderLabel, isRallied, removal, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { heightAtTile, TILE, type Building, type Entity } from "../sim";
 import { HIGH_GROUND_DAMAGE } from "../sim/tuning";
@@ -168,12 +168,19 @@ export class InfoPanel {
     this.removeButton.classList.toggle("armed", armed);
   }
 
-  /** A group of your units: what's in it, and how to send it. */
+  /** A group of your units: what's in it (the hero counts, but Delete never takes it), and how to send it. */
   private showArmy(selection: Selection): void {
     const units = armyUnits(this.session, selection);
-    if (units.length === 0) return this.show(null);
+    const hero = armyHero(this.session, selection);
+    if (units.length === 0 && !hero) return this.show(null);
     const { content } = this.session;
-    if (units.length === 1) {
+    // An army down to its hero (the soldiers fell): its own card.
+    if (units.length === 0) {
+      const card = unitCard(content, hero!.defId, hero!.hp, hero!.maxHp);
+      this.showAction(selection);
+      return this.show({ title: card.title, lines: [...card.lines, "Right-click: move"] });
+    }
+    if (units.length === 1 && !hero) {
       const unit = units[0]!;
       const card = unitCard(content, unit.defId, unit.hp, unit.maxHp);
       this.showAction(selection);
@@ -190,7 +197,7 @@ export class InfoPanel {
     const mix = [...counts].map(([id, n]) => `${n}× ${content.units[id]!.name}`).join(" · ");
     this.showAction(selection);
     this.show({
-      title: `${units.length} units`,
+      title: hero ? `Hero + ${units.length} unit${units.length === 1 ? "" : "s"}` : `${units.length} units`,
       lines: [mix, `${Math.round((100 * hp) / maxHp)}% health`, "Right-click: attack-move · F: move"],
     });
   }
