@@ -79,7 +79,8 @@ npm run dev
   building armor and HP, tower damage and range, users and revenue. Your
   race's **upgrade center** (Open Source: CI Server, Hyperscaler: R&D Lab,
   Serverless: Build Pipeline, Walled Garden: Design Studio; one per player)
-  upgrades the army: weapons, unit armor, unit HP, spawn speed in three
+  upgrades the army: weapons, unit armor, unit HP, spawn speed, unit
+  movement speed in up to three
   levels (Core, Data Center, Region), and **three unit traits only your race
   has**, one per unit, unlocked with that unit's tier: Fork on Exit, Open
   Weights, Self-Hosting; Sticky Sessions, Edge Routing, Batch Jobs;

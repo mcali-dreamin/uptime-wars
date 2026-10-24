@@ -384,6 +384,7 @@ export type UpgradeStat =
   | "buildingHp"
   | "buildingArmor"
   | "spawnSpeed"
+  | "unitSpeed"
   | "userCapacity"
   | "revenue"
   | "tier"

@@ -151,6 +151,27 @@
     "researchTicks": 500,
     "at": "center"
   },
+  "low-latency": {
+    "name": "Low Latency",
+    "description": "Your units move faster.",
+    "stat": "unitSpeed",
+    "perLevel": 0.08,
+    "maxLevel": 3,
+    "cost": 110,
+    "researchTicks": 400,
+    "at": "center",
+    "tiers": [
+      0,
+      1,
+      2
+    ],
+    "names": {
+      "open-source": "Peer-to-Peer Routing",
+      "hyperscaler": "Dedicated Fiber",
+      "serverless": "Edge Execution",
+      "walled-garden": "Fast Lane"
+    }
+  },
   "fork-on-exit": {
     "name": "Fork on Exit",
     "description": "Processes fork on their way out.",

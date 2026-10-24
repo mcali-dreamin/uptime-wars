@@ -41,7 +41,7 @@ describe("upgrade centers", () => {
       expect(race.buildings, raceId).toContain(race.center);
       const w = world(raceId);
       const at = upgradesAt(content, w.teams[0]!, "center");
-      expect(at, raceId).toEqual(expect.arrayContaining(["exploit-kits", "unit-armor", "hardened-containers", "autoscaling"]));
+      expect(at, raceId).toEqual(expect.arrayContaining(["exploit-kits", "unit-armor", "hardened-containers", "autoscaling", "low-latency"]));
       const traits = at.filter((id) => content.upgrades[id]!.stat === "trait");
       expect(traits, raceId).toHaveLength(3);
       // Each race's traits are its own, on its own units.
