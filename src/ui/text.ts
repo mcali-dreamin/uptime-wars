@@ -67,7 +67,7 @@ export function traitLine(content: Content, unitId: string, trait: TraitDef): st
 
 const ROLE_TEXT: { [K in CreepRole["kind"]]: (role: Extract<CreepRole, { kind: K }>) => string } = {
   scanner: (r) => `Doesn't fight. If it spots your base and lives ${secs(r.reportTicks)}, every pack within ${r.reportRadius}px marches on you`,
-  phisher: (r) => `Ignores your army and towers, goes for whatever serves users; every hit drives users away ${times(r.churnMultiplier)} as fast`,
+  phisher: (r) => `Ignores towers and goes for whatever serves users (hits back at units that hit it); every hit drives users away ${times(r.churnMultiplier)} as fast`,
   miner: (r) => `Every hit on a building drains $${r.drain} from you`,
   jammer: (r) => `Every hit jams a building for ${secs(r.jamTicks)}: no shooting, spawning or bursting`,
   siege: (r) => `Goes for buildings, and hits them ${times(r.buildingMultiplier)} as hard`,

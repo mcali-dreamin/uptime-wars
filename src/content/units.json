@@ -309,7 +309,7 @@
   },
   "brute-forcer": {
     "name": "Brute Forcer",
-    "description": "Siege. Ignores your army and hammers your buildings. Walls won't hold it for long.",
+    "description": "Siege. Goes for your buildings and hammers them, hitting back only at units that hit it. Walls won't hold it for long.",
     "hp": 260,
     "armor": 3,
     "damage": 14,
