@@ -329,6 +329,19 @@ await run("smoke test", async ({ check, open }) => {
   check(!(await page.$eval("#guide", (el) => el.hidden)) && t0 === (await state(() => window.uptime.world.tick)), "G opens the Guide and pauses");
   await page.keyboard.press("Escape");
   check(await page.$eval("#guide", (el) => el.hidden), "Esc closes the Guide");
+
+  // The ?debug harness: pause() stops the clock, advance(1) moves it exactly
+  // TICK_RATE ticks through the frame loop's own step path, and a paused
+  // tick stays put.
+  await page.evaluate(() => window.uptime.pause());
+  const held = await state(() => ({ tick: window.uptime.world.tick, paused: window.uptime.paused }));
+  check(held.paused, "pause() pauses from the debug API");
+  await page.evaluate(() => window.uptime.advance(1));
+  const stepped = await state(() => window.uptime.world.tick);
+  const tickRate = await state(() => window.uptime.TICK_RATE);
+  check(stepped === held.tick + tickRate, `advance(1) moves the tick by exactly TICK_RATE (${held.tick} → ${stepped}, rate ${tickRate})`);
+  await page.waitForTimeout(500);
+  check((await state(() => window.uptime.world.tick)) === stepped, "the tick doesn't move while paused");
 });
 
 server.close();
