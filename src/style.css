@@ -814,6 +814,79 @@ body.home #coop {
   opacity: 0.6;
 }
 
+/* The six inventory slots under the hero card. */
+#hero-items {
+  position: absolute;
+  top: 78px;
+  left: 12px;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  width: 270px;
+}
+
+#hero-items[hidden] {
+  display: none;
+}
+
+.hero-slot {
+  position: relative;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: 0.25rem 0.35rem;
+  background: rgba(18, 25, 34, 0.9);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font: inherit;
+  font-size: 0.68rem;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.hero-slot.filled {
+  border-color: #4c5a70;
+}
+
+.hero-slot.usable {
+  cursor: pointer;
+}
+
+.hero-slot:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.hero-slot small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+/* The sell badge, only while the hero stands at the shop. */
+.hero-slot .sell {
+  display: none;
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  padding: 0 3px;
+  background: var(--accent);
+  color: #0b0f14;
+  font-weight: 700;
+  font-size: 0.6rem;
+  line-height: 1.25;
+  border-radius: 4px 0 4px 0;
+  cursor: pointer;
+}
+
+#hero-items.at-shop .hero-slot.filled .sell {
+  display: block;
+}
+
 .hero-top {
   display: flex;
   justify-content: space-between;

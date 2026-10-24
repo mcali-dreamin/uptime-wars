@@ -40,7 +40,7 @@ import { Hud } from "./ui/hud";
 import { PlayersPanel } from "./ui/players";
 import { InfoPanel } from "./ui/info-panel";
 import { RacePicker } from "./ui/race-picker";
-import { allied, humanTeams, upgradeName, TICK_RATE, TILE, forkCost, isCore, nextRank, loadDefaultContent, type Point } from "./sim";
+import { allied, humanTeams, upgradeName, MAX_ITEMS, TICK_RATE, TILE, forkCost, isCore, nextRank, loadDefaultContent, type Point } from "./sim";
 import type { NetMatch } from "./game/net/lobby";
 import { Director, tension, type Listener } from "./audio/cues";
 import { SoundEngine, type SoundMode } from "./audio/engine";
@@ -109,6 +109,7 @@ const bar = new BuildBar(session, {
     info.refresh(selection);
   },
   research: (upgrade) => research(upgrade),
+  buy: (item) => session.issue({ type: "buyItem", item }),
   guide: () => guide.toggle(),
 });
 const heroBar = new HeroBar(session, {
@@ -117,6 +118,12 @@ const heroBar = new HeroBar(session, {
   learn: (ability) => session.issue({ type: "learn", ability }),
   hover: (ability) => {
     info.hoverAbility = ability;
+    info.refresh(selection);
+  },
+  use: (slot) => session.issue({ type: "useItem", slot }),
+  sell: (slot) => session.issue({ type: "sellItem", slot }),
+  hoverItem: (item) => {
+    info.hoverItem = item;
     info.refresh(selection);
   },
 });
@@ -280,7 +287,7 @@ function refreshPointer(): void {
         ? "crosshair"
         : ownEntityAt(session, pointer)
         ? "pointer"
-        : groundOrders(session, selection, pointer).length > 0
+        : groundOrders(session, selection, pointer, false, (p) => fog.isVisible(p.x, p.y)).length > 0
           ? "crosshair"
           : "";
 }
@@ -297,7 +304,7 @@ function showRejection(reason: string): void {
 }
 
 function order(point: Point, queue = false): void {
-  const next = groundOrders(session, selection, point, queue);
+  const next = groundOrders(session, selection, point, queue, (p) => renderer.fog.isVisible(p.x, p.y));
   if (next.length === 0) return;
   for (const one of next) session.issue(one);
   renderer.ping(point.x, point.y);
@@ -541,10 +548,15 @@ const gameInput: GameInput = {
       return true;
     }
     // Control groups: Ctrl/Alt + 1..9 saves, 1..9 recalls (and wins over the
-    // build hotkey with the same number once the group exists).
+    // build hotkey with the same number once the group exists). With the hero
+    // selected, Alt+1..6 uses its inventory instead: the slots' hotkeys.
     const groupKey = /^Digit([1-9])$/.exec(event.code)?.[1];
     if (groupKey && !session.deploying) {
       const n = Number(groupKey);
+      if (event.altKey && !event.ctrlKey && heroSelected() && n <= MAX_ITEMS) {
+        session.issue({ type: "useItem", slot: n - 1 });
+        return true;
+      }
       if (event.ctrlKey || event.altKey) {
         if (groups.assign(n, selection)) renderer.showBanner(`Group ${n} set`);
         return true;

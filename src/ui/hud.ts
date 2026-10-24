@@ -229,7 +229,7 @@ export class Hud {
     if (entity?.kind === "unit" && entity.mode === "hero") {
       return leftClickOrders(this.session, selection)
         ? "Click the ground to move · Esc to cancel"
-        : "Right-click: move, or attack an enemy · 1-4 abilities · Shift+1-4 learn";
+        : "Right-click: move, attack an enemy, or take a glowing drop · 1-4 abilities · Shift+1-4 learn";
     }
     if (selection.kind === "place") {
       return "Click inside the ring to build";

@@ -571,6 +571,74 @@ export interface AiAttackDef {
   heroRetreatPermille: number;
 }
 
+/**
+ * Passive stat bonuses an item gives the hero, stacking over every copy
+ * carried. Flat numbers, except the two multipliers in permille (1000 = none).
+ */
+export interface ItemStats {
+  /** Extra damage on every hero hit. */
+  damage?: number;
+  /** Flat reduction to every hit taken. */
+  armor?: number;
+  /** Extra max HP (the current HP grows with it). */
+  hp?: number;
+  /** HP mended each second, in or out of combat. */
+  regen?: number;
+  /** Move speed multiplier, permille. */
+  speed?: number;
+  /** Attack speed multiplier, permille. */
+  attackSpeed?: number;
+}
+
+/** What using a charge of a consumable does. */
+export interface ItemActive {
+  effect: "heal";
+  /** Heals this much... */
+  amount: number;
+  /** ...on your own units and finished buildings within this range of the hero. */
+  radius: number;
+}
+
+export interface ItemDef {
+  name: string;
+  description: string;
+  /** Shop price; drops sell for a share of it (see ItemsDef.sellPermille). */
+  cost: number;
+  /** Sold at the core's shop (default false: drop-only). */
+  shop?: boolean;
+  /** Consumable: this many charges, spent one at a time from the hero bar. */
+  charges?: number;
+  /** What one charge does. */
+  active?: ItemActive;
+  /** Passive bonuses while carried. */
+  stats?: ItemStats;
+}
+
+/**
+ * Items: the hero's gear (src/content/items.json). About six basics are sold
+ * at the shop by your core; rarer ones drop where Botnet Farms, C2 Servers
+ * and incident bosses fall, and lie on the ground until a hero takes them.
+ */
+export interface ItemsDef {
+  /** Selling an item gives back this share of its price, permille. */
+  sellPermille: number;
+  /** How close a hero must get to take a ground item, in pixels. */
+  pickupRange: number;
+  items: Record<string, ItemDef>;
+  /**
+   * The drop table. Every death of a Botnet Farm (`farm`), C2 Server (`c2`)
+   * or incident boss (`boss`), each a permille chance, rolls one item here by
+   * weight. The roll never touches the match RNG: it is derived from the
+   * match seed and the dead entity's id, so no other roll moves.
+   */
+  drops: {
+    farm: number;
+    c2: number;
+    boss: number;
+    table: { item: string; weight: number }[];
+  };
+}
+
 export interface Content {
   units: Record<string, UnitDef>;
   buildings: Record<string, BuildingDef>;
@@ -580,4 +648,5 @@ export interface Content {
   upgrades: Record<string, UpgradeDef>;
   heroes: HeroesDef;
   difficulties: Record<string, DifficultyDef>;
+  items: ItemsDef;
 }

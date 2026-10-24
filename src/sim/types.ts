@@ -95,6 +95,13 @@ export interface AiState {
   coreHp: number;
 }
 
+/** One item the hero carries: its id, and the charges left on a consumable. */
+export interface ItemStack {
+  item: string;
+  /** Consumables only. Gone from the inventory at 0. */
+  charges?: number;
+}
+
 export interface HeroState {
   /** The hero unit, or -1 while it's dead or not yet spawned. */
   unitId: number;
@@ -123,6 +130,10 @@ export interface HeroState {
   shield?: { x: number; y: number; radius: number; permille: number; until: number } | null;
   /** Function runs are free until this tick (a discount ability). */
   freeRunsUntil?: number;
+  /** The inventory, in pickup order, at most MAX_ITEMS (see items.ts). Kept through death. */
+  items: ItemStack[];
+  /** A ground item the hero is walking to (its id), else null. */
+  pickup: number | null;
 }
 
 interface EntityBase {
@@ -219,6 +230,20 @@ export interface Building extends EntityBase {
 }
 
 export type Entity = Unit | Building;
+
+/**
+ * An item lying on the ground where a Botnet Farm, a C2 Server or an incident
+ * boss fell. Any hero of the killing alliance can take it (see pickUp); it is
+ * `id`ed by the dead entity, whose ids are never reused.
+ */
+export interface GroundItem {
+  id: number;
+  item: string;
+  x: number;
+  y: number;
+  /** The player whose kill it was: its alliance may pick it up. */
+  team: TeamId;
+}
 
 export interface BuildCommand {
   type: "build";
@@ -390,7 +415,39 @@ export interface DismissCommand {
   unitIds: number[];
 }
 
-export type Command = DecommissionCommand | DismissCommand | AllyCommand | UnallyCommand | RankCommand | ForkCommand | BuildCommand | MoveCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | CancelResearchCommand | AttackCommand | CastCommand | LearnCommand | InvokeCommand;
+/** Buy an item at the shop by your core: the hero must be in range. */
+export interface BuyItemCommand {
+  type: "buyItem";
+  tick: number;
+  team: TeamId;
+  item: string;
+}
+
+/** Sell the item in an inventory slot (0-based) back for part of its price, while in range. */
+export interface SellItemCommand {
+  type: "sellItem";
+  tick: number;
+  team: TeamId;
+  slot: number;
+}
+
+/** Spend a charge of the consumable in an inventory slot (0-based). */
+export interface UseItemCommand {
+  type: "useItem";
+  tick: number;
+  team: TeamId;
+  slot: number;
+}
+
+/** Order the hero to walk to a ground item and take it, if a slot is free. */
+export interface PickUpCommand {
+  type: "pickUp";
+  tick: number;
+  team: TeamId;
+  itemId: number;
+}
+
+export type Command = DecommissionCommand | DismissCommand | AllyCommand | UnallyCommand | RankCommand | ForkCommand | BuildCommand | MoveCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | CancelResearchCommand | AttackCommand | CastCommand | LearnCommand | InvokeCommand | BuyItemCommand | SellItemCommand | UseItemCommand | PickUpCommand;
 
 export interface WaveSpawn {
   tick: number;
@@ -522,6 +579,8 @@ export interface World {
   teams: Team[];
   /** Always kept in ascending id order: iteration order is part of determinism. */
   entities: Entity[];
+  /** Items on the ground waiting for a hero, in drop order. */
+  groundItems: GroundItem[];
   commands: Command[];
   waves: WaveState;
   outcome: Outcome | null;

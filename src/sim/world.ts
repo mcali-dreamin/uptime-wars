@@ -79,6 +79,7 @@ export function createWorld(content: Content, setup: MatchSetup): World {
     nextId: 1,
     teams,
     entities: [],
+    groundItems: [],
     commands: [],
     waves: {
       nextIndex: 0,

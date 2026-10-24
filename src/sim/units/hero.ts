@@ -1,10 +1,12 @@
 // Your hero: does what you say. A move order walks it there (it won't stop to
 // fight on the way; that's how you get it out of trouble). An attack order
-// chases one enemy. A cast order walks it into range and casts. With no
+// chases one enemy. A cast order walks it into range and casts. A pickup
+// order walks it to a ground item and takes it, if a slot is free. With no
 // order it holds its ground and fights whatever comes near, like a guard.
 
 import { dealDamage, edgeDistance, nearestEnemy } from "../combat";
 import { buffMultiplier, castPoint, heroDamage, resolveCast } from "../heroes";
+import { MAX_ITEMS, heroAttackCooldown, heroSpeed, itemTotals, takeDrop } from "../items";
 import { distance, walkTo } from "../movement";
 import { hostile } from "../teams";
 import { invulnerable } from "../fortress";
@@ -17,7 +19,12 @@ export const hero: Behavior = (ctx, unit, def) => {
   const team = world.teams[unit.team]!;
   const state = team.hero;
   if (!state) return;
-  const damage = () => heroDamage(content, unit.defId, state.level) * multiplier(content, team, "unitDamage") * buffMultiplier(team, world.tick);
+  const totals = itemTotals(content, state);
+  // Gear bends the four numbers a hero fights with: damage, speed, and how
+  // fast its attacks come (and armor is applied where hits land, in combat).
+  const speed = heroSpeed(content, team, def.speed);
+  const cooldown = heroAttackCooldown(content, team, def.cooldownTicks);
+  const damage = () => (heroDamage(content, unit.defId, state.level) + totals.damage) * multiplier(content, team, "unitDamage") * buffMultiplier(team, world.tick);
 
   // 1. A cast: walk into range, then cast.
   if (state.cast) {
@@ -31,15 +38,33 @@ export const hero: Behavior = (ctx, unit, def) => {
       resolveCast(ctx, team, unit, cast.ability, { x: at.x, y: at.y }, cast.targetId);
       return;
     } else {
-      walkTo(world, unit, at, def.speed);
+      walkTo(world, unit, at, speed);
       return;
     }
   }
 
-  // 2. A move order: walk, ignoring fights.
+  // 2. A pickup: walk to the item, take it if there's still room.
+  if (state.pickup !== null) {
+    const drop = world.groundItems.find((g) => g.id === state.pickup);
+    if (drop === undefined || state.items.length >= MAX_ITEMS) {
+      state.pickup = null;
+    } else if (distance(unit, drop) <= content.items.pickupRange + unit.radius) {
+      state.pickup = null;
+      unit.moveTo = null;
+      takeDrop(world, content, team, drop.id);
+      unit.homeX = unit.x;
+      unit.homeY = unit.y;
+      return;
+    } else {
+      walkTo(world, unit, drop, speed);
+      return;
+    }
+  }
+
+  // 3. A move order: walk, ignoring fights.
   if (unit.moveTo) {
     if (distance(unit, unit.moveTo) > MOVE_REACH) {
-      walkTo(world, unit, unit.moveTo, def.speed);
+      walkTo(world, unit, unit.moveTo, speed);
       return;
     }
     unit.homeX = unit.moveTo.x;
@@ -47,7 +72,7 @@ export const hero: Behavior = (ctx, unit, def) => {
     unit.moveTo = null;
   }
 
-  // 3. A focus target, else the nearest enemy that comes close.
+  // 4. A focus target, else the nearest enemy that comes close.
   let target = state.focusId === null ? undefined : ctx.byId.get(state.focusId);
   if (!target || target.hp <= 0 || !hostile(world, target.team, unit.team) || invulnerable(world, ctx.content, target)) {
     state.focusId = null;
@@ -58,15 +83,15 @@ export const hero: Behavior = (ctx, unit, def) => {
     if (edgeDistance(unit, target) <= def.range) {
       if (unit.attackCooldown <= 0) {
         dealDamage(ctx, unit, target, damage());
-        unit.attackCooldown = def.cooldownTicks;
+        unit.attackCooldown = cooldown;
       }
     } else {
-      walkTo(world, unit, target, def.speed);
+      walkTo(world, unit, target, speed);
     }
     return;
   }
 
-  // 4. Nothing to do: stay where you were last sent.
+  // 5. Nothing to do: stay where you were last sent.
   const home = { x: unit.homeX, y: unit.homeY };
-  if (distance(unit, home) > MOVE_REACH * 4) walkTo(world, unit, home, def.speed);
+  if (distance(unit, home) > MOVE_REACH * 4) walkTo(world, unit, home, speed);
 };
