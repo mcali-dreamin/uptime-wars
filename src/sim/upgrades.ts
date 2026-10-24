@@ -102,7 +102,8 @@ export function projectedTier(content: Content, team: Team): number {
  * Why this research can't be queued, or null when it can. Requirements are
  * checked against the projected state: the team's current levels plus
  * everything already queued at both buildings — so you may queue a tier and
- * then the upgrade that needs it. Paying is part of queueing.
+ * then the upgrade that needs it. Paying is part of queueing. WC3 style, an
+ * upgrade is in a queue at most once: its next level waits until this one is done.
  */
 export function canResearch(content: Content, team: Team, upgrade: string, world?: World): string | null {
   const def = content.upgrades[upgrade];
@@ -113,6 +114,7 @@ export function canResearch(content: Content, team: Team, upgrade: string, world
     const id = content.races[team.raceId]?.center;
     return `needs a ${id ? content.buildings[id]!.name : "upgrade center"}`;
   }
+  if (queuedCount(content, team, upgrade) > 0) return "already queued";
   if (queueOf(team, slotOf(content, upgrade)).length >= RESEARCH_QUEUE) return "queue full";
   const next = nextQueued(content, team, upgrade);
   if (next.level > def.maxLevel) return "fully researched";
@@ -150,18 +152,13 @@ export function cancelQueued(content: Content, team: Team, slot: Slot, index: nu
   const head = team[slot];
   if (index < 0 || index > queueOf(team, slot).length - 1) return "nothing to cancel";
   let refund = 0;
-  const waiting = waitingOf(team, slot);
-  const upgrade = index === 0 ? head!.upgrade : waiting[index - 1]!.upgrade;
   if (index === 0) {
     refund += headPaid(content, team, head!);
     team[slot] = null;
-  }
-  // Later levels of the same upgrade go with it: each was priced and timed
-  // for the level it would be, so none may move up into the cancelled one's place.
-  for (let i = waiting.length - 1; i >= Math.max(0, index - 1); i -= 1) {
-    if (waiting[i]!.upgrade !== upgrade) continue;
-    refund += waiting[i]!.paid;
-    waiting.splice(i, 1);
+  } else {
+    const waiting = waitingOf(team, slot);
+    refund += waiting[index - 1]!.paid;
+    waiting.splice(index - 1, 1);
   }
   // Without the cancelled entry, later entries may no longer be reachable:
   // a tier removal can starve entries at either building. A head that never
