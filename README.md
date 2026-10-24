@@ -85,8 +85,8 @@ npm run dev
   Weights, Self-Hosting; Sticky Sessions, Edge Routing, Batch Jobs;
   Provisioned Concurrency, Batching, Parallel State; Shadowban, Hold the
   Line, Cease and Desist. Each race names the shared upgrades its own way.
-  You pay when you queue (WC3 style), the next levels of an upgrade stack
-  behind each other at their own price, and requirements are judged with
+  You pay when you queue (WC3 style), each upgrade can be in the queue once
+  (its next level waits until that one finishes), and requirements are judged with
   everything queued at both buildings counted — queue the core tier, then the
   upgrade that needs it. An entry whose tier isn't there yet waits at the
   head, and clicking an entry on the building's card cancels it for a full

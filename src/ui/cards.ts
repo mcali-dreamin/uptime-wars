@@ -175,8 +175,7 @@ export function upgradeCard(content: Content, team: Team, upgrade: string): Info
   const def = content.upgrades[upgrade]!;
   const level = levelOf(team, upgrade);
   const next = nextQueued(content, team, upgrade);
-  const waiting = queuedCount(content, team, upgrade);
-  const queued = waiting > 0 ? ` · ${waiting} in the queue` : "";
+  const queued = queuedCount(content, team, upgrade) > 0 ? " · already queued: the next level waits for it" : "";
   if (def.stat === "tier") {
     const tiers = content.economy.tiers;
     if (next.level > def.maxLevel) return { title: tiers[level]!.name, lines: ["Top tier"] };

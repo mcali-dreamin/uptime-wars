@@ -7,7 +7,6 @@ import {
   createWorld,
   hashWorld,
   levelOf,
-  nextQueued,
   projectedTier,
   queueCommand,
   queueOf,
@@ -63,26 +62,23 @@ describe("research queue", () => {
     expect(queue(w, "tower-damage")).toBe("not enough $");
   });
 
-  it("stacks the next levels of one upgrade, each priced and timed for its own level", () => {
+  it("an upgrade is queued once: its next level waits until it's done (WC3)", () => {
     const w = world();
     team(w).money = 100_000;
     team(w).upgrades[TIER] = 2;
-    expect(queue(w, "building-armor")).toBeNull();
-    expect(nextQueued(content, team(w), "building-armor")).toMatchObject({ level: 2 });
-    expect(queue(w, "building-armor")).toBeNull();
-    expect(queue(w, "building-armor")).toBeNull();
     const def = content.upgrades["building-armor"]!;
-    expect(team(w).researchQueue).toEqual([
-      { upgrade: "building-armor", ticks: def.researchTicks * 2, paid: def.cost * 2 },
-      { upgrade: "building-armor", ticks: def.researchTicks * 3, paid: def.cost * 3 },
-    ]);
-    expect(team(w).money).toBe(100_000 - def.cost * (1 + 2 + 3));
-    run(w, def.researchTicks * (1 + 2 + 3) + 5);
-    expect(levelOf(team(w), "building-armor")).toBe(3);
-    expect(team(w).research).toBeNull();
-    expect(team(w).researchQueue).toEqual([]);
-    // All done: nothing more to queue.
-    expect(queue(w, "building-armor")).toBe("fully researched");
+    expect(queue(w, "building-hp")).toBeNull();
+    expect(queue(w, "building-armor")).toBeNull();
+    // Waiting or running, a second level of it is refused.
+    expect(queue(w, "building-armor")).toBe("already queued");
+    expect(canResearch(content, team(w), "building-armor", w)).toBe("already queued");
+    // A different upgrade still queues.
+    expect(queue(w, "tower-damage")).toBeNull();
+    while (levelOf(team(w), "building-armor") < 1) step(w, content);
+    // Done: now level 2 can be queued, at level 2's price.
+    const money = team(w).money;
+    expect(queue(w, "building-armor")).toBeNull();
+    expect(money - team(w).money).toBe(def.cost * 2);
   });
 
   it("checks tier requirements against everything queued, at either building", () => {
@@ -149,23 +145,6 @@ describe("research queue", () => {
     expect(cancel(w, "research", 1)).toBe("nothing to cancel");
   });
 
-  it("cancelling a level takes the later levels of that upgrade with it", () => {
-    const w = world();
-    team(w).money = 10_000;
-    const cost = content.upgrades["anycast"]!.cost;
-    expect(queue(w, "building-hp")).toBeNull();
-    expect(queue(w, "anycast")).toBeNull();
-    expect(queue(w, "edge-caching")).toBeNull();
-    expect(queue(w, "anycast")).toBeNull();
-    const before = team(w).money;
-    // Cancel anycast 1: anycast 2 was priced as level 2, so it can't slide up into level 1.
-    expect(cancel(w, "research", 1)).toBeNull();
-    expect(queueOf(team(w), "research").map((e) => e.upgrade)).toEqual(["building-hp", "edge-caching"]);
-    expect(team(w).money - before).toBeGreaterThanOrEqual(cost + 2 * cost);
-    expect(team(w).money - before).toBeLessThan(cost + 2 * cost + 10);
-    expect(nextQueued(content, team(w), "anycast").level).toBe(1);
-  });
-
   it("a destroyed building refunds its whole queue", () => {
     const w = world();
     team(w).money = 100_000;
@@ -200,7 +179,7 @@ describe("research queue", () => {
     // The center's queue is its own.
     expect(queue(w, "exploit-kits")).toBeNull();
     expect(queueOf(team(w), "labResearch")).toHaveLength(1);
-    expect(canResearch(content, team(w), "exploit-kits", w)).toBeNull();
+    expect(canResearch(content, team(w), "unit-armor", w)).toBeNull();
   });
 
   it("a plain single research behaves exactly as before, and its match still replays", () => {

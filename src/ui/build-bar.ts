@@ -126,22 +126,23 @@ export class BuildBar {
     const index = this.upgrades(def.at === "center" ? "armory" : "research").indexOf(upgrade) + 1;
     const head = team[slotOf(content, upgrade)];
     const next = nextQueued(content, team, upgrade);
-    const waiting = queuedCount(content, team, upgrade) - (head?.upgrade === upgrade ? 1 : 0);
-    const suffix = waiting > 0 ? ` · ${waiting} queued` : "";
+    // In the queue but not running yet: one entry per upgrade, so that's all there is to say.
+    const waiting = head?.upgrade !== upgrade && queuedCount(content, team, upgrade) > 0;
+    if (waiting) return `${index} · queued`;
     if (def.stat === "tier") {
       const tiers = content.economy.tiers;
-      if (head?.upgrade === upgrade) return `${index} · building ${tiers[level + 1]!.name}${suffix}`;
+      if (head?.upgrade === upgrade) return `${index} · building ${tiers[level + 1]!.name}`;
       if (next.level > def.maxLevel) return `${index} · ${tiers[level]!.name}`;
-      return `${index} · → ${tiers[next.level]!.name} · ${next.cost}${suffix}`;
+      return `${index} · → ${tiers[next.level]!.name} · ${next.cost}`;
     }
     if (next.level > def.maxLevel) return `${index} · ${def.stat === "trait" ? "done" : "max"}`;
-    if (head?.upgrade === upgrade) return `${index} · researching${suffix}`;
+    if (head?.upgrade === upgrade) return `${index} · researching`;
     const needs = def.tiers?.[next.level - 1];
     if (needs !== undefined && projectedTier(content, team) < needs) {
       return `${index} · needs ${content.economy.tiers[needs]!.name}`;
     }
-    if (def.stat === "trait") return `${index} · trait · ${next.cost}${suffix}`;
-    return `${index} · Lv ${next.level}/${def.maxLevel} · ${next.cost}${suffix}`;
+    if (def.stat === "trait") return `${index} · trait · ${next.cost}`;
+    return `${index} · Lv ${next.level}/${def.maxLevel} · ${next.cost}`;
   }
 
   private button(id: string, text: string, detail: string): HTMLButtonElement {
