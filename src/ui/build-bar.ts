@@ -4,12 +4,14 @@
 // - deploy:   "Deploy core"
 // - build:    the race's buildings
 // - research: the core is selected, so its upgrades (the race and its base)
+//             plus the item shop (buying still needs the hero in range)
 // - armory:   the upgrade center is selected, so its army upgrades and traits
-// - hero:     the hero is selected, so its abilities (see hero-bar.ts)
+// - hero:     the hero is selected, so its abilities (see hero-bar.ts) — and
+//             the shop items too, while the hero stands in range
 
 import { affordable, tierLock } from "../game/selection";
 import type { Session } from "../game/session";
-import { TICK_RATE, buildCost, canResearch, levelOf, nextLevel, nextQueued, projectedTier, queuedCount, slotOf, spotCost, spotState, tierOf, upgradeName, upgradesAt } from "../sim";
+import { TICK_RATE, buildCost, canResearch, levelOf, nextLevel, nextQueued, projectedTier, queuedCount, slotOf, spotCost, spotState, tierOf, upgradeName, upgradesAt, atShop, shopBlocker, type Content } from "../sim";
 import { $ } from "./dom";
 import { clock } from "./hud";
 import type { HeroBar } from "./hero-bar";
@@ -20,17 +22,21 @@ export const AGENT_BUTTON = "agent";
 /** The core card's "Spot capacity" button (rents compute; see InfoPanel's card). */
 export const SPOT_BUTTON = "spot";
 const UPGRADE_PREFIX = "upgrade:";
+const ITEM_PREFIX = "item:";
 
 export type BarMode = "deploy" | "build" | "research" | "armory" | "hero";
 
 export interface BuildBarEvents {
   choose(button: string): void;
   research(upgrade: string): void;
+  buy(item: string): void;
   hover(button: string | null): void;
   guide(): void;
 }
 
 export const upgradeButton = (id: string) => UPGRADE_PREFIX + id;
+export const itemButton = (id: string) => ITEM_PREFIX + id;
+export const itemOf = (button: string | null) => (button?.startsWith(ITEM_PREFIX) ? button.slice(ITEM_PREFIX.length) : null);
 const AIM_PREFIX = "aim:";
 /** The "selected" button while aiming an ability. */
 export const aimingButton = (ability: string) => AIM_PREFIX + ability;
@@ -38,9 +44,14 @@ const aimingOf = (button: string | null) => (button?.startsWith(AIM_PREFIX) ? bu
 export const upgradeOf = (button: string | null) =>
   button?.startsWith(UPGRADE_PREFIX) ? button.slice(UPGRADE_PREFIX.length) : null;
 
+/** The shop's stock, in content order. */
+export const shopStock = (content: Content): string[] =>
+  Object.keys(content.items.items).filter((id) => content.items.items[id]?.shop);
+
 export class BuildBar {
   private readonly root = $("build-bar");
-  private mode: BarMode | null = null;
+  /** What's on screen, mode plus the state that changes its contents. */
+  private rendered = "";
 
   /** Set once the hero bar exists (it renders the hero mode's buttons). */
   hero: HeroBar | null = null;
@@ -52,11 +63,25 @@ export class BuildBar {
 
   /** Rebuild when the mode changes; refresh state every frame. */
   update(mode: BarMode, selected: string | null): void {
-    if (mode !== this.mode) this.render(mode);
-    if (mode === "hero") return this.hero?.refresh(this.root, aimingOf(selected));
     const { content, team } = this.session;
+    // The shop joins the hero (in range) and the core; re-render when that flips.
+    const shop = mode === "hero" ? atShop(this.session.world, content, team) : mode === "research";
+    const key = `${mode}${shop ? "+shop" : ""}`;
+    if (key !== this.rendered) this.render(mode, key, shop);
+    if (mode === "hero") return this.hero?.refresh(this.root, aimingOf(selected));
     for (const button of this.root.querySelectorAll<HTMLButtonElement>(".build-btn")) {
       const id = button.dataset.building!;
+      const item = itemOf(id);
+      if (item) {
+        const def = content.items.items[item]!;
+        const blocked = shopBlocker(this.session.world, content, team, item);
+        button.disabled = blocked !== null;
+        button.classList.toggle("locked", blocked === "not at the shop");
+        const detail = button.querySelector("small")!;
+        const text = blocked === "not enough $" || blocked === "inventory full" ? `${blocked} · $${def.cost}` : blocked ? `hero: ${blocked} · $${def.cost}` : `$${def.cost}`;
+        if (detail.textContent !== text) detail.textContent = text;
+        continue;
+      }
       const upgrade = upgradeOf(id);
       if (upgrade) {
         const slot = team[slotOf(content, upgrade)];
@@ -116,13 +141,13 @@ export class BuildBar {
     return `N · +${spot.compute[Math.min(tierOf(content, team), spot.compute.length - 1)]} for ${spot.ticks / TICK_RATE}s · $${cost}`;
   }
 
-  /** Forget the current mode so the next update re-renders (new match). */
+  /** Forget what's rendered so the next update re-renders (new match). */
   reset(): void {
-    this.mode = null;
+    this.rendered = "";
   }
 
-  private render(mode: BarMode): void {
-    this.mode = mode;
+  private render(mode: BarMode, key: string, shop: boolean): void {
+    this.rendered = key;
     // The buttons are about to go: a hovered one never sees its pointerleave, so
     // its card would stick on the info panel over whatever is selected next.
     this.events.hover(null);
@@ -150,6 +175,15 @@ export class BuildBar {
       if (mode === "research") {
         this.root.append(this.button(AGENT_BUTTON, "Deploy agent", `B · ${content.buildings[race.core]!.cost}`));
         this.root.append(this.button(SPOT_BUTTON, "Spot capacity", this.spotText(spotState(this.session.world, this.session.team), spotCost(content, this.session.team))));
+      }
+    }
+    if (shop && mode !== "deploy" && mode !== "build") {
+      this.root.append(label("Shop"));
+      for (const id of shopStock(content)) {
+        const def = content.items.items[id]!;
+        const button = this.button(itemButton(id), def.name, `$${def.cost}`);
+        button.classList.add("item-btn");
+        this.root.append(button);
       }
     }
     const guide = document.createElement("button");
@@ -200,7 +234,8 @@ export class BuildBar {
     small.textContent = detail;
     button.append(name, small);
     const upgrade = upgradeOf(id);
-    button.addEventListener("click", () => (upgrade ? this.events.research(upgrade) : this.events.choose(id)));
+    const item = itemOf(id);
+    button.addEventListener("click", () => (upgrade ? this.events.research(upgrade) : item ? this.events.buy(item) : this.events.choose(id)));
     button.addEventListener("pointerenter", () => this.events.hover(id));
     button.addEventListener("pointerleave", () => this.events.hover(null));
     return button;

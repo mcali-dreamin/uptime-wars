@@ -2,12 +2,15 @@
 //
 // The card (top-left of the map) is always there once you have a hero: name,
 // level, XP, skill points, or the respawn timer. Click it, or press Q, to
-// select the hero; Q again centres on it. With the hero selected the command
-// card shows its four abilities: number keys cast, Shift+number (or the +)
-// spends a skill point.
+// select the hero; Q again centres on it. Under it sit the six inventory
+// slots: click a filled one to use a consumable or active (Alt+1..6 works
+// too), and while the hero stands at the shop each slot grows a sell badge.
+// With the hero selected the command card shows its four abilities: number
+// keys cast, Shift+number (or the +) spends a skill point — and the shop's
+// items, when the hero is in range.
 
 import type { Session } from "../game/session";
-import { TICK_RATE, type Team } from "../sim";
+import { MAX_ITEMS, TICK_RATE, atShop, type Team } from "../sim";
 import { castBlocker, heroOf, learnBlocker, levelForRank, skillPoints, xpForLevel } from "../sim/heroes";
 import { $ } from "./dom";
 import { abilityEffect } from "./text";
@@ -17,6 +20,9 @@ export interface HeroBarEvents {
   cast(ability: string): void;
   learn(ability: string): void;
   hover(ability: string | null): void;
+  use(slot: number): void;
+  sell(slot: number): void;
+  hoverItem(item: { id: string; slot: number } | null): void;
 }
 
 export class HeroBar {
@@ -25,6 +31,9 @@ export class HeroBar {
   private readonly level = $("hero-level");
   private readonly xp = $("hero-xp");
   private readonly status = $("hero-status");
+  private readonly slots = $("hero-items");
+  /** What the slot row was last built from, so it's rebuilt only when it changes. */
+  private slotKey = "";
 
   constructor(
     private readonly session: Session,
@@ -39,14 +48,22 @@ export class HeroBar {
     return heroId ? (this.session.content.heroes.heroes[heroId]?.abilities ?? []) : [];
   }
 
+  /** The hero's inventory, with slot numbers. */
+  inventory(team: Team = this.session.team): { item: string; charges?: number }[] {
+    return team.hero?.items ?? [];
+  }
+
   update(): void {
     const { team, content, world } = this.session;
     const state = team.hero;
     if (!state || !team.heroId) {
       this.card.hidden = true;
+      this.slots.hidden = true;
+      this.slotKey = "";
       return;
     }
     this.card.hidden = false;
+    this.slots.hidden = false;
     this.name.textContent = content.units[team.heroId]!.name;
     this.level.textContent = `Lv ${state.level}`;
     const max = state.level >= content.heroes.maxLevel;
@@ -62,6 +79,58 @@ export class HeroBar {
       this.status.textContent = points > 0 ? `${points} skill point${points > 1 ? "s" : ""} to spend · click` : max ? "Max level" : `${Math.floor(state.xp - from)} / ${to - from} XP`;
     }
     this.card.classList.toggle("points", points > 0);
+    this.updateSlots();
+  }
+
+  /** The six slots under the card: filled ones use on click, and sell while at the shop. */
+  private updateSlots(): void {
+    const { team, content } = this.session;
+    const shop = atShop(this.session.world, content, team);
+    const items = this.inventory();
+    const key = `${items.map((s) => `${s.item}:${s.charges ?? "-"}`).join(",")}|${shop ? 1 : 0}`;
+    if (key !== this.slotKey) {
+      this.slotKey = key;
+      this.slots.replaceChildren(
+        ...Array.from({ length: MAX_ITEMS }, (_, slot) => {
+          const stack = items[slot];
+          const button = document.createElement("button");
+          button.className = "hero-slot";
+          button.dataset.slot = String(slot);
+          if (stack) {
+            const def = content.items.items[stack.item]!;
+            button.classList.toggle("filled", true);
+            button.classList.toggle("usable", def.active !== undefined);
+            button.append(document.createTextNode(def.name), document.createElement("small"));
+            button.title = `${def.name} · Alt+${slot + 1}`;
+            button.addEventListener("click", () => this.events.use(slot));
+            button.addEventListener("pointerenter", () => this.events.hoverItem({ id: stack.item, slot }));
+            button.addEventListener("pointerleave", () => this.events.hoverItem(null));
+            const sell = document.createElement("span");
+            sell.className = "sell";
+            sell.textContent = `$${Math.floor((def.cost * content.items.sellPermille) / 1000)}`;
+            sell.title = "Sell (while at the shop)";
+            sell.addEventListener("click", (event) => {
+              event.stopPropagation();
+              this.events.sell(slot);
+            });
+            button.append(sell);
+          } else {
+            button.title = `Empty slot · Alt+${slot + 1}`;
+            button.disabled = true;
+          }
+          return button;
+        }),
+      );
+    }
+    this.slots.classList.toggle("at-shop", shop);
+    for (const button of this.slots.querySelectorAll<HTMLButtonElement>(".hero-slot")) {
+      const stack = items[Number(button.dataset.slot)];
+      const def = stack ? content.items.items[stack.item]! : undefined;
+      const small = button.querySelector("small");
+      if (!small) continue; // An empty slot has no charge line.
+      const text = stack ? (def!.charges ? `×${stack.charges ?? 1}` : "passive") : "";
+      if (small.textContent !== text) small.textContent = text;
+    }
   }
 
   /** Command-card buttons for the abilities. */

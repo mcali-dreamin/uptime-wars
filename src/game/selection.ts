@@ -2,9 +2,12 @@
 // it. Every "what does clicking here do?" question is answered in this file,
 // so the input code, the cursor, the hint line, and the info panel agree.
 
-import { TILE, buildCost, type Building, canFound, canPlace, decommissionBlocker, decommissionRefund, dismissable, finishedCores, forkBlocker, hostile, isCore, isSite, MAX_ORDER_UNITS, tierBlocker, type Content, type Entity, type Point, type Unit } from "../sim";
+import { TILE, buildCost, type Building, canFound, canPlace, decommissionBlocker, decommissionRefund, dismissable, finishedCores, forkBlocker, hostile, isCore, isSite, MAX_ORDER_UNITS, tierBlocker, type Content, type Entity, type Point, type Unit, type GroundItem } from "../sim";
 import { heroOf } from "../sim/heroes";
 import type { Order, Session } from "./session";
+
+/** A click this close to a ground item (px) means "pick it up". */
+const DROP_CLICK_REACH = 32;
 
 export type Selection =
   | { kind: "none" }
@@ -53,20 +56,47 @@ export function groundOrderLabel(session: Session, selection: Selection): string
 }
 
 /**
- * The orders for right-clicking (or, for the deploy agent, clicking) the
- * ground at `point`: one, or a rally for each building in a group. Empty if none.
+ * A ground item under a world point, closest first, if the player can see it.
+ * Right-clicking one with the hero selected orders it picked up.
  */
-export function groundOrders(session: Session, selection: Selection, point: Point, queue = false): Order[] {
+export function groundItemAt(session: Session, point: Point, visible: (p: Point) => boolean = () => true): GroundItem | undefined {
+  let best: GroundItem | undefined;
+  let bestD = Infinity;
+  for (const drop of session.world.groundItems) {
+    if (!visible({ x: drop.x, y: drop.y })) continue;
+    const dx = point.x - drop.x;
+    const dy = point.y - drop.y;
+    const d = dx * dx + dy * dy;
+    if (d > DROP_CLICK_REACH * DROP_CLICK_REACH) continue;
+    if (d < bestD) {
+      best = drop;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+/**
+ * The orders for right-clicking (or, for the deploy agent, clicking) the
+ * ground at `point`: one, or a rally for each building in a group. With the
+ * hero in the selection, a ground item under the point is picked up instead
+ * of a plain move (the soldiers still attack-move there). Empty if none.
+ */
+export function groundOrders(session: Session, selection: Selection, point: Point, queue = false, visible: (p: Point) => boolean = () => true): Order[] {
   if (selection.kind === "buildings") return buildingGroup(session, selection).filter((b) => isRallied(session, b)).map((b) => ({ type: "rally", buildingId: b.id, x: point.x, y: point.y }));
   if (selection.kind === "army") {
     const orders = soldierOrders(session, selection, point, queue);
     // The hero marches with the group. It has no attack-move and no waypoint
     // queue, so it always gets a plain move to the same point — a shift-queued
-    // order included (it just walks there right away, no queueing).
-    if (armyHero(session, selection)) orders.push({ type: "move", x: point.x, y: point.y });
+    // order included (it just walks there right away, no queueing). A ground
+    // item under the click is worth the detour: it goes and takes it.
+    if (armyHero(session, selection)) {
+      const drop = groundItemAt(session, point, visible);
+      orders.push(drop ? { type: "pickUp", itemId: drop.id } : { type: "move", x: point.x, y: point.y });
+    }
     return orders;
   }
-  const order = groundOrder(session, selection, point, queue);
+  const order = groundOrder(session, selection, point, queue, visible);
   return order ? [order] : [];
 }
 
@@ -99,14 +129,19 @@ export function soldierOrders(session: Session, selection: Selection, point: Poi
  * The order for right-clicking (or, for the deploy agent, clicking) the ground
  * at `point`. Only the first part of a split group order: use groundOrders to send it.
  */
-export function groundOrder(session: Session, selection: Selection, point: Point, queue = false): Order | null {
-  if (selection.kind === "buildings" || selection.kind === "army") return groundOrders(session, selection, point, queue)[0] ?? null;
+export function groundOrder(session: Session, selection: Selection, point: Point, queue = false, visible: (p: Point) => boolean = () => true): Order | null {
+  if (selection.kind === "buildings" || selection.kind === "army") return groundOrders(session, selection, point, queue, visible)[0] ?? null;
   const entity = selectedEntity(session, selection);
   if (!entity || !groundOrderLabel(session, selection)) return null;
   if (entity.kind === "unit") {
     // The deploy agent walks by an order on its id: "move" means the hero
     // once a core is up, and this works before it and mid-match alike.
     if (entity.mode === "builder") return { type: "order", unitIds: [entity.id], x: point.x, y: point.y, attack: false };
+    // The hero over a ground item: it goes and takes it (no passive pickup).
+    if (entity.mode === "hero") {
+      const drop = groundItemAt(session, point, visible);
+      if (drop) return { type: "pickUp", itemId: drop.id };
+    }
     return { type: "move", x: point.x, y: point.y };
   }
   return { type: "rally", buildingId: entity.id, x: point.x, y: point.y };

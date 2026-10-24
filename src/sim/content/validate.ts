@@ -135,6 +135,24 @@ export function validateContent(content: Content): void {
   for (const [id, unit] of Object.entries(content.units)) {
     if (unit.heal && (unit.heal.perSecond <= 0 || unit.heal.radius <= 0)) errors.push(`unit ${id} heal needs perSecond and radius > 0`);
   }
+  for (const [id, item] of Object.entries(content.items.items)) {
+    if (item.cost <= 0) errors.push(`item ${id} needs cost > 0`);
+    if (item.charges !== undefined && item.charges < 1) errors.push(`item ${id} charges must be at least 1`);
+    if (item.active && !item.charges) errors.push(`item ${id} has an active, so it needs charges`);
+    if (item.active && (item.active.amount <= 0 || item.active.radius <= 0)) errors.push(`item ${id} active needs amount and radius > 0`);
+    const stats = item.stats ?? {};
+    for (const [stat, value] of Object.entries(stats)) {
+      if (!(value! > 0)) errors.push(`item ${id} stat ${stat} must be > 0`);
+    }
+  }
+  for (const [i, entry] of content.items.drops.table.entries()) {
+    if (!content.items.items[entry.item]) errors.push(`drop table ${i + 1} rolls unknown item ${entry.item}`);
+    if (entry.weight <= 0) errors.push(`drop table ${i + 1} needs weight > 0`);
+  }
+  for (const source of ["farm", "c2", "boss"] as const) {
+    const chance = content.items.drops[source];
+    if (!(chance >= 0 && chance <= 1000)) errors.push(`drop chance ${source} must be a permille between 0 and 1000`);
+  }
   for (const [id, race] of Object.entries(content.races)) {
     if (race.center && !content.buildings[race.center]?.buildable) errors.push(`race ${id} has unknown upgrade center ${race.center}`);
     if (race.center && !race.buildings.includes(race.center)) errors.push(`race ${id} can't build its upgrade center ${race.center}`);
