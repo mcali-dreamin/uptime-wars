@@ -2,7 +2,7 @@
 // it. Every "what does clicking here do?" question is answered in this file,
 // so the input code, the cursor, the hint line, and the info panel agree.
 
-import { TILE, buildCost, type Building, canFound, canPlace, decommissionBlocker, decommissionRefund, dismissable, forkBlocker, hostile, isCore, MAX_ORDER_UNITS, tierBlocker, type Content, type Entity, type Point, type Unit } from "../sim";
+import { TILE, buildCost, type Building, canFound, canPlace, decommissionBlocker, decommissionRefund, dismissable, finishedCores, forkBlocker, hostile, isCore, MAX_ORDER_UNITS, tierBlocker, type Content, type Entity, type Point, type Unit } from "../sim";
 import { heroOf } from "../sim/heroes";
 import type { Order, Session } from "./session";
 
@@ -47,7 +47,7 @@ export function groundOrderLabel(session: Session, selection: Selection): string
   const entity = selectedEntity(session, selection);
   if (!entity) return null;
   if (entity.kind === "unit") return entity.mode === "builder" || entity.mode === "hero" ? "Move here" : null;
-  if (isCore(session.content, session.team, entity)) return "Set global rally";
+  if (isCore(session.content, session.team, entity)) return "Set rally";
   const def = session.content.buildings[entity.defId]!;
   return def.spawn || def.invoke ? "Set rally" : null;
 }
@@ -103,7 +103,12 @@ export function groundOrder(session: Session, selection: Selection, point: Point
   if (selection.kind === "buildings" || selection.kind === "army") return groundOrders(session, selection, point, queue)[0] ?? null;
   const entity = selectedEntity(session, selection);
   if (!entity || !groundOrderLabel(session, selection)) return null;
-  if (entity.kind === "unit") return { type: "move", x: point.x, y: point.y };
+  if (entity.kind === "unit") {
+    // The deploy agent walks by an order on its id: "move" means the hero
+    // once a core is up, and this works before it and mid-match alike.
+    if (entity.mode === "builder") return { type: "order", unitIds: [entity.id], x: point.x, y: point.y, attack: false };
+    return { type: "move", x: point.x, y: point.y };
+  }
   return { type: "rally", buildingId: entity.id, x: point.x, y: point.y };
 }
 
@@ -347,7 +352,7 @@ export function placementAt(
 /** Why your core tier keeps you from building this right now, or null. */
 export function tierLock(session: Session, building: string): string | null {
   const have = session.world.entities.filter((e) => e.kind === "building" && e.team === session.local && e.defId === building && e.hp > 0).length;
-  return tierBlocker(session.content, session.team, building, have);
+  return tierBlocker(session.content, session.team, building, have, finishedCores(session.world, session.content, session.team));
 }
 
 export function affordable(session: Session, building: string): boolean {

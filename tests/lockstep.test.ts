@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import { Lockstep, type LockstepMessage } from "../src/game/net/lockstep";
-import { createWorld, hashWorld, type MatchSetup, type TeamId } from "../src/sim";
+import { createWorld, hashWorld, type Building, type MatchSetup, type TeamId } from "../src/sim";
 
 /** Test-side RNG (mulberry32), separate from any world. */
 function nextRandom(state: { rngState: number }): number {
@@ -124,7 +124,8 @@ describe("lockstep", () => {
     for (const peer of net.peers) {
       for (let team = 0; team < 3; team += 1) {
         expect(peer.world.entities.filter((e) => e.kind === "building" && e.team === team).length).toBeGreaterThan(3);
-        expect(peer.world.teams[team]!.rally).not.toBeNull();
+        const core = peer.world.entities.find((e): e is Building => e.id === peer.world.teams[team]!.coreId)!;
+        expect(core.rally).not.toBeNull();
       }
     }
   });

@@ -47,3 +47,5 @@ export const REROUTE_TICKS = 200;
 
 /** A pocket of ground this small (tiles) may be closed off by a building: it then counts as built over. */
 export const NOTCH_TILES = 4;
+/** A foundable expansion keeps this many tiles (center to center) of open water between it and any hostile building. */
+export const EXPANSION_CLEARANCE = 12;

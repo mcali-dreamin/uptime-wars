@@ -14,6 +14,8 @@ import { $ } from "./dom";
 import type { HeroBar } from "./hero-bar";
 
 export const FOUND_BUTTON = "found";
+/** The core card's "Deploy agent" button (trained with A; see InfoPanel's card). */
+export const AGENT_BUTTON = "agent";
 const UPGRADE_PREFIX = "upgrade:";
 
 export type BarMode = "deploy" | "build" | "research" | "armory" | "hero";
@@ -66,6 +68,17 @@ export class BuildBar {
         button.style.setProperty("--progress", String(progress));
         continue;
       }
+      if (id === AGENT_BUTTON) {
+        // One agent at a time, and the core's price up front.
+        const cost = content.buildings[this.session.race.core]!.cost;
+        const out = this.session.builder() !== undefined;
+        const text = out ? "B · already out" : team.money < cost ? `B · need $${cost - team.money}` : `B · $${cost}`;
+        const detail = button.querySelector("small")!;
+        if (detail.textContent !== text) detail.textContent = text;
+        button.disabled = out || team.money < cost;
+        button.classList.toggle("selected", false);
+        continue;
+      }
       const locked = id === FOUND_BUTTON ? null : tierLock(this.session, id);
       button.disabled = id !== FOUND_BUTTON && (locked !== null || !affordable(this.session, id));
       button.classList.toggle("locked", locked !== null);
@@ -108,6 +121,10 @@ export class BuildBar {
         const button = this.button(upgradeButton(id), upgradeName(content, this.session.team.raceId, id), this.upgradeDetail(id));
         button.classList.add("upgrade-btn");
         this.root.append(button);
+      }
+      // The core card also trains the deploy agent that founds expansions.
+      if (mode === "research") {
+        this.root.append(this.button(AGENT_BUTTON, "Deploy agent", `B · ${content.buildings[race.core]!.cost}`));
       }
     }
     const guide = document.createElement("button");

@@ -3,12 +3,13 @@
 
 import type { Content } from "./content";
 import { TILE, footprintCenter } from "./map";
+import { allied } from "./teams";
 import { TILE_OPEN, tileAt, walls } from "./terrain";
-import type { Building, Entity, Team, TeamId, World } from "./types";
+import type { Building, Entity, Point, Team, TeamId, World } from "./types";
 import { unitInTheWay } from "./walls";
 import { pastLimit, raceModifiers, tierBlocker, tierDef } from "./tiers";
 import { bonus } from "./upgrades";
-import { NOTCH_TILES } from "./tuning";
+import { EXPANSION_CLEARANCE, NOTCH_TILES } from "./tuning";
 
 /** A building's price before any you already own (race modifier applied). */
 export function baseCost(content: Content, raceId: string, buildingId: string): number {
@@ -32,7 +33,7 @@ export function buildCost(world: World, content: Content, teamId: TeamId, buildi
   const growth = def.costGrowthPermille ?? content.economy.costGrowthPermille ?? 0;
   const base = baseCost(content, team.raceId, buildingId);
   const have = owned(world, teamId, buildingId);
-  const past = pastLimit(content, team, buildingId, have) * (def.pastLimitGrowthPermille ?? 0);
+  const past = pastLimit(content, team, buildingId, have, finishedCores(world, content, team)) * (def.pastLimitGrowthPermille ?? 0);
   return Math.round((base * (1000 + growth * have + past)) / 1000);
 }
 
@@ -79,7 +80,7 @@ export function canPlace(
 
   if (isOccupied(world, col, row, def.footprint)) return "tile occupied";
   const have = world.entities.filter((e) => e.kind === "building" && e.team === teamId && e.defId === buildingId && e.hp > 0).length;
-  const locked = tierBlocker(content, team, buildingId, have);
+  const locked = tierBlocker(content, team, buildingId, have, finishedCores(world, content, team));
   if (locked) return locked;
   if (def.blocks && unitInTheWay(world, col, row, def.footprint)) return "a unit is in the way";
   if (team.money < cost) return "not enough $";
@@ -235,19 +236,62 @@ function stillOne(open: Uint8Array, cols: number, rows: number, starts: number[]
   }
 }
 
-/** Why a core can't be founded on this footprint, or null when it can. */
+/**
+ * Why a core can't be founded on this footprint, or null when it can. Before
+ * the first core, any open ground goes. After, an expansion: it needs an
+ * alive deploy agent, and no hostile building (nest, farm, node, enemy core)
+ * within EXPANSION_CLEARANCE tiles, but it may sit anywhere open on the map.
+ */
 export function canFound(world: World, content: Content, teamId: TeamId, col: number, row: number): string | null {
   const team = world.teams[teamId]!;
-  if (team.coreId !== -1) return "core already online";
   const def = content.buildings[content.races[team.raceId]!.core]!;
   if (!footprintIsOpen(world, col, row, def.footprint)) return "terrain is not buildable";
   if (isOccupied(world, col, row, def.footprint)) return "tile occupied";
+  if (team.coreId === -1) return null;
+  const agent = world.entities.find((e) => e.id === team.builderId);
+  if (!agent || agent.kind !== "unit" || agent.hp <= 0) return "no deploy agent";
+  const center = footprintCenter(col, row, def.footprint);
+  const clear = EXPANSION_CLEARANCE * TILE;
+  const tooClose = world.entities.some((e) => {
+    if (e.kind !== "building" || e.hp <= 0 || allied(world, e.team, teamId)) return false;
+    const dx = e.x - center.x;
+    const dy = e.y - center.y;
+    return dx * dx + dy * dy <= clear * clear;
+  });
+  if (tooClose) return "too close to hostiles";
   return null;
 }
 
 /** Is this one of the team's cores (the building its race depends on)? */
 export function isCore(content: Content, team: Team, entity: Entity | undefined): boolean {
   return entity?.kind === "building" && entity.team === team.id && entity.defId === content.races[team.raceId]!.core;
+}
+
+/** The team's living, finished cores, in id order (an expansion under construction doesn't count). */
+export function finishedCores(world: World, content: Content, team: Team): number {
+  return teamCores(world, content, team).filter((core) => core.buildRemaining === 0).length;
+}
+
+/** The live core nearest this building (euclidean, ties to the lower id), or undefined. */
+export function homeCore(world: World, content: Content, building: Building): Building | undefined {
+  let best: Building | undefined;
+  let bestD = Infinity;
+  for (const core of teamCores(world, content, world.teams[building.team]!)) {
+    if (core.buildRemaining > 0) continue;
+    const dx = core.x - building.x;
+    const dy = core.y - building.y;
+    const d = dx * dx + dy * dy;
+    if (d < bestD || (d === bestD && core.id < best!.id)) {
+      best = core;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+/** Where this spawner's units gather: its own rally, else its nearest core's. */
+export function rallyFor(world: World, content: Content, building: Building): Point | null {
+  return building.rally ?? homeCore(world, content, building)?.rally ?? null;
 }
 
 /** Your finished buildings that extend where you may build. */

@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   canFound,
+  canPlace,
   createWorld,
   queueCommand,
   levelOf,
-  canPlace,
   isOccupied,
   TILE,
   tileAt,
   step,
 } from "../src/sim";
+import { placeBuilding } from "../src/sim/entities";
 import { content, SETUP, firstSpot, planBuildOrder } from "./fixtures";
 
 describe("building", () => {
@@ -185,7 +186,7 @@ describe("network and redundancy", () => {
     expect(reason()).toBe("outside your network");
   });
 
-  it("you can build more cores; losing the main one fails over, and you only lose when every core is down", () => {
+  it("you can hold more cores; losing the main one fails over, and you only lose when every core is down", () => {
     const world = createWorld(content, SETUP);
     world.teams[0]!.money = 5000;
     const first = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
@@ -195,17 +196,15 @@ describe("network and redundancy", () => {
       for (const [dc, dr] of [[r, 0], [-r, 0], [0, r], [0, -r]] as const) {
         const col = Math.floor(first.x / TILE) + dc;
         const row = Math.floor(first.y / TILE) + dr;
-        if (canPlace(world, content, 0, "core", col, row) === null) {
+        if (tileAt(world.terrain, col, row) === 0 && !isOccupied(world, col, row, 2)) {
           site = { col, row };
           break;
         }
       }
     }
     expect(site).not.toBeNull();
-    queueCommand(world, { type: "build", tick: world.tick, team: 0, building: "core", ...site! });
-    step(world, content);
+    placeBuilding(world, content, 0, "core", site!.col, site!.row, true);
     const second = world.entities.find((e) => e.kind === "building" && e.defId === "core" && e.id !== first.id)!;
-    while (second.kind === "building" && second.buildRemaining > 0) step(world, content);
 
     first.hp = 0;
     step(world, content);
@@ -227,16 +226,13 @@ describe("network and redundancy", () => {
       for (const [dc, dr] of [[r, 0], [-r, 0], [0, r], [0, -r]] as const) {
         const col = Math.floor(first.x / TILE) + dc;
         const row = Math.floor(first.y / TILE) + dr;
-        if (canPlace(world, content, 0, "core", col, row) === null) {
+        if (tileAt(world.terrain, col, row) === 0 && !isOccupied(world, col, row, 2)) {
           site = { col, row };
           break;
         }
       }
     }
-    queueCommand(world, { type: "build", tick: world.tick, team: 0, building: "core", ...site! });
-    step(world, content);
-    const second = world.entities.find((e) => e.kind === "building" && e.defId === "core" && e.id !== first.id)!;
-    while (second.kind === "building" && second.buildRemaining > 0) step(world, content);
+    placeBuilding(world, content, 0, "core", site!.col, site!.row, true);
     queueCommand(world, { type: "research", tick: world.tick, team: 0, upgrade: "anycast" });
     step(world, content);
     first.hp = 0;

@@ -3,7 +3,7 @@
 // that pans and zooms. Anything outside the camera is skipped.
 
 import { Container, Graphics } from "pixi.js";
-import { reachOf, TILE, isCore, tierOf, networkProviders, type Content, type World } from "../../sim";
+import { reachOf, TILE, isCore, rallyFor, tierOf, networkProviders, type Content, type World } from "../../sim";
 import type { Camera } from "../camera";
 import type { Fog } from "../fog";
 import { PING_MS, SHOT_TTL_MS, type Frame, type WorldView } from "../frame";
@@ -69,7 +69,7 @@ export class World2D implements WorldView {
       if (entity.kind !== "building" || entity.hp <= 0 || !frame.selectedIds.has(entity.id) || entity.id === frame.selectedId) continue;
       const size = entity.footprint * TILE + 6;
       this.overlay.rect(entity.x - size / 2, entity.y - size / 2, size, size).stroke({ width: 2, color: HIGHLIGHT, alpha: 0.9 });
-      const rally = entity.rally ?? frame.world.teams[entity.team]!.rally;
+      const rally = rallyFor(frame.world, frame.content, entity);
       if (rally) this.overlay.circle(rally.x, rally.y, 10).stroke({ width: 1.5, color: HIGHLIGHT, alpha: entity.rally ? 0.9 : 0.45 });
     }
     this.drawPings(frame);
@@ -150,7 +150,7 @@ export class World2D implements WorldView {
 
   /**
    * Outline the selection; for a spawner or core, show where its units
-   * gather: its own rally point, else the team's global one (fainter).
+   * gather: its own rally point, else its nearest core's (fainter).
    */
   private drawSelection(world: World, content: Content, selectedId: number | null): void {
     if (selectedId === null) return;
@@ -168,8 +168,8 @@ export class World2D implements WorldView {
     const core = isCore(content, team, entity);
     const def = content.buildings[entity.defId]!;
     if (!core && !def.spawn && !def.invoke) return;
-    const own = core ? team.rally : entity.rally;
-    const rally = own ?? team.rally;
+    const own = entity.rally;
+    const rally = own ?? rallyFor(world, content, entity);
     if (!rally) return;
     const alpha = own ? 0.9 : 0.45;
     g.moveTo(entity.x, entity.y).lineTo(rally.x, rally.y).stroke({ width: 2, color: HIGHLIGHT, alpha: alpha * 0.6 });

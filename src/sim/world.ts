@@ -140,7 +140,6 @@ function makeTeam(content: Content, id: TeamId, raceId: string, heroId: string |
     incomeTimer: BASE_INCOME.intervalTicks,
     coreId: -1,
     builderId: -1,
-    rally: null,
     users: 0,
     overload: 0,
     peakUsers: 0,
@@ -206,6 +205,15 @@ function checkOutcome(ctx: TickContext): void {
   const { world, content } = ctx;
   for (const team of world.teams) {
     if (team.downTick !== null) continue;
+    // A mid-match deploy agent that died is gone for good: the $ it cost
+    // isn't refunded. (Match start, an agent death is the whole team's end.)
+    if (team.coreId !== -1 && team.builderId !== -1) {
+      const agent = ctx.byId.get(team.builderId);
+      if (!agent || agent.kind !== "unit" || agent.hp <= 0) {
+        team.builderId = -1;
+        world.events.push({ type: "agentLost", team: team.id, x: agent?.x ?? 0, y: agent?.y ?? 0 });
+      }
+    }
     let alive: boolean;
     if (team.coreId === -1) {
       // Before founding, the team lives as long as its builder does.
@@ -214,7 +222,9 @@ function checkOutcome(ctx: TickContext): void {
     } else {
       const primary = ctx.byId.get(team.coreId);
       if (!primary || primary.hp <= 0) {
-        const next = teamCores(world, content, team)[0];
+        // A finished core takes over before an expansion still under construction.
+        const cores = teamCores(world, content, team);
+        const next = cores.find((core) => core.buildRemaining === 0) ?? cores[0];
         if (next) {
           team.coreId = next.id;
           world.events.push({ type: "failover", team: team.id, x: next.x, y: next.y });

@@ -25,6 +25,7 @@ export function validateContent(content: Content): void {
     if (!core) errors.push(`race ${id} has unknown core ${race.core}`);
     else if (core.footprint !== 2) errors.push(`race ${id} core ${race.core} must have a 2x2 footprint`);
     else if (race.controller === "human" && !core.buildRadius) errors.push(`race ${id} core ${race.core} needs a buildRadius`);
+    else if (race.buildings.includes(race.core)) errors.push(`race ${id} lists its core ${race.core} in its build roster: cores come from a deploy agent`);
     if (race.builder && !content.units[race.builder]) errors.push(`race ${id} has unknown builder ${race.builder}`);
     for (const [i, rank] of (race.spawnerRanks ?? []).entries()) {
       if (rank.tier < 0 || rank.tier >= content.economy.tiers.length) errors.push(`race ${id} rank ${i + 1} needs a known core tier`);

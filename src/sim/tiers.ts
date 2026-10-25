@@ -28,20 +28,31 @@ export function atTopTier(content: Content, team: Team): boolean {
   return tierOf(content, team) >= content.economy.tiers.length - 1;
 }
 
+/**
+ * The per-tier limit at a team's cores: the main core's allowance L, plus
+ * half of it rounded up for every other live, finished core (see
+ * finishedCores). Expanding is how the caps grow past one base.
+ */
+export function tierAllowance(limit: number, cores: number): number {
+  return limit + Math.max(0, cores - 1) * Math.ceil(limit / 2);
+}
+
 /** How many of this building past its top-tier limit the next one would be (0 if within it). */
-export function pastLimit(content: Content, team: Team, buildingId: string, have: number): number {
+export function pastLimit(content: Content, team: Team, buildingId: string, have: number, cores: number): number {
   const def = content.buildings[buildingId]!;
   if (!def.limitPerTier || !def.pastLimitGrowthPermille || !atTopTier(content, team)) return 0;
-  return Math.max(0, have + 1 - def.limitPerTier[def.limitPerTier.length - 1]!);
+  return Math.max(0, have + 1 - tierAllowance(def.limitPerTier[def.limitPerTier.length - 1]!, cores));
 }
 
 /** Why a team's tier keeps it from building this, or null. */
-export function tierBlocker(content: Content, team: Team, buildingId: string, have: number): string | null {
+export function tierBlocker(content: Content, team: Team, buildingId: string, have: number, cores: number): string | null {
   const def = content.buildings[buildingId]!;
   const tier = tierOf(content, team);
   if ((def.tier ?? 0) > tier) return `needs ${content.economy.tiers[def.tier!]!.name}`;
   if (def.limitPerTier && !(def.pastLimitGrowthPermille && atTopTier(content, team))) {
-    const limit = def.limitPerTier[Math.min(tier, def.limitPerTier.length - 1)]!;
+    // The upgrade center stays one per team: research is a team queue, not a per-base one.
+    const isCenter = content.races[team.raceId]?.center === buildingId;
+    const limit = tierAllowance(def.limitPerTier[Math.min(tier, def.limitPerTier.length - 1)]!, isCenter ? 1 : cores);
     if (have >= limit) return `only ${limit} at ${content.economy.tiers[tier]!.name}`;
   }
   return null;

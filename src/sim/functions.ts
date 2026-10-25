@@ -6,6 +6,7 @@
 
 import type { TickContext } from "./context";
 import { sendHome, spawnUnit } from "./entities";
+import { rallyFor } from "./placement";
 import { randomInt } from "./rng";
 import type { Building, Team, Unit } from "./types";
 import { runsAreFree } from "./heroes";
@@ -79,7 +80,7 @@ export function invoke(ctx: TickContext, building: Building, auto: boolean, free
     unit.spawnerId = building.id;
     unit.expiresAt = world.tick + def.ttlTicks;
     applyRank(content, world, unit, building);
-    const rally = building.rally ?? team.rally;
+    const rally = rallyFor(world, content, building);
     if (rally) sendHome(world, unit, rally);
     units.push(unit);
   }
