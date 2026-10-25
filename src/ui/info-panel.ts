@@ -6,7 +6,7 @@ import { invokeCost, upgradeName, earnedPerks, tierDef, TICK_RATE, forkCost, isC
 import { armyHero, armyUnits, buildingGroup, groundOrderLabel, isRallied, removal, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { heightAtTile, TILE, type Building, type Entity } from "../sim";
-import { HIGH_GROUND_DAMAGE } from "../sim/tuning";
+import { EXPANSION_CLEARANCE, HIGH_GROUND_DAMAGE } from "../sim/tuning";
 import { upgradeOf } from "./build-bar";
 import { buildingCard, rankEffect, unitCard, upgradeCard, type InfoCard } from "./cards";
 import { rankChange } from "./text";
@@ -63,7 +63,25 @@ export class InfoPanel {
     const raceId = this.session.team.raceId;
     const placing = selection.kind === "place" ? selection.building : selection.kind === "found" ? "found" : null;
     const building = this.hoverButton ?? placing;
-    if (building === "found") return this.show({ title: "Deploy core", lines: ["Your agent walks there and becomes it"] });
+    if (building === "found") {
+      return this.show(
+        this.session.deploying
+          ? { title: "Deploy core", lines: ["Your agent walks there and becomes it"] }
+          : { title: "Found expansion", lines: ["Your agent walks there and builds a core", "Each finished core raises your caps"] },
+      );
+    }
+    if (building === "agent") {
+      const cost = this.session.content.buildings[this.session.race.core]!.cost;
+      return this.show({
+        title: "Deploy agent",
+        lines: [
+          `Trains a deploy agent at this core · $${cost}`,
+          `Select it, press C, and click open ground to found an expansion there (no hostiles within ${EXPANSION_CLEARANCE} tiles)`,
+          "Each finished core raises your per-tier caps and rallies its own spawners",
+          "One agent at a time; if it dies on the way, the $ is gone",
+        ],
+      });
+    }
     const aiming = selection.kind === "cast" ? selection.ability : null;
     const ability = this.hoverAbility ?? aiming;
     if (ability && this.describeAbility) return this.show(this.describeAbility(ability));

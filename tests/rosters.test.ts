@@ -44,6 +44,12 @@ describe("race rosters", () => {
     for (const [unit, races] of owners) expect(races, unit).toHaveLength(1);
   });
 
+  it("no race's build roster holds its core: cores come from a deploy agent", () => {
+    for (const [raceId, race] of Object.entries(content.races)) {
+      expect(race.buildings, raceId).not.toContain(race.core);
+    }
+  });
+
   it("every race has a perk at each tier above the first", () => {
     for (const [raceId, race] of PLAYABLE) {
       expect(race.tierPerks?.length, raceId).toBe(content.economy.tiers.length);

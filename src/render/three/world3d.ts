@@ -10,7 +10,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
-import { TILE, isCore, tierOf, type Content, type Entity, type Point, type SimEvent, type World } from "../../sim";
+import { TILE, isCore, rallyFor, tierOf, type Content, type Entity, type Point, type SimEvent, type World } from "../../sim";
 import { PING_MS, SHOT_TTL_MS, type Frame, type WorldView } from "../frame";
 import { HIGHLIGHT, INVALID, VALID, teamColor } from "../palette";
 import { Bars, Bolts, Debris, Particles, Rings } from "./effects";
@@ -704,7 +704,7 @@ export class World3D implements WorldView {
       if (entity.kind !== "building" || entity.hp <= 0 || !frame.selectedIds.has(entity.id) || entity.id === frame.selectedId) continue;
       const at = frame.position(entity);
       this.rings.add(at.x, ground(at.x, at.y), at.y, (entity.footprint * TILE) / 2 + 10, HIGHLIGHT, 0.9);
-      const rally = entity.rally ?? world.teams[entity.team]!.rally;
+      const rally = rallyFor(world, content, entity);
       if (!rally) continue;
       const key = `${Math.round(rally.x / 24)}:${Math.round(rally.y / 24)}`;
       if (rallies.has(key)) continue;
@@ -724,8 +724,8 @@ export class World3D implements WorldView {
           const team = world.teams[selected.team]!;
           const core = isCore(content, team, selected);
           if (core || def.spawn || def.invoke) {
-            const own = core ? team.rally : selected.rally;
-            const rally = own ?? team.rally;
+            const own = selected.rally;
+            const rally = own ?? rallyFor(world, content, selected);
             if (rally) this.showRally(at, rally, own ? 1 : 0.5);
           }
         }

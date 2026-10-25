@@ -6,6 +6,7 @@ import {
   tileAt,
   TILE_BLOCKED,
   step,
+  type Building,
 } from "../src/sim";
 import { content, SETUP, OPENING, firstSpot, planBuildOrder } from "./fixtures";
 
@@ -80,20 +81,21 @@ describe("rally points", () => {
     }
   });
 
-  it("the core sets a global rally; a spawner's own rally overrides it", () => {
+  it("the core sets its rally; a spawner's own rally overrides it", () => {
     const { world, rack, coreId } = worldWithRack();
+    const core = () => world.entities.find((e): e is Building => e.id === coreId)!;
     const globalPoint = openPointNear(world, 6);
     const ownPoint = openPointNear(world, 12);
     queueCommand(world, { type: "rally", tick: world.tick, team: 0, buildingId: coreId, x: globalPoint.x, y: globalPoint.y });
     step(world, content);
-    expect(world.teams[0]!.rally).toEqual(globalPoint);
+    expect(core().rally).toEqual(globalPoint);
     for (const unit of guards(world)) expect(Math.hypot(unit.homeX - globalPoint.x, unit.homeY - globalPoint.y)).toBeLessThanOrEqual(60);
 
     queueCommand(world, { type: "rally", tick: world.tick, team: 0, buildingId: rack.id, x: ownPoint.x, y: ownPoint.y });
     step(world, content);
     for (const unit of guards(world)) expect(Math.hypot(unit.homeX - ownPoint.x, unit.homeY - ownPoint.y)).toBeLessThanOrEqual(60);
 
-    // Moving the global rally no longer affects a spawner that has its own.
+    // Moving the core's rally no longer affects a spawner that has its own.
     queueCommand(world, { type: "rally", tick: world.tick, team: 0, buildingId: coreId, x: globalPoint.x + TILE, y: globalPoint.y });
     step(world, content);
     for (const unit of guards(world)) expect(Math.hypot(unit.homeX - ownPoint.x, unit.homeY - ownPoint.y)).toBeLessThanOrEqual(60);

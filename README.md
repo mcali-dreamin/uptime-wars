@@ -40,8 +40,9 @@ npm run dev
 - Click one of your buildings to select it; double-click one (any but the
   core) to grab every one of its kind on screen, and Shift-click adds buildings
   to the selection. Right-click sets where its units
-  gather; right-click with the **core** selected sets a global rally point for
-  every spawner that doesn't have its own. To rally several spawners at once,
+  gather; right-click with a **core** selected sets the rally point for every
+  spawner without its own whose nearest core it is (each core rallies its own
+  bubble). To rally several spawners at once,
   Shift-click them, double-click one (every one of its kind on screen), or drag
   a box with no units in it. Units fight whatever gets in their
   way there, then guard the spot. Right-click is any secondary click: a
@@ -177,9 +178,20 @@ deals 25% more damage. Hold a ramp and you hold the plateau.
 **Network and redundancy.** You can build anywhere inside your network:
 within reach of a core (7 tiles) or a network building. Open Source builds
 cheap, fragile Mesh Nodes (reach 4); Hyperscaler builds armored Edge PoPs
-(reach 7). Cores are buildable too ($300). If your main core falls, the
-next takes over, and you only go down when every core is down. Extra cores
-are reach and redundancy, not compute: only one core's compute counts.
+(reach 7). If your main core falls, the next finished one takes over, and
+you only go down when every core is down. Extra cores add reach, users and
+caps, not compute: only one core's compute counts.
+
+**Expansion.** Grow past your first base by founding new cores anywhere on
+the map. Select a core and press `B` (or the Deploy agent button) to train a
+deploy agent for the core's price ($300); it's selected for you. Walk it out,
+press `C` and click open ground: it walks there and builds a core. One agent
+at a time, no site within 12 tiles of a hostile building (nest, farm,
+Infected Node, enemy core), and if the agent dies on the way the $ is gone,
+so escort it. An expansion builds over its build time and is weak until it's
+up. Every finished core raises your per-tier caps (Web Apps, generators) by
+half your main core's allowance, rounded up; your upgrade center stays one
+per team.
 
 **$ and compute** are two different things. **$** is money: users pay it
 every second, and everything (buildings, research) is bought with it.
@@ -483,10 +495,11 @@ Direction: survival on a procedurally generated open web.
 - [x] Wandering creep packs that only attack what they see
 - [x] Endless escalating pressure from a nest in the middle (background traffic + incidents); uptime score
 - [x] Elevation: plateaus, cliffs, ramps; high-ground sight and damage
-- [x] Rally points: per spawner, with a global default on the core, and several spawners at once
+- [x] Rally points: per spawner, with a default on each core for its bubble, and several spawners at once
 - [x] Upgrades researched at the core
 - [x] Core tech tiers: Core, Data Center, Region
 - [x] Network expansion (per race) and redundant cores
+- [x] Expansion: found cores across the map with a deploy agent; each core raises the caps
 - [x] Heroes: one per race, levels, skill points, four abilities each
 - [x] Compute is the army cap; generators are limited per core tier (soft at the top tier)
 - [x] Four races: Open Source Collective, Hyperscaler, Serverless, Walled Garden

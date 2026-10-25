@@ -20,7 +20,7 @@ import {
   userCapacity,
 } from "../economy";
 import { castBlocker, learnBlocker } from "../heroes";
-import { buildCost, canFound, canPlace } from "../placement";
+import { buildCost, canFound, canPlace, finishedCores } from "../placement";
 import { rankBlocker } from "../ranks";
 import { hostile } from "../teams";
 import { tierBlocker, tierOf, tierUpgrade } from "../tiers";
@@ -286,7 +286,7 @@ function findSpot(
   // would fail at every spot, after canPlace's costlier checks.
   const cost = buildCost(world, content, team.id, building);
   if (team.money < cost) return null;
-  if (tierBlocker(content, team, building, countOf(world, team, building)))
+  if (tierBlocker(content, team, building, countOf(world, team, building), finishedCores(world, content, team)))
     return null;
   for (const ring of RINGS) {
     for (const [dc, dr] of ring) {

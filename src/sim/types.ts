@@ -21,10 +21,8 @@ export interface QueuedResearch {
 
 export interface Team {
   id: TeamId;
-  /** The builder unit before the core is founded, else -1. */
+  /** The builder unit before the core is founded, else the mid-match deploy agent, else -1. */
   builderId: number;
-  /** Global rally point for every spawner without its own, set from the core. */
-  rally: Point | null;
   raceId: string;
   controller: Controller;
   /** $: earned from users, spent on everything. */
@@ -200,7 +198,7 @@ export interface Building extends EntityBase {
   footprint: number;
   /** Ticks of construction left. 0 means operational. */
   buildRemaining: number;
-  /** This spawner's own rally point; overrides the team's global one. */
+  /** This spawner's own rally point; a spawner without one follows its nearest core's. */
   rally: Point | null;
   spawnTimer: number;
   /** A function's scale-up cooldown, in ticks (its standing squad uses spawnTimer). */
@@ -238,6 +236,15 @@ export interface MoveCommand {
   y: number;
 }
 
+/** Train a deploy agent at one of your finished cores: it founds expansions mid-match. */
+export interface TrainAgentCommand {
+  type: "trainAgent";
+  tick: number;
+  team: TeamId;
+  /** The core it trains at. */
+  coreId: number;
+}
+
 /** Walk the builder to a 2x2 footprint and found the core there. */
 export interface FoundCommand {
   type: "found";
@@ -248,8 +255,8 @@ export interface FoundCommand {
 }
 
 /**
- * Set where a spawner's units gather. Targeting the core sets the team's
- * global rally point instead, used by every spawner without its own.
+ * Set where a spawner's units gather. Targeting a core sets that core's own
+ * rally point, followed by every spawner nearest to it.
  */
 export interface RallyCommand {
   type: "rally";
@@ -390,7 +397,7 @@ export interface DismissCommand {
   unitIds: number[];
 }
 
-export type Command = DecommissionCommand | DismissCommand | AllyCommand | UnallyCommand | RankCommand | ForkCommand | BuildCommand | MoveCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | CancelResearchCommand | AttackCommand | CastCommand | LearnCommand | InvokeCommand;
+export type Command = DecommissionCommand | DismissCommand | AllyCommand | UnallyCommand | RankCommand | ForkCommand | BuildCommand | MoveCommand | TrainAgentCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | CancelResearchCommand | AttackCommand | CastCommand | LearnCommand | InvokeCommand;
 
 export interface WaveSpawn {
   tick: number;
@@ -470,6 +477,10 @@ export type SimEvent =
   /** An infector reached its site: a node is going up at (x, y). */
   | { type: "infected"; x: number; y: number }
   | { type: "founded"; x: number; y: number }
+  /** An expansion core (re)ached its site and is going up; it joins when built. */
+  | { type: "expanded"; team: TeamId; x: number; y: number }
+  /** A mid-match deploy agent died on the way: the $ it cost is gone. */
+  | { type: "agentLost"; team: TeamId; x: number; y: number }
   | { type: "failover"; team: TeamId; x: number; y: number }
   /** A team went offline while its allies play on. */
   | { type: "offline"; team: TeamId }

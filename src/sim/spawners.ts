@@ -8,6 +8,7 @@
 import type { TickContext } from "./context";
 import { computeBalance, lagging, unitUpkeep } from "./economy";
 import { sendHome, spawnInterval, spawnUnit } from "./entities";
+import { rallyFor } from "./placement";
 import { randomInt } from "./rng";
 import type { Building } from "./types";
 import { squadBonus } from "./traits";
@@ -64,7 +65,7 @@ export function tickSpawners(ctx: TickContext): void {
       const unit = spawnUnit(ctx, building.team, spawn.unit, building, x, y, "guard");
       unit.spawnerId = building.id;
       applyRank(content, world, unit, building);
-      const rally = building.rally ?? world.teams[building.team]!.rally;
+      const rally = rallyFor(world, content, building);
       if (rally) sendHome(world, unit, rally);
     }
     building.spawnTimer = spawnInterval(content, world.teams[building.team]!, building.defId);

@@ -67,7 +67,7 @@ const director = new Director(content);
 const alerts = new Alerts(content);
 const groups = new ControlGroups();
 /** Alert colours on the minimap. */
-const ALERT_COLOR = { attack: 0xfacc15, core: 0xf87171, lost: 0xf87171, hero: 0xfacc15, spread: 0xf87171 } as const satisfies Record<AlertKind, number>;
+const ALERT_COLOR = { attack: 0xfacc15, core: 0xf87171, lost: 0xf87171, hero: 0xfacc15, spread: 0xf87171, agent: 0xf87171 } as const satisfies Record<AlertKind, number>;
 /** Is a world point on screen right now (and in sight)? */
 const onScreen = (p: Point) => renderer.onScreen(p.x, p.y);
 const soundButton = $("sound");
@@ -97,9 +97,15 @@ const REMOVE_CONFIRM_MS = 2500;
 
 const info = new InfoPanel(session, () => arm(), () => invokeSelected(), () => forkSelected(), () => rankSelected(), () => removeSelected());
 info.removeArmed = () => pendingRemoval !== null && removal(session, selection)?.key === pendingRemoval.key && performance.now() - pendingRemoval.at < REMOVE_CONFIRM_MS;
+/** The core card's "Deploy agent" button (see BuildBar). */
+const AGENT_BUTTON = "agent";
 const bar = new BuildBar(session, {
   choose: (button) => {
     sound.ui("click");
+    if (button === AGENT_BUTTON) {
+      deployAgent();
+      return;
+    }
     const current = buttonFor(selection);
     if (current === button) return select(fallback());
     select(button === FOUND_BUTTON ? { kind: "found" } : { kind: "place", building: button });
@@ -270,6 +276,23 @@ function aimAt(ability: string, point: Point): void {
 function coreSelected(): boolean {
   return selection.kind === "entity" && isCore(content, session.team, session.entity(selection.id));
 }
+
+/** The mid-match deploy agent is selected: it walks, and C + click founds an expansion. */
+function agentSelected(): boolean {
+  const builder = session.builder();
+  return builder !== undefined && selection.kind === "entity" && selection.id === builder.id;
+}
+
+/** Train a deploy agent at the selected core (B, or the card button). Not A: WASD pans. */
+function deployAgent(): boolean {
+  if (selection.kind !== "entity" || !isCore(content, session.team, session.entity(selection.id))) return false;
+  session.issue({ type: "trainAgent", coreId: selection.id });
+  agentOrdered = true;
+  return true;
+}
+
+/** A deploy agent was ordered: select it once it's out (B, then C, then click). */
+let agentOrdered = false;
 
 /** Your upgrade center is selected: the command card shows army research. */
 function centerSelected(): boolean {
@@ -639,6 +662,8 @@ const gameInput: GameInput = {
       if (key === "c" && session.builder()) return select({ kind: "found" }), true;
       return false;
     }
+    // The mid-match deploy agent: C enters found mode like at match start.
+    if (key === "c" && agentSelected()) return select({ kind: "found" }), true;
     if (heroSelected()) {
       // Number keys cast; Shift+number learns (event.code, since Shift turns 1 into !).
       const digit = /^Digit([1-4])$/.exec(event.code)?.[1];
@@ -649,6 +674,7 @@ const gameInput: GameInput = {
       return true;
     }
     if (coreSelected() || centerSelected()) {
+      if (key === "b" && coreSelected()) return deployAgent(), true;
       const upgrade = bar.upgrades(barMode())[Number(key) - 1];
       if (upgrade) return research(upgrade), true;
       return false;
@@ -849,7 +875,16 @@ renderer.app.ticker.add((ticker) => {
 
   // Selections that stopped making sense: the agent deployed or died, the deploy phase ended.
   if (selection.kind === "entity" && !selectedEntity(session, selection)) select(fallback());
-  if (selection.kind === "found" && !session.deploying) select(NOTHING);
+  // Found mode lives as long as there's an agent to found with (match start
+  // or a mid-match expansion alike).
+  if (selection.kind === "found" && !session.builder()) select(NOTHING);
+  if (agentOrdered && !session.deploying) {
+    const agent = session.builder();
+    if (agent) {
+      agentOrdered = false;
+      select({ kind: "entity", id: agent.id });
+    } else if (session.team.money < content.buildings[session.race.core]!.cost) agentOrdered = false;
+  }
   if (selection.kind === "army") {
     // Dead soldiers drop out; the hero stays while it lives. An army down to
     // just the hero collapses to its entity, with its abilities.

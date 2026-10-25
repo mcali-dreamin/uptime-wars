@@ -2,7 +2,7 @@
 // price, and arriving users never take the compute a refilling squad needs.
 
 import { describe, expect, it } from "vitest";
-import { buildCost, computeBalance, createWorld, step, tierBlocker, tierUpgrade, TILE_OPEN, tileAt, type World } from "../src/sim";
+import { buildCost, computeBalance, createWorld, finishedCores, step, tierBlocker, tierUpgrade, TILE_OPEN, tileAt, type World } from "../src/sim";
 import { placeBuilding } from "../src/sim/entities";
 import { owned } from "../src/sim/placement";
 import { content, SETUP } from "./fixtures";
@@ -35,11 +35,11 @@ describe("late compute", () => {
       team.upgrades[TIER] = TOP - 1;
       const lower = def.limitPerTier![TOP - 1]!;
       for (let i = 0; i < lower; i += 1) placeBuilding(world, content, 0, id, free[i]!.col, free[i]!.row, true);
-      expect(tierBlocker(content, team, id, owned(world, 0, id)), id).not.toBeNull();
+      expect(tierBlocker(content, team, id, owned(world, 0, id), finishedCores(world, content, team)), id).not.toBeNull();
       team.upgrades[TIER] = TOP;
       for (let i = lower; i < limit; i += 1) placeBuilding(world, content, 0, id, free[i]!.col, free[i]!.row, true);
       const atLimit = buildCost(world, content, 0, id);
-      expect(tierBlocker(content, team, id, owned(world, 0, id)), id).toBeNull();
+      expect(tierBlocker(content, team, id, owned(world, 0, id), finishedCores(world, content, team)), id).toBeNull();
       placeBuilding(world, content, 0, id, free[limit]!.col, free[limit]!.row, true);
       const onePast = buildCost(world, content, 0, id);
       // Plain growth would add one costGrowth step; past the limit it adds the steeper one too.

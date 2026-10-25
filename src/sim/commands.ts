@@ -3,9 +3,9 @@
 
 import { rankBlocker, startRank } from "./ranks";
 import type { TickContext } from "./context";
-import { placeBuilding, sendHome } from "./entities";
+import { placeBuilding, sendHome, spawnUnit } from "./entities";
 import { TILE, footprintCenter } from "./map";
-import { buildCost, canFound, canPlace, isCore } from "./placement";
+import { buildCost, canFound, canPlace, homeCore, isCore } from "./placement";
 import { canResearch, nextQueued, slotOf, waitingOf, cancelQueued } from "./upgrades";
 import { invoke, invokeBlocker } from "./functions";
 import { applyFork } from "./mechanics";
@@ -159,7 +159,33 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
       return moveBuilder(ctx, command);
     case "found":
       return moveBuilder(ctx, command);
+    case "trainAgent":
+      return trainAgent(ctx, command);
   }
+}
+
+/**
+ * Train a deploy agent at one of your finished cores ($ the core's price):
+ * it walks to a site and founds an expansion there. One agent at a time; if
+ * it dies on the way, the $ is gone.
+ */
+function trainAgent(ctx: TickContext, command: Extract<Command, { type: "trainAgent" }>): string | null {
+  const { world, content } = ctx;
+  const team = world.teams[command.team]!;
+  const core = ctx.byId.get(command.coreId);
+  if (!core || core.kind !== "building" || core.team !== team.id || core.hp <= 0 || !isCore(content, team, core)) return "not your core";
+  if (core.buildRemaining > 0) return "still building";
+  const agent = ctx.byId.get(team.builderId);
+  if (agent && agent.hp > 0) return "an agent is already out";
+  const race = content.races[team.raceId]!;
+  const cost = content.buildings[race.core]!.cost;
+  if (team.money < cost) return "not enough $";
+  team.money -= cost;
+  // Out the front of the core, where spawners put their units: at its centre
+  // it would sit inside the footprint, under the core, where you can't click it.
+  const spawned = spawnUnit(ctx, team.id, race.builder!, core, core.x, core.y + core.radius + 16, "builder");
+  team.builderId = spawned.id;
+  return null;
 }
 
 /**
@@ -194,7 +220,7 @@ function applyOrder(ctx: TickContext, command: OrderCommand): string | null {
   for (const id of command.unitIds) {
     const unit = ctx.byId.get(id);
     // Units that died since the order was given just drop out.
-    if (unit?.kind === "unit" && unit.team === command.team && unit.mode === "guard" && unit.hp > 0) units.push(unit);
+    if (unit?.kind === "unit" && unit.team === command.team && (unit.mode === "guard" || unit.mode === "builder") && unit.hp > 0) units.push(unit);
   }
   if (units.length === 0) return "no units";
   const point = { x: command.x, y: command.y };
@@ -204,6 +230,13 @@ function applyOrder(ctx: TickContext, command: OrderCommand): string | null {
   const spread = Math.min(ORDER_SPREAD_MAX, Math.max(RALLY_SPREAD / 2, Math.round(ORDER_SPREAD_PER_UNIT * Math.sqrt(group) * 2)));
   const groupSpread = group === 1 ? 0 : spread;
   for (const unit of units) {
+    // The deploy agent walks exactly where it's sent (its founding site is
+    // set separately, by a found order).
+    if (unit.mode === "builder") {
+      unit.moveTo = landing(world, point.x, point.y, unit.radius);
+      unit.foundAt = null;
+      continue;
+    }
     unit.commanded = true;
     // Queued behind an order still under way: wait its turn (see guard).
     if (command.queue && unit.order !== null) {
@@ -256,21 +289,24 @@ function applyRally(ctx: TickContext, command: RallyCommand): string | null {
   if (!building || building.kind !== "building" || building.team !== command.team || building.hp <= 0) {
     return "not your building";
   }
-  const global = isCore(content, team, building);
+  const core = isCore(content, team, building);
   const def = content.buildings[building.defId]!;
-  if (!global && !def.spawn && !def.invoke) return "doesn't spawn units";
+  if (!core && !def.spawn && !def.invoke) return "doesn't spawn units";
   if (!walkable(world, command.x, command.y)) return "can't rally there";
   const point = { x: command.x, y: command.y };
-  if (global) team.rally = point;
-  else building.rally = point;
+  building.rally = point;
 
-  // Send the units already out there, not just new ones.
+  // Send the units already out there, not just new ones. A core's rally
+  // moves the guards of the spawners that follow it (their nearest core);
+  // any other building moves its own.
   for (const unit of world.entities) {
     // Units you've ordered somewhere are yours to move, not the rally's.
     if (unit.kind !== "unit" || unit.team !== team.id || unit.mode !== "guard" || unit.spawnerId < 0 || unit.commanded) continue;
     const spawner = ctx.byId.get(unit.spawnerId);
     if (spawner?.kind !== "building") continue;
-    const affected = global ? spawner.rally === null : spawner.id === building.id;
+    const affected = core
+      ? spawner.rally === null && homeCore(world, content, spawner)?.id === building.id
+      : spawner.id === building.id;
     if (affected) sendHome(world, unit, point);
   }
   return null;

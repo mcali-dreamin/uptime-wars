@@ -124,6 +124,7 @@ export class Director {
           push("fortified", 0.4, undefined, true);
           break;
         case "founded":
+        case "expanded":
           push("founded", 0.7, undefined, true);
           break;
         case "failover":

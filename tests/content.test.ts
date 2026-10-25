@@ -17,4 +17,10 @@ describe("content", () => {
     broken.races.botnet!.core = "server-rack";
     expect(() => validateContent(broken)).toThrow(/2x2 footprint/);
   });
+
+  it("refuses a race that lists its core in the build roster", () => {
+    const broken: Content = structuredClone(content);
+    broken.races["open-source"]!.buildings.push(broken.races["open-source"]!.core);
+    expect(() => validateContent(broken)).toThrow(/lists its core core/);
+  });
 });

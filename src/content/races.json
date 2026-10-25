@@ -13,8 +13,7 @@
       "solar-array",
       "ci-server",
       "web-app",
-      "mesh-node",
-      "core"
+      "mesh-node"
     ],
     "mechanics": {
       "fork": {
@@ -94,8 +93,7 @@
       "power-plant",
       "rnd-lab",
       "web-app",
-      "edge-pop",
-      "core"
+      "edge-pop"
     ],
     "mechanics": {
       "region": {
@@ -171,8 +169,7 @@
       "compute-pool",
       "build-pipeline",
       "web-app",
-      "mesh-node",
-      "core"
+      "mesh-node"
     ],
     "modifiers": {
       "spawnIntervalMultiplier": 1,
@@ -237,8 +234,7 @@
       "app-review",
       "private-cloud",
       "design-studio",
-      "web-app",
-      "core"
+      "web-app"
     ],
     "mechanics": {
       "loyalty": {

@@ -213,7 +213,7 @@ export class Hud {
 
   /** One line telling the player what they can do right now. */
   private hintFor(selection: Selection): string {
-    if (selection.kind === "found") return "Click to deploy your core";
+    if (selection.kind === "found") return this.session.deploying ? "Click to deploy your core" : "Click to found an expansion";
     if (selection.kind === "cast") {
       const ability = this.session.content.heroes.abilities[selection.ability]!;
       return `${ability.name}: click ${ability.target === "enemy" ? "an enemy" : "where"} · right-click or Esc to cancel`;
