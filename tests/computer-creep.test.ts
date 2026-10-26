@@ -220,6 +220,19 @@ describe("computer players take and contest sites", () => {
     expect(site.team).toBe(1);
   });
 
+  it("goes for a free site before an attack that's ready, and still attacks after", () => {
+    const base = withRange("hard");
+    const attack = { ...base.difficulties.hard!.attack!, firstTicks: 0, minUnits: 1, armyPermille: 0 };
+    const content: Content = { ...base, difficulties: { ...base.difficulties, hard: { ...base.difficulties.hard!, attack } } };
+    const { world, site } = clearedSiteCamp(content, "hard");
+    const ai = world.teams[1]!.ai!;
+    while (site.team !== 1 && ai.phase !== "attack" && world.tick < 20000) step(world, content);
+    // Taken, without an attack going out first.
+    expect(site.team).toBe(1);
+    while (ai.phase !== "attack" && world.tick < 30000) step(world, content);
+    expect(ai.phase).toBe("attack");
+  });
+
   it("a person capturing a neutral site it can see draws its army there", () => {
     const content = withRange("hard", { minUnits: 1 });
     const { world, camp, site } = clearedSiteCamp(content, "hard");

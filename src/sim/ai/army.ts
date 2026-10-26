@@ -297,6 +297,7 @@ function startCreep(
   army: Unit[],
   home: Point,
   issue: (c: Order) => unknown,
+  sitesOnly = false,
 ): boolean {
   const ai = team.ai!;
   const spots = spotsOf(world, content);
@@ -376,6 +377,7 @@ function startCreep(
   let bestSite = false;
   spots.forEach((spot, camp) => {
     if (!creep.tiers.includes(spot.tier)) return;
+    if (sitesOnly && !hasSite(content.neutrals.sites, spot)) return;
     if (guardsOf(world, camp).length === 0) return;
     if (!outmatches(content, army, campGuards(world, content, team, camp, spot), creep.oddsPermille))
       return;
@@ -392,20 +394,12 @@ function startCreep(
   return go("camp", best, army, centerOfCamp(spots[best]!), true);
 }
 
-/** Is the group standing on its creep's neutral site, capturing it? */
-function capturing(
-  world: World,
-  content: Content,
-  team: Team,
-  group: Unit[],
-): boolean {
+/** Is the creep under way about a site (not just a camp's bounty)? */
+function siteWork(world: World, content: Content, team: Team): boolean {
   const ai = team.ai!;
-  if (ai.creepKind !== "site") return false;
-  const neutral = neutralTeam(world);
-  const site = siteOf(world, content, ai.camp);
-  if (!neutral || !site || site.team !== neutral.id) return false;
-  const r = content.neutrals.sites.captureRadius;
-  return group.some((u) => distSq(u, site) <= r * r);
+  if (ai.creepKind !== "camp") return true;
+  const spot = spotsOf(world, content)[ai.camp];
+  return !!spot && hasSite(content.neutrals.sites, spot);
 }
 
 /** One step of a creep under way: keep the group on its job, or send it home when done. */
@@ -500,17 +494,18 @@ export function playArmy(
   }
 
   if (ai.phase === "gather") {
-    // Attacking a rival always wins over creeping.
+    const creepOk =
+      creep !== null && !homeHit && world.tick >= Math.max(creep.firstTicks, ai.until);
+    // Sites first: one pays for the rest of the match, so taking (or
+    // keeping a rival off) one beats another attack.
+    if (creepOk && startCreep(world, content, team, creep, army, home, issue, true))
+      return;
+    // Attacking a rival wins over clearing camps.
     if (attackReady(world, content, team, plan, army)) {
       launchAttack(world, content, team, army, core, enemies, reach, issue);
       return;
     }
-    if (
-      creep &&
-      !homeHit &&
-      world.tick >= Math.max(creep.firstTicks, ai.until)
-    )
-      startCreep(world, content, team, creep, army, home, issue);
+    if (creepOk) startCreep(world, content, team, creep, army, home, issue);
     return;
   }
 
@@ -525,10 +520,11 @@ export function playArmy(
       retreat(world, team, home, plan, issue);
       return;
     }
-    // The attack's conditions are met: that goes first, unless it's standing
-    // on a site it's capturing (seconds away; walking off throws it away).
+    // The attack's conditions are met: that goes first, unless this creep
+    // is about a site (taking one, breaking a rival's capture, or clearing
+    // the camp that guards one).
     if (
-      !capturing(world, content, team, group) &&
+      !siteWork(world, content, team) &&
       attackReady(world, content, team, plan, army)
     ) {
       launchAttack(world, content, team, army, core, enemies, reach, issue);
