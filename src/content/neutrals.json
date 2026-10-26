@@ -1,6 +1,7 @@
 {
   "regenPermillePerSecond": 80,
   "alertTicks": 100,
+  "xpPerBounty": 0.8,
   "tiers": {
     "near": {
       "fromStart": 22,
@@ -15,7 +16,7 @@
     "far": {
       "fromStart": 74,
       "count": 1,
-      "units": ["legacy-mainframe", "legacy-server", "legacy-server", "legacy-terminal"]
+      "units": ["legacy-mainframe", "legacy-server", "legacy-server", "legacy-server", "legacy-terminal"]
     }
   }
 }

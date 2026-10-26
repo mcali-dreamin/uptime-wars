@@ -136,11 +136,13 @@ export function creditKill(ctx: TickContext, victim: Entity): void {
   if (victim.kind !== "unit") return;
   const bounty = content.units[victim.defId]!.bounty * rankWorth(content, world, victim);
   if (bounty <= 0) return;
+  const camp = victim.campId !== undefined;
+  const xp = bounty * (camp ? content.neutrals.xpPerBounty : content.heroes.xpPerBounty);
   for (const team of world.teams) {
     if (!team.hero || !hostile(world, team.id, victim.team)) continue;
     const hero = heroOf(world, team);
     if (!hero || distance(hero, victim) > content.heroes.xpRange) continue;
-    gainXp(ctx, team, hero, bounty * content.heroes.xpPerBounty);
+    gainXp(ctx, team, hero, xp);
   }
 }
 
