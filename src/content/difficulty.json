@@ -19,7 +19,8 @@
       "recallBelowPermille": 300,
       "cooldownTicks": 3600,
       "heroRetreatPermille": 200
-    }
+    },
+    "creep": null
   },
   "normal": {
     "name": "Normal",
@@ -41,6 +42,20 @@
       "recallBelowPermille": 500,
       "cooldownTicks": 1800,
       "heroRetreatPermille": 350
+    },
+    "creep": {
+      "firstTicks": 4800,
+      "tiers": [
+        "near",
+        "mid"
+      ],
+      "minUnits": 8,
+      "oddsPermille": 1600,
+      "retreatPermille": 500,
+      "giveUpTicks": 4800,
+      "cooldownTicks": 600,
+      "siteRangeTiles": 60,
+      "siteUnits": 4
     }
   },
   "hard": {
@@ -63,6 +78,21 @@
       "recallBelowPermille": 600,
       "cooldownTicks": 1200,
       "heroRetreatPermille": 400
+    },
+    "creep": {
+      "firstTicks": 3600,
+      "tiers": [
+        "near",
+        "mid",
+        "far"
+      ],
+      "minUnits": 8,
+      "oddsPermille": 1400,
+      "retreatPermille": 450,
+      "giveUpTicks": 6000,
+      "cooldownTicks": 300,
+      "siteRangeTiles": 80,
+      "siteUnits": 4
     }
   },
   "insane": {
@@ -85,6 +115,21 @@
       "recallBelowPermille": 600,
       "cooldownTicks": 1200,
       "heroRetreatPermille": 400
+    },
+    "creep": {
+      "firstTicks": 3600,
+      "tiers": [
+        "near",
+        "mid",
+        "far"
+      ],
+      "minUnits": 8,
+      "oddsPermille": 1400,
+      "retreatPermille": 450,
+      "giveUpTicks": 6000,
+      "cooldownTicks": 300,
+      "siteRangeTiles": 80,
+      "siteUnits": 4
     }
   }
 }

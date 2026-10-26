@@ -78,7 +78,7 @@ export interface AiState {
   /** Hero abilities cast so far. */
   casts: number;
   /** Its army: building up at home, out attacking, or on its way back. */
-  phase: "gather" | "attack" | "retreat";
+  phase: "gather" | "attack" | "creep" | "retreat";
   /** Unit ids in the current attack. */
   group: number[];
   /** The attack's strength (compute) when it set out, reinforcements added. */
@@ -95,6 +95,12 @@ export interface AiState {
   until: number;
   /** Its core's hp when it last looked, to tell when home is being hit. */
   coreHp: number;
+  /** The camp it is creeping, clearing, or capturing the site of (-1 = none). */
+  camp: number;
+  /** What the creep is: clear a camp, capture a free site, or break a rival's capture. */
+  creepKind: "camp" | "site" | "contest";
+  /** The tick the creep set out (it gives up after creep.giveUpTicks). */
+  creepSince: number;
 }
 
 export interface HeroState {
@@ -161,6 +167,12 @@ export interface Unit extends EntityBase {
   /** Where a guarding unit returns to when it has nothing to fight. */
   homeX: number;
   homeY: number;
+  /**
+   * Tile of the point its home was spread around (an order or rally point),
+   * while it's still far off. A long walk routes on that shared tile's flow
+   * field, so a whole order shares one search instead of one per unit.
+   */
+  homeAnchor?: number;
   /**
    * A player's order in progress: "move" walks home ignoring enemies,
    * "attack" walks home fighting whatever it meets. Cleared on arrival.

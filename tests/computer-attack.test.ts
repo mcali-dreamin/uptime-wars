@@ -50,8 +50,14 @@ describe("computer players attack", () => {
   it("never attacks alone against the horde, or in co-op: balance runs and allies are untouched", () => {
     const solo = createWorld(content, { seed: 99, races: ["hyperscaler", "botnet"], startWithCore: true, ai: ["hard"] });
     const coop = createWorld(content, { seed: 99, races: ["hyperscaler", "serverless", "botnet"], startWithCore: true, ai: [undefined, "hard"] });
-    run(solo, 8);
-    run(coop, 8);
+    // Nor does it creep camps there (tests/computer-creep.test.ts checks how near its units get).
+    for (const world of [solo, coop]) {
+      const until = 8 * 60 * TICK_RATE;
+      while (world.tick < until && !world.outcome) {
+        step(world, content);
+        for (const t of world.teams) expect(t.ai?.phase).not.toBe("creep");
+      }
+    }
     expect(solo.teams[0]!.ai!.phase).toBe("gather");
     expect(coop.teams[1]!.ai!.phase).toBe("gather");
     expect(ordered(solo, 0)).toBe(0);

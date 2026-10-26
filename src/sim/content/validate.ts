@@ -19,6 +19,14 @@ export function validateContent(content: Content): void {
     if (d.heroEveryTicks <= 0 || d.buildEveryTicks <= 0) errors.push(`difficulty ${id} needs heroEveryTicks and buildEveryTicks > 0`);
     if (d.maxTier < 0 || d.maxTier >= content.economy.tiers.length) errors.push(`difficulty ${id} maxTier needs a known core tier`);
     if (d.revenuePermille <= 0) errors.push(`difficulty ${id} needs revenuePermille > 0`);
+    if (d.creep) {
+      const c = d.creep;
+      for (const tier of c.tiers) if (!content.neutrals.tiers[tier]) errors.push(`difficulty ${id} creeps unknown camp tier ${tier}`);
+      if (c.minUnits <= 0 || c.siteUnits <= 0) errors.push(`difficulty ${id} creep needs minUnits and siteUnits > 0`);
+      if (c.oddsPermille <= 0 || c.giveUpTicks <= 0 || c.siteRangeTiles <= 0) errors.push(`difficulty ${id} creep needs oddsPermille, giveUpTicks and siteRangeTiles > 0`);
+      if (c.retreatPermille < 0 || c.retreatPermille > 1000) errors.push(`difficulty ${id} creep retreatPermille must be 0-1000`);
+      if (c.firstTicks < 0 || c.cooldownTicks < 0) errors.push(`difficulty ${id} creep needs firstTicks and cooldownTicks >= 0`);
+    }
   }
   for (const [id, race] of Object.entries(content.races)) {
     const core = content.buildings[race.core];

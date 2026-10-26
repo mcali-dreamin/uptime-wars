@@ -74,3 +74,34 @@ describe("big army orders", () => {
     expect(spreadOf(400)).toBeGreaterThan(spreadOf(undefined));
   });
 });
+
+describe("long walks share one path search", () => {
+  it("an army sent across the map routes on its order's field, not one per unit", () => {
+    // Each unit's home is spread around the order point; a flow field per
+    // spread tile thrashed the field cache once a few armies walked at once
+    // (seconds per tick with four computer players creeping).
+    const { world, units } = army(80);
+    const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
+    const far = world.terrain.starts
+      .map((s) => ({ x: (s.col + 0.5) * TILE, y: (s.row + 0.5) * TILE }))
+      .sort((a, b) => Math.hypot(b.x - core.x, b.y - core.y) - Math.hypot(a.x - core.x, a.y - core.y))[0]!;
+    queueCommand(world, { type: "order", tick: world.tick, team: 0, unitIds: units.map((u) => u.id), x: far.x, y: far.y, attack: false } as Command);
+    step(world, content);
+    world.nav.goals.clear();
+    const start = units.map((u) => Math.hypot(u.x - far.x, u.y - far.y));
+    for (let i = 0; i < 60; i += 1) step(world, content);
+    expect(new Set(units.map((u) => `${u.homeX},${u.homeY}`)).size).toBeGreaterThan(20);
+    expect(world.nav.goals.size).toBeLessThanOrEqual(3);
+    // And they're getting there.
+    units.forEach((u, i) => expect(Math.hypot(u.x - far.x, u.y - far.y)).toBeLessThan(start[i]!));
+  });
+
+  it("close to home a unit switches to its own spot for good", () => {
+    const { world, units, spot } = army(10);
+    queueCommand(world, { type: "order", tick: world.tick, team: 0, unitIds: units.map((u) => u.id), x: spot.x, y: spot.y, attack: false } as Command);
+    step(world, content);
+    expect(units.every((u) => u.homeAnchor !== undefined)).toBe(true);
+    for (let i = 0; i < 400 && units.some((u) => u.order); i += 1) step(world, content);
+    expect(units.every((u) => u.order === null && Math.hypot(u.x - u.homeX, u.y - u.homeY) < 40)).toBe(true);
+  });
+});

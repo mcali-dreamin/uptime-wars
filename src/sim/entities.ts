@@ -134,6 +134,8 @@ export function foundCore(world: World, content: Content, teamId: TeamId, col: n
 
 /** Give a guard a new home near `point`, spread out a little so they don't stack. */
 export function sendHome(world: World, unit: Unit, point: Point, spread = RALLY_SPREAD): void {
+  unit.homeAnchor =
+    spread > 0 ? Math.floor(point.y / TILE) * world.terrain.cols + Math.floor(point.x / TILE) : undefined;
   unit.homeX = point.x + randomInt(world, -spread, spread);
   unit.homeY = point.y + randomInt(world, -spread, spread);
   if (!bodyFits(world.terrain, unit.homeX, unit.homeY, unit.radius)) {

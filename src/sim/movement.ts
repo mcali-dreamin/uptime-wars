@@ -4,6 +4,7 @@
 // number of units heading to the same spot share one search.
 
 import { TILE } from "./map";
+import { ORDER_SPREAD_MAX } from "./tuning";
 import { flowField, hasClearPath, moveToward, nextStep } from "./nav";
 import type { Point, Unit, World } from "./types";
 import { terrainFor } from "./walls";
@@ -34,6 +35,13 @@ export function goalField(world: World, goalTile: number, team?: number): Int32A
   return field;
 }
 
+/**
+ * How close to home a unit routes on its own tile's field instead of its
+ * order's shared anchor. Beyond the widest order spread, so reaching the
+ * anchor always means being this close.
+ */
+const ANCHOR_NEAR = ORDER_SPREAD_MAX * 2 + 2 * TILE;
+
 /** Take one step of `speed` toward `goal`, routing around terrain. */
 export function walkTo(world: World, unit: Unit, goal: Point, speed: number): void {
   const { terrain } = terrainFor(world, unit.team);
@@ -41,7 +49,13 @@ export function walkTo(world: World, unit: Unit, goal: Point, speed: number): vo
     moveToward(terrain, unit, goal.x, goal.y, speed);
     return;
   }
-  const tile = Math.floor(goal.y / TILE) * terrain.cols + Math.floor(goal.x / TILE);
+  let tile = Math.floor(goal.y / TILE) * terrain.cols + Math.floor(goal.x / TILE);
+  if (unit.homeAnchor !== undefined && goal.x === unit.homeX && goal.y === unit.homeY) {
+    // Far from home: walk the order's shared field. Close: switch to its own
+    // tile for good (no flip-flopping back if that route bends away).
+    if (distance(unit, goal) > ANCHOR_NEAR) tile = unit.homeAnchor;
+    else unit.homeAnchor = undefined;
+  }
   const waypoint = nextStep(terrain, goalField(world, tile, unit.team), unit.x, unit.y);
   moveToward(terrain, unit, (waypoint ?? goal).x, (waypoint ?? goal).y, speed);
 }
