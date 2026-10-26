@@ -222,7 +222,8 @@ growth. You get "Site captured" and "Site lost" alerts, a "Sites N" counter in
 the HUD, and the minimap shows every explored site as a square in its owner's
 colour. Every ownership change goes through `transferOwnership`
 (`src/sim/ownership.ts`). Numbers live in `src/content/neutrals.json` and
-`src/content/buildings.json`. Computer players don't contest sites yet.
+`src/content/buildings.json`. Computer players (with rivals in the match) capture
+cleared sites near their core and break a rival's capture they can see.
 
 **Spot capacity.** Rent extra compute for a push or a boss. Select a core and
 press `N` (or the Spot capacity button): +60 / 120 / 200 compute (by core tier)
@@ -443,7 +444,12 @@ in waves and brings it home when the wave is spent or its base is in trouble.
 Like you, it knows where the start spots are but not who's at them, so it
 scouts. Its hero goes with the army and comes home to heal. When it attacks,
 how big a wave it waits for and when it gives up are also difficulty
-(`attack`). Alone against the horde or in co-op it only defends.
+(`attack`). Between attacks, with rivals around, it also creeps: it clears the
+nearest neutral camp of an allowed tier that its army's power beats (the
+computer estimates a camp from what it's made of until it has seen it), takes
+the site there, grabs cleared sites near its core, and sends its army to break a
+rival's capture it can see (`creep`; Easy never does, Hard goes sooner and
+farther). Alone against the horde or in co-op it only defends.
 
 On the home screen press `C` (or **Custom match**) and **Add a computer**.
 That's the same lobby as playing with friends. Each seat is
@@ -541,7 +547,8 @@ Direction: survival on a procedurally generated open web.
 - [x] Network expansion (per race) and redundant cores
 - [x] Expansion: found cores across the map with a deploy agent; each core raises the caps
 - [x] Neutral camps: guarded legacy hardware at seeded spots, bounty and hero XP (#160)
-- [x] Capturable sites: derelict datacenters at far camps, `transferOwnership` (#160; the AI capturing and contesting them is still to come)
+- [x] Capturable sites: derelict datacenters at far camps, `transferOwnership` (#160)
+- [x] Computer players creep camps and take/contest sites, only against rivals (#160)
 - [x] Heroes: one per race, levels, skill points, four abilities each
 - [x] Compute is the army cap; generators are limited per core tier (soft at the top tier)
 - [x] Four races: Open Source Collective, Hyperscaler, Serverless, Walled Garden

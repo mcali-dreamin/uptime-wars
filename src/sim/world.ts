@@ -165,7 +165,7 @@ function makeTeam(content: Content, id: TeamId, raceId: string, heroId: string |
     ai:
       difficulty === undefined
         ? null
-        : { difficulty, next: 0, casts: 0, phase: "gather" as const, group: [], launched: 0, goal: null, goalId: -1, checked: [], known: [], until: 0, coreHp: 0 },
+        : { difficulty, next: 0, casts: 0, phase: "gather" as const, group: [], launched: 0, goal: null, goalId: -1, checked: [], known: [], until: 0, coreHp: 0, camp: -1, creepKind: "camp" as const, creepSince: 0 },
   };
 }
 

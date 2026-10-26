@@ -566,6 +566,33 @@ export interface DifficultyDef {
   revenuePermille: number;
   /** How it attacks other players; null = it never does (it still defends). */
   attack: AiAttackDef | null;
+  /**
+   * How it creeps neutral camps and takes or contests sites; null = it never
+   * does. Only in matches with rivals (the same gate as attacking).
+   */
+  creep: AiCreepDef | null;
+}
+
+/** When a computer player clears camps and takes sites, and when it gives up. */
+export interface AiCreepDef {
+  /** No creeping before this tick. */
+  firstTicks: number;
+  /** Camp tiers it will take on (names from neutrals.json). */
+  tiers: string[];
+  /** At least this many units in its army to set out. */
+  minUnits: number;
+  /** Goes for a camp only when its army's power x 1000 >= the camp's power x this (permille: 1500 = 1.5x). */
+  oddsPermille: number;
+  /** Pulls back when the group is down to this share of the power it set out with (permille). */
+  retreatPermille: number;
+  /** Gives up and walks home after this many ticks. */
+  giveUpTicks: number;
+  /** Ticks before it sets out again after a creep (done or aborted-by-success). */
+  cooldownTicks: number;
+  /** Sites (to capture free, or contest) only count within this many tiles of its core. */
+  siteRangeTiles: number;
+  /** Units sent to capture a free site (the whole army if smaller). */
+  siteUnits: number;
 }
 
 /** When a computer player sends its army at an enemy player, and when it pulls back. */
