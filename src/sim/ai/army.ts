@@ -76,10 +76,57 @@ function strength(content: Content, world: World, units: Unit[]): number {
   return total;
 }
 
+/** A unit as a fight estimate sees it: what it is, its hp left, its armor if known. */
+export interface Fighter {
+  defId: string;
+  hp: number;
+  armor?: number;
+}
+
+/** Total hp and damage per second (in hundredths) a side brings against an armor. */
+function side(content: Content, units: Fighter[], foeArmor: number): { hp: number; dps: number } {
+  let hp = 0;
+  let dps = 0;
+  for (const u of units) {
+    const def = content.units[u.defId];
+    if (!def || u.hp <= 0) continue;
+    hp += Math.round(u.hp);
+    // Armor takes a flat amount off every hit, down to 1 (see dealDamage).
+    dps += Math.round((Math.max(1, def.damage - foeArmor) * TICK_RATE * 100) / Math.max(1, def.cooldownTicks));
+  }
+  return { hp, dps };
+}
+
+/** Mean armor of a side, rounded. */
+function meanArmor(content: Content, units: Fighter[]): number {
+  let total = 0;
+  let n = 0;
+  for (const u of units) {
+    if (u.hp <= 0) continue;
+    total += u.armor ?? content.units[u.defId]?.armor ?? 0;
+    n += 1;
+  }
+  return n === 0 ? 0 : Math.round(total / n);
+}
+
+/**
+ * Would `army` beat `foes` by at least oddsPermille? Lanchester's square law:
+ * a side's strength is its total hp times its total damage per second, each
+ * against the other side's armor. So ten weak units are worth far more than
+ * ten times one (they all shoot while the foe chews through them), and a
+ * swarm of chip damage against heavy armor is worth little.
+ */
+export function outmatches(content: Content, army: Fighter[], foes: Fighter[], oddsPermille: number): boolean {
+  const mine = side(content, army, meanArmor(content, foes));
+  const theirs = side(content, foes, meanArmor(content, army));
+  return mine.hp * mine.dps * 1000 >= theirs.hp * theirs.dps * oddsPermille;
+}
+
 /**
  * What a group can do to another in a fight: the damage per second each
  * unit deals times the hp it has left, summed (integers, rounded per unit).
- * One measure for both sides of a camp fight; ranks and armor are left out.
+ * How much of a group is left, against what it set out with (see outmatches
+ * for whether a fight is worth taking).
  */
 export function power(
   content: Content,
@@ -177,22 +224,18 @@ const siteOf = (world: World, content: Content, camp: number): Building | null =
   ) ?? null;
 
 /** A camp's power as this team can know it: live guards once seen, else what the camp is made of. */
-function campPower(
+function campGuards(
   world: World,
   content: Content,
   team: Team,
   campId: number,
   spot: CampSpot,
-): number {
-  if (seesPoint(world, team, centerOfCamp(spot)))
-    return power(content, guardsOf(world, campId));
-  return power(
-    content,
-    content.neutrals.tiers[spot.tier]!.units.map((defId) => ({
-      defId,
-      hp: content.units[defId]?.hp ?? 0,
-    })),
-  );
+): Fighter[] {
+  if (seesPoint(world, team, centerOfCamp(spot))) return guardsOf(world, campId);
+  return content.neutrals.tiers[spot.tier]!.units.map((defId) => ({
+    defId,
+    hp: content.units[defId]?.hp ?? 0,
+  }));
 }
 
 /** Where to stand to capture a site: on the home side of it, inside the capture radius. */
@@ -254,6 +297,7 @@ function startCreep(
   army: Unit[],
   home: Point,
   issue: (c: Order) => unknown,
+  sitesOnly = false,
 ): boolean {
   const ai = team.ai!;
   const spots = spotsOf(world, content);
@@ -325,40 +369,37 @@ function startCreep(
     return go("site", free.camp, sent, to, false);
   }
 
-  // The nearest standing camp it's allowed and able to beat.
+  // The nearest standing camp it's allowed and able to beat; one guarding a
+  // site first (a site pays for the rest of the match, a camp once).
   if (army.length < creep.minUnits) return false;
-  const mine = power(content, army);
   let best = -1;
   let bestD = Infinity;
+  let bestSite = false;
   spots.forEach((spot, camp) => {
     if (!creep.tiers.includes(spot.tier)) return;
+    if (sitesOnly && !hasSite(content.neutrals.sites, spot)) return;
     if (guardsOf(world, camp).length === 0) return;
-    if (mine * 1000 < campPower(world, content, team, camp, spot) * creep.oddsPermille)
+    if (!outmatches(content, army, campGuards(world, content, team, camp, spot), creep.oddsPermille))
       return;
+    const site = hasSite(content.neutrals.sites, spot);
+    if (bestSite && !site) return;
     const d = distSq(centerOfCamp(spot), home);
-    if (d < bestD) {
+    if ((site && !bestSite) || d < bestD) {
       best = camp;
       bestD = d;
+      bestSite = site;
     }
   });
   if (best < 0) return false;
   return go("camp", best, army, centerOfCamp(spots[best]!), true);
 }
 
-/** Is the group standing on its creep's neutral site, capturing it? */
-function capturing(
-  world: World,
-  content: Content,
-  team: Team,
-  group: Unit[],
-): boolean {
+/** Is the creep under way about a site (not just a camp's bounty)? */
+function siteWork(world: World, content: Content, team: Team): boolean {
   const ai = team.ai!;
-  if (ai.creepKind !== "site") return false;
-  const neutral = neutralTeam(world);
-  const site = siteOf(world, content, ai.camp);
-  if (!neutral || !site || site.team !== neutral.id) return false;
-  const r = content.neutrals.sites.captureRadius;
-  return group.some((u) => distSq(u, site) <= r * r);
+  if (ai.creepKind !== "camp") return true;
+  const spot = spotsOf(world, content)[ai.camp];
+  return !!spot && hasSite(content.neutrals.sites, spot);
 }
 
 /** One step of a creep under way: keep the group on its job, or send it home when done. */
@@ -453,17 +494,18 @@ export function playArmy(
   }
 
   if (ai.phase === "gather") {
-    // Attacking a rival always wins over creeping.
+    const creepOk =
+      creep !== null && !homeHit && world.tick >= Math.max(creep.firstTicks, ai.until);
+    // Sites first: one pays for the rest of the match, so taking (or
+    // keeping a rival off) one beats another attack.
+    if (creepOk && startCreep(world, content, team, creep, army, home, issue, true))
+      return;
+    // Attacking a rival wins over clearing camps.
     if (attackReady(world, content, team, plan, army)) {
       launchAttack(world, content, team, army, core, enemies, reach, issue);
       return;
     }
-    if (
-      creep &&
-      !homeHit &&
-      world.tick >= Math.max(creep.firstTicks, ai.until)
-    )
-      startCreep(world, content, team, creep, army, home, issue);
+    if (creepOk) startCreep(world, content, team, creep, army, home, issue);
     return;
   }
 
@@ -478,10 +520,11 @@ export function playArmy(
       retreat(world, team, home, plan, issue);
       return;
     }
-    // The attack's conditions are met: that goes first, unless it's standing
-    // on a site it's capturing (seconds away; walking off throws it away).
+    // The attack's conditions are met: that goes first, unless this creep
+    // is about a site (taking one, breaking a rival's capture, or clearing
+    // the camp that guards one).
     if (
-      !capturing(world, content, team, group) &&
+      !siteWork(world, content, team) &&
       attackReady(world, content, team, plan, army)
     ) {
       launchAttack(world, content, team, army, core, enemies, reach, issue);

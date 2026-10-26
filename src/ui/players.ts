@@ -12,6 +12,8 @@ export class PlayersPanel {
   private readonly root = $("players");
   /** What's drawn, so the panel only rebuilds when something changed. */
   private drawn = "";
+  /** Which match is drawn: a new one with the same shape still needs a redraw. */
+  private drawnWorld: World | null = null;
 
   constructor(
     private readonly session: Session,
@@ -28,8 +30,9 @@ export class PlayersPanel {
       return;
     }
     const key = `${world.allies.join()}|${world.offers.join()}|${players.map((t) => t.downTick === null).join()}|${local}`;
-    if (key === this.drawn) return;
+    if (key === this.drawn && world === this.drawnWorld) return;
     this.drawn = key;
+    this.drawnWorld = world;
     this.root.hidden = false;
     this.root.replaceChildren(
       ...players.map((team) => {

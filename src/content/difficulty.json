@@ -47,10 +47,11 @@
       "firstTicks": 4800,
       "tiers": [
         "near",
-        "mid"
+        "mid",
+        "far"
       ],
       "minUnits": 8,
-      "oddsPermille": 1600,
+      "oddsPermille": 2000,
       "retreatPermille": 500,
       "giveUpTicks": 4800,
       "cooldownTicks": 600,

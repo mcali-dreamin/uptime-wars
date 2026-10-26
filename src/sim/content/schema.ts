@@ -581,7 +581,11 @@ export interface AiCreepDef {
   tiers: string[];
   /** At least this many units in its army to set out. */
   minUnits: number;
-  /** Goes for a camp only when its army's power x 1000 >= the camp's power x this (permille: 1500 = 1.5x). */
+  /**
+   * Goes for a camp only when its army outmatches the camp by this much (permille),
+   * in square-law strength: total hp x total damage per second against the other
+   * side's armor (see outmatches in ai/army.ts). 2000 is about 1.4x the force.
+   */
   oddsPermille: number;
   /** Pulls back when the group is down to this share of the power it set out with (permille). */
   retreatPermille: number;
