@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { TICK_RATE, createWorld, hashWorld, step, type Content, type Unit, type World } from "../src/sim";
 import { moveHero, playArmy } from "../src/sim/ai/army";
+import { TILE } from "../src/sim/map";
 import { content as base } from "./fixtures";
 
 /** The same difficulties, but every attack may start after a minute: tests don't wait ten. */
@@ -33,12 +34,19 @@ describe("computer players attack", () => {
     const world = createWorld(content, { seed: 7, mode: "ffa", races: ["serverless", "walled-garden"], startWithCore: true, ai: [undefined, "hard"] });
     const ai = world.teams[1]!.ai!;
     const spotOf = (i: number) => world.terrain.starts[i]!;
-    const far = (i: number) => Math.hypot(spotOf(i).col - spotOf(1).col, spotOf(i).row - spotOf(1).row);
     let firstGoal: number | null = null;
+    // Where its attackers stood when the first goal was picked: an attack can
+    // set out from a camp or site, not only from home.
+    let from = { x: 0, y: 0 };
     while (world.tick < 20 * 60 * TICK_RATE && !world.outcome && ai.known.length === 0) {
       step(world, content);
-      firstGoal ??= ai.goal;
+      if (firstGoal === null && ai.goal !== null) {
+        firstGoal = ai.goal;
+        const group = world.entities.filter((e) => e.kind === "unit" && ai.group.includes(e.id));
+        from = { x: group.reduce((s, u) => s + u.x, 0) / group.length, y: group.reduce((s, u) => s + u.y, 0) / group.length };
+      }
     }
+    const far = (i: number) => Math.hypot((spotOf(i).col + 1) * TILE - from.x, (spotOf(i).row + 1) * TILE - from.y);
     // It went for the nearest spot first, whoever was (or wasn't) there.
     const others = [0, 2, 3];
     expect(firstGoal).toBe(others.reduce((a, b) => (far(b) < far(a) ? b : a)));
