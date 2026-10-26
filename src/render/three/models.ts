@@ -176,7 +176,7 @@ export class Models {
         material = standard({ color, emissive: color, emissiveIntensity: 0.18, metalness: 0.4, roughness: 0.4 });
         break;
       case "glow": {
-        const m = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.2, roughness: 0.3 });
+        const m = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: color, emissiveIntensity: 1.2, roughness: 0.3 });
         m.userData = { base: 1.2, speed: 2.2 };
         this.blinking.push(m);
         material = this.fog.apply(m);
@@ -192,14 +192,14 @@ export class Models {
         material = standard({ color: 0x2a0b12, emissive: 0x4c0816, emissiveIntensity: 0.5, roughness: 0.55, metalness: 0.1, flatShading: true });
         break;
       case "hot": {
-        const m = new THREE.MeshStandardMaterial({ color: 0xff3b4e, emissive: 0xff1f3d, emissiveIntensity: 1.4, roughness: 0.3 });
+        const m = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xff1f3d, emissiveIntensity: 1.4, roughness: 0.3 });
         m.userData = { base: 1.4, speed: 3.1 };
         this.blinking.push(m);
         material = this.fog.apply(m);
         break;
       }
       case "flame": {
-        const m = new THREE.MeshStandardMaterial({ color: 0xffa040, emissive: 0xff7a1a, emissiveIntensity: 1.6, roughness: 0.4 });
+        const m = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xff7a1a, emissiveIntensity: 1.6, roughness: 0.4 });
         m.userData = { base: 1.6, speed: 9 };
         this.blinking.push(m);
         material = this.fog.apply(m);
@@ -228,7 +228,7 @@ export class Models {
         break;
       }
       case "chrome":
-        material = standard({ color: 0xe2e8f0, metalness: 1, roughness: 0.12 });
+        material = standard({ color: 0xe2e8f0, metalness: 1, roughness: 0.24 });
         break;
       case "hedge":
         material = standard({ color: 0x2f6b3a, metalness: 0, roughness: 0.95, flatShading: true });
@@ -236,7 +236,7 @@ export class Models {
       case "white": {
         // Cool white light, tinted a touch toward the team colour.
         const tint = new THREE.Color(0xffffff).lerp(new THREE.Color(color), 0.25);
-        material = this.fog.apply(new THREE.MeshStandardMaterial({ color: tint, emissive: tint, emissiveIntensity: 1.0, roughness: 0.2 }));
+        material = this.fog.apply(new THREE.MeshStandardMaterial({ color: 0x000000, emissive: tint, emissiveIntensity: 0.85, roughness: 0.2 }));
         break;
       }
     }
@@ -264,7 +264,7 @@ export class Models {
     if (look === "garden") {
       switch (kind) {
         case "body":
-          return standard({ color: 0xf1f5f9, metalness: 0.1, roughness: 0.22 });
+          return standard({ color: 0xdfe5ec, metalness: 0.1, roughness: 0.35 });
         case "frame":
           return standard({ color: 0xd8a7a0, metalness: 0.9, roughness: 0.3 });
         case "dark":
@@ -288,15 +288,15 @@ export class Models {
     if (look === "monolith") {
       switch (kind) {
         case "body":
-          return standard({ color: 0xaeb8c4, metalness: 0.95, roughness: 0.16 });
+          return standard({ color: 0xaeb8c4, metalness: 0.9, roughness: 0.3 });
         case "frame":
-          return standard({ color: 0xe5eaf0, metalness: 1, roughness: 0.1 });
+          return standard({ color: 0xe5eaf0, metalness: 1, roughness: 0.22 });
         case "dark":
-          return standard({ color: 0x1e2733, metalness: 0.8, roughness: 0.08 });
+          return standard({ color: 0x1e2733, metalness: 0.8, roughness: 0.2 });
         case "glow": {
           // Clean light: the team colour washed toward white, steady (no blinking).
           const tint = new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.35);
-          return this.fog.apply(new THREE.MeshStandardMaterial({ color: tint, emissive: tint, emissiveIntensity: 1.1, roughness: 0.2 }));
+          return this.fog.apply(new THREE.MeshStandardMaterial({ color: 0x000000, emissive: tint, emissiveIntensity: 1.0, roughness: 0.2 }));
         }
       }
     }
@@ -411,7 +411,7 @@ export class Models {
   private roleLight(color: number): THREE.Material {
     let material = this.roleLights.get(color);
     if (!material) {
-      material = this.fog.apply(new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.8, roughness: 0.3 }));
+      material = this.fog.apply(new THREE.MeshStandardMaterial({ color: 0x000000, emissive: color, emissiveIntensity: 1.35, roughness: 0.3 }));
       this.roleLights.set(color, material);
     }
     return material;
@@ -541,7 +541,11 @@ export class Models {
           for (const [sx, sz, lw, ld] of [[0, 27, 3, 0.8], [0, -27, 3, 0.8], [27, 0, 0.8, 3], [-27, 0, 0.8, 3]] as const) {
             this.box(g, team, "glow", lw, 96, ld, sx, 12, sz);
           }
-          this.box(g, team, "white", 56, 2, 56, 0, 114);
+          // A chrome roof with a thin light rim (a solid lit roof was a white-out from above).
+          this.box(g, team, "chrome", 56, 2, 56, 0, 114);
+          for (const [x, z, w, d] of [[0, 27.5, 56, 1.4], [0, -27.5, 56, 1.4], [27.5, 0, 1.4, 56], [-27.5, 0, 1.4, 56]] as const) {
+            this.box(g, team, "white", w, 1.4, d, x, 116, z);
+          }
           const halo = this.shape(g, team, "glow", "mono-halo", () => new THREE.TorusGeometry(34, 1, 8, 64), 0, 128, 0);
           halo.rotation.x = Math.PI / 2;
           anim(halo, { type: "bob", amount: 3, speed: 1.2, base: 128 });

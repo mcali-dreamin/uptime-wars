@@ -10,6 +10,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { cyberEnvironment } from "./environment";
 import { TILE, isCore, rallyFor, tierOf, type Content, type Entity, type Point, type SimEvent, type World } from "../../sim";
 import { PING_MS, SHOT_TTL_MS, type Frame, type WorldView } from "../frame";
 import { HIGHLIGHT, INVALID, VALID, teamColor } from "../palette";
@@ -117,7 +118,7 @@ export class World3D implements WorldView {
   private readonly scene = new THREE.Scene();
   private readonly camera = new THREE.PerspectiveCamera(FOV, 1, 10, 40000);
   private readonly raycaster = new THREE.Raycaster();
-  private readonly sun = new THREE.DirectionalLight(0xfff0dc, 2.6);
+  private readonly sun = new THREE.DirectionalLight(0xffe9cf, 2.3);
   private readonly composer: EffectComposer | null;
   private readonly bloom: UnrealBloomPass | null;
   private readonly fogTexture = new FogTexture();
@@ -162,7 +163,7 @@ export class World3D implements WorldView {
     this.renderer.setPixelRatio(this.lowQuality ? 1 : Math.min(2, window.devicePixelRatio));
     this.renderer.setClearColor(SKY);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = 0.95;
     this.renderer.shadowMap.enabled = !this.lowQuality;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     const canvas = this.renderer.domElement;
@@ -173,7 +174,12 @@ export class World3D implements WorldView {
 
     this.scene.background = new THREE.Color(SKY);
     this.scene.fog = new THREE.Fog(SKY, 2000, 6000);
-    this.scene.add(new THREE.HemisphereLight(0x9cc2ff, 0x241634, 1.1));
+    // Low ambient, so the sun's side and the shadow side of things differ and
+    // terrain reads as shapes; the environment map gives metals and glass
+    // something to reflect (without one, chrome is black with a hot spot).
+    this.scene.add(new THREE.HemisphereLight(0x8fb4ff, 0x1c1030, 0.6));
+    this.scene.environment = cyberEnvironment(this.renderer);
+    this.scene.environmentIntensity = 0.8;
     this.sun.castShadow = !this.lowQuality;
     this.sun.shadow.mapSize.set(2048, 2048);
     this.sun.shadow.bias = -0.0004;
@@ -217,7 +223,10 @@ export class World3D implements WorldView {
     } else {
       this.composer = new EffectComposer(this.renderer);
       this.composer.addPass(new RenderPass(this.scene, this.camera));
-      this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.5, 0.5, 0.9);
+      // Only real lights bloom: emissive parts run past the threshold, lit
+      // surfaces stay under it. Strength and radius stay modest so a light
+      // has a halo, not a white-out.
+      this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.45, 0.35, 0.75);
       this.composer.addPass(this.bloom);
       this.composer.addPass(new OutputPass());
     }
