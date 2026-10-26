@@ -163,7 +163,10 @@ export function tickUsers(ctx: TickContext): void {
     } else if (team.users < capacity) {
       // Only as many as there's compute to serve, after what the squads need.
       const { supply, demand } = computeBalance(world, content, team);
-      const room = Math.floor((supply - demand - squadReserve(world, content, team)) / economy.compute.perUser);
+      // Rented compute (Spot Capacity) is for the army: users don't move onto
+      // it, or a rental would never fade once they'd filled it.
+      const owned = supply - (team.spot?.compute ?? 0);
+      const room = Math.floor((owned - demand - squadReserve(world, content, team)) / economy.compute.perUser);
       const gap = capacity - team.users;
       const arrivals = Math.min(room, Math.max(economy.minArrivalsPerSecond, Math.floor(gap * economy.growthPerSecond)));
       team.waitingOnCompute = arrivals < Math.min(gap, economy.minArrivalsPerSecond);

@@ -128,6 +128,27 @@ describe("spot capacity", () => {
     expect(spotState(world, team)).toBeNull();
     expect(world.events.some((e) => e.type === "spotEnded")).toBe(true);
   });
+
+  it("users don't move onto rented compute, so a rental always fades out", () => {
+    const world = fresh();
+    const team = team0(world);
+    team.users = 0;
+    // An army eats all but a few of the team's own compute, so users would
+    // run out of owned compute well before the user cap.
+    const core = coreOf(world);
+    const unitId = armyUnit();
+    const per = content.units[unitId]!.upkeep ?? content.economy.compute.perUnit;
+    const base = computeBalance(world, content, team).supply;
+    const count = Math.floor((base - 5) / per);
+    for (let i = 0; i < count; i += 1) spawnUnit(ctxOf(world), 0, unitId, core, core.x, core.y + 60, "guard");
+    rent(world);
+    for (let i = 0; i < 20 * 60 * 3; i += 1) {
+      step(world, content);
+      const { supply, demand } = computeBalance(world, content, team);
+      expect(demand).toBeLessThanOrEqual(supply - (team.spot?.compute ?? 0));
+    }
+    expect(team.spot).toBeNull();
+  });
 });
 
 describe("spot capacity content", () => {

@@ -33,7 +33,7 @@ import { Alerts, type AlertKind } from "./game/alerts";
 import { ControlGroups } from "./game/groups";
 import { Session } from "./game/session";
 import { setLocalColor, teamColor } from "./render/palette";
-import { BuildBar, FOUND_BUTTON, aimingButton, type BarMode } from "./ui/build-bar";
+import { BuildBar, FOUND_BUTTON, SPOT_BUTTON, aimingButton, type BarMode } from "./ui/build-bar";
 import { $ } from "./ui/dom";
 import { Guide } from "./ui/guide";
 import { Hud } from "./ui/hud";
@@ -99,8 +99,6 @@ const info = new InfoPanel(session, () => arm(), () => invokeSelected(), () => f
 info.removeArmed = () => pendingRemoval !== null && removal(session, selection)?.key === pendingRemoval.key && performance.now() - pendingRemoval.at < REMOVE_CONFIRM_MS;
 /** The core card's "Deploy agent" button (see BuildBar). */
 const AGENT_BUTTON = "agent";
-/** The core card's "Spot capacity" button (see BuildBar). */
-const SPOT_BUTTON = "spot";
 const bar = new BuildBar(session, {
   choose: (button) => {
     sound.ui("click");
