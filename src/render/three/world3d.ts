@@ -178,8 +178,12 @@ export class World3D implements WorldView {
     // terrain reads as shapes; the environment map gives metals and glass
     // something to reflect (without one, chrome is black with a hot spot).
     this.scene.add(new THREE.HemisphereLight(0x8fb4ff, 0x1c1030, 0.6));
-    this.scene.environment = cyberEnvironment(this.renderer);
-    this.scene.environmentIntensity = 0.8;
+    // (Skipped on the low path: sampling it costs every lit pixel, which a
+    // software renderer can't spare.)
+    if (!this.lowQuality) {
+      this.scene.environment = cyberEnvironment(this.renderer);
+      this.scene.environmentIntensity = 0.8;
+    }
     this.sun.castShadow = !this.lowQuality;
     this.sun.shadow.mapSize.set(2048, 2048);
     this.sun.shadow.bias = -0.0004;
