@@ -97,7 +97,7 @@ npm run dev
 - `1`-`5` or click: pick a building. Click near your core (the ring shows your
   build radius) to place it. Shift-click to place several.
 - `WASD` / arrows, middle-drag or Alt-drag, or the very edge of the window: pan (`E` toggles edge
-  scroll). Wheel or `+`/`-`: zoom. Click the minimap to jump. `Space` / `H`: back home.
+  scroll). Wheel or `+`/`-`: zoom. Click the minimap to jump. Right-click the minimap to send the selection there (`Z` then right-click the minimap sends your whole army). `Space` / `H`: back home. Alerts also fire when your army is fighting off-screen or is being wiped out.
 - Right-click / `Esc`: cancel. `P`: pause. `R`: new map after a match.
 
 **Graphics.** The web is drawn in 3D with Three.js, as WC3-style terrain under

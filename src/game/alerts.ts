@@ -4,9 +4,9 @@
 // not one per shot. The UI shows the banner, flashes the minimap, plays the
 // cue, and Space jumps the camera to the latest one.
 
-import { isCore, type Content, type Point, type SimEvent, type TeamId, type World } from "../sim";
+import { allied, isCore, type Content, type Unit, type Point, type SimEvent, type TeamId, type World } from "../sim";
 
-export type AlertKind = "attack" | "core" | "lost" | "hero" | "spread" | "agent";
+export type AlertKind = "attack" | "core" | "lost" | "hero" | "spread" | "agent" | "fighting" | "wiped";
 
 export interface Alert {
   kind: AlertKind;
@@ -18,7 +18,11 @@ export interface Alert {
 }
 
 /** Quiet time per kind (seconds) before the same kind, near the same place, alerts again. */
-const QUIET: Record<AlertKind, number> = { attack: 12, core: 8, lost: 0, hero: 0, spread: 0, agent: 0 };
+const QUIET: Record<AlertKind, number> = { attack: 12, core: 8, lost: 0, hero: 0, spread: 0, agent: 0, fighting: 20, wiped: 20 };
+/** Soldier deaths inside this window (seconds) count toward "wiped". */
+const WIPE_WINDOW = 10;
+/** Deaths in the window needed before an army counts as wiped. */
+const WIPE_MIN_DEATHS = 4;
 /** Two alerts of a kind closer than this (world px) count as the same place. */
 const SAME_PLACE = 900;
 
@@ -26,12 +30,17 @@ export class Alerts {
   private readonly last: Alert[] = [];
   /** Most recent first, for jump-to and the minimap flash. */
   readonly recent: Alert[] = [];
+  private deaths: { at: number; x: number; y: number }[] = [];
+  /** Your soldiers as of the last update: a death counts toward "wiped" only if it was one (not a decoy, the hero or an agent). */
+  private soldiers = new Set<number>();
 
   constructor(private readonly content: Content) {}
 
   reset(): void {
     this.last.length = 0;
     this.recent.length = 0;
+    this.deaths = [];
+    this.soldiers.clear();
   }
 
   /** The alerts this tick's events raise for `local`, at time `now` (seconds). */
@@ -55,9 +64,25 @@ export class Alerts {
     for (const event of events) {
       if (event.type === "shot") {
         const target = world.entities.find((e) => e.id === event.to);
-        if (!target || target.team !== local || event.team === local) continue;
-        if (target.kind === "building" && isCore(this.content, team, target)) raise("core", "Your core is under attack", target.x, target.y, false);
-        else if (target.kind === "building") raise("attack", "Your base is under attack", target.x, target.y, true);
+        if (!target) continue;
+        if (target.team === local && event.team !== local) {
+          if (target.kind === "building" && isCore(this.content, team, target)) {
+            raise("core", "Your core is under attack", target.x, target.y, false);
+            continue;
+          }
+          if (target.kind === "building") {
+            raise("attack", "Your base is under attack", target.x, target.y, true);
+            continue;
+          }
+          if (target.kind === "unit" && target.mode === "guard") raise("fighting", "Your army is fighting", target.x, target.y, true);
+        } else if (target.kind !== "building" && target.team !== local && !allied(world, local, target.team)) {
+          const shooter = world.entities.find((e) => e.id === event.from);
+          if (shooter && shooter.kind === "unit" && shooter.team === local && (shooter as Unit).mode === "guard") {
+            raise("fighting", "Your army is fighting", shooter.x, shooter.y, true);
+          }
+        }
+      } else if (event.type === "death" && event.team === local && event.kind === "unit") {
+        if (this.soldiers.has(event.id)) this.deaths.push({ at: now, x: event.x, y: event.y });
       } else if (event.type === "death" && event.team === local && event.kind === "building") {
         raise("lost", `${this.content.buildings[event.defId]?.name ?? "A building"} lost`, event.x, event.y, false);
       } else if (event.type === "hero-down" && event.team === local) {
@@ -69,6 +94,18 @@ export class Alerts {
         raise("spread", "An Infector is heading out · stop it before it builds", event.x, event.y, false);
       } else if (event.type === "infected") {
         raise("spread", "The botnet is building an Infected Node", event.x, event.y, false);
+      }
+    }
+    this.deaths = this.deaths.filter((d) => now - d.at <= WIPE_WINDOW);
+    // Soldiers are units in guard mode, as in src/game/selection.ts isSoldier.
+    this.soldiers.clear();
+    for (const e of world.entities) if (e.kind === "unit" && e.team === local && e.hp > 0 && e.mode === "guard") this.soldiers.add(e.id);
+    if (this.deaths.length >= WIPE_MIN_DEATHS) {
+      if (this.deaths.length >= this.soldiers.size) {
+        const n = this.deaths.length;
+        const x = this.deaths.reduce((a, d) => a + d.x, 0) / n;
+        const y = this.deaths.reduce((a, d) => a + d.y, 0) / n;
+        raise("wiped", "Your army is being wiped out", x, y, false);
       }
     }
     return out;
