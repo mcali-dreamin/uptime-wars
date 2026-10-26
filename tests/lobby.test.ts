@@ -38,7 +38,7 @@ describe("lobby rules", () => {
     const { host, joined } = lobbyWith();
     const match = host.start("open-source", 77);
     expect(rulesLabel(match.world)).toBe("coop");
-    expect(match.world.teams.map((t) => t.raceId)).toEqual(["open-source", "hyperscaler", "botnet"]);
+    expect(match.world.teams.map((t) => t.raceId)).toEqual(["open-source", "hyperscaler", "botnet", "neutral"]); // the neutral team always comes last
     expect(rulesLabel(joined()!.world)).toBe("coop");
     expect(hashWorld(joined()!.world)).toBe(hashWorld(match.world));
   });
@@ -84,7 +84,7 @@ describe("computers in the lobby", () => {
     expect(setup.ai).toEqual([undefined, "hard", "easy"]);
     const world = createWorld(content, setup);
     expect(world.rules.sides).toEqual([0, 0, 1]);
-    expect(world.teams.map((t) => t.ai?.difficulty ?? null)).toEqual([null, "hard", "easy", null]);
+    expect(world.teams.map((t) => t.ai?.difficulty ?? null)).toEqual([null, "hard", "easy", null, null]); // ...the last null is the neutral team
   });
 
   it("a computer seat reaches the guest, and nobody waits on its turns", () => {

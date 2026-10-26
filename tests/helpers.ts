@@ -3,6 +3,7 @@ import {
   TILE_OPEN,
   createWorld,
   footprintCenter,
+  hordeTeam,
   tileAt,
   type BuildCommand,
   type Content,
@@ -25,7 +26,7 @@ export function planBuildOrder(
   const { terrain } = world;
   const core = world.entities.find((e) => e.id === world.teams[team]!.coreId)!;
   if (core.kind !== "building") throw new Error("core must be a building");
-  const nest = world.entities.find((e) => e.id === world.teams[world.teams.length - 1]!.coreId)!;
+  const nest = world.entities.find((e) => e.id === hordeTeam(world)!.coreId)!;
   const dx = nest.x - core.x;
   const dy = nest.y - core.y;
   const length = Math.sqrt(dx * dx + dy * dy);

@@ -46,7 +46,7 @@ await run("smoke test", async ({ check, open }) => {
   check(await state((id) => window.uptime.selection.id === id, agent.id), "the deploy agent starts selected");
   const known = await state(() => {
     const u = window.uptime;
-    const nest = u.world.entities.find((e) => e.id === u.world.teams[u.world.teams.length - 1].coreId);
+    const nest = u.world.entities.find((e) => e.id === u.world.teams.find((t) => t.controller === "wave-director").coreId);
     const fog = u.renderer.fog;
     let dark = 0;
     for (let i = 0; i < u.world.terrain.tiles.length; i++) if (fog.stateAt(i) === 0) dark++;

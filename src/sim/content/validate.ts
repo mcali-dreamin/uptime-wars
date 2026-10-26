@@ -48,6 +48,13 @@ export function validateContent(content: Content): void {
     if (!content.units[entry.unit]) errors.push(`wave roster uses unknown unit ${entry.unit}`);
     if (entry.cost <= 0) errors.push(`wave roster unit ${entry.unit} must cost more than 0`);
   }
+  const camps = content.neutrals;
+  if (camps.regenPermillePerSecond < 0 || camps.alertTicks < 0) errors.push("neutrals need regenPermillePerSecond and alertTicks >= 0");
+  for (const [id, tier] of Object.entries(camps.tiers)) {
+    if (tier.fromStart <= 0 || tier.count < 0 || tier.units.length === 0) errors.push(`camp tier ${id} needs fromStart > 0, count >= 0 and units`);
+    for (const unit of tier.units) if (!content.units[unit]) errors.push(`camp tier ${id} uses unknown unit ${unit}`);
+  }
+  if (content.races.neutral?.controller !== "neutral") errors.push("races needs a neutral race with controller neutral");
   for (const [id, upgrade] of Object.entries(content.upgrades)) {
     if (upgrade.maxLevel < 1 || upgrade.cost <= 0 || upgrade.researchTicks <= 0) errors.push(`upgrade ${id} needs maxLevel, cost, and researchTicks > 0`);
   }

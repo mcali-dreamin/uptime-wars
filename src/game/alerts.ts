@@ -6,7 +6,7 @@
 
 import { allied, isCore, type Content, type Unit, type Point, type SimEvent, type TeamId, type World } from "../sim";
 
-export type AlertKind = "attack" | "core" | "lost" | "hero" | "spread" | "agent" | "fighting" | "wiped";
+export type AlertKind = "attack" | "core" | "lost" | "hero" | "spread" | "agent" | "fighting" | "wiped" | "camp";
 
 export interface Alert {
   kind: AlertKind;
@@ -18,7 +18,7 @@ export interface Alert {
 }
 
 /** Quiet time per kind (seconds) before the same kind, near the same place, alerts again. */
-const QUIET: Record<AlertKind, number> = { attack: 12, core: 8, lost: 0, hero: 0, spread: 0, agent: 0, fighting: 20, wiped: 20 };
+const QUIET: Record<AlertKind, number> = { attack: 12, core: 8, lost: 0, hero: 0, spread: 0, agent: 0, fighting: 20, wiped: 20, camp: 0 };
 /** Soldier deaths inside this window (seconds) count toward "wiped". */
 const WIPE_WINDOW = 10;
 /** Deaths in the window needed before an army counts as wiped. */
@@ -89,6 +89,8 @@ export class Alerts {
         raise("hero", "Your hero has fallen", event.x, event.y, false);
       } else if (event.type === "agentLost" && event.team === local) {
         raise("agent", "Your deploy agent was lost · the $ is gone", event.x, event.y, false);
+      } else if (event.type === "campCleared" && event.team === local) {
+        raise("camp", "Camp cleared", event.x, event.y, false);
       } else if (event.type === "infecting") {
         // Where it's headed, so Space takes you there to cut it off.
         raise("spread", "An Infector is heading out · stop it before it builds", event.x, event.y, false);

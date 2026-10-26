@@ -175,6 +175,8 @@ export interface Unit extends EntityBase {
   /** The last enemy that hit it, and when: creeps turn on whatever is shooting them. */
   provokedBy?: number;
   provokedAt?: number;
+  /** A neutral camp unit: which camp (an index into the camp spots) it guards. */
+  campId?: number;
   /** Taunted (Sticky Sessions): goes for this unit, whatever else is shooting, until tauntedUntil. */
   tauntedBy?: number;
   tauntedUntil?: number;
@@ -488,6 +490,8 @@ export type SimEvent =
   /** An infector reached its site: a node is going up at (x, y). */
   | { type: "infected"; x: number; y: number }
   | { type: "founded"; x: number; y: number }
+  /** The last unit of a neutral camp at (x, y) died; `team` cleared it. */
+  | { type: "campCleared"; x: number; y: number; team: TeamId }
   /** An expansion core (re)ached its site and is going up; it joins when built. */
   | { type: "expanded"; team: TeamId; x: number; y: number }
   /** A mid-match deploy agent died on the way: the $ it cost is gone. */

@@ -74,6 +74,7 @@ export function lagging(world: World, teamId: number): boolean {
 export function tickIncome(ctx: TickContext): void {
   const { world, content } = ctx;
   for (const team of world.teams) {
+    if (team.controller === "neutral") continue;
     team.incomeTimer -= 1;
     if (team.incomeTimer <= 0) {
       team.money += BASE_INCOME.amount;

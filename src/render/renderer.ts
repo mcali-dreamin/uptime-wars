@@ -179,7 +179,9 @@ export class Renderer {
       shows,
     });
     this.age(deltaMs);
-    this.minimap.draw(world, width, height, this.view.viewRect() ?? this.camera.view(0), (e) => shows(e, e.x, e.y));
+    // Camps show on the minimap wherever the map is explored, even out of sight.
+    const campOnMap = (e: World["entities"][number]) => world.teams[e.team]?.controller === "neutral" && this.fog.isExplored(e.x, e.y);
+    this.minimap.draw(world, width, height, this.view.viewRect() ?? this.camera.view(0), (e) => shows(e, e.x, e.y) || campOnMap(e));
     this.banner.position.set(width / 2, 24);
     this.bannerAge += deltaMs;
     this.banner.alpha = world.outcome ? 1 : Math.max(0, 1 - this.bannerAge / 2500);

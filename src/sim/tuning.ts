@@ -49,3 +49,12 @@ export const REROUTE_TICKS = 200;
 export const NOTCH_TILES = 4;
 /** A foundable expansion keeps this many tiles (center to center) of open water between it and any hostile building. */
 export const EXPANSION_CLEARANCE = 12;
+
+/** Neutral camps: a camp's spot is within this many tiles of its tier's distance from the nearest start (the fairness tolerance)... */
+export const CAMP_TOLERANCE = 8;
+/** ...keeps this many tiles between camp centers... */
+export const CAMP_SPACING = 10;
+/** ...and needs open, single-height ground this many tiles round its center. */
+export const CAMP_OPEN_RADIUS = 3;
+/** Units of a camp stand this many pixels apart round its center. */
+export const CAMP_UNIT_GAP = 16;

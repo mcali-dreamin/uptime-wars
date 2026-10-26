@@ -9,8 +9,9 @@ import economyJson from "../../content/economy.json";
 import upgradesJson from "../../content/upgrades.json";
 import heroesJson from "../../content/heroes.json";
 import difficultyJson from "../../content/difficulty.json";
+import neutralsJson from "../../content/neutrals.json";
 
-import type { BuildingDef, Content, DifficultyDef, EconomyDef, HeroesDef, RaceDef, UnitDef, UpgradeDef, WavesDef } from "./schema";
+import type { BuildingDef, Content, DifficultyDef, EconomyDef, HeroesDef, NeutralsDef, RaceDef, UnitDef, UpgradeDef, WavesDef } from "./schema";
 import { validateContent } from "./validate";
 
 export function loadDefaultContent(): Content {
@@ -23,6 +24,7 @@ export function loadDefaultContent(): Content {
     upgrades: upgradesJson as Record<string, UpgradeDef>,
     heroes: heroesJson as HeroesDef,
     difficulties: difficultyJson as Record<string, DifficultyDef>,
+    neutrals: neutralsJson as NeutralsDef,
   };
   validateContent(content);
   return content;

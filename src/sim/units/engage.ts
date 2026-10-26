@@ -15,6 +15,7 @@ import { roleHit, roleTargets } from "../roles";
 import { hostile } from "../teams";
 import { invulnerable } from "../fortress";
 import { terrainFor } from "../walls";
+import { neutralTarget } from "../neutrals";
 
 /**
  * Returns true when the unit spent its tick fighting or closing in, false
@@ -56,6 +57,12 @@ function provokedTarget(ctx: TickContext, unit: Unit, def: UnitDef): Entity | un
 
 export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
   const { world } = ctx;
+  // Camp guards never pick a fight: they answer whoever hit the camp, inside their leash.
+  if (world.teams[unit.team]?.controller === "neutral") {
+    const target = neutralTarget(ctx, unit, def);
+    unit.targetId = target?.id ?? null;
+    return target ? strike(ctx, unit, def, target, undefined) : false;
+  }
   const guard = unit.mode === "guard";
   const home = { x: unit.homeX, y: unit.homeY };
 
@@ -106,7 +113,13 @@ export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
   if (target && !guardCanHold(target)) target = undefined;
   unit.targetId = target?.id ?? null;
   if (!target) return false;
+  return strike(ctx, unit, def, target, lure);
+}
 
+/** Hit the target if it's in range, else close in. True when the unit spent its tick doing so. */
+function strike(ctx: TickContext, unit: Unit, def: UnitDef, target: Entity, lure: Entity | undefined): boolean {
+  const { world } = ctx;
+  const guard = unit.mode === "guard";
   const gap = edgeDistance(unit, target);
   if (gap <= def.range) {
     // Disarmed: in its face, but can't swing.

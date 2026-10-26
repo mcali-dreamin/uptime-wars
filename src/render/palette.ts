@@ -5,6 +5,8 @@ import { TILE_BLOCKED, TILE_CLIFF, type TeamId, type World } from "../sim";
 /** Player n's default colour (co-op: up to four), and the horde's (always red). */
 export const PLAYER_COLORS = [0x4ade80, 0x60a5fa, 0xc084fc, 0xfb923c] as const;
 export const HORDE_COLOR = 0xf87171;
+/** Camp guards (the neutral team): muted amber, apart from every player and the horde. */
+export const NEUTRAL_COLOR = 0xb08d57;
 
 /**
  * Colours picked before the match, by team. Render-only: each browser picks
@@ -21,7 +23,9 @@ export function setLocalColor(team: TeamId, hex: number): void {
 }
 
 export function teamColor(world: World, team: TeamId): number {
-  if (world.teams[team]?.controller !== "human") return HORDE_COLOR;
+  const controller = world.teams[team]?.controller;
+  if (controller === "neutral") return NEUTRAL_COLOR;
+  if (controller !== "human") return HORDE_COLOR;
   return chosen.get(team) ?? PLAYER_COLORS[team % PLAYER_COLORS.length]!;
 }
 /** Selection, rally flags, order pings, range previews. */

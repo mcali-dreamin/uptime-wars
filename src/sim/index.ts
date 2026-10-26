@@ -5,7 +5,7 @@ export * from "./terrain";
 export { flowField, nextStep, hasClearPath, hasLineOfSight, UNREACHABLE } from "./nav";
 export { canSee, heightOf } from "./combat";
 export { createWorld, step } from "./world";
-export { allied, allyBlocker, hasOffered, hostile, hordeTeam, humanTeams, rulesFor, rulesLabel, unallyBlocker, type Diplomacy, type MatchMode, type MatchRules } from "./teams";
+export { allied, allyBlocker, hasOffered, hostile, hordeTeam, humanTeams, neutralTeam, rulesFor, rulesLabel, unallyBlocker, type Diplomacy, type MatchMode, type MatchRules } from "./teams";
 export type { MatchSetup } from "./world";
 export { queueCommand } from "./commands";
 export { canPlace, canFound, baseCost, buildCost, owned, isOccupied, isCore, inNetwork, networkProviders, teamCores, finishedCores, homeCore, rallyFor } from "./placement";
@@ -33,6 +33,7 @@ export function simulate(
   return world;
 }
 export { FARM_COUNT, farmSpots, farmsDown, farmsStanding, fortressGates, fortressSpots, nestShielded } from "./fortress";
+export { campSpots, type CampSpot } from "./neutrals";
 export { invokeBlocker, invokeCost } from "./functions";
 export { forkBlocker, forkCost, regionShield } from "./mechanics";
 export { isJammed } from "./roles";
