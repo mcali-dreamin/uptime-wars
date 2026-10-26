@@ -31,19 +31,16 @@ export class Alerts {
   /** Most recent first, for jump-to and the minimap flash. */
   readonly recent: Alert[] = [];
   private deaths: { at: number; x: number; y: number }[] = [];
+  /** Your soldiers as of the last update: a death counts toward "wiped" only if it was one (not a decoy, the hero or an agent). */
+  private soldiers = new Set<number>();
 
   constructor(private readonly content: Content) {}
-
-  /** A soldier's defId: not a builder/deploy agent and not a hero. */
-  private isSoldierDef(defId: string): boolean {
-    if (this.content.heroes.heroes[defId]) return false;
-    return !Object.values(this.content.races).some((r) => r.builder === defId);
-  }
 
   reset(): void {
     this.last.length = 0;
     this.recent.length = 0;
     this.deaths = [];
+    this.soldiers.clear();
   }
 
   /** The alerts this tick's events raise for `local`, at time `now` (seconds). */
@@ -77,15 +74,15 @@ export class Alerts {
             raise("attack", "Your base is under attack", target.x, target.y, true);
             continue;
           }
-          if (target.kind === "unit" && target.mode !== "builder") raise("fighting", "Your army is fighting", target.x, target.y, true);
+          if (target.kind === "unit" && target.mode === "guard") raise("fighting", "Your army is fighting", target.x, target.y, true);
         } else if (target.kind !== "building" && target.team !== local && !allied(world, local, target.team)) {
           const shooter = world.entities.find((e) => e.id === event.from);
-          if (shooter && shooter.kind === "unit" && shooter.team === local && (shooter as Unit).mode !== "builder") {
+          if (shooter && shooter.kind === "unit" && shooter.team === local && (shooter as Unit).mode === "guard") {
             raise("fighting", "Your army is fighting", shooter.x, shooter.y, true);
           }
         }
       } else if (event.type === "death" && event.team === local && event.kind === "unit") {
-        if (this.isSoldierDef(event.defId)) this.deaths.push({ at: now, x: event.x, y: event.y });
+        if (this.soldiers.has(event.id)) this.deaths.push({ at: now, x: event.x, y: event.y });
       } else if (event.type === "death" && event.team === local && event.kind === "building") {
         raise("lost", `${this.content.buildings[event.defId]?.name ?? "A building"} lost`, event.x, event.y, false);
       } else if (event.type === "hero-down" && event.team === local) {
@@ -100,9 +97,11 @@ export class Alerts {
       }
     }
     this.deaths = this.deaths.filter((d) => now - d.at <= WIPE_WINDOW);
+    // Soldiers are units in guard mode, as in src/game/selection.ts isSoldier.
+    this.soldiers.clear();
+    for (const e of world.entities) if (e.kind === "unit" && e.team === local && e.hp > 0 && e.mode === "guard") this.soldiers.add(e.id);
     if (this.deaths.length >= WIPE_MIN_DEATHS) {
-      const alive = world.entities.filter((e) => e.kind === "unit" && e.team === local && e.hp > 0 && e.mode === "guard").length;
-      if (this.deaths.length >= alive) {
+      if (this.deaths.length >= this.soldiers.size) {
         const n = this.deaths.length;
         const x = this.deaths.reduce((a, d) => a + d.x, 0) / n;
         const y = this.deaths.reduce((a, d) => a + d.y, 0) / n;

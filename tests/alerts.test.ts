@@ -105,8 +105,6 @@ describe("alerts", () => {
       return unit;
     };
     const shot = (from: number, to: number, team: number): SimEvent => ({ type: "shot", from, to, x1: 0, y1: 0, x2: 0, y2: 0, team });
-    const died = (x: number, y: number, defId = "script-kiddie"): SimEvent => ({ type: "death", id: 1, x, y, team: 0, kind: "unit", defId });
-    const soldierDef = Object.keys(content.units).find((id) => id !== "deploy-agent" && !content.heroes.heroes[id])!;
     const clearGuards = (world: World) => {
       proto ??= world.entities.find((e): e is Unit => e.kind === "unit")!;
       world.entities = world.entities.filter((e) => !(e.kind === "unit" && e.team === 0));
@@ -152,12 +150,20 @@ describe("alerts", () => {
       expect(alerts.update(world, [shot(agent.id, foe.id, 0)], 0, 1, offScreen)).toEqual([]);
     });
 
+    /** `unit` dies: it leaves the world and its death event goes to `alerts`. */
+    const kill = (alerts: Alerts, world: World, unit: Unit, now: number, see = onScreen) => {
+      world.entities = world.entities.filter((e) => e.id !== unit.id);
+      return alerts.update(world, [{ type: "death", id: unit.id, x: unit.x, y: unit.y, team: unit.team, kind: "unit", defId: unit.defId }], 0, now, see);
+    };
+
     it("four soldier deaths in the window with few left alert 'wiped' at the centroid, even on-screen", () => {
       const { world } = base();
       clearGuards(world);
+      const dying = [0, 1, 2, 3].map((i) => addUnit(world, 0, 100 * i, 200 * i));
       addUnit(world, 0, 0, 0);
       const alerts = new Alerts(content);
-      const raised = [0, 1, 2, 3].flatMap((i) => alerts.update(world, [died(100 * i, 200 * i, soldierDef)], 0, i, onScreen));
+      alerts.update(world, [], 0, 0, onScreen);
+      const raised = dying.flatMap((u, i) => kill(alerts, world, u, i));
       expect(raised.map((a) => [a.kind, a.text])).toEqual([["wiped", "Your army is being wiped out"]]);
       expect(raised[0]).toMatchObject({ x: 150, y: 300 });
     });
@@ -165,27 +171,38 @@ describe("alerts", () => {
     it("deaths spread over more than the window don't count", () => {
       const { world } = base();
       clearGuards(world);
+      const dying = [0, 1, 2, 3].map((i) => addUnit(world, 0, i, 0));
       const alerts = new Alerts(content);
-      const raised = [0, 1, 2, 3].flatMap((i) => alerts.update(world, [died(0, 0, soldierDef)], 0, i * 6, onScreen));
-      expect(raised).toEqual([]);
+      alerts.update(world, [], 0, 0, onScreen);
+      expect(dying.flatMap((u, i) => kill(alerts, world, u, i * 6))).toEqual([]);
     });
 
     it("deaths with a big army still alive don't count", () => {
       const { world } = base();
       clearGuards(world);
-      for (let i = 0; i < 20; i++) addUnit(world, 0, i, 0);
+      const dying = [0, 1, 2, 3].map((i) => addUnit(world, 0, i, 0));
+      for (let i = 0; i < 20; i++) addUnit(world, 0, i, 50);
       const alerts = new Alerts(content);
-      const raised = [0, 1, 2, 3].flatMap((i) => alerts.update(world, [died(0, 0, soldierDef)], 0, i, onScreen));
-      expect(raised).toEqual([]);
+      alerts.update(world, [], 0, 0, onScreen);
+      expect(dying.flatMap((u, i) => kill(alerts, world, u, i))).toEqual([]);
     });
 
-    it("the hero and the deploy agent dying don't count", () => {
+    it("the hero, decoys and the deploy agent dying don't count", () => {
       const { world } = base();
       clearGuards(world);
+      const dying = (["hero", "decoy", "decoy", "builder", "decoy"] as const).map((mode, i) => addUnit(world, 0, i, 0, mode));
       const alerts = new Alerts(content);
-      const heroId = Object.keys(content.heroes.heroes)[0]!;
-      const raised = [0, 1, 2, 3].flatMap((i) => alerts.update(world, [died(0, 0, i % 2 ? heroId : "deploy-agent")], 0, i, onScreen));
-      expect(raised).toEqual([]);
+      alerts.update(world, [], 0, 0, onScreen);
+      expect(dying.flatMap((u, i) => kill(alerts, world, u, i))).toEqual([]);
+    });
+
+    it("a decoy or the hero being shot doesn't alert 'fighting'", () => {
+      const { world } = base();
+      const decoy = addUnit(world, 0, 500, 600, "decoy");
+      const hero = addUnit(world, 0, 520, 600, "hero");
+      const foe = addUnit(world, 1, 600, 600, "roam");
+      const alerts = new Alerts(content);
+      expect(alerts.update(world, [shot(foe.id, decoy.id, 1), shot(foe.id, hero.id, 1)], 0, 0, offScreen)).toEqual([]);
     });
   });
 });
