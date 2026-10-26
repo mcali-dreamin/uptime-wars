@@ -90,6 +90,14 @@ export function validateContent(content: Content): void {
   if (tierUpgrades.length > 1) errors.push("only one upgrade can be the core tier");
   const tiers = content.economy.tiers ?? [];
   if (tierUpgrades[0] && tiers.length !== tierUpgrades[0][1].maxLevel + 1) errors.push("economy.tiers needs one entry per core tier (maxLevel + 1)");
+  const spot = content.economy.spot;
+  if (!spot) errors.push("economy.spot is missing");
+  else {
+    if (spot.compute.length !== tiers.length || spot.cost.length !== tiers.length) errors.push("economy.spot needs one compute and cost per core tier");
+    if ([...spot.compute, ...spot.cost].some((n) => !Number.isInteger(n) || n <= 0)) errors.push("economy.spot compute and cost must be positive integers");
+    if (!Number.isInteger(spot.growthPermille) || spot.growthPermille < 0) errors.push("economy.spot.growthPermille must be a non-negative integer");
+    if (!Number.isInteger(spot.ticks) || spot.ticks <= 0) errors.push("economy.spot.ticks must be a positive integer");
+  }
   for (const [id, b] of Object.entries(content.buildings)) {
     if (b.tier !== undefined && !tiers[b.tier]) errors.push(`building ${id} needs tier ${b.tier}, which doesn't exist`);
     if (b.limitPerTier && b.limitPerTier.length !== tiers.length) errors.push(`building ${id} limitPerTier needs one entry per tier`);

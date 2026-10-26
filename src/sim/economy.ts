@@ -10,7 +10,7 @@ import { TICK_RATE } from "./map";
 import type { Team, World } from "./types";
 import { multiplier } from "./upgrades";
 import { BASE_INCOME, CONSTRUCTION_START_HP } from "./tuning";
-import { raceMechanics, tierDef } from "./tiers";
+import { raceMechanics, tierDef, tierOf } from "./tiers";
 import { buildingRank, rankedMaxAlive, rankedUpkeep, refitting, unitRank } from "./ranks";
 import { squadBonus } from "./traits";
 import { revenueFactor } from "./ai";
@@ -30,26 +30,23 @@ export function unitUpkeep(content: TickContext["content"], unitId: string): num
 /** Compute supplied and used by a team right now. Integers; pure. */
 export function computeBalance(world: World, content: TickContext["content"], team: Team): { supply: number; demand: number } {
   const per = content.economy.compute;
-  const coreId = content.races[team.raceId]!.core;
   let supply = 0;
-  // Only one core supplies compute: more cores are reach and redundancy,
-  // not a way around the generator limits.
-  let coreSupply = 0;
   let units = 0;
   for (const entity of world.entities) {
     if (entity.team !== team.id || entity.hp <= 0) continue;
     if (entity.kind === "building") {
       if (entity.buildRemaining > 0) continue;
       const compute = content.buildings[entity.defId]!.compute ?? 0;
-      if (entity.defId === coreId) coreSupply = Math.max(coreSupply, compute);
-      else supply += compute;
+      supply += compute;
     } else if (entity.mode !== "builder") {
       units += rankedUpkeep(unitUpkeep(content, entity.defId), unitRank(content, world, entity));
     }
   }
-  supply += coreSupply;
-  // A higher core tier supplies more, as long as a core is up.
+  // Every finished core supplies its own compute (a core still building
+  // adds nothing). The core tier's bonus counts once, as long as a core is up.
   if (team.coreId !== -1 && team.downTick === null) supply += tierDef(content, team).compute;
+  // Rented compute (Spot Capacity), while it lasts.
+  if (team.spot) supply += team.spot.compute;
   return { supply, demand: team.users * per.perUser + units };
 }
 
@@ -166,7 +163,10 @@ export function tickUsers(ctx: TickContext): void {
     } else if (team.users < capacity) {
       // Only as many as there's compute to serve, after what the squads need.
       const { supply, demand } = computeBalance(world, content, team);
-      const room = Math.floor((supply - demand - squadReserve(world, content, team)) / economy.compute.perUser);
+      // Rented compute (Spot Capacity) is for the army: users don't move onto
+      // it, or a rental would never fade once they'd filled it.
+      const owned = supply - (team.spot?.compute ?? 0);
+      const room = Math.floor((owned - demand - squadReserve(world, content, team)) / economy.compute.perUser);
       const gap = capacity - team.users;
       const arrivals = Math.min(room, Math.max(economy.minArrivalsPerSecond, Math.floor(gap * economy.growthPerSecond)));
       team.waitingOnCompute = arrivals < Math.min(gap, economy.minArrivalsPerSecond);
@@ -232,4 +232,38 @@ export function trafficRadius(world: World, content: TickContext["content"], tea
   const minutes = Math.floor(world.tick / (TICK_RATE * 60));
   const grown = tierDef(content, team).traffic;
   return Math.min(t.max, t.base + grown + t.perBuilding * buildings + t.perUser * team.users + t.perMinute * minutes);
+}
+
+/** What the next Spot Capacity rental costs this team: base for its tier, +growth of base per rental so far. */
+export function spotCost(content: TickContext["content"], team: Team): number {
+  const spot = content.economy.spot;
+  const base = spot.cost[Math.min(tierOf(content, team), spot.cost.length - 1)]!;
+  return Math.round((base * (1000 + spot.growthPermille * team.spotRentals)) / 1000);
+}
+
+/** "active" while the rental runs, "fading" once it has expired but compute is still being shed, else null. */
+export function spotState(world: World, team: Team): "active" | "fading" | null {
+  if (!team.spot) return null;
+  return world.tick >= team.spot.untilTick ? "fading" : "active";
+}
+
+/**
+ * Spot expiry, every tick. After the timer the rented compute shrinks to what
+ * the army still needs above the base supply, and never grows back: nothing
+ * is deleted and nothing overloads, but spawners see no free compute, so the
+ * extra units aren't replaced as they die. At zero the rental is over.
+ */
+export function tickSpot(ctx: TickContext): void {
+  const { world, content } = ctx;
+  for (const team of world.teams) {
+    const spot = team.spot;
+    if (!spot || world.tick < spot.untilTick) continue;
+    const { supply, demand } = computeBalance(world, content, team);
+    const residual = Math.max(0, Math.min(spot.compute, demand - (supply - spot.compute)));
+    spot.compute = Math.min(spot.compute, residual);
+    if (spot.compute <= 0) {
+      team.spot = null;
+      world.events.push({ type: "spotEnded", team: team.id });
+    }
+  }
 }

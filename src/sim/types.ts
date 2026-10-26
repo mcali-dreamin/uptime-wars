@@ -57,6 +57,10 @@ export interface Team {
    * allies play on. This is also its uptime.
    */
   downTick: number | null;
+  /** Rented compute (Spot Capacity), else null. Fades by attrition once `untilTick` passes. */
+  spot: { compute: number; untilTick: number } | null;
+  /** Rentals made this match: each makes the next cost more. */
+  spotRentals: number;
   /** The hero unit this player picked (races with heroes), else null. */
   heroId: string | null;
   /** That hero's state, once the core is online. */
@@ -245,6 +249,13 @@ export interface TrainAgentCommand {
   coreId: number;
 }
 
+/** Rent compute from your core for a while (Spot Capacity). */
+export interface RentComputeCommand {
+  type: "rentCompute";
+  tick: number;
+  team: TeamId;
+}
+
 /** Walk the builder to a 2x2 footprint and found the core there. */
 export interface FoundCommand {
   type: "found";
@@ -397,7 +408,7 @@ export interface DismissCommand {
   unitIds: number[];
 }
 
-export type Command = DecommissionCommand | DismissCommand | AllyCommand | UnallyCommand | RankCommand | ForkCommand | BuildCommand | MoveCommand | TrainAgentCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | CancelResearchCommand | AttackCommand | CastCommand | LearnCommand | InvokeCommand;
+export type Command = RentComputeCommand | DecommissionCommand | DismissCommand | AllyCommand | UnallyCommand | RankCommand | ForkCommand | BuildCommand | MoveCommand | TrainAgentCommand | FoundCommand | RallyCommand | OrderCommand | ResearchCommand | CancelResearchCommand | AttackCommand | CastCommand | LearnCommand | InvokeCommand;
 
 export interface WaveSpawn {
   tick: number;
@@ -481,6 +492,8 @@ export type SimEvent =
   | { type: "expanded"; team: TeamId; x: number; y: number }
   /** A mid-match deploy agent died on the way: the $ it cost is gone. */
   | { type: "agentLost"; team: TeamId; x: number; y: number }
+  | { type: "spotStarted"; team: TeamId }
+  | { type: "spotEnded"; team: TeamId }
   | { type: "failover"; team: TeamId; x: number; y: number }
   /** A team went offline while its allies play on. */
   | { type: "offline"; team: TeamId }

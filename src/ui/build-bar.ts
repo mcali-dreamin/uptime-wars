@@ -9,13 +9,16 @@
 
 import { affordable, tierLock } from "../game/selection";
 import type { Session } from "../game/session";
-import { buildCost, canResearch, levelOf, nextLevel, nextQueued, projectedTier, queuedCount, slotOf, upgradeName, upgradesAt } from "../sim";
+import { TICK_RATE, buildCost, canResearch, levelOf, nextLevel, nextQueued, projectedTier, queuedCount, slotOf, spotCost, spotState, tierOf, upgradeName, upgradesAt } from "../sim";
 import { $ } from "./dom";
+import { clock } from "./hud";
 import type { HeroBar } from "./hero-bar";
 
 export const FOUND_BUTTON = "found";
 /** The core card's "Deploy agent" button (trained with A; see InfoPanel's card). */
 export const AGENT_BUTTON = "agent";
+/** The core card's "Spot capacity" button (rents compute; see InfoPanel's card). */
+export const SPOT_BUTTON = "spot";
 const UPGRADE_PREFIX = "upgrade:";
 
 export type BarMode = "deploy" | "build" | "research" | "armory" | "hero";
@@ -79,6 +82,16 @@ export class BuildBar {
         button.classList.toggle("selected", false);
         continue;
       }
+      if (id === SPOT_BUTTON) {
+        const state = spotState(this.session.world, team);
+        const cost = spotCost(content, team);
+        const text = this.spotText(state, cost);
+        const detail = button.querySelector("small")!;
+        if (detail.textContent !== text) detail.textContent = text;
+        button.disabled = state !== null || team.money < cost;
+        button.classList.toggle("selected", false);
+        continue;
+      }
       const locked = id === FOUND_BUTTON ? null : tierLock(this.session, id);
       button.disabled = id !== FOUND_BUTTON && (locked !== null || !affordable(this.session, id));
       button.classList.toggle("locked", locked !== null);
@@ -90,6 +103,17 @@ export class BuildBar {
       }
       button.classList.toggle("selected", id === selected);
     }
+  }
+
+  /** The Spot capacity button's detail line. */
+  private spotText(state: ReturnType<typeof spotState>, cost: number): string {
+    const { content, world } = this.session;
+    const team = this.session.team;
+    if (state === "active") return `N · running ${clock(Math.max(0, team.spot!.untilTick - world.tick) / TICK_RATE)}`;
+    if (state === "fading") return "N · fading";
+    if (team.money < cost) return `N · need $${cost - team.money}`;
+    const spot = content.economy.spot;
+    return `N · +${spot.compute[Math.min(tierOf(content, team), spot.compute.length - 1)]} for ${spot.ticks / TICK_RATE}s · $${cost}`;
   }
 
   /** Forget the current mode so the next update re-renders (new match). */
@@ -125,6 +149,7 @@ export class BuildBar {
       // The core card also trains the deploy agent that founds expansions.
       if (mode === "research") {
         this.root.append(this.button(AGENT_BUTTON, "Deploy agent", `B · ${content.buildings[race.core]!.cost}`));
+        this.root.append(this.button(SPOT_BUTTON, "Spot capacity", this.spotText(spotState(this.session.world, this.session.team), spotCost(content, this.session.team))));
       }
     }
     const guide = document.createElement("button");

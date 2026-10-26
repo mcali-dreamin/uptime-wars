@@ -1,6 +1,8 @@
 // Player commands. Everything a player does goes through here, scheduled for
 // a tick, so a match is fully described by its seed plus its command log.
 
+import { spotCost } from "./economy";
+import { tierOf } from "./tiers";
 import { rankBlocker, startRank } from "./ranks";
 import type { TickContext } from "./context";
 import { placeBuilding, sendHome, spawnUnit } from "./entities";
@@ -161,7 +163,25 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
       return moveBuilder(ctx, command);
     case "trainAgent":
       return trainAgent(ctx, command);
+    case "rentCompute":
+      return rentCompute(ctx, command);
   }
+}
+
+/** Rent Spot Capacity: +compute for a while, one rental at a time, dearer each time. */
+function rentCompute(ctx: TickContext, command: Extract<Command, { type: "rentCompute" }>): string | null {
+  const { world, content } = ctx;
+  const team = world.teams[command.team]!;
+  if (team.coreId === -1) return "no core";
+  if (team.spot !== null) return "spot capacity already running";
+  const cost = spotCost(content, team);
+  if (team.money < cost) return "not enough $";
+  const spot = content.economy.spot;
+  team.money -= cost;
+  team.spot = { compute: spot.compute[Math.min(tierOf(content, team), spot.compute.length - 1)]!, untilTick: world.tick + spot.ticks };
+  team.spotRentals += 1;
+  world.events.push({ type: "spotStarted", team: team.id });
+  return null;
 }
 
 /**

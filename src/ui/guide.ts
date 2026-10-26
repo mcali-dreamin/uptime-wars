@@ -4,7 +4,7 @@
 import type { Session } from "../game/session";
 import { TERRAIN_GUIDE, perkLines, rankLines, buildingDetail, unitDetail, upgradeDetail, type GuideEntry } from "./cards";
 import { $ } from "./dom";
-import { EXPANSION_CLEARANCE, FARM_COUNT, upgradesAt, type Content, type RaceDef, type Team } from "../sim";
+import { EXPANSION_CLEARANCE, FARM_COUNT, TICK_RATE, upgradesAt, type Content, type RaceDef, type Team } from "../sim";
 import { abilityEffect, permille, raceLines, secs } from "./text";
 
 export type Tab = "controls" | "heroes" | "buildings" | "upgrades" | "creeps" | "terrain" | "races";
@@ -37,7 +37,8 @@ function controls(content: Content): [string, string][] {
   ["Build", "Number keys or click a button, then click inside your network (the green rings). Shift-click to place several."],
   ["Network", "Cores, Mesh Nodes (Open Source) and Edge PoPs (Hyperscaler) each extend where you can build. Build outward to hold ramps and push toward the nest."],
   ["Expansion", `Select a core and press B to train a deploy agent ($${content.buildings[content.races["open-source"]!.core]!.cost}). Walk it out, press C and click open ground anywhere on the map: it builds a new core there. One agent at a time, no site within ${EXPANSION_CLEARANCE} tiles of a hostile building, and if it dies on the way the $ is gone. Each finished core raises your Web App and generator caps; each core's rally sets its own bubble.`],
-  ["Redundancy", "If your main core falls the next finished one takes over; you only go down when every core is down. Extra cores add reach, users and caps, not compute: only one core's compute counts."],
+  ["Spot capacity", `Select a core and press N to rent +${content.economy.spot.compute.join(" / ")} compute (by core tier) for ${content.economy.spot.ticks / TICK_RATE}s, for $${content.economy.spot.cost.join(" / ")}. Each rental this match costs ${permille(content.economy.spot.growthPermille)} of the base price more. Use it for a push or a boss: when it ends, units over your cap aren't replaced and fade as they fall, and you can't rent again until the tail is gone.`],
+  ["Redundancy", "If your main core falls the next finished one takes over; you only go down when every core is down. Every finished core supplies its own compute, so extra cores add reach, users, caps and compute (the core tier's bonus counts once)."],
   ["Select", "Click one of your buildings or units. Drag a box to select units — the hero joins too (a box with only the hero selects the hero); Shift adds to the group, and Shift-click a unit or the hero toggles it in or out. Double-click a unit or a building (any of yours but the core): every one of its kind on screen, and Shift-click toggles buildings in or out of the group. A box with no units in it selects your spawners instead. Z: your whole army (no hero). Q: your hero."],
   ["Army", "With units selected, right-click the ground (or an enemy) to attack-move: they fight whatever they meet on the way, then hold the spot. F then click: a plain move that ignores enemies, for retreating. T then click works like right-click. The hero in the group comes along: right-click the ground and it moves there (a plain move — F makes no difference to it, and a Shift-queued order sends it at once), right-click an enemy and it attacks. Units you've sent stay put when you change a rally."],
   ["Hero", `Right-click to move or attack, 1-4 to cast, Shift+1-4 to learn. Hurt? Bring it home: near any of your cores it heals ${heal ? permille(heal.permillePerSecond) : ""} of its HP a second once nothing is hitting it. Full rundown in the Heroes tab.`],

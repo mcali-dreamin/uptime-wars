@@ -90,6 +90,8 @@ export class Renderer {
       this.view.event?.(event);
       if (event.type === "shot") this.shots.push({ ...event, age: 0 });
       if (event.type === "founded") this.showBanner("Core online");
+      if (event.type === "spotStarted" && event.team === this.localTeam) this.showBanner("Spot capacity online");
+      if (event.type === "spotEnded" && event.team === this.localTeam) this.showBanner("Spot capacity released");
       if (event.type === "expanded") this.showBanner("Expansion founded · building");
       if (event.type === "reported" && event.team === this.localTeam) {
         this.showBanner(`A scanner reported your base · ${event.packs} pack${event.packs === 1 ? "" : "s"} inbound`);
