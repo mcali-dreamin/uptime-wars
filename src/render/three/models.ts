@@ -1139,6 +1139,43 @@ export class Models {
         anim(heart, { type: "pulse", amount: 0.22, speed: 2.4 });
         break;
       }
+      case "derelict-datacenter": {
+        // Old, neutral, salvageable infrastructure: a weathered rack hall with
+        // a rusted roof, a sagging satellite dish on a mast, and a dead-ish
+        // strip light in the owner's colour. Nothing like a core or a horde building.
+        this.box(g, team, "dark", 128, 4, 100);
+        this.box(g, team, "rust", 120, 40, 92, 0, 4);
+        // Roller doors and dark windows on the front, vents along the side.
+        this.box(g, team, "dark", 40, 28, 1.5, -26, 4, 46.5);
+        for (let i = 0; i < 5; i += 1) this.box(g, team, "frame", 38, 1.4, 1.8, -26, 8 + i * 5, 46.8);
+        for (const x of [20, 40]) this.box(g, team, "dark", 12, 14, 1.5, x, 22, 46.5);
+        for (let i = 0; i < 4; i += 1) this.box(g, team, "cable", 1.5, 24, 5, 60.7, 10, -30 + i * 14);
+        // A rusted flat roof, one corner caved in, with a row of dead cooling units.
+        this.box(g, team, "rust", 124, 4, 96, 0, 44);
+        this.box(g, team, "dark", 36, 5, 30, 38, 46, -26);
+        for (const x of [-40, -16, 8]) this.cyl(g, team, "frame", 9, 9, 7, 10, x, 48, -22);
+        // The owner's colour, readable from the game camera: a light ring
+        // around the roof edge and a claim plate on the roof (amber while neutral).
+        this.box(g, team, "glow", 124, 2, 2, 0, 48, 47);
+        this.box(g, team, "glow", 124, 2, 2, 0, 48, -47);
+        this.box(g, team, "glow", 2, 2, 96, 61, 48, 0);
+        this.box(g, team, "glow", 2, 2, 96, -61, 48, 0);
+        this.box(g, team, "trim", 44, 1.5, 34, 6, 48, 18);
+        this.box(g, team, "trim", 120, 3, 2, 0, 41, 47.5);
+        // Dish: a mast, a tilted bowl and a feed, turning very slowly.
+        this.cyl(g, team, "frame", 2.5, 3.5, 40, 6, -44, 48, 28);
+        const dish = new THREE.Group();
+        dish.position.set(-44, 90, 28);
+        const bowl = this.shape(dish, team, "white", "derelict-dish", () => new THREE.SphereGeometry(24, 16, 6, 0, Math.PI * 2, 0, Math.PI / 3).rotateX(Math.PI), 0, 0, 0);
+        bowl.rotation.set(0.7, 0, 0.25);
+        bowl.rotation.order = "YXZ";
+        this.cyl(dish, team, "copper", 0.8, 0.8, 14, 4, 0, -2, 7).rotation.x = 0.7;
+        anim(dish, { type: "bob", amount: 1.2, speed: 0.5, base: 90 });
+        g.add(dish);
+        const beacon = this.shape(g, team, "glow", "derelict-beacon", () => new THREE.SphereGeometry(3, 8, 6), 52, 62, 38);
+        anim(beacon, { type: "pulse", amount: 0.3, speed: 1.1 });
+        break;
+      }
       default:
         this.box(g, team, "body", 36, 30, 36);
         this.box(g, team, "glow", 37, 2, 37, 0, 24);

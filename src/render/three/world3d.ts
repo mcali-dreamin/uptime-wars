@@ -90,8 +90,9 @@ const SKY = 0x060a12;
 interface Shown {
   object: THREE.Group;
   kind: "unit" | "building";
-  /** The team colour it was built in. */
+  /** The team colour it was built in, and whose it was (a site changes hands: it is rebuilt then). */
   color: number;
+  team: number;
   defId: string;
   size: number;
   seed: number;
@@ -383,6 +384,12 @@ export class World3D implements WorldView {
       alive.add(entity.id);
       const at = frame.position(entity);
       let s = this.shown.get(entity.id);
+      // The model bakes the owner's colour in: when ownership changes, build it again.
+      if (s && s.team !== entity.team) {
+        this.entityLayer.remove(s.object);
+        this.shown.delete(entity.id);
+        s = undefined;
+      }
       if (!s) {
         s = this.make(world, frame.content, entity);
         this.shown.set(entity.id, s);
@@ -443,6 +450,11 @@ export class World3D implements WorldView {
       if (selected || (ratio < 1 && (since < BAR_MS || ratio < BUILDING_BAR_BELOW))) {
         this.bars.add(at.x, floor + top * s.object.scale.y + 12, at.y, entity.footprint * TILE * 0.8, entity.hp / entity.maxHp);
       }
+      // A site being captured: a bar above it in the capturing team's colour.
+      if (entity.captureProgress && entity.captureTeam !== undefined) {
+        const need = frame.content.neutrals.sites.captureTicks;
+        this.bars.add(at.x, floor + top * s.object.scale.y + 24, at.y, entity.footprint * TILE * 0.8, entity.captureProgress / need, teamColor(world, entity.captureTeam));
+      }
     }
     this.bars.end();
     for (const [id, s] of this.shown) {
@@ -457,9 +469,10 @@ export class World3D implements WorldView {
     const horde = world.teams[entity.team]?.controller !== "human";
     const size = entity.kind === "unit" ? entity.radius : entity.footprint;
     const team = world.teams[entity.team];
-    const look = (team && content.races[team.raceId]?.look) ?? "default";
     const def = entity.kind === "building" ? content.buildings[entity.defId] : undefined;
-    const role = def && team ? roleOf(def, isCore(content, team, entity)) : undefined;
+    // A site keeps its own weathered look whoever holds it (only the colour changes).
+    const look = (!def?.site && team && content.races[team.raceId]?.look) || "default";
+    const role = def && team && !def.site ? roleOf(def, isCore(content, team, entity)) : undefined;
     const made = def?.spawn?.unit ?? def?.invoke?.unit;
     const emblem = made ? { unit: made, size: content.units[made]!.size } : undefined;
     const object = this.models.make(entity.defId, color, size, entity.kind === "unit", look, role, def?.tier ?? 0, emblem);
@@ -485,6 +498,7 @@ export class World3D implements WorldView {
       object,
       kind: entity.kind,
       color,
+      team: entity.team,
       defId: entity.defId,
       size,
       seed: (entity.id * 1.618) % (Math.PI * 2),

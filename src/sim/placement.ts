@@ -71,7 +71,7 @@ export function canPlace(
   const team = world.teams[teamId]!;
   const race = content.races[team.raceId]!;
   const def = content.buildings[buildingId];
-  if (!def || !race.buildings.includes(buildingId)) return "not in this race's roster";
+  if (!def || !def.buildable || !race.buildings.includes(buildingId)) return "not in this race's roster";
   if (!footprintIsOpen(world, col, row, def.footprint)) return "terrain is not buildable";
 
   if (team.coreId === -1) return "no core";
@@ -253,7 +253,7 @@ export function canFound(world: World, content: Content, teamId: TeamId, col: nu
   const center = footprintCenter(col, row, def.footprint);
   const clear = EXPANSION_CLEARANCE * TILE;
   const tooClose = world.entities.some((e) => {
-    if (e.kind !== "building" || e.hp <= 0 || allied(world, e.team, teamId)) return false;
+    if (e.kind !== "building" || e.hp <= 0 || allied(world, e.team, teamId) || content.buildings[e.defId]?.site) return false;
     const dx = e.x - center.x;
     const dy = e.y - center.y;
     return dx * dx + dy * dy <= clear * clear;

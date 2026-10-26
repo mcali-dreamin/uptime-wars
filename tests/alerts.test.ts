@@ -206,3 +206,17 @@ describe("alerts", () => {
     });
   });
 });
+
+describe("site alerts", () => {
+  it("says when you capture or lose a site, and when an enemy you can see takes one", () => {
+    const world = createWorld(content, { seed: 1234, races: ["open-source", "hyperscaler"], mode: "ffa", startWithCore: true });
+    const alerts = new Alerts(content);
+    const at = { x: 100, y: 100, id: 5 };
+    const neutral = world.teams.length - 1;
+    expect(alerts.update(world, [{ type: "siteCaptured", team: 0, from: neutral, ...at }], 0, 0, offScreen).map((a) => a.text)).toEqual(["Site captured"]);
+    expect(alerts.update(world, [{ type: "siteLost", team: 0, by: 1, ...at }], 0, 1, offScreen).map((a) => a.text)).toEqual(["Site lost"]);
+    const took = { type: "siteCaptured" as const, team: 1, from: neutral, ...at };
+    expect(alerts.update(world, [took], 0, 2, offScreen, () => false)).toEqual([]);
+    expect(alerts.update(world, [took], 0, 3, offScreen, () => true).map((a) => a.text)).toEqual(["An enemy took a site"]);
+  });
+});

@@ -25,6 +25,7 @@ import { teamCores } from "./placement";
 import { allied, hordeTeam, humanTeams, rulesFor, startingAllies, type MatchMode, type MatchRules } from "./teams";
 import { tickFunctions } from "./functions";
 import { spawnCamps, tickNeutrals } from "./neutrals";
+import { tickSites } from "./sites";
 import { syncWalls } from "./walls";
 import { tickSeparation } from "./separation";
 import { tickRepair } from "./mechanics";
@@ -191,6 +192,7 @@ export function step(world: World, content: Content): void {
   tickFunctions(ctx);
   tickBuildingAttacks(ctx);
   tickNeutrals(ctx);
+  tickSites(ctx);
   tickUnits(ctx);
   tickSeparation(ctx);
   // Last, so a building that finishes this tick starts working next tick.

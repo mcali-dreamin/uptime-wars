@@ -25,6 +25,7 @@ import {
   ownEntityAt,
   placementAt,
   selectedEntity,
+  siteAt,
   selectedIds,
   type Placement,
   type Selection,
@@ -67,7 +68,7 @@ const director = new Director(content);
 const alerts = new Alerts(content);
 const groups = new ControlGroups();
 /** Alert colours on the minimap. */
-const ALERT_COLOR = { attack: 0xfacc15, core: 0xf87171, lost: 0xf87171, hero: 0xfacc15, spread: 0xf87171, agent: 0xf87171, fighting: 0xfacc15, wiped: 0xf87171, camp: 0xfacc15 } as const satisfies Record<AlertKind, number>;
+const ALERT_COLOR = { attack: 0xfacc15, core: 0xf87171, lost: 0xf87171, hero: 0xfacc15, spread: 0xf87171, agent: 0xf87171, fighting: 0xfacc15, wiped: 0xf87171, camp: 0xfacc15, site: 0xfacc15 } as const satisfies Record<AlertKind, number>;
 /** Is a world point on screen right now (and in sight)? */
 const onScreen = (p: Point) => renderer.onScreen(p.x, p.y);
 const soundButton = $("sound");
@@ -552,6 +553,9 @@ const gameInput: GameInput = {
       return select({ kind: "entity", id: own.id });
     }
     if (leftClickOrders(session, selection)) return order(point);
+    // A site, held by anyone, can be looked at where the map is explored; it takes no orders.
+    const site = siteAt(session, point);
+    if (site && renderer.fog.isExplored(site.x, site.y)) return select({ kind: "entity", id: site.id });
     select(NOTHING);
   },
 
@@ -809,9 +813,9 @@ function stepOnce(): boolean {
   if (!session.tryStep()) return false;
   renderer.collectEvents(world);
   for (const cue of director.cues(world, world.events, session.local, listener, performance.now() / 1000)) sound.play(cue);
-  for (const alert of alerts.update(world, world.events, session.local, performance.now() / 1000, onScreen)) {
+  for (const alert of alerts.update(world, world.events, session.local, performance.now() / 1000, onScreen, (p) => renderer.fog.isVisible(p.x, p.y))) {
     renderer.showBanner(`${alert.text} · Space to look`);
-    sound.play({ name: alert.kind === "lost" || alert.kind === "wiped" ? "building-down" : alert.kind === "hero" ? "hero-down" : alert.kind === "camp" ? "level-up" : "alarm", volume: 0.6, pan: 0 });
+    sound.play({ name: alert.kind === "lost" || alert.kind === "wiped" ? "building-down" : alert.kind === "hero" ? "hero-down" : alert.kind === "camp" || (alert.kind === "site" && alert.text === "Site captured") ? "level-up" : "alarm", volume: 0.6, pan: 0 });
   }
   for (const event of world.events) {
     if (event.type === "failover" && event.team === session.team.id) renderer.showBanner("Core lost · failover");

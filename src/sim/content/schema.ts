@@ -70,6 +70,13 @@ export interface BuildingDef {
   /** Tiles per side. */
   footprint: number;
   buildable: boolean;
+  /**
+   * A capturable site (see neutrals.json -> sites, sites.ts): neutral
+   * territory that pays its owner through the usual income/compute fields.
+   * It can't produce, research, be decommissioned or targeted while neutral,
+   * and never counts for outcome, core logic, limits or cost growth.
+   */
+  site?: boolean;
   /** How far this building reveals the fog for its owner, in pixels. */
   sight?: number;
   /** Spawns `count` units every interval, keeping at most `maxAlive` of its own alive. */
@@ -595,7 +602,24 @@ export interface CampTierDef {
  * heals `regenPermillePerSecond` of max hp each second while nothing hostile
  * is near and it hasn't been hit for `alertTicks`.
  */
+export interface SitesDef {
+  /** Building id (must have `site: true`). */
+  building: string;
+  /** Camp tiers that get a site at their center. */
+  tiers: string[];
+  /** Pixels from the site's center within which player units capture it. */
+  captureRadius: number;
+  /** Ticks of uncontested presence to capture it. */
+  captureTicks: number;
+  /** Hp (permille of max) a site keeps when it is knocked down and goes neutral. */
+  rearmPermille: number;
+  /** A neutral site mends this much of max hp (permille) each second. */
+  regenPermillePerSecond: number;
+}
+
 export interface NeutralsDef {
+  /** Capturable sites standing at the center of some camps. */
+  sites: SitesDef;
   regenPermillePerSecond: number;
   alertTicks: number;
   /**

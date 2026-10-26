@@ -2,7 +2,8 @@
 
 import { rankWorth } from "./ranks";
 import { creditKill } from "./heroes";
-import { hostile } from "./teams";
+import { hostile, neutralTeam } from "./teams";
+import { isSite, transferOwnership } from "./ownership";
 import { GRID_CELL, GRID_STRIDE, type TickContext } from "./context";
 import { regionShield } from "./mechanics";
 import { invulnerable, nestShielded, retaliate } from "./fortress";
@@ -96,6 +97,8 @@ export function dealDamage(
   secondary = false,
 ): void {
   const { world, content } = ctx;
+  // A neutral site takes no damage from anyone.
+  if (target.kind === "building" && isSite(content, target) && world.teams[target.team]?.controller === "neutral") return;
   const attackerUnit = attacker.kind === "unit" ? content.units[attacker.defId] : undefined;
   if (!secondary) baseDamage *= critMultiplier(content, world, attacker);
   // Siege units tear into buildings.
@@ -124,6 +127,11 @@ export function dealDamage(
   }
   const wasAlive = target.hp > 0;
   target.hp -= damage;
+  // An owned site never dies: at 0 it goes dark (neutral) at a share of its hp, and can be taken again.
+  if (wasAlive && target.hp <= 0 && target.kind === "building" && isSite(content, target)) {
+    target.hp = Math.max(1, Math.round((target.maxHp * content.neutrals.sites.rearmPermille) / 1000));
+    transferOwnership(ctx, target, neutralTeam(world)!.id, attacker.team);
+  }
   // Remember who's shooting: a creep turns on the tower or unit hitting it.
   if (target.kind === "unit" && attacker.id !== target.id) {
     target.provokedBy = attacker.id;
@@ -131,7 +139,7 @@ export function dealDamage(
   }
   // Paperwork: a slowing hit makes an enemy unit act at half speed for a while.
   if (attackerUnit?.slowTicks && target.kind === "unit" && target.hp > 0) target.slowedUntil = world.tick + attackerUnit.slowTicks;
-  if (target.kind === "building") loseUsers(ctx, world.teams[target.team]!, damage, target.defId);
+  if (target.kind === "building" && !isSite(content, target)) loseUsers(ctx, world.teams[target.team]!, damage, target.defId);
   world.events.push({
     type: "shot",
     from: attacker.id,

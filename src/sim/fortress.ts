@@ -4,6 +4,7 @@
 // about it needs to be stored. Every few waves the botnet rebuilds the ones
 // you've knocked down, tougher than before.
 
+import { isSite } from "./ownership";
 import type { Content } from "./content";
 import { placeBuilding } from "./entities";
 import { clusters } from "./terrain/elevation";
@@ -193,6 +194,8 @@ export function nestShielded(world: World, content: Content, target: Entity): bo
 export const INVULNERABLE = "invulnerable · destroy every Botnet Farm first";
 
 export function invulnerable(world: World, content: Content, target: Entity): boolean {
+  // A neutral site is nobody's target: it only comes down once someone owns it.
+  if (isSite(content, target) && world.teams[target.team]?.controller === "neutral") return true;
   return nestShielded(world, content, target);
 }
 

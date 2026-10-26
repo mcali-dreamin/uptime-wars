@@ -54,6 +54,14 @@ export function validateContent(content: Content): void {
     if (tier.fromStart <= 0 || tier.count < 0 || tier.units.length === 0) errors.push(`camp tier ${id} needs fromStart > 0, count >= 0 and units`);
     for (const unit of tier.units) if (!content.units[unit]) errors.push(`camp tier ${id} uses unknown unit ${unit}`);
   }
+  const sites = camps.sites;
+  const siteDef = content.buildings[sites.building];
+  if (!siteDef) errors.push(`sites use unknown building ${sites.building}`);
+  else if (!siteDef.site) errors.push(`sites building ${sites.building} needs site: true`);
+  else if (siteDef.buildable) errors.push(`site building ${sites.building} must not be buildable`);
+  for (const tier of sites.tiers) if (!camps.tiers[tier]) errors.push(`sites use unknown camp tier ${tier}`);
+  if (!(sites.captureRadius > 0) || !Number.isInteger(sites.captureTicks) || sites.captureTicks < 1) errors.push("sites need captureRadius > 0 and integer captureTicks >= 1");
+  if (!(sites.rearmPermille > 0 && sites.rearmPermille <= 1000) || !(sites.regenPermillePerSecond >= 0)) errors.push("sites need rearmPermille in 1..1000 and regenPermillePerSecond >= 0");
   if (content.races.neutral?.controller !== "neutral") errors.push("races needs a neutral race with controller neutral");
   for (const [id, upgrade] of Object.entries(content.upgrades)) {
     if (upgrade.maxLevel < 1 || upgrade.cost <= 0 || upgrade.researchTicks <= 0) errors.push(`upgrade ${id} needs maxLevel, cost, and researchTicks > 0`);

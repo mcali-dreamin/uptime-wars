@@ -17,6 +17,7 @@ import { fortressSpots, farmSpots } from "./fortress";
 import { TICK_RATE, TILE } from "./map";
 import { distance } from "./movement";
 import { hostile, neutralTeam } from "./teams";
+import { hasSite, spawnSite } from "./sites";
 import type { Terrain, TilePoint } from "./terrain";
 import { TILE_OPEN } from "./terrain/tiles";
 import { CAMP_OPEN_RADIUS, CAMP_SPACING, CAMP_TOLERANCE, CAMP_UNIT_GAP, EXPANSION_CLEARANCE, GUARD_RADIUS } from "./tuning";
@@ -85,7 +86,12 @@ export function campSpots(terrain: Terrain, neutrals: NeutralsDef): CampSpot[] {
   return spots;
 }
 
-/** Put every camp's guards on the map (match start). */
+/** Eight directions around a center (unit length, roughly), for standing guards around a site. */
+const AROUND = [[1, 0], [0, 1], [-1, 0], [0, -1], [0.7, 0.7], [-0.7, 0.7], [-0.7, -0.7], [0.7, -0.7]] as const;
+/** How far past a site's edge guards stand (px). */
+const SITE_MARGIN = 36;
+
+/** Put every camp's guards on the map (match start). A camp with a site gets it at its center and its guards around it. */
 export function spawnCamps(ctx: TickContext): void {
   const { world, content } = ctx;
   const team = neutralTeam(world);
@@ -93,12 +99,27 @@ export function spawnCamps(ctx: TickContext): void {
   campSpots(world.terrain, content.neutrals).forEach((spot, campId) => {
     const cx = (spot.col + 0.5) * TILE;
     const cy = (spot.row + 0.5) * TILE;
+    const site = hasSite(content.neutrals.sites, spot) ? spawnSite(ctx, spot, campId) : null;
     content.neutrals.tiers[spot.tier]!.units.forEach((unitId, i) => {
-      const [dx, dy] = FORMATION[i % FORMATION.length]!;
-      const unit = spawnUnit(ctx, team.id, unitId, { x: cx, y: cy }, cx + dx * CAMP_UNIT_GAP, cy + dy * CAMP_UNIT_GAP, "guard");
-      // Home is the camp center, whatever ground the unit was nudged onto.
-      unit.homeX = cx;
-      unit.homeY = cy;
+      let x: number;
+      let y: number;
+      if (site) {
+        // Around the footprint, a second ring for a big camp; inside the leash.
+        const [dx, dy] = AROUND[i % AROUND.length]!;
+        const ring = site.radius * 1.4 + SITE_MARGIN + Math.floor(i / AROUND.length) * 2 * CAMP_UNIT_GAP;
+        x = cx + dx * ring;
+        y = cy + dy * ring;
+      } else {
+        const [dx, dy] = FORMATION[i % FORMATION.length]!;
+        x = cx + dx * CAMP_UNIT_GAP;
+        y = cy + dy * CAMP_UNIT_GAP;
+      }
+      const unit = spawnUnit(ctx, team.id, unitId, { x: cx, y: cy }, x, y, "guard");
+      // Home is the camp center, whatever ground the unit was nudged onto;
+      // around a site it is the guard's own post, since the center is the
+      // building (walking home would push into its wall forever).
+      unit.homeX = site ? x : cx;
+      unit.homeY = site ? y : cy;
       unit.campId = campId;
     });
   });

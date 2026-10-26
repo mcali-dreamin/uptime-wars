@@ -2,7 +2,7 @@
 // it. Every "what does clicking here do?" question is answered in this file,
 // so the input code, the cursor, the hint line, and the info panel agree.
 
-import { TILE, buildCost, type Building, canFound, canPlace, decommissionBlocker, decommissionRefund, dismissable, finishedCores, forkBlocker, hostile, isCore, MAX_ORDER_UNITS, tierBlocker, type Content, type Entity, type Point, type Unit } from "../sim";
+import { TILE, buildCost, type Building, canFound, canPlace, decommissionBlocker, decommissionRefund, dismissable, finishedCores, forkBlocker, hostile, isCore, isSite, MAX_ORDER_UNITS, tierBlocker, type Content, type Entity, type Point, type Unit } from "../sim";
 import { heroOf } from "../sim/heroes";
 import type { Order, Session } from "./session";
 
@@ -135,7 +135,18 @@ export function armed(session: Session, selection: Selection, how: "attack" | "m
 export function selectedEntity(session: Session, selection: Selection): Entity | undefined {
   if (selection.kind !== "entity") return undefined;
   const entity = session.entity(selection.id);
-  return entity && entity.team === session.local ? entity : undefined;
+  // A site can be looked at whoever holds it (the card shows who and what it gives); it takes no orders.
+  return entity && (entity.team === session.local || isSite(session.content, entity)) ? entity : undefined;
+}
+
+/** A site under a world point, whoever holds it. */
+export function siteAt(session: Session, point: Point): Building | undefined {
+  for (const entity of session.world.entities) {
+    if (entity.kind !== "building" || entity.hp <= 0 || !isSite(session.content, entity)) continue;
+    const half = (entity.footprint * TILE) / 2;
+    if (Math.abs(point.x - entity.x) <= half && Math.abs(point.y - entity.y) <= half) return entity;
+  }
+  return undefined;
 }
 
 /** A unit you can command: one of yours that fights (not the deploy agent). */

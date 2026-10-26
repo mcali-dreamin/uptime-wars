@@ -66,6 +66,13 @@ export class Minimap {
         standing.add(entity.campId);
         continue;
       }
+      // A site (the only building with a camp) shows wherever the map is explored: a square in its owner's colour.
+      if (entity.kind === "building" && entity.campId !== undefined) {
+        if (!this.fog.isExplored(entity.x, entity.y)) continue;
+        const half = 4;
+        g.rect(entity.x * s - half, entity.y * s - half, half * 2, half * 2).fill({ color: teamColor(world, entity.team) }).stroke({ width: 1, color: 0x0b0f17 });
+        continue;
+      }
       if (!shows(entity)) continue;
       const color = teamColor(world, entity.team);
       if (entity.kind === "building") {

@@ -2,14 +2,14 @@
 // the build button you're hovering, what you're placing, or what you have
 // selected. Nothing else pops up. The full story lives in the Guide.
 
-import { invokeCost, upgradeName, earnedPerks, tierDef, TICK_RATE, forkCost, isCore, levelOf, queueOf, regionShield, buildingRank, nextRank, rankBlocker, rankCost, rankGroup, tierOf, unitRank } from "../sim";
+import { allied, invokeCost, upgradeName, earnedPerks, tierDef, TICK_RATE, forkCost, isCore, levelOf, queueOf, regionShield, buildingRank, nextRank, rankBlocker, rankCost, rankGroup, tierOf, unitRank } from "../sim";
 import { armyHero, armyUnits, buildingGroup, groundOrderLabel, isRallied, removal, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { heightAtTile, TILE, type Building, type Entity } from "../sim";
 import { EXPANSION_CLEARANCE, HIGH_GROUND_DAMAGE } from "../sim/tuning";
 import { upgradeOf } from "./build-bar";
 import { buildingCard, rankEffect, unitCard, upgradeCard, type InfoCard } from "./cards";
-import { permille, rankChange } from "./text";
+import { permille, rankChange, secs as seconds } from "./text";
 import { $ } from "./dom";
 
 export class InfoPanel {
@@ -105,6 +105,7 @@ export class InfoPanel {
     if (selection.kind === "buildings") return this.showBuildings(selection);
     const entity = selectedEntity(this.session, selection);
     if (!entity) return this.show(null);
+    if (entity.kind === "building" && content.buildings[entity.defId]!.site) return this.show(this.siteCard(entity));
     if (entity.kind === "building") {
       const card = buildingCard(content, raceId, entity.defId);
       const hp = `${Math.ceil(entity.hp)} / ${entity.maxHp} HP`;
@@ -146,6 +147,24 @@ export class InfoPanel {
     const card = unitCard(content, entity.defId, entity.hp, entity.maxHp, unitRank(content, this.session.world, entity)?.name ?? null);
     if (entity.team === this.session.local) this.showHeight(entity, card.lines);
     this.show(card);
+  }
+
+  /** A site: name, who holds it, what it gives, and how its capture stands. No orders. */
+  private siteCard(site: Building): InfoCard {
+    const { content, world, local } = this.session;
+    const def = content.buildings[site.defId]!;
+    const team = world.teams[site.team]!;
+    const owner = team.controller === "neutral" ? "Neutral" : site.team === local ? "You" : allied(world, local, site.team) ? `Ally (player ${site.team + 1})` : team.controller === "wave-director" ? "The botnet" : `Player ${site.team + 1}`;
+    const gives = [def.income ? `+$${def.income.amount} / ${seconds(def.income.intervalTicks)}` : "", def.compute ? `+${def.compute} compute` : ""].filter(Boolean).join(" · ");
+    const lines = [`Owner: ${owner} · ${Math.ceil(site.hp)} / ${site.maxHp} HP`, `Gives its owner ${gives}`];
+    if (team.controller === "neutral") {
+      const guarded = site.campId !== undefined && world.entities.some((e) => e.kind === "unit" && e.campId === site.campId && e.hp > 0);
+      const need = content.neutrals.sites.captureTicks;
+      if (guarded) lines.push("Clear the camp to capture");
+      else if (site.captureProgress) lines.push(`Capturing · ${Math.floor((site.captureProgress * 100) / need)}%`);
+      else lines.push("Stand near it with your units to capture");
+    } else lines.push(site.team === local || allied(world, local, site.team) ? "Enemies must knock it down to take it" : "Knock it down to make it neutral again");
+    return { title: def.name, lines };
   }
 
   /** The high-ground bonus, where it applies: the sim gives it, so the card says it. */

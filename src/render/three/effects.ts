@@ -180,7 +180,8 @@ export class Bars {
     this.right.set(1, 0, 0).applyQuaternion(this.quaternion);
   }
 
-  add(x: number, y: number, z: number, width: number, ratio: number): void {
+  /** `color` overrides the health colours (a capture bar in its team's colour). */
+  add(x: number, y: number, z: number, width: number, ratio: number, color?: number): void {
     if (this.count >= MAX_BARS) return;
     const r = Math.max(0, Math.min(1, ratio));
     this.p.set(x, y, z);
@@ -190,7 +191,7 @@ export class Bars {
     this.p.add(this.offset);
     this.s.set(Math.max(0.01, width * r), 3, 1);
     this.fill.setMatrixAt(this.count, this.m.compose(this.p, this.quaternion, this.s));
-    this.fill.setColorAt(this.count, this.color.setHex(r > 0.5 ? 0x4ade80 : r > 0.25 ? 0xfacc15 : 0xf87171));
+    this.fill.setColorAt(this.count, this.color.setHex(color ?? (r > 0.5 ? 0x4ade80 : r > 0.25 ? 0xfacc15 : 0xf87171)));
     this.count += 1;
   }
 

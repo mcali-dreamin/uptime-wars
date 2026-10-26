@@ -6,7 +6,7 @@
 
 import { allied, isCore, type Content, type Unit, type Point, type SimEvent, type TeamId, type World } from "../sim";
 
-export type AlertKind = "attack" | "core" | "lost" | "hero" | "spread" | "agent" | "fighting" | "wiped" | "camp";
+export type AlertKind = "attack" | "core" | "lost" | "hero" | "spread" | "agent" | "fighting" | "wiped" | "camp" | "site";
 
 export interface Alert {
   kind: AlertKind;
@@ -18,7 +18,7 @@ export interface Alert {
 }
 
 /** Quiet time per kind (seconds) before the same kind, near the same place, alerts again. */
-const QUIET: Record<AlertKind, number> = { attack: 12, core: 8, lost: 0, hero: 0, spread: 0, agent: 0, fighting: 20, wiped: 20, camp: 0 };
+const QUIET: Record<AlertKind, number> = { attack: 12, core: 8, lost: 0, hero: 0, spread: 0, agent: 0, fighting: 20, wiped: 20, camp: 0, site: 0 };
 /** Soldier deaths inside this window (seconds) count toward "wiped". */
 const WIPE_WINDOW = 10;
 /** Deaths in the window needed before an army counts as wiped. */
@@ -44,7 +44,7 @@ export class Alerts {
   }
 
   /** The alerts this tick's events raise for `local`, at time `now` (seconds). */
-  update(world: World, events: readonly SimEvent[], local: TeamId, now: number, onScreen: (p: Point) => boolean): Alert[] {
+  update(world: World, events: readonly SimEvent[], local: TeamId, now: number, onScreen: (p: Point) => boolean, canSee: (p: Point) => boolean = onScreen): Alert[] {
     const out: Alert[] = [];
     const raise = (kind: AlertKind, text: string, x: number, y: number, quietWhenVisible: boolean) => {
       // Fights you're watching don't need telling, but losses and the hero always do.
@@ -91,6 +91,14 @@ export class Alerts {
         raise("agent", "Your deploy agent was lost · the $ is gone", event.x, event.y, false);
       } else if (event.type === "campCleared" && event.team === local) {
         raise("camp", "Camp cleared", event.x, event.y, false);
+      } else if (event.type === "siteCaptured") {
+        if (event.team === local) raise("site", "Site captured", event.x, event.y, false);
+        else if (!allied(world, local, event.team) && event.from !== event.team && canSee({ x: event.x, y: event.y })) {
+          const botnet = world.teams[event.team]?.controller === "wave-director";
+          raise("site", `${botnet ? "The botnet" : "An enemy"} took a site`, event.x, event.y, false);
+        }
+      } else if (event.type === "siteLost" && event.team === local) {
+        raise("site", "Site lost", event.x, event.y, false);
       } else if (event.type === "infecting") {
         // Where it's headed, so Space takes you there to cut it off.
         raise("spread", "An Infector is heading out · stop it before it builds", event.x, event.y, false);
