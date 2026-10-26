@@ -9,7 +9,7 @@ import { heightAtTile, TILE, type Building, type Entity } from "../sim";
 import { EXPANSION_CLEARANCE, HIGH_GROUND_DAMAGE } from "../sim/tuning";
 import { upgradeOf } from "./build-bar";
 import { buildingCard, rankEffect, unitCard, upgradeCard, type InfoCard } from "./cards";
-import { rankChange } from "./text";
+import { permille, rankChange } from "./text";
 import { $ } from "./dom";
 
 export class InfoPanel {
@@ -79,6 +79,17 @@ export class InfoPanel {
           `Select it, press C, and click open ground to found an expansion there (no hostiles within ${EXPANSION_CLEARANCE} tiles)`,
           "Each finished core raises your per-tier caps and rallies its own spawners",
           "One agent at a time; if it dies on the way, the $ is gone",
+        ],
+      });
+    }
+    if (building === "spot") {
+      const spot = this.session.content.economy.spot;
+      return this.show({
+        title: "Spot capacity",
+        lines: [
+          `Rent +${spot.compute[Math.min(tierOf(this.session.content, this.session.team), spot.compute.length - 1)]} compute for ${spot.ticks / TICK_RATE}s: a push, or a boss`,
+          "When it ends, units over your cap aren't replaced and fade as they fall",
+          `Each rental this match costs ${permille(spot.growthPermille)} more of the base price`,
         ],
       });
     }

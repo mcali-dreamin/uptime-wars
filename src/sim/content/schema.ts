@@ -348,6 +348,13 @@ export interface EconomyDef {
    * the overload.
    */
   compute: { perUser: number; perUnit: number; churnPerSecond: number; maxOverload: number };
+  /**
+   * Spot Capacity: rent extra compute from a core for `ticks`. `compute` and
+   * `cost` ($) are per core tier; each rental already made this match adds
+   * `growthPermille` of the base cost. When it ends the compute fades by
+   * attrition (see tickSpot).
+   */
+  spot: { compute: number[]; cost: number[]; growthPermille: number; ticks: number };
   /** One user leaves for every this much damage your buildings take. */
   damagePerUserLost: number;
   /**

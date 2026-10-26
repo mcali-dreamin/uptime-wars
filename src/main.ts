@@ -99,11 +99,17 @@ const info = new InfoPanel(session, () => arm(), () => invokeSelected(), () => f
 info.removeArmed = () => pendingRemoval !== null && removal(session, selection)?.key === pendingRemoval.key && performance.now() - pendingRemoval.at < REMOVE_CONFIRM_MS;
 /** The core card's "Deploy agent" button (see BuildBar). */
 const AGENT_BUTTON = "agent";
+/** The core card's "Spot capacity" button (see BuildBar). */
+const SPOT_BUTTON = "spot";
 const bar = new BuildBar(session, {
   choose: (button) => {
     sound.ui("click");
     if (button === AGENT_BUTTON) {
       deployAgent();
+      return;
+    }
+    if (button === SPOT_BUTTON) {
+      rentCompute();
       return;
     }
     const current = buttonFor(selection);
@@ -288,6 +294,13 @@ function deployAgent(): boolean {
   if (selection.kind !== "entity" || !isCore(content, session.team, session.entity(selection.id))) return false;
   session.issue({ type: "trainAgent", coreId: selection.id });
   agentOrdered = true;
+  return true;
+}
+
+/** Rent Spot Capacity at the selected core (N, or the card button). */
+function rentCompute(): boolean {
+  if (!coreSelected()) return false;
+  session.issue({ type: "rentCompute" });
   return true;
 }
 
@@ -675,6 +688,7 @@ const gameInput: GameInput = {
     }
     if (coreSelected() || centerSelected()) {
       if (key === "b" && coreSelected()) return deployAgent(), true;
+      if (key === "n" && coreSelected()) return rentCompute(), true;
       const upgrade = bar.upgrades(barMode())[Number(key) - 1];
       if (upgrade) return research(upgrade), true;
       return false;

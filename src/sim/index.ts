@@ -11,7 +11,7 @@ export { queueCommand } from "./commands";
 export { canPlace, canFound, baseCost, buildCost, owned, isOccupied, isCore, inNetwork, networkProviders, teamCores, finishedCores, homeCore, rallyFor } from "./placement";
 export { threatPermille, planWave, playerScale, previewWave, trickleBudget, waveInterval, type WavePreview } from "./waves";
 export { STARTING_MONEY, BASE_INCOME, EXPANSION_CLEARANCE, MAX_ORDER_UNITS, RESEARCH_QUEUE } from "./tuning";
-export { computeBalance, incomeRate, unitUpkeep, trafficRadius, userCapacity } from "./economy";
+export { computeBalance, spotCost, spotState, incomeRate, unitUpkeep, trafficRadius, userCapacity } from "./economy";
 export { canResearch, levelOf, multiplier, nextLevel, nextQueued, projectedTier, queueOf, queuedCount } from "./upgrades";
 export { hashWorld, hashTerrain } from "./hash";
 

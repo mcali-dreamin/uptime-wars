@@ -182,13 +182,13 @@ describe("spawner ranks", () => {
 });
 
 describe("extra cores", () => {
-  it("add reach and redundancy, not compute", () => {
+  it("each finished one supplies its own compute", () => {
     const w = world("hyperscaler");
     const c = core(w);
     const before = computeBalance(w, content, w.teams[0]!).supply;
     placeBuilding(w, content, 0, "core", c.col + 6, c.row, true);
     placeBuilding(w, content, 0, "core", c.col - 6, c.row, true);
-    expect(computeBalance(w, content, w.teams[0]!).supply).toBe(before);
+    expect(computeBalance(w, content, w.teams[0]!).supply).toBe(before + 2 * content.buildings["core"]!.compute!);
   });
 
   it("a backup core still supplies when the main one falls", () => {

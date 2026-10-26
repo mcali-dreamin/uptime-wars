@@ -4,6 +4,12 @@
   "minArrivalsPerSecond": 1,
   "revenuePerUserPerSecond": 0.08,
   "damagePerUserLost": 12,
+  "spot": {
+    "compute": [60, 120, 200],
+    "cost": [250, 500, 900],
+    "growthPermille": 250,
+    "ticks": 1800
+  },
   "compute": {
     "perUser": 1,
     "perUnit": 2,

@@ -1,6 +1,6 @@
 // Top bar numbers, the status line, and the hint line over the map.
 
-import { TICK_RATE, threatPermille, computeBalance, farmSpots, farmsStanding, hashWorld, hordeTeam, incomeRate, isCore, previewWave, rulesLabel, userCapacity, type Content } from "../sim";
+import { TICK_RATE, threatPermille, computeBalance, farmSpots, farmsStanding, hashWorld, hordeTeam, incomeRate, isCore, previewWave, rulesLabel, spotState, userCapacity, type Content } from "../sim";
 
 const RULES_NAME = { coop: "Co-op", ffa: "Free-for-all", custom: "Custom rules" } as const;
 import { groundOrderLabel, leftClickOrders, selectedEntity, type Selection } from "../game/selection";
@@ -138,11 +138,14 @@ export class Hud {
     const { supply, demand } = computeBalance(world, content, team);
     const over = team.overload > 0;
     const capped = team.capped === true;
-    this.compute.textContent = over
-      ? `${demand} / ${supply} · over: users leaving, ${Math.max(1, Math.round(team.overload / 10))}% slow`
-      : capped
-        ? `${demand} / ${supply} · army cap: build compute`
-        : `${demand} / ${supply}`;
+    const spot = spotState(world, team);
+    const rented = spot === "active" ? ` · spot ${clock(Math.max(0, team.spot!.untilTick - world.tick) / TICK_RATE)}` : spot === "fading" ? " · spot fading" : "";
+    this.compute.textContent =
+      (over
+        ? `${demand} / ${supply} · over: users leaving, ${Math.max(1, Math.round(team.overload / 10))}% slow`
+        : capped
+          ? `${demand} / ${supply} · army cap: build compute`
+          : `${demand} / ${supply}`) + rented;
     this.computeStat.classList.toggle("overloaded", over);
     this.computeStat.title =
       `In use / supplied. Each user uses ${content.economy.compute.perUser}, each unit about ${content.economy.compute.perUnit}. ` +

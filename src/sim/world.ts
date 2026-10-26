@@ -17,7 +17,7 @@ import { tickBuildingAttacks } from "./combat";
 import { applyCommands } from "./commands";
 import { buildGrid, makeContext, type TickContext } from "./context";
 import type { Content } from "./content";
-import { tickConstruction, tickCooldowns, tickIncome, tickUsers } from "./economy";
+import { tickConstruction, tickCooldowns, tickIncome, tickSpot, tickUsers } from "./economy";
 import { foundCore, spawnUnit } from "./entities";
 import { collapseHorde, fortify, raiseFarms } from "./fortress";
 import { footprintCenter } from "./map";
@@ -151,6 +151,8 @@ function makeTeam(content: Content, id: TeamId, raceId: string, heroId: string |
     researchQueue: [],
     labResearchQueue: [],
     downTick: null,
+    spot: null,
+    spotRentals: 0,
     heroId: heroId ?? race.heroes?.[0] ?? null,
     hero: null,
     ai:
@@ -174,6 +176,7 @@ export function step(world: World, content: Content): void {
   tickCooldowns(ctx);
   tickIncome(ctx);
   tickUsers(ctx);
+  tickSpot(ctx);
   tickResearch(ctx);
   tickRefits(ctx);
   tickHeroes(ctx);
