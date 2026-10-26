@@ -16,6 +16,7 @@ import {
   humanTeams,
   neutralTeam,
   step,
+  type Building,
   type Unit,
   type World,
 } from "../src/sim";
@@ -99,14 +100,23 @@ describe("camp placement", () => {
     expect(content.units["legacy-mainframe"]!.bounty).toBeGreaterThan(content.units["brute-forcer"]!.bounty);
   });
 
-  it("units stand at their camp, in guard mode, homed on its center", () => {
+  it("units stand at their camp, in guard mode, homed on its center (or, around a site, on their post)", () => {
     const world = createWorld(content, SETUP);
     const spots = campSpots(world.terrain, plan);
     for (const unit of guards(world)) {
       const spot = spots[unit.campId!]!;
+      const cx = (spot.col + 0.5) * TILE;
+      const cy = (spot.row + 0.5) * TILE;
       expect(unit.mode).toBe("guard");
-      expect(unit.homeX).toBe((spot.col + 0.5) * TILE);
-      expect(unit.homeY).toBe((spot.row + 0.5) * TILE);
+      if (plan.sites.tiers.includes(spot.tier)) {
+        // The center is the site's footprint: home must be walkable ground off it, near the camp.
+        const site = world.entities.find((e): e is Building => e.kind === "building" && e.campId === unit.campId)!;
+        expect(Math.max(Math.abs(unit.homeX - cx), Math.abs(unit.homeY - cy))).toBeGreaterThan((site.footprint * TILE) / 2);
+        expect(Math.hypot(unit.homeX - cx, unit.homeY - cy)).toBeLessThan(GUARD_RADIUS);
+      } else {
+        expect(unit.homeX).toBe(cx);
+        expect(unit.homeY).toBe(cy);
+      }
     }
   });
 });

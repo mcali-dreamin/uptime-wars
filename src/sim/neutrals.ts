@@ -115,9 +115,11 @@ export function spawnCamps(ctx: TickContext): void {
         y = cy + dy * CAMP_UNIT_GAP;
       }
       const unit = spawnUnit(ctx, team.id, unitId, { x: cx, y: cy }, x, y, "guard");
-      // Home is the camp center, whatever ground the unit was nudged onto.
-      unit.homeX = cx;
-      unit.homeY = cy;
+      // Home is the camp center, whatever ground the unit was nudged onto;
+      // around a site it is the guard's own post, since the center is the
+      // building (walking home would push into its wall forever).
+      unit.homeX = site ? x : cx;
+      unit.homeY = site ? y : cy;
       unit.campId = campId;
     });
   });

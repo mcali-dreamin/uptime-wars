@@ -1,6 +1,6 @@
 // Top bar numbers, the status line, and the hint line over the map.
 
-import { TICK_RATE, threatPermille, computeBalance, farmSpots, farmsStanding, hashWorld, hordeTeam, incomeRate, isCore, previewWave, rulesLabel, spotState, userCapacity, type Content } from "../sim";
+import { TICK_RATE, threatPermille, computeBalance, farmSpots, farmsStanding, hashWorld, hordeTeam, incomeRate, isCore, previewWave, sitesHeld, rulesLabel, spotState, userCapacity, type Content } from "../sim";
 
 const RULES_NAME = { coop: "Co-op", ffa: "Free-for-all", custom: "Custom rules" } as const;
 import { groundOrderLabel, leftClickOrders, selectedEntity, type Selection } from "../game/selection";
@@ -26,6 +26,7 @@ export class Hud {
   private readonly computeStat = $("compute-stat");
   private readonly users = $("users");
   private readonly income = $("income");
+  private readonly sites = $("sites");
   private readonly churn = $("churn");
   /** Users last frame, and how many were lost recently, to flash churn. */
   private lastUsers = 0;
@@ -100,6 +101,9 @@ export class Hud {
     this.income.textContent = `+${total.toFixed(1)}/s`;
     const share = total > 0 ? Math.round((100 * rate.users) / total) : 0;
     this.income.title = `$ from users ${rate.users.toFixed(1)}/s (${share}%) · base ${rate.base.toFixed(1)}/s`;
+    const held = sitesHeld(world, content, team.id);
+    this.sites.textContent = held > 0 ? `Sites ${held}` : "";
+    this.sites.title = "Captured sites: each pays $ and supplies compute while you hold it.";
     const now = performance.now();
     if (team.users < this.lastUsers) {
       this.lost = now - this.lostAt < CHURN_SHOW_MS ? this.lost + (this.lastUsers - team.users) : this.lastUsers - team.users;

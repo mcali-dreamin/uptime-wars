@@ -208,6 +208,22 @@ need a real mid-game army and pay like a Spot rental. The minimap marks every
 standing camp with a diamond by tier (green, amber, red). The neutral team never plays: no income, no core, no scoreboard
 line, and it never affects who wins. Numbers live in `src/content/neutrals.json`.
 
+**Sites.** A Derelict Datacenter stands at the center of every far camp (4 on
+the default seed, one per start), guarded by the camp. It is pure territory: it
+pays its owner $1.5 a second and supplies 10 compute through the ordinary
+building paths, and does nothing else (no production, research, upgrades or
+decommissioning). Clear the camp, then stand your units (heroes and deploy
+agents count) within 200 px of it for 10 seconds uncontested to capture it: two
+hostile sides at once pause it, nobody there drains it, and a rival has to drain
+your progress before building its own. An owned site can't be captured again;
+knock it down and it doesn't die but goes neutral at 25% hp, mends, and is up
+for grabs. Sites never count for winning or losing, core logic, caps or cost
+growth. You get "Site captured" and "Site lost" alerts, a "Sites N" counter in
+the HUD, and the minimap shows every explored site as a square in its owner's
+colour. Every ownership change goes through `transferOwnership`
+(`src/sim/ownership.ts`). Numbers live in `src/content/neutrals.json` and
+`src/content/buildings.json`. Computer players don't contest sites yet.
+
 **Spot capacity.** Rent extra compute for a push or a boss. Select a core and
 press `N` (or the Spot capacity button): +60 / 120 / 200 compute (by core tier)
 for 90s, for $250 / 500 / 900. Each rental this match costs 25% of the base
@@ -524,7 +540,8 @@ Direction: survival on a procedurally generated open web.
 - [x] Core tech tiers: Core, Data Center, Region
 - [x] Network expansion (per race) and redundant cores
 - [x] Expansion: found cores across the map with a deploy agent; each core raises the caps
-- [x] Neutral camps: guarded legacy hardware at seeded spots, bounty and hero XP (capturable sites and AI to come, #160)
+- [x] Neutral camps: guarded legacy hardware at seeded spots, bounty and hero XP (#160)
+- [x] Capturable sites: derelict datacenters at far camps, `transferOwnership` (#160; the AI capturing and contesting them is still to come)
 - [x] Heroes: one per race, levels, skill points, four abilities each
 - [x] Compute is the army cap; generators are limited per core tier (soft at the top tier)
 - [x] Four races: Open Source Collective, Hyperscaler, Serverless, Walled Garden

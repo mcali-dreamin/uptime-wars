@@ -99,6 +99,12 @@ export class World2D implements WorldView {
         const tier = owner && isCore(content, owner, entity) ? tierOf(content, owner) : 0;
         for (let i = 1; i <= tier; i += 1) g.rect(left - 4 * i, top - 4 * i, size + 8 * i, size + 8 * i).stroke({ width: 1.5, color, alpha: 0.6 });
         drawHealth(g, left, top - 6, size, entity.hp / entity.maxHp);
+        // A site being captured: a bar in the capturing team's colour.
+        if (entity.captureProgress && entity.captureTeam !== undefined) {
+          const ratio = Math.min(1, entity.captureProgress / content.neutrals.sites.captureTicks);
+          g.rect(left, top - 12, size, 3).fill({ color: 0x243142 });
+          g.rect(left, top - 12, size * ratio, 3).fill({ color: teamColor(world, entity.captureTeam) });
+        }
         const attack = content.buildings[entity.defId]?.attack;
         if (attack) g.circle(x, y, attack.range + entity.radius).stroke({ width: 1, color, alpha: 0.08 });
         continue;

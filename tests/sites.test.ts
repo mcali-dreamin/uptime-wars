@@ -1,7 +1,5 @@
 // Capturable sites ("derelict datacenters") and transferOwnership (#160 step 2).
 
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   computeBalance,
@@ -315,16 +313,10 @@ describe("transferOwnership", () => {
   });
 
   it("is the only place the sim assigns entity.team", () => {
-    const dir = join(__dirname, "../src/sim");
-    const hits: string[] = [];
-    const walk = (d: string) => {
-      for (const f of readdirSync(d, { withFileTypes: true })) {
-        const p = join(d, f.name);
-        if (f.isDirectory()) walk(p);
-        else if (p.endsWith(".ts") && !p.endsWith("ownership.ts") && /\b(entity|site|target|building|unit|e)\.team\s*=[^=]/.test(readFileSync(p, "utf8"))) hits.push(p);
-      }
-    };
-    walk(dir);
+    const sources = import.meta.glob<string>("../src/sim/**/*.ts", { query: "?raw", import: "default", eager: true });
+    const hits = Object.entries(sources)
+      .filter(([path, text]) => !path.endsWith("ownership.ts") && /\b(entity|site|target|building|unit|e)\.team\s*=[^=]/.test(text))
+      .map(([path]) => path);
     expect(hits).toEqual([]);
   });
 });

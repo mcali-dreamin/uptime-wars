@@ -33,6 +33,13 @@ export function drawGlyph(g: Graphics, defId: string, x: number, y: number, size
       g.rect(x - s, y - s, s * 2, s * 2).stroke({ width: 3, color, alpha });
       g.circle(x, y, s * 0.5).fill({ color, alpha });
       break;
+    case "derelict-datacenter":
+      // A rack hall with a dish: weathered lines, broken (dashed) roof.
+      g.rect(x - s * 1.4, y - s * 0.4, s * 2.8, s * 1.4).stroke({ width: 2, color, alpha });
+      for (const dx of [-0.9, -0.3, 0.3, 0.9]) g.moveTo(x + dx * s, y - s * 0.2).lineTo(x + dx * s, y + s * 0.8).stroke({ width: 1, color, alpha: alpha * 0.6 });
+      g.moveTo(x - s * 0.8, y - s * 0.4).lineTo(x - s * 0.8, y - s * 1.2).stroke({ width: 1.5, color, alpha });
+      g.arc(x - s * 0.8, y - s * 1.2, s * 0.5, Math.PI * 0.1, Math.PI * 0.9).stroke({ width: 2, color, alpha });
+      break;
     case "c2-server":
       g.moveTo(x, y - s).lineTo(x + s * 0.6, y + s).lineTo(x - s * 0.6, y + s).closePath().fill({ color, alpha });
       g.circle(x, y + s * 0.2, s * 0.25).fill({ color: 0xffffff, alpha });
