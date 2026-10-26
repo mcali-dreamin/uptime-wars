@@ -49,7 +49,7 @@ export function validateContent(content: Content): void {
     if (entry.cost <= 0) errors.push(`wave roster unit ${entry.unit} must cost more than 0`);
   }
   const camps = content.neutrals;
-  if (camps.regenPermillePerSecond < 0 || camps.alertTicks < 0) errors.push("neutrals need regenPermillePerSecond and alertTicks >= 0");
+  if (camps.regenPermillePerSecond < 0 || camps.alertTicks < 0 || !(camps.xpPerBounty >= 0)) errors.push("neutrals need regenPermillePerSecond, alertTicks and xpPerBounty >= 0");
   for (const [id, tier] of Object.entries(camps.tiers)) {
     if (tier.fromStart <= 0 || tier.count < 0 || tier.units.length === 0) errors.push(`camp tier ${id} needs fromStart > 0, count >= 0 and units`);
     for (const unit of tier.units) if (!content.units[unit]) errors.push(`camp tier ${id} uses unknown unit ${unit}`);

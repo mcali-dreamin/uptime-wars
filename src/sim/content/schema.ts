@@ -598,6 +598,11 @@ export interface CampTierDef {
 export interface NeutralsDef {
   regenPermillePerSecond: number;
   alertTicks: number;
+  /**
+   * Hero XP per $ of a camp guard's bounty, in place of heroes.xpPerBounty:
+   * camps pay well in $, and at the usual rate one mid camp was two levels.
+   */
+  xpPerBounty: number;
   /** Tiers by name, nearest to the start first. */
   tiers: Record<string, CampTierDef>;
 }

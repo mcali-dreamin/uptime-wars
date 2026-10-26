@@ -7,11 +7,11 @@
 // default), or World2D (`?2d`).
 
 import { Application, Text } from "pixi.js";
-import { TILE, hostile, type Content, type TeamId, type World } from "../sim";
+import { TILE, campSpots, hostile, type Content, type TeamId, type World } from "../sim";
 import { Camera } from "./camera";
 import { Fog } from "./fog";
 import { PING_MS, SHOT_TTL_MS, type Ghost, type Shot, type WorldView } from "./frame";
-import { Minimap } from "./minimap";
+import { Minimap, type CampMarker } from "./minimap";
 import { World2D } from "./pixi/world2d";
 
 /** How often a bounced shot on the shielded nest repeats its banner. */
@@ -179,12 +179,22 @@ export class Renderer {
       shows,
     });
     this.age(deltaMs);
-    // Camps show on the minimap wherever the map is explored, even out of sight.
-    const campOnMap = (e: World["entities"][number]) => world.teams[e.team]?.controller === "neutral" && this.fog.isExplored(e.x, e.y);
-    this.minimap.draw(world, width, height, this.view.viewRect() ?? this.camera.view(0), (e) => shows(e, e.x, e.y) || campOnMap(e));
+    // Camps show on the minimap wherever the map is explored, even out of sight: one marker per camp, by tier.
+    this.minimap.draw(world, width, height, this.view.viewRect() ?? this.camera.view(0), (e) => shows(e, e.x, e.y), this.campMarkers(world, content));
     this.banner.position.set(width / 2, 24);
     this.bannerAge += deltaMs;
     this.banner.alpha = world.outcome ? 1 : Math.max(0, 1 - this.bannerAge / 2500);
+  }
+
+  private camps: { terrain: World["terrain"]; markers: CampMarker[] } | null = null;
+
+  /** Camp centers and tiers: a pure function of the terrain, so worked out once per match. */
+  private campMarkers(world: World, content: Content): CampMarker[] {
+    if (this.camps?.terrain !== world.terrain) {
+      const markers = campSpots(world.terrain, content.neutrals).map((spot) => ({ x: (spot.col + 0.5) * TILE, y: (spot.row + 0.5) * TILE, tier: spot.tier }));
+      this.camps = { terrain: world.terrain, markers };
+    }
+    return this.camps.markers;
   }
 
   /** Canvas-relative pointer to world pixels. */

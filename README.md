@@ -202,8 +202,10 @@ that is hostile to everyone, the botnet included, but they never attack first:
 hit one and the whole camp fights back inside its leash, then goes home. A camp
 nobody is fighting mends back to full, so finish what you start. A cleared camp
 stays cleared (you get a "Camp cleared" alert). Every unit pays more bounty than
-an ordinary unit of its strength, plus hero XP, so camps are an early way to
-level your hero. The neutral team never plays: no income, no core, no scoreboard
+an ordinary unit of its strength, plus hero XP. Near camps are a job for your
+hero alone; mid camps cost a small army some units; far camps, with a Mainframe,
+need a real mid-game army and pay like a Spot rental. The minimap marks every
+standing camp with a diamond by tier (green, amber, red). The neutral team never plays: no income, no core, no scoreboard
 line, and it never affects who wins. Numbers live in `src/content/neutrals.json`.
 
 **Spot capacity.** Rent extra compute for a push or a boss. Select a core and

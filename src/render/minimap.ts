@@ -4,7 +4,7 @@
 import { Container, Graphics } from "pixi.js";
 import { TILE, type Terrain, type World } from "../sim";
 import type { Fog } from "./fog";
-import { teamColor } from "./palette";
+import { CAMP_TIER_COLORS, NEUTRAL_COLOR, teamColor } from "./palette";
 import { drawTerrainBase } from "./pixi/terrain-art";
 
 const WIDTH = 240;
@@ -15,6 +15,13 @@ export interface Rect {
   right: number;
   top: number;
   bottom: number;
+}
+
+/** A camp's center (world px) and tier, for its minimap marker. */
+export interface CampMarker {
+  x: number;
+  y: number;
+  tier: string;
 }
 
 export class Minimap {
@@ -43,13 +50,22 @@ export class Minimap {
   /** Alerts to flash on the minimap: world point and age in seconds. */
   flashes: { x: number; y: number; age: number; color: number }[] = [];
 
-  draw(world: World, width: number, height: number, view: Rect, shows: (entity: World["entities"][number]) => boolean): void {
+  /**
+   * `camps`: each camp's center and tier (by camp id). A camp still standing
+   * shows as one diamond in its tier's colour, not as a dot per guard.
+   */
+  draw(world: World, width: number, height: number, view: Rect, shows: (entity: World["entities"][number]) => boolean, camps: readonly CampMarker[] = []): void {
     if (!this.terrain) return;
     const s = this.scale;
     this.root.position.set(width - WIDTH - MARGIN, height - this.terrain.rows * TILE * s - MARGIN);
     const g = this.dynamic;
     g.clear();
+    const standing = new Set<number>();
     for (const entity of world.entities) {
+      if (entity.kind === "unit" && entity.campId !== undefined && entity.hp > 0) {
+        standing.add(entity.campId);
+        continue;
+      }
       if (!shows(entity)) continue;
       const color = teamColor(world, entity.team);
       if (entity.kind === "building") {
@@ -61,6 +77,14 @@ export class Minimap {
       } else {
         g.rect(entity.x * s - 1, entity.y * s - 1, 2, 2).fill({ color });
       }
+    }
+    for (const id of standing) {
+      const camp = camps[id];
+      if (!camp || !this.fog.isExplored(camp.x, camp.y)) continue;
+      const x = camp.x * s;
+      const y = camp.y * s;
+      const r = 3.5;
+      g.poly([x, y - r, x + r, y, x, y + r, x - r, y]).fill({ color: CAMP_TIER_COLORS[camp.tier] ?? NEUTRAL_COLOR }).stroke({ width: 1, color: 0x0b0f17 });
     }
     // Alert flashes: an expanding ring that pulses for a few seconds.
     for (const f of this.flashes) {

@@ -234,7 +234,7 @@ describe("rewards", () => {
     const xp = team.hero!.xp;
     dealDamage(makeContext(world, content), hero, victim, 1e6);
     expect(team.money - money).toBe(content.units[victim.defId]!.bounty);
-    expect(team.hero!.xp - xp).toBe(content.units[victim.defId]!.bounty * content.heroes.xpPerBounty);
+    expect(team.hero!.xp - xp).toBe(content.units[victim.defId]!.bounty * content.neutrals.xpPerBounty);
   });
 
   it("clearing a camp emits campCleared once, and the camp never comes back", () => {

@@ -7,6 +7,8 @@ export const PLAYER_COLORS = [0x4ade80, 0x60a5fa, 0xc084fc, 0xfb923c] as const;
 export const HORDE_COLOR = 0xf87171;
 /** Camp guards (the neutral team): muted amber, apart from every player and the horde. */
 export const NEUTRAL_COLOR = 0xb08d57;
+/** Camp markers on the minimap, by tier: how hard a camp is at a glance (like WC3's green/orange/red). */
+export const CAMP_TIER_COLORS: Record<string, number> = { near: 0xa3e635, mid: 0xf59e0b, far: 0xef4444 };
 
 /**
  * Colours picked before the match, by team. Render-only: each browser picks
