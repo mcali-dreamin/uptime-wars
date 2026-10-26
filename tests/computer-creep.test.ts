@@ -182,6 +182,25 @@ describe("computer players take and contest sites", () => {
     expect(ai.phase).not.toBe("creep");
   });
 
+  it("finishes a capture it's standing on before an attack that comes ready", () => {
+    const base = withRange("hard");
+    const attack = { ...base.difficulties.hard!.attack! };
+    const content: Content = { ...base, difficulties: { ...base.difficulties, hard: { ...base.difficulties.hard!, attack } } };
+    const { world, site } = clearedSiteCamp(content, "hard");
+    const ai = world.teams[1]!.ai!;
+    const r = content.neutrals.sites.captureRadius;
+    const onSite = () => ai.group.some((id) => { const u = world.entities.find((e) => e.id === id); return !!u && dist(u, site) <= r; });
+    while (!(ai.phase === "creep" && onSite()) && world.tick < 20000) step(world, content);
+    expect(onSite()).toBe(true);
+    // Now an attack is ready: any army at all, right away.
+    Object.assign(attack, { firstTicks: 0, minUnits: 1, armyPermille: 0 });
+    while (site.team !== 1 && world.tick < 30000) {
+      step(world, content);
+      if (site.team !== 1) expect(ai.phase).toBe("creep");
+    }
+    expect(site.team).toBe(1);
+  });
+
   it("a person capturing a neutral site it can see draws its army there", () => {
     const content = withRange("hard", { minUnits: 1 });
     const { world, camp, site } = clearedSiteCamp(content, "hard");

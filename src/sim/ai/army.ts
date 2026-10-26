@@ -345,6 +345,22 @@ function startCreep(
   return go("camp", best, army, centerOfCamp(spots[best]!), true);
 }
 
+/** Is the group standing on its creep's neutral site, capturing it? */
+function capturing(
+  world: World,
+  content: Content,
+  team: Team,
+  group: Unit[],
+): boolean {
+  const ai = team.ai!;
+  if (ai.creepKind !== "site") return false;
+  const neutral = neutralTeam(world);
+  const site = siteOf(world, content, ai.camp);
+  if (!neutral || !site || site.team !== neutral.id) return false;
+  const r = content.neutrals.sites.captureRadius;
+  return group.some((u) => distSq(u, site) <= r * r);
+}
+
 /** One step of a creep under way: keep the group on its job, or send it home when done. */
 function playCreep(
   world: World,
@@ -462,8 +478,12 @@ export function playArmy(
       retreat(world, team, home, plan, issue);
       return;
     }
-    // The attack's conditions are met: that goes first.
-    if (attackReady(world, content, team, plan, army)) {
+    // The attack's conditions are met: that goes first, unless it's standing
+    // on a site it's capturing (seconds away; walking off throws it away).
+    if (
+      !capturing(world, content, team, group) &&
+      attackReady(world, content, team, plan, army)
+    ) {
       launchAttack(world, content, team, army, core, enemies, reach, issue);
       return;
     }
