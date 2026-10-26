@@ -220,6 +220,12 @@ export interface Building extends EntityBase {
   refitRemaining?: number;
   /** $ its owner paid to build (or fork) it, refunded in part on decommission. Absent: it came free. */
   paid?: number;
+  /** A site only: the camp (index into the camp spots) it stands in, whose guards must fall before it can be captured. */
+  campId?: number;
+  /** A site only: the team its capture progress counts for (absent when nobody is capturing). */
+  captureTeam?: TeamId;
+  /** A site only: ticks of capture progress (absent is 0). */
+  captureProgress?: number;
 }
 
 export type Entity = Unit | Building;
@@ -492,6 +498,10 @@ export type SimEvent =
   | { type: "founded"; x: number; y: number }
   /** The last unit of a neutral camp at (x, y) died; `team` cleared it. */
   | { type: "campCleared"; x: number; y: number; team: TeamId }
+  /** `team` captured a site from `from` (the neutral team, or the owner it changed hands from). */
+  | { type: "siteCaptured"; team: TeamId; from: TeamId; x: number; y: number; id: number }
+  /** `team` lost a site back to neutral, knocked down by `by`. */
+  | { type: "siteLost"; team: TeamId; by: TeamId; x: number; y: number; id: number }
   /** An expansion core (re)ached its site and is going up; it joins when built. */
   | { type: "expanded"; team: TeamId; x: number; y: number }
   /** A mid-match deploy agent died on the way: the $ it cost is gone. */

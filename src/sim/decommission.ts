@@ -8,6 +8,7 @@
 // than "death".
 
 import type { TickContext } from "./context";
+import { isSite } from "./ownership";
 import { isCore } from "./placement";
 import { MAX_ORDER_UNITS } from "./tuning";
 import type { Building, DecommissionCommand, DismissCommand, Unit } from "./types";
@@ -22,6 +23,7 @@ export function decommissionRefund(content: TickContext["content"], building: Bu
 /** Why this building can't be torn down by this team, or null if it can. */
 export function decommissionBlocker(ctx: Pick<TickContext, "world" | "content">, teamId: number, building: Building | undefined): string | null {
   if (!building || building.kind !== "building" || building.team !== teamId || building.hp <= 0) return "not your building";
+  if (isSite(ctx.content, building)) return "can't decommission a site";
   // Every core holds the network up: losing one is the game's job, not yours.
   if (isCore(ctx.content, ctx.world.teams[teamId]!, building)) return "can't decommission a core";
   return null;

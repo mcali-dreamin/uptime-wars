@@ -136,7 +136,7 @@ describe("the neutral team", () => {
     expect(neutral.coreId).toBe(-1);
     expect(neutral.builderId).toBe(-1);
     expect(neutral.hero).toBeNull();
-    expect(world.entities.some((e) => e.team === neutral.id && e.kind === "building")).toBe(false);
+    expect(world.entities.some((e) => e.team === neutral.id && e.kind === "building" && !content.buildings[e.defId]!.site)).toBe(false);
   });
 
   it("never goes offline, never affects the outcome and earns no income", () => {

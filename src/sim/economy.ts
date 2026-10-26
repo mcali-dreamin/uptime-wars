@@ -84,7 +84,8 @@ export function tickIncome(ctx: TickContext): void {
   for (const entity of world.entities) {
     if (entity.kind !== "building" || entity.buildRemaining > 0) continue;
     const income = content.buildings[entity.defId]!.income;
-    if (!income) continue;
+    // A neutral site pays nobody.
+    if (!income || world.teams[entity.team]!.controller === "neutral") continue;
     entity.incomeTimer -= 1;
     if (entity.incomeTimer <= 0) {
       world.teams[entity.team]!.money += income.amount;
@@ -228,7 +229,7 @@ export function trafficRadius(world: World, content: TickContext["content"], tea
   const t = content.economy.traffic;
   let buildings = 0;
   for (const entity of world.entities) {
-    if (entity.kind === "building" && entity.team === team.id && entity.hp > 0) buildings += 1;
+    if (entity.kind === "building" && entity.team === team.id && entity.hp > 0 && !content.buildings[entity.defId]!.site) buildings += 1;
   }
   const minutes = Math.floor(world.tick / (TICK_RATE * 60));
   const grown = tierDef(content, team).traffic;

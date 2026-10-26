@@ -46,3 +46,5 @@ export { buildingRank, nextRank, rankBlocker, rankCost, rankGroup, rankedUpkeep,
 export { infectionSites, liveNodes } from "./spread";
 export { difficultyOf, revenueFactor } from "./ai";
 export { decommissionBlocker, decommissionRefund, dismissable } from "./decommission";
+export { transferOwnership, isSite } from "./ownership";
+export { sitesHeld } from "./sites";
