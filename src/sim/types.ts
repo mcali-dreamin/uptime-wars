@@ -168,6 +168,12 @@ export interface Unit extends EntityBase {
   homeX: number;
   homeY: number;
   /**
+   * Tile of the point its home was spread around (an order or rally point),
+   * while it's still far off. A long walk routes on that shared tile's flow
+   * field, so a whole order shares one search instead of one per unit.
+   */
+  homeAnchor?: number;
+  /**
    * A player's order in progress: "move" walks home ignoring enemies,
    * "attack" walks home fighting whatever it meets. Cleared on arrival.
    */
