@@ -77,3 +77,30 @@ describe("creeps fight back", () => {
     expect(creep.targetId).not.toBe(tower.id);
   });
 });
+
+describe("specialists hit back at units", () => {
+  // Phishers, miners, DDoS nodes and brute forcers go for buildings, but a
+  // unit shooting one gets hit back; once it's gone they get back to their job.
+  for (const creepId of ["phisher", "cryptominer", "ddos", "brute-forcer"]) {
+    it(`a ${creepId} turns on the unit hitting it, then goes back to buildings`, () => {
+      const { world, tower, creep } = scene(creepId);
+      const ctx = makeContext(world, content);
+      const soldier = spawnUnit(ctx, 0, "process", tower, creep.x - 10, creep.y, "guard");
+      creep.provokedBy = soldier.id;
+      creep.provokedAt = world.tick;
+      step(world, content);
+      expect(creep.targetId).toBe(soldier.id);
+      soldier.hp = 0;
+      run(world, 3);
+      expect(creep.targetId).not.toBe(soldier.id);
+    });
+  }
+
+  it("a phisher still ignores towers that shoot it", () => {
+    const { world, tower, creep } = scene("phisher");
+    creep.provokedBy = tower.id;
+    creep.provokedAt = world.tick;
+    step(world, content);
+    expect(creep.targetId).not.toBe(tower.id);
+  });
+});

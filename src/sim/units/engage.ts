@@ -85,8 +85,10 @@ export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
   // fights back comes first: the tower or unit that just hit it, else the
   // nearest defender (a unit or a tower) in aggro range, rather than keep
   // chewing on a Web App while a firewall shoots it.
-  // Specialists only turn on what their role goes for (a siege creep hits
-  // back at a tower, a phisher keeps going for your users).
+  // Specialists only turn on buildings their role goes for (a siege creep
+  // hits back at a tower, a phisher keeps going for your users), but any
+  // unit that hits one gets hit back until it's gone or out of reach; then
+  // the specialist gets back to its job.
   const taunter = unit.tauntedBy !== undefined && world.tick < (unit.tauntedUntil ?? 0) ? ctx.byId.get(unit.tauntedBy) : undefined;
   if (!guard && !lure && taunter && taunter.hp > 0) {
     target = taunter;
@@ -94,7 +96,7 @@ export function engage(ctx: TickContext, unit: Unit, def: UnitDef): boolean {
     // Only if it can get at them: a tower shooting over a wall means the wall comes first.
     const reachable = (e: Entity) => (wants === undefined || wants(e)) && canReach(ctx, unit, def, e);
     const provoker = provokedTarget(ctx, unit, def);
-    if (provoker && reachable(provoker)) {
+    if (provoker && (provoker.kind === "unit" ? canReach(ctx, unit, def, provoker) : reachable(provoker))) {
       target = provoker;
     } else if (target === undefined || !fightsBack(ctx, target)) {
       const threat = nearestEnemy(ctx, unit, def.aggro, (e) => fightsBack(ctx, e) && reachable(e));
