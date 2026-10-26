@@ -128,6 +128,7 @@ export class Terrain3D {
   private buildGround(terrain: Terrain): void {
     const { cols, rows } = terrain;
     const normals = this.computeNormals();
+    const shade = this.computeShade();
     for (let cy = 0; cy < rows; cy += CHUNK) {
       for (let cx = 0; cx < cols; cx += CHUNK) {
         const c1 = Math.min(cols, cx + CHUNK);
@@ -137,6 +138,7 @@ export class Terrain3D {
         const position = new Float32Array(w * h * 3);
         const normal = new Float32Array(w * h * 3);
         const kind = new Float32Array(w * h * 3);
+        const shading = new Float32Array(w * h * 2);
         for (let j = 0; j < h; j += 1) {
           for (let i = 0; i < w; i += 1) {
             const vx = cx * SUB + i;
@@ -151,6 +153,8 @@ export class Terrain3D {
             normal[k + 2] = normals[v * 3 + 2]!;
             // Kind weights from the tile(s) this vertex touches: (unused), ramp, dead ground.
             kind.set(kindAround(terrain, vx, vy), k);
+            shading[(j * w + i) * 2] = shade[v * 2]!;
+            shading[(j * w + i) * 2 + 1] = shade[v * 2 + 1]!;
           }
         }
         const index: number[] = [];
@@ -167,6 +171,7 @@ export class Terrain3D {
         geometry.setAttribute("position", new THREE.BufferAttribute(position, 3));
         geometry.setAttribute("normal", new THREE.BufferAttribute(normal, 3));
         geometry.setAttribute("aKind", new THREE.BufferAttribute(kind, 3));
+        geometry.setAttribute("aShade", new THREE.BufferAttribute(shading, 2));
         geometry.setIndex(index);
         geometry.computeBoundingSphere();
         geometry.computeBoundingBox();
@@ -177,6 +182,43 @@ export class Terrain3D {
         this.disposables.push(geometry);
       }
     }
+  }
+
+  /**
+   * Two baked terms per vertex: occlusion (how much higher ground crowds it,
+   * so the foot of a cliff sits in shade) and lip (the top edge of a drop, so
+   * a plateau's rim catches a highlight). Both 0..1, from the heightfield.
+   */
+  private computeShade(): Float32Array {
+    const { vw, vh, heights } = this;
+    const out = new Float32Array(vw * vh * 2);
+    const R = 5;
+    for (let y = 0; y < vh; y += 1) {
+      for (let x = 0; x < vw; x += 1) {
+        const h0 = heights[y * vw + x]!;
+        let occ = 0;
+        let weight = 0;
+        let lip = 0;
+        for (let dy = -R; dy <= R; dy += 1) {
+          const ny = y + dy;
+          if (ny < 0 || ny >= vh) continue;
+          for (let dx = -R; dx <= R; dx += 1) {
+            const nx = x + dx;
+            if (nx < 0 || nx >= vw || (dx === 0 && dy === 0)) continue;
+            const d = Math.hypot(dx, dy);
+            if (d > R) continue;
+            const rise = (heights[ny * vw + nx]! - h0) / STEP;
+            const falloff = 1 - d / (R + 1);
+            occ += Math.min(1, Math.max(0, rise)) * falloff;
+            weight += falloff;
+            if (d <= 1.5) lip = Math.max(lip, Math.min(1, Math.max(0, -rise)));
+          }
+        }
+        out[(y * vw + x) * 2] = Math.min(1, (occ / weight) * 2.2);
+        out[(y * vw + x) * 2 + 1] = lip;
+      }
+    }
+    return out;
   }
 
   private computeNormals(): Float32Array {
@@ -204,7 +246,7 @@ export class Terrain3D {
     const spots = tilesOf(terrain, (t) => t === TILE_BLOCKED);
     const geometry = shardGeometry();
     const material = this.fog.apply(
-      new THREE.MeshStandardMaterial({ color: 0x272a33, roughness: 0.38, metalness: 0.55, emissive: 0x2a0710, flatShading: true }),
+      new THREE.MeshStandardMaterial({ color: 0x23202c, roughness: 0.16, metalness: 0.4, emissive: 0x3a0714, flatShading: true }),
     );
     const mesh = new THREE.InstancedMesh(geometry, material, spots.length);
     const m = new THREE.Matrix4();
@@ -438,26 +480,36 @@ const NOISE_GLSL = /* glsl */ `
 
 // The ground shader replaces colour and emissive in the standard material.
 const groundFragmentHead = /* glsl */ `
-  varying vec3 vKind; varying vec3 vWN;
+  varying vec3 vKind; varying vec3 vWN; varying vec2 vShade;
   ${NOISE_GLSL}
-  vec3 levelColor(float lvl) {
-    vec3 deep = vec3(0.085, 0.06, 0.14);
-    vec3 surface = vec3(0.075, 0.2, 0.15);
-    vec3 backbone = vec3(0.115, 0.13, 0.16);
+  vec3 levelColor(float lvl, float macro) {
+    // Each level drifts between two related tones over large patches, so
+    // open ground has regions instead of one flat colour.
+    vec3 deep = mix(vec3(0.07, 0.04, 0.13), vec3(0.11, 0.035, 0.11), macro);
+    vec3 surface = mix(vec3(0.03, 0.15, 0.12), vec3(0.05, 0.13, 0.07), macro);
+    vec3 backbone = mix(vec3(0.1, 0.115, 0.14), vec3(0.085, 0.1, 0.13), macro);
     return lvl < 1.0 ? mix(deep, surface, smoothstep(0.6, 1.0, lvl)) : mix(surface, backbone, smoothstep(1.6, 2.0, lvl));
   }
   vec3 traceColor(float lvl) {
     return lvl < 0.5 ? vec3(0.55, 0.3, 1.0) : lvl < 1.5 ? vec3(0.1, 0.85, 0.95) : vec3(0.55, 0.75, 1.0);
   }
-  /** Sparse circuit traces along a 48px grid: each cell edge is lit or not. */
+  /**
+   * Circuit traces: long straight runs along the tile grid, a few tiles each,
+   * with a pad where a run ends. Runs, not dashes, so it reads as wiring.
+   */
   float traces(vec2 xz) {
     vec2 cell = floor(xz / 48.0);
     vec2 f = fract(xz / 48.0);
-    float hx = step(0.72, h21(cell + 0.17));
-    float hz = step(0.72, h21(cell + 3.71));
-    float lx = (1.0 - smoothstep(0.012, 0.035, abs(f.y - 0.5))) * hx;
-    float lz = (1.0 - smoothstep(0.012, 0.035, abs(f.x - 0.5))) * hz;
-    float pad = (1.0 - smoothstep(0.05, 0.08, length(f - 0.5))) * max(hx, hz);
+    // A run along x covers 6 cells of one row; along z, 6 cells of one column.
+    float runX = floor(cell.x / 6.0);
+    float runZ = floor(cell.y / 6.0);
+    float hx = step(0.82, h21(vec2(runX, cell.y) + 0.17));
+    float hz = step(0.84, h21(vec2(cell.x, runZ) + 3.71));
+    float lx = (1.0 - smoothstep(0.015, 0.04, abs(f.y - 0.5))) * hx;
+    float lz = (1.0 - smoothstep(0.015, 0.04, abs(f.x - 0.5))) * hz;
+    float endX = hx * step(5.0, cell.x - runX * 6.0);
+    float endZ = hz * step(5.0, cell.y - runZ * 6.0);
+    float pad = (1.0 - smoothstep(0.07, 0.1, length(f - 0.5))) * max(endX, endZ);
     return max(max(lx, lz), pad);
   }
   /** Backbone plating: a square plate grid with bevelled seams. */
@@ -471,8 +523,11 @@ const GROUND_COLOR = /* glsl */ `
   {
     vec2 xz = vFogWorld.xz;
     float lvl = clamp((vFogWorld.y - ${BASE.toFixed(1)}) / ${STEP.toFixed(1)}, 0.0, 2.0);
+    float macro = smoothstep(0.3, 0.7, vnoise(xz * 0.0035));
     float n = vnoise(xz * 0.015) * 0.5 + vnoise(xz * 0.06) * 0.3 + vnoise(xz * 0.25) * 0.2;
-    vec3 col = levelColor(lvl) * (0.75 + 0.5 * n);
+    vec3 col = levelColor(lvl, macro) * (0.7 + 0.6 * n);
+    // Fine grit, so close-up ground isn't smooth plastic.
+    col *= 0.92 + 0.16 * vnoise(xz * 0.9);
     if (lvl > 1.5) col *= mix(0.72, 1.0, plates(xz));
     // Ramps: paved gateway.
     vec3 paving = vec3(0.3, 0.26, 0.2) * (0.85 + 0.3 * vnoise(xz * 0.2));
@@ -481,8 +536,11 @@ const GROUND_COLOR = /* glsl */ `
     col = mix(col, vec3(0.06, 0.055, 0.065), vKind.z * 0.8);
     // Cliffs: dark rock, by slope.
     float steep = 1.0 - smoothstep(0.5, 0.82, vWN.y);
-    vec3 rock = vec3(0.13, 0.115, 0.14) * (0.6 + 0.8 * vnoise(vec2(xz.x + xz.y, vFogWorld.y * 1.5) * 0.08));
+    vec3 rock = vec3(0.1, 0.09, 0.115) * (0.55 + 0.9 * vnoise(vec2(xz.x + xz.y, vFogWorld.y * 1.5) * 0.08));
     col = mix(col, rock, steep);
+    // Baked shade: the foot of a cliff sits in shadow; a plateau's rim is lit.
+    col *= mix(1.0, 0.4, vShade.x);
+    col = mix(col, col * 1.35 + vec3(0.012), smoothstep(0.5, 1.0, vShade.y) * (1.0 - steep));
     diffuseColor.rgb = col;
     gTerrainSteep = steep;
     gTerrainLevel = lvl;
@@ -494,11 +552,13 @@ const GROUND_EMISSIVE = /* glsl */ `
     vec2 xz = vFogWorld.xz;
     float flat_ = 1.0 - gTerrainSteep;
     float tr = traces(xz) * flat_ * (1.0 - vKind.y) * (1.0 - vKind.z);
-    float strength = gTerrainLevel < 0.5 ? 0.13 : gTerrainLevel < 1.5 ? 0.17 : 0.1;
-    totalEmissiveRadiance += traceColor(gTerrainLevel) * tr * strength;
-    // Fibre strata in cliff faces.
-    float strata = 1.0 - smoothstep(0.0, 0.08, abs(fract(vFogWorld.y / 11.0 + vnoise(xz * 0.02)) - 0.5));
-    totalEmissiveRadiance += vec3(1.0, 0.55, 0.15) * strata * gTerrainSteep * 0.35 * step(0.45, vnoise(xz * 0.03));
+    float strength = gTerrainLevel < 0.5 ? 0.16 : gTerrainLevel < 1.5 ? 0.2 : 0.13;
+    totalEmissiveRadiance += traceColor(gTerrainLevel) * tr * strength * (1.0 - vShade.x);
+    // A thin lit edge along each plateau's rim, in its level's colour.
+    totalEmissiveRadiance += traceColor(gTerrainLevel) * smoothstep(0.7, 1.0, vShade.y) * flat_ * 0.05;
+    // Fibre strata in cliff faces: sparse amber seams.
+    float strata = 1.0 - smoothstep(0.0, 0.06, abs(fract(vFogWorld.y / 14.0 + vnoise(xz * 0.02)) - 0.5));
+    totalEmissiveRadiance += vec3(1.0, 0.55, 0.15) * strata * gTerrainSteep * 0.22 * step(0.55, vnoise(xz * 0.03));
     // Ramp chevrons.
     float chev = step(0.6, fract((xz.x + xz.y) / 32.0));
     totalEmissiveRadiance += vec3(1.0, 0.65, 0.2) * chev * vKind.y * 0.18;
@@ -507,8 +567,8 @@ const GROUND_EMISSIVE = /* glsl */ `
 
 function patchGround(shader: THREE.WebGLProgramParametersWithUniforms): void {
   shader.vertexShader = shader.vertexShader
-    .replace("#include <common>", "#include <common>\nattribute vec3 aKind; varying vec3 vKind; varying vec3 vWN;")
-    .replace("#include <begin_vertex>", "#include <begin_vertex>\nvKind = aKind; vWN = normalize(objectNormal);");
+    .replace("#include <common>", "#include <common>\nattribute vec3 aKind; attribute vec2 aShade; varying vec3 vKind; varying vec3 vWN; varying vec2 vShade;")
+    .replace("#include <begin_vertex>", "#include <begin_vertex>\nvKind = aKind; vShade = aShade; vWN = normalize(objectNormal);");
   shader.fragmentShader = shader.fragmentShader
     .replace("#include <common>", `#include <common>\n${groundFragmentHead}\n${NETWORK_GLSL_HEAD}\nfloat gTerrainSteep = 0.0; float gTerrainLevel = 0.0;`)
     .replace("#include <color_fragment>", `#include <color_fragment>\n${GROUND_COLOR}`)
