@@ -433,5 +433,44 @@
     "bounty": 30,
     "size": 10,
     "sight": 300
+  },
+  "legacy-terminal": {
+    "name": "Legacy Terminal",
+    "description": "A dusty green-screen terminal nobody dares to unplug. Guards its camp, never attacks first.",
+    "hp": 70,
+    "armor": 0,
+    "damage": 9,
+    "range": 22,
+    "cooldownTicks": 18,
+    "speed": 2.5,
+    "aggro": 200,
+    "bounty": 14,
+    "size": 9
+  },
+  "legacy-server": {
+    "name": "Legacy Server",
+    "description": "A rack-mounted relic that has been running since before you were born. Armored and stubborn.",
+    "hp": 260,
+    "armor": 2,
+    "damage": 15,
+    "range": 26,
+    "cooldownTicks": 20,
+    "speed": 2.4,
+    "aggro": 220,
+    "bounty": 45,
+    "size": 12
+  },
+  "legacy-mainframe": {
+    "name": "Legacy Mainframe",
+    "description": "The camp boss: a refrigerator-sized mainframe on a service contract that never lapsed.",
+    "hp": 700,
+    "armor": 3,
+    "damage": 26,
+    "range": 30,
+    "cooldownTicks": 22,
+    "speed": 2.2,
+    "aggro": 240,
+    "bounty": 110,
+    "size": 15
   }
 }

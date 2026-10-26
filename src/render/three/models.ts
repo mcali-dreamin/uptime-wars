@@ -1144,7 +1144,9 @@ export class Models {
 
   // --- units ----------------------------------------------------------------
 
-  private unit(defId: string, team: number, r: number): THREE.Group {
+  private unit(unitId: string, team: number, r: number): THREE.Group {
+    // Camp guards wear existing models.
+    const defId = CAMP_MODELS[unitId] ?? unitId;
     const styled = this.lookUnit(defId, team, r);
     if (styled) return styled;
     const g = new THREE.Group();
@@ -1424,6 +1426,9 @@ export class Models {
     return g;
   }
 }
+
+/** Neutral camp units reuse the models of ordinary units. */
+const CAMP_MODELS: Record<string, string> = { "legacy-terminal": "bot", "legacy-server": "trojan", "legacy-mainframe": "mainframe" };
 
 // --- helpers ------------------------------------------------------------------
 

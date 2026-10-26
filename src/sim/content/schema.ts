@@ -108,7 +108,8 @@ export interface BuildingDef {
   buildRadius?: number;
 }
 
-export type Controller = "human" | "wave-director";
+/** "neutral" owns the map's guarded camps: hostile to everyone, never plays (see neutrals.ts). */
+export type Controller = "human" | "wave-director" | "neutral";
 
 export type RaceLook = "scrappy" | "monolith" | "ephemeral" | "garden";
 export const RACE_LOOKS: readonly RaceLook[] = ["scrappy", "monolith", "ephemeral", "garden"];
@@ -578,6 +579,29 @@ export interface AiAttackDef {
   heroRetreatPermille: number;
 }
 
+/** One tier of neutral camp: how far from the nearest start it sits, how many per start, and who guards it. */
+export interface CampTierDef {
+  /** Tiles from the nearest start. */
+  fromStart: number;
+  /** Camps of this tier per start (every start gets the same, so the map is fair). */
+  count: number;
+  /** Unit ids in the camp (repeat an id for more of it). */
+  units: string[];
+}
+
+/**
+ * Neutral camps ("legacy hardware"): guarded squads at seeded spots. They
+ * never attack first; once hit, the camp fights back within its leash, and
+ * heals `regenPermillePerSecond` of max hp each second while nothing hostile
+ * is near and it hasn't been hit for `alertTicks`.
+ */
+export interface NeutralsDef {
+  regenPermillePerSecond: number;
+  alertTicks: number;
+  /** Tiers by name, nearest to the start first. */
+  tiers: Record<string, CampTierDef>;
+}
+
 export interface Content {
   units: Record<string, UnitDef>;
   buildings: Record<string, BuildingDef>;
@@ -587,4 +611,5 @@ export interface Content {
   upgrades: Record<string, UpgradeDef>;
   heroes: HeroesDef;
   difficulties: Record<string, DifficultyDef>;
+  neutrals: NeutralsDef;
 }

@@ -127,7 +127,7 @@ export function buildReport(content: Content, world: World, team: number, player
     mode: rulesLabel(world),
     race: t.raceId,
     hero: t.heroId ?? "",
-    races: world.teams.map((x) => x.raceId),
+    races: world.teams.filter((x) => x.controller !== "neutral").map((x) => x.raceId),
     team,
     outcome: !ended ? "abandoned" : won ? "won" : "lost",
     survived: upTo / 20,
@@ -143,7 +143,7 @@ export function buildReport(content: Content, world: World, team: number, player
       engagement: engagement(world, team, inputSeconds),
       players: world.teams.filter((x) => x.controller === "human" && !x.ai).length,
       ...(rulesLabel(world) === "custom" ? { rules: world.rules } : {}),
-      ...(world.teams.some((x) => x.ai) ? { ai: world.teams.map((x) => x.ai?.difficulty ?? null) } : {}),
+      ...(world.teams.some((x) => x.ai) ? { ai: world.teams.filter((x) => x.controller !== "neutral").map((x) => x.ai?.difficulty ?? null) } : {}),
     },
     log: world.log,
   };

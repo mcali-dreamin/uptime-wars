@@ -10,7 +10,8 @@
 //                 win. Off, the botnet is pressure, not an objective.
 // - the botnet itself is in or out by whether the races include it.
 //
-// The horde is always everyone's enemy. Alliances are mutual and live in
+// The horde is always everyone's enemy, and so is the neutral team (camp
+// guards): like the horde it is in nobody's alliance mask but its own. Alliances are mutual and live in
 // world.allies, one bitmask per team, so hostile() stays a bit test.
 
 import type { Team, TeamId, World } from "./types";
@@ -74,6 +75,11 @@ export function humanTeams(world: World): Team[] {
 /** The team the wave director drives, if any. */
 export function hordeTeam(world: World): Team | undefined {
   return world.teams.find((team) => team.controller === "wave-director");
+}
+
+/** The neutral team that owns the map's camps (always the last team), if any. */
+export function neutralTeam(world: World): Team | undefined {
+  return world.teams.find((team) => team.controller === "neutral");
 }
 
 /** Why a player can't propose (or accept) an alliance with `other` now, or null. */

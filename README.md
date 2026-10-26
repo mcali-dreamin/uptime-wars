@@ -194,6 +194,18 @@ up. Every finished core raises your per-tier caps (Web Apps, generators) by
 half your main core's allowance, rounded up; your upgrade center stays one
 per team.
 
+**Neutral camps.** Squads of legacy hardware (Legacy Terminals, Servers and
+Mainframes) guard the open ground, placed from the seed: weak camps about 22
+tiles from every start, stronger ones toward the middle (48 and 74 tiles out),
+the same set for every start so the map is fair. They belong to a neutral team
+that is hostile to everyone, the botnet included, but they never attack first:
+hit one and the whole camp fights back inside its leash, then goes home. A camp
+nobody is fighting mends back to full, so finish what you start. A cleared camp
+stays cleared (you get a "Camp cleared" alert). Every unit pays more bounty than
+an ordinary unit of its strength, plus hero XP, so camps are an early way to
+level your hero. The neutral team never plays: no income, no core, no scoreboard
+line, and it never affects who wins. Numbers live in `src/content/neutrals.json`.
+
 **Spot capacity.** Rent extra compute for a push or a boss. Select a core and
 press `N` (or the Spot capacity button): +60 / 120 / 200 compute (by core tier)
 for 90s, for $250 / 500 / 900. Each rental this match costs 25% of the base
@@ -510,6 +522,7 @@ Direction: survival on a procedurally generated open web.
 - [x] Core tech tiers: Core, Data Center, Region
 - [x] Network expansion (per race) and redundant cores
 - [x] Expansion: found cores across the map with a deploy agent; each core raises the caps
+- [x] Neutral camps: guarded legacy hardware at seeded spots, bounty and hero XP (capturable sites and AI to come, #160)
 - [x] Heroes: one per race, levels, skill points, four abilities each
 - [x] Compute is the army cap; generators are limited per core tier (soft at the top tier)
 - [x] Four races: Open Source Collective, Hyperscaler, Serverless, Walled Garden

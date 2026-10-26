@@ -2,12 +2,12 @@
 // door and marches on your core.
 
 import { describe, expect, it } from "vitest";
-import { TICK_RATE, canFound, createWorld, queueCommand, step, type World } from "../src/sim";
+import { TICK_RATE, canFound, createWorld, hordeTeam, queueCommand, step, type World } from "../src/sim";
 import { content, OPENING, SETUP } from "./fixtures";
 
 const SEEDS = [1, 7, 42, 99, 1234, 2026, 31337, 8];
 const core = (w: World, team = 0) => w.entities.find((e) => e.id === w.teams[team]!.coreId)!;
-const creeps = (w: World) => w.entities.filter((e) => e.kind === "unit" && e.team === w.teams.length - 1 && e.mode === "roam");
+const creeps = (w: World) => w.entities.filter((e) => e.kind === "unit" && e.team === hordeTeam(w)!.id && e.mode === "roam");
 
 describe("the opening incident", () => {
   it("nothing hostile is out before the minute is up", () => {

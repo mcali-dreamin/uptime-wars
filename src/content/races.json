@@ -311,5 +311,18 @@
       "unitHpMultiplier": 1,
       "startingMoneyBonus": 0
     }
+  },
+  "neutral": {
+    "name": "Legacy Hardware",
+    "specialty": "Guards the map's camps. Hostile to everyone, never attacks first.",
+    "controller": "neutral",
+    "core": "malware-nest",
+    "buildings": [],
+    "modifiers": {
+      "spawnIntervalMultiplier": 1,
+      "costMultiplier": 1,
+      "unitHpMultiplier": 1,
+      "startingMoneyBonus": 0
+    }
   }
 }

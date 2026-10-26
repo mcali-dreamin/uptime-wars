@@ -1,0 +1,21 @@
+{
+  "regenPermillePerSecond": 80,
+  "alertTicks": 100,
+  "tiers": {
+    "near": {
+      "fromStart": 22,
+      "count": 2,
+      "units": ["legacy-terminal", "legacy-terminal", "legacy-terminal"]
+    },
+    "mid": {
+      "fromStart": 48,
+      "count": 2,
+      "units": ["legacy-server", "legacy-server", "legacy-terminal", "legacy-terminal"]
+    },
+    "far": {
+      "fromStart": 74,
+      "count": 1,
+      "units": ["legacy-mainframe", "legacy-server", "legacy-server", "legacy-terminal"]
+    }
+  }
+}

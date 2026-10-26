@@ -7,9 +7,11 @@ import { content, planBuildOrder } from "./fixtures";
 
 const SETUP = { seed: 1234, races: ["open-source", "botnet"], startWithCore: true };
 
-/** A base with `list` finished, no waves, the hero and any guards parked far off. */
+/** A base with `list` finished, no waves, no neutral camps, the hero and any guards parked far off. */
 function base(list: string[]): World {
   const world = createWorld(content, SETUP);
+  // Creeps pick fights with any camp they pass; these tests are about creeps and buildings.
+  world.entities = world.entities.filter((e) => world.teams[e.team]!.controller !== "neutral");
   world.waves.nextWaveTick = 1e9;
   world.teams[0]!.money = 10000;
   for (const c of planBuildOrder(content, SETUP, list.map((b) => [0, b] as [number, string]))) queueCommand(world, c);

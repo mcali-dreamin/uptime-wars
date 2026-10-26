@@ -24,6 +24,7 @@ import { footprintCenter } from "./map";
 import { teamCores } from "./placement";
 import { allied, hordeTeam, humanTeams, rulesFor, startingAllies, type MatchMode, type MatchRules } from "./teams";
 import { tickFunctions } from "./functions";
+import { spawnCamps, tickNeutrals } from "./neutrals";
 import { syncWalls } from "./walls";
 import { tickSeparation } from "./separation";
 import { tickRepair } from "./mechanics";
@@ -43,6 +44,7 @@ export interface MatchSetup {
   /**
    * One race per team, in team order: the human players (1 to MAX_PLAYERS)
    * and then the horde, e.g. ["open-source", "hyperscaler", "botnet"].
+   * (The neutral team is added by createWorld, after all of these.)
    * Player n starts at terrain.starts[n].
    */
   races: string[];
@@ -65,6 +67,8 @@ export interface MatchSetup {
 export function createWorld(content: Content, setup: MatchSetup): World {
   const terrain = generateTerrain(setup.seed);
   const teams = setup.races.map((race, id) => makeTeam(content, id, race, setup.heroes?.[id] ?? undefined, setup.ai?.[id] ?? undefined));
+  // The camp guards' team goes after every setup team, so no team id shifts.
+  teams.push(makeTeam(content, teams.length, "neutral", undefined, undefined));
   const players = teams.filter((team) => team.controller === "human").length;
   const rules: MatchRules = { ...rulesFor(setup.mode ?? "coop", players), ...setup.rules };
   const world: World = {
@@ -108,6 +112,7 @@ export function createWorld(content: Content, setup: MatchSetup): World {
     if (team.ai && team.controller !== "human") throw new Error(`Team ${team.id} isn't a player, so it can't be a computer player`);
   }
   for (const team of world.teams) {
+    if (team.controller === "neutral") continue;
     const { col, row } = team.controller === "human" ? terrain.starts[team.id]! : terrain.nest;
     const race = content.races[team.raceId]!;
     if (race.builder && !setup.startWithCore) {
@@ -124,6 +129,7 @@ export function createWorld(content: Content, setup: MatchSetup): World {
     fortify(world, content, horde.id, 1);
     raiseFarms(world, content, horde.id);
   }
+  spawnCamps(makeContext(world, content));
   return world;
 }
 
@@ -184,6 +190,7 @@ export function step(world: World, content: Content): void {
   tickSpawners(ctx);
   tickFunctions(ctx);
   tickBuildingAttacks(ctx);
+  tickNeutrals(ctx);
   tickUnits(ctx);
   tickSeparation(ctx);
   // Last, so a building that finishes this tick starts working next tick.
@@ -207,7 +214,8 @@ export function step(world: World, content: Content): void {
 function checkOutcome(ctx: TickContext): void {
   const { world, content } = ctx;
   for (const team of world.teams) {
-    if (team.downTick !== null) continue;
+    // Camp guards never play: no core, no builder, nothing to lose.
+    if (team.downTick !== null || team.controller === "neutral") continue;
     // A mid-match deploy agent that died is gone for good: the $ it cost
     // isn't refunded. (Match start, an agent death is the whole team's end.)
     if (team.coreId !== -1 && team.builderId !== -1) {

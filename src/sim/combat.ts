@@ -7,6 +7,7 @@ import { GRID_CELL, GRID_STRIDE, type TickContext } from "./context";
 import { regionShield } from "./mechanics";
 import { invulnerable, nestShielded, retaliate } from "./fortress";
 import { loseUsers } from "./economy";
+import { clearedCamp } from "./neutrals";
 import { TILE } from "./map";
 import { hasLineOfSight } from "./nav";
 import { heightAtTile } from "./terrain";
@@ -153,8 +154,12 @@ export function dealDamage(
     if (target.kind === "building" && target.defId === content.waves.fortress.farms.building) retaliate(ctx, attacker);
     world.events.push({ type: "death", id: target.id, x: target.x, y: target.y, team: target.team, kind: target.kind, defId: target.defId });
     if (target.kind === "unit") {
-      world.teams[attacker.team]!.money += content.units[target.defId]!.bounty * rankWorth(content, world, target);
+      // Camp guards pay bounty to whoever cleared them, but never earn any.
+      if (world.teams[attacker.team]!.controller !== "neutral") {
+        world.teams[attacker.team]!.money += content.units[target.defId]!.bounty * rankWorth(content, world, target);
+      }
       creditKill(ctx, target);
+      clearedCamp(world, target, attacker.team);
     }
   }
 }
