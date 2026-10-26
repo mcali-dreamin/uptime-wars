@@ -3,7 +3,8 @@
 
 import { describe, expect, it } from "vitest";
 import { TICK_RATE, TILE, campSpots, createWorld, hashWorld, neutralTeam, step, type Content, type Unit, type World } from "../src/sim";
-import { playArmy, power } from "../src/sim/ai/army";
+import { outmatches, playArmy, power } from "../src/sim/ai/army";
+import { hasSite } from "../src/sim/sites";
 import { makeContext } from "../src/sim/context";
 import { spawnUnit } from "../src/sim/entities";
 import { BUILDING_SIGHT } from "../src/sim/tuning";
@@ -80,32 +81,50 @@ describe("computer players creep camps", () => {
     expect(xpAtFirstClear).toBeGreaterThanOrEqual(0);
   });
 
-  it("goes for the nearest camp of an allowed tier it can beat, never a tier its difficulty excludes", () => {
-    for (const [level, seed] of [["normal", 42], ["normal", 1], ["hard", 7]] as const) {
-      const world = ffa(base, seed, level);
+  it("goes for a site camp it can beat, else the nearest camp it can beat, never a tier its difficulty excludes", () => {
+    const nearMid = withCreep("normal", { tiers: ["near", "mid"] });
+    for (const [content, level, seed] of [[base, "normal", 42], [nearMid, "normal", 1], [base, "hard", 7]] as const) {
+      const world = ffa(content, seed, level);
       const ai = world.teams[1]!.ai!;
-      const allowed = base.difficulties[level]!.creep!.tiers;
-      const spots = campSpots(world.terrain, base.neutrals);
+      const creep = content.difficulties[level]!.creep!;
+      const spots = campSpots(world.terrain, content.neutrals);
       const core = coreOf(world, 1);
       let launches = 0;
       let phase = ai.phase;
       while (world.tick < 9000 && ai.phase !== "attack") {
         const standing = new Set(world.entities.filter((e) => e.kind === "unit" && e.campId !== undefined && e.hp > 0).map((e) => e.campId!));
-        step(world, base);
+        step(world, content);
         if (phase !== "creep" && ai.phase === "creep" && ai.creepKind === "camp") {
           launches += 1;
-          expect(allowed).toContain(spots[ai.camp]!.tier);
-          const mine = power(base, world.entities.filter((e): e is Unit => e.kind === "unit" && ai.group.includes(e.id)));
+          expect(creep.tiers).toContain(spots[ai.camp]!.tier);
+          const army = world.entities.filter((e): e is Unit => e.kind === "unit" && ai.group.includes(e.id));
           const beatable = spots
-            .map((s, i) => ({ s, i, p: power(base, base.neutrals.tiers[s.tier]!.units.map((defId) => ({ defId, hp: base.units[defId]!.hp }))) }))
-            .filter(({ s, i, p }) => allowed.includes(s.tier) && standing.has(i) && mine * 1000 >= p * base.difficulties[level]!.creep!.oddsPermille);
-          const nearest = beatable.map(({ i }) => ({ i, d: dist(centerOf(world, i), core) })).sort((a, b) => a.d - b.d)[0]!;
-          expect(ai.camp).toBe(nearest.i);
+            .map((s, i) => ({ s, i }))
+            .filter(({ s, i }) => creep.tiers.includes(s.tier) && standing.has(i) && outmatches(content, army, content.neutrals.tiers[s.tier]!.units.map((defId) => ({ defId, hp: content.units[defId]!.hp })), creep.oddsPermille));
+          const sites = beatable.filter(({ s }) => hasSite(content.neutrals.sites, s));
+          const pick = (sites.length ? sites : beatable).map(({ i }) => ({ i, d: dist(centerOf(world, i, content), core) })).sort((a, b) => a.d - b.d)[0]!;
+          expect(ai.camp).toBe(pick.i);
         }
         phase = ai.phase;
       }
       expect(launches, `${level} ${seed}`).toBeGreaterThan(0);
     }
+  });
+
+  it("weighs a fight by the square law, with armor", () => {
+    const t = (n: number, defId: string) => Array.from({ length: n }, () => ({ defId, hp: base.units[defId]!.hp }));
+    // Square law: n of a unit against one is n^2 times as strong.
+    expect(outmatches(base, t(4, "legacy-terminal"), t(1, "legacy-terminal"), 16000)).toBe(true);
+    expect(outmatches(base, t(4, "legacy-terminal"), t(1, "legacy-terminal"), 16001)).toBe(false);
+    // Terminals (110 hp, 11 dmg / 18 ticks) into a mainframe (2500 hp, 45 dmg
+    // / 22 ticks, armor 4): 110n x 7·20/18·n against 2500 x 45·20/22 means
+    // eleven terminals, not ten. Armor ignored, nine would do; and summing
+    // hp x dps per unit (the old measure) said it took 77.
+    expect(outmatches(base, t(11, "legacy-terminal"), t(1, "legacy-mainframe"), 1000)).toBe(true);
+    expect(outmatches(base, t(10, "legacy-terminal"), t(1, "legacy-mainframe"), 1000)).toBe(false);
+    expect(power(base, t(76, "legacy-terminal"))).toBeLessThan(power(base, t(1, "legacy-mainframe")));
+    // Dead units bring nothing.
+    expect(outmatches(base, [{ defId: "legacy-terminal", hp: 0 }], t(1, "legacy-terminal"), 1)).toBe(false);
   });
 
   it("an easy computer never creeps", () => {
