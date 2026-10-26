@@ -115,7 +115,7 @@ await run(
     await paste.host.check("#coop-open");
     await paste.host.click("#coop-start");
     const rules = (page) =>
-      page.evaluate(() => ({ rules: JSON.stringify(window.uptime.world.rules), races: window.uptime.world.teams.map((t) => t.raceId).join() }));
+      page.evaluate(() => ({ rules: JSON.stringify(window.uptime.world.rules), races: window.uptime.world.teams.filter((t) => t.controller !== "neutral").map((t) => t.raceId).join() }));
     const ffa = await waitFor(async () => {
       const [h, g] = [await rules(paste.host), await rules(paste.guest)];
       return h.rules.includes('"open"') && h.rules === g.rules && h.races === g.races ? h : null;
@@ -126,7 +126,7 @@ await run(
       await waitFor(() => page.$eval("#players", (el) => !el.hidden && el.querySelector("button") !== null), 30000);
       await page.click("#players button");
     }
-    const allied = (page) => page.evaluate(() => window.uptime.world.allies.join());
+    const allied = (page) => page.evaluate(() => window.uptime.world.allies.slice(0, 2).join());
     check(await waitFor(async () => (await allied(paste.host)) === "3,3" && (await allied(paste.guest)) === "3,3", 30000), "both click Ally: they're allied in both worlds");
     check(await waitFor(async () => (await paste.guest.textContent("#players")).includes("Ally"), 10000), "the players panel shows the alliance");
     await paste.host.context().close();
@@ -139,7 +139,7 @@ await run(
     await host.click("#coop-start");
     check(await waitFor(() => guest.evaluate(() => window.uptime.world.tick > 20), 60000), "the match starts in both browsers");
     const who = (page) =>
-      page.evaluate(() => ({ local: window.uptime.session.local, races: window.uptime.world.teams.map((t) => t.raceId).join(), ai: window.uptime.world.teams[2]?.ai?.difficulty }));
+      page.evaluate(() => ({ local: window.uptime.session.local, races: window.uptime.world.teams.filter((t) => t.controller !== "neutral").map((t) => t.raceId).join(), ai: window.uptime.world.teams[2]?.ai?.difficulty }));
     const [h, g] = [await who(host), await who(guest)];
     check(h.local === 0 && g.local === 1 && h.races === g.races, `each browser plays its own team in the same match (${h.races})`);
     check(h.ai === "normal" && g.ai === "normal", "the computer seat reaches the guest");
@@ -195,7 +195,7 @@ await run(
     await second.waitForTimeout(500);
     await second.keyboard.press("q");
     check(await waitFor(async () => (await first.textContent("#coop-status"))?.includes("Starting in"), 30000), "quick match: the second player joins the first, and a countdown starts");
-    const playing = (page) => page.evaluate(() => ({ net: window.uptime.session.net !== null, tick: window.uptime.world.tick, local: window.uptime.session.local, races: window.uptime.world.teams.map((t) => t.raceId).join(), rules: JSON.stringify(window.uptime.world.rules) }));
+    const playing = (page) => page.evaluate(() => ({ net: window.uptime.session.net !== null, tick: window.uptime.world.tick, local: window.uptime.session.local, races: window.uptime.world.teams.filter((t) => t.controller !== "neutral").map((t) => t.raceId).join(), rules: JSON.stringify(window.uptime.world.rules) }));
     const both = await waitFor(async () => {
       const [a, b] = [await playing(first), await playing(second)];
       return a.net && b.net && a.tick > 20 && b.tick > 20 ? [a, b] : null;

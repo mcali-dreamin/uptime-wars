@@ -1144,13 +1144,39 @@ export class Models {
 
   // --- units ----------------------------------------------------------------
 
-  private unit(unitId: string, team: number, r: number): THREE.Group {
-    // Camp guards wear existing models.
-    const defId = CAMP_MODELS[unitId] ?? unitId;
+  private unit(defId: string, team: number, r: number): THREE.Group {
     const styled = this.lookUnit(defId, team, r);
     if (styled) return styled;
     const g = new THREE.Group();
     switch (defId) {
+      // --- neutral camp guards: old hardware in the camp colour, not creeps ---
+      case "legacy-terminal": {
+        // A boxy CRT on a keyboard wedge, its screen lit.
+        this.box(g, team, "frame", r * 1.5, r * 0.25, r * 0.8, 0, 0, r * 0.45);
+        this.box(g, team, "frame", r * 1.4, r * 1.2, r * 1.3, 0, r * 0.25, -r * 0.2);
+        this.box(g, team, "dark", r * 1.1, r * 0.85, 0.6, 0, r * 0.42, r * 0.46);
+        const screen = this.box(g, team, "glow", r * 0.95, r * 0.7, 0.4, 0, r * 0.5, r * 0.5);
+        anim(screen, { type: "pulse", amount: 0.06, speed: 1.3 });
+        break;
+      }
+      case "legacy-server": {
+        // A tall rack: dark face, trimmed edges, a column of drive lights.
+        this.box(g, team, "frame", r * 1.3, r * 2.4, r * 1.2);
+        this.box(g, team, "dark", r * 1.1, r * 2.2, 0.6, 0, r * 0.1, r * 0.6);
+        for (let i = 0; i < 5; i += 1) this.box(g, team, i % 2 ? "trim" : "glow", r * 0.8, r * 0.12, 0.5, 0, r * (0.35 + i * 0.4), r * 0.66);
+        break;
+      }
+      case "legacy-mainframe": {
+        // A wide cabinet with two tape reels on its face and a lit status bar.
+        this.box(g, team, "frame", r * 2.2, r * 1.9, r * 1.3);
+        this.box(g, team, "dark", r * 2.0, r * 1.2, 0.6, 0, r * 0.55, r * 0.66);
+        for (const x of [-0.5, 0.5]) {
+          const reel = this.shape(g, team, "trim", `legacy-reel:${r}`, () => new THREE.CylinderGeometry(r * 0.38, r * 0.38, r * 0.15, 16).rotateX(Math.PI / 2), x * r, r * 1.15, r * 0.72);
+          anim(reel, { type: "spin", speed: x > 0 ? 1.4 : -1.1, axis: "z" });
+        }
+        this.box(g, team, "glow", r * 1.6, r * 0.12, 0.5, 0, r * 0.4, r * 0.7);
+        break;
+      }
       case "kernel": {
         // A big slow orb in a cradle, ringed by a mending halo.
         this.cyl(g, team, "frame", r * 0.9, r * 1.1, r * 0.5, 10);
@@ -1426,9 +1452,6 @@ export class Models {
     return g;
   }
 }
-
-/** Neutral camp units reuse the models of ordinary units. */
-const CAMP_MODELS: Record<string, string> = { "legacy-terminal": "bot", "legacy-server": "trojan", "legacy-mainframe": "mainframe" };
 
 // --- helpers ------------------------------------------------------------------
 
