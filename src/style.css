@@ -493,7 +493,7 @@ body.home #hud,
 body.home #build-bar,
 body.home #hint,
 body.home #info,
-body.home #hero-card,
+body.home #hero-panel,
 body.home #players,
 body.home #countdown {
   visibility: hidden;
@@ -807,15 +807,21 @@ body.home #coop {
   font-weight: 600;
 }
 
-#hero-card {
+/* The hero's card with its inventory tray attached beneath: one unit, one width. */
+#hero-panel {
   position: absolute;
   top: 12px;
   left: 12px;
   z-index: 1;
   display: flex;
   flex-direction: column;
+  width: 290px;
+}
+
+#hero-card {
+  display: flex;
+  flex-direction: column;
   gap: 0.25rem;
-  min-width: 190px;
   padding: 0.45rem 0.65rem;
   background: var(--glass);
   color: var(--text);
@@ -856,16 +862,22 @@ body.home #coop {
   opacity: 0.6;
 }
 
-/* The six inventory slots under the hero card. */
+/* The six inventory slots: a tray hung flush under the card (its top edge is
+   the card's bottom border), cut at the bottom-right like the card above. */
 #hero-items {
-  position: absolute;
-  top: 78px;
-  left: 12px;
-  z-index: 1;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  width: 270px;
+  gap: 3px;
+  margin-top: -1px;
+  padding: 4px;
+  background: var(--glass);
+  border: 1px solid var(--line);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%);
+}
+
+/* The card's bottom-left corner is cut; with the tray attached, it stays square. */
+#hero-card:has(+ #hero-items:not([hidden])) {
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% 100%, 0 100%, 0 var(--cut));
 }
 
 #hero-items[hidden] {
@@ -875,12 +887,12 @@ body.home #coop {
 .hero-slot {
   position: relative;
   min-width: 0;
-  min-height: 2.5rem;
+  min-height: 2.3rem;
   padding: 0.25rem 0.35rem;
-  background: var(--glass);
+  background: rgba(20, 34, 48, 0.85);
   color: var(--text);
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 2px;
   font: inherit;
   font-size: 0.68rem;
   text-align: left;
@@ -891,16 +903,30 @@ body.home #coop {
 }
 
 .hero-slot.filled {
-  border-color: #4c5a70;
+  border-color: rgba(103, 232, 249, 0.4);
 }
 
 .hero-slot.usable {
   cursor: pointer;
 }
 
+/* An empty slot is a socket recessed into the tray, not a box: a faint
+   dashed outline and its Alt hotkey digit. */
 .hero-slot:disabled {
   color: var(--muted);
   cursor: default;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px dashed rgba(56, 189, 248, 0.16);
+}
+
+.hero-slot:disabled::before {
+  content: attr(data-key);
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: rgba(111, 139, 166, 0.35);
+  font-size: 0.62rem;
 }
 
 .hero-slot small {
@@ -921,7 +947,7 @@ body.home #coop {
   font-weight: 700;
   font-size: 0.6rem;
   line-height: 1.25;
-  border-radius: 4px 0 4px 0;
+  border-radius: 2px 0 0 0;
   cursor: pointer;
 }
 
@@ -934,6 +960,12 @@ body.home #coop {
   justify-content: space-between;
   gap: 0.75rem;
   font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.hero-top strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 #hero-xp {
