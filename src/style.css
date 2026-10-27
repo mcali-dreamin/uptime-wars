@@ -1,12 +1,23 @@
 :root {
+  /* 2075 terminal: smoked-glass panels, thin luminous cyan lines, chamfered
+     corners. No backdrop blur: it re-blurs over the WebGL canvas every frame,
+     which a software renderer can't afford. */
   color-scheme: dark;
-  --bg: #0b0f14;
-  --panel: #121922;
-  --line: #243142;
-  --text: #d6e2f0;
-  --muted: #7b8da3;
+  --bg: #05080d;
+  --panel: #0a1018;
+  --glass: rgba(8, 13, 21, 0.86);
+  --scrim: rgba(3, 6, 10, 0.9);
+  --line: rgba(56, 189, 248, 0.24);
+  --line-hot: rgba(103, 232, 249, 0.65);
+  --glow: 0 0 14px rgba(34, 211, 238, 0.12);
+  --text: #d8e6f3;
+  --muted: #6f8ba6;
+  --label: #5fa8c4;
   --accent: #4ade80;
   --danger: #f87171;
+  /* A chamfer: top-left and bottom-right corners cut, like a HUD bracket. */
+  --cut: 7px;
+  --chamfer: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
   font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
 }
 
@@ -36,10 +47,12 @@ body {
   gap: 1.5rem;
   align-items: center;
   padding: 0.6rem 1rem;
-  background: var(--panel);
-  border-color: var(--line);
+  background: linear-gradient(180deg, #0c1420, var(--panel));
+  border-color: var(--line-hot);
   border-style: solid;
   border-width: 0 0 1px;
+  /* The lit edge glows inward (the game's canvas would cover a glow outward). */
+  box-shadow: inset 0 -12px 16px -14px rgba(34, 211, 238, 0.55);
 }
 
 #hud {
@@ -49,6 +62,8 @@ body {
 
 #build-bar {
   border-width: 1px 0 0;
+  background: linear-gradient(0deg, #0c1420, var(--panel));
+  box-shadow: inset 0 12px 16px -14px rgba(34, 211, 238, 0.55);
   gap: 0.5rem;
   flex-wrap: wrap;
 }
@@ -66,7 +81,7 @@ body {
 
 .label {
   font-size: 0.7rem;
-  color: var(--muted);
+  color: var(--label);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -160,10 +175,11 @@ body {
 }
 
 .build-btn {
-  background: var(--bg);
+  background: linear-gradient(180deg, rgba(20, 34, 48, 0.9), rgba(6, 10, 16, 0.95));
   color: var(--text);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--chamfer);
   padding: 0.45rem 0.75rem;
   font: inherit;
   cursor: pointer;
@@ -175,9 +191,13 @@ body {
   color: var(--muted);
 }
 
+.build-btn:not(:disabled):hover {
+  border-color: var(--line-hot);
+}
+
 .build-btn.selected {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent), inset 0 0 14px -6px var(--accent);
 }
 
 .build-btn:disabled {
@@ -197,9 +217,10 @@ body {
   z-index: 1;
   max-width: 280px;
   padding: 0.45rem 0.65rem;
-  background: rgba(18, 25, 34, 0.9);
+  background: var(--glass);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--chamfer);
   pointer-events: none;
   font-size: 0.78rem;
   line-height: 1.4;
@@ -282,7 +303,11 @@ body {
   gap: 0.9rem;
   padding: 1.5rem 1rem;
   overflow-y: auto;
-  background: rgba(11, 15, 20, 0.92);
+  /* A faint deck grid under the menu. */
+  background:
+    linear-gradient(rgba(56, 189, 248, 0.05) 1px, transparent 1px) 0 0 / 48px 48px,
+    linear-gradient(90deg, rgba(56, 189, 248, 0.05) 1px, transparent 1px) 0 0 / 48px 48px,
+    var(--scrim);
   text-align: center;
 }
 
@@ -292,7 +317,10 @@ body {
 
 #race-picker h1 {
   margin: 0;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: #e6fbff;
+  text-shadow: 0 0 18px rgba(34, 211, 238, 0.55);
 }
 
 #race-picker p,
@@ -348,7 +376,8 @@ body {
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 0;
+  clip-path: var(--chamfer);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -365,7 +394,7 @@ body {
 .race-card.chosen {
   opacity: 1;
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent), 0 0 24px -8px var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent), inset 0 0 28px -10px var(--accent);
 }
 
 .race-card strong {
@@ -403,7 +432,8 @@ body {
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
+  clip-path: var(--chamfer);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -493,7 +523,7 @@ body.home #coop {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(11, 15, 20, 0.92);
+  background: var(--scrim);
 }
 
 #coop[hidden] {
@@ -506,11 +536,15 @@ body.home #coop {
   padding: 1rem 1.25rem;
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 0;
+  clip-path: var(--chamfer);
 }
 
 .coop-window h2 {
   margin: 0 0 0.5rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #e6fbff;
 }
 
 .coop-window p {
@@ -538,7 +572,7 @@ body.home #coop {
   flex: 1;
   min-width: 0;
   padding: 0.35rem 0.5rem;
-  background: #0b0f14;
+  background: var(--bg);
   color: var(--text);
   border: 1px solid var(--line);
   border-radius: 4px;
@@ -587,7 +621,7 @@ body.home #coop {
   z-index: 1;
   padding: 0.35rem 0.8rem;
   border-radius: 999px;
-  background: rgba(18, 25, 34, 0.85);
+  background: var(--glass);
   border: 1px solid var(--line);
   color: var(--text);
   font-size: 0.85rem;
@@ -663,7 +697,7 @@ body.home #coop {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(11, 15, 20, 0.7);
+  background: rgba(3, 6, 10, 0.72);
 }
 
 #guide[hidden] {
@@ -677,7 +711,8 @@ body.home #coop {
   flex-direction: column;
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 0;
+  clip-path: var(--chamfer);
   overflow: hidden;
 }
 
@@ -782,10 +817,11 @@ body.home #coop {
   gap: 0.25rem;
   min-width: 190px;
   padding: 0.45rem 0.65rem;
-  background: rgba(18, 25, 34, 0.9);
+  background: var(--glass);
   color: var(--text);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--chamfer);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -808,10 +844,11 @@ body.home #coop {
 @keyframes points-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(125, 255, 160, 0);
+    box-shadow: inset 0 0 0 0 rgba(125, 255, 160, 0);
   }
   50% {
-    box-shadow: 0 0 14px 2px rgba(125, 255, 160, 0.45);
+    /* Inward: the chamfer clips anything outside the card. */
+    box-shadow: inset 0 0 16px 2px rgba(125, 255, 160, 0.45);
   }
 }
 
@@ -840,7 +877,7 @@ body.home #coop {
   min-width: 0;
   min-height: 2.5rem;
   padding: 0.25rem 0.35rem;
-  background: rgba(18, 25, 34, 0.9);
+  background: var(--glass);
   color: var(--text);
   border: 1px solid var(--line);
   border-radius: 4px;
@@ -880,7 +917,7 @@ body.home #coop {
   right: -1px;
   padding: 0 3px;
   background: var(--accent);
-  color: #0b0f14;
+  color: var(--bg);
   font-weight: 700;
   font-size: 0.6rem;
   line-height: 1.25;
@@ -903,7 +940,7 @@ body.home #coop {
   --xp: 0;
   height: 4px;
   border-radius: 2px;
-  background: linear-gradient(90deg, var(--accent) calc(var(--xp) * 100%), #243142 0);
+  background: linear-gradient(90deg, var(--accent) calc(var(--xp) * 100%), rgba(56, 189, 248, 0.18) 0);
 }
 
 #hero-status {
@@ -918,6 +955,7 @@ body.home #coop {
 
 .ability-btn {
   position: relative;
+  clip-path: none;
 }
 
 .ability-btn.cooling {
@@ -932,7 +970,7 @@ body.home #coop {
   height: 18px;
   border-radius: 50%;
   background: var(--accent);
-  color: #0b0f14;
+  color: var(--bg);
   font-weight: 700;
   line-height: 18px;
   text-align: center;
@@ -1004,8 +1042,9 @@ body.home #coop {
   flex-direction: column;
   align-items: center;
   padding: 0.35rem 1.2rem 0.45rem;
-  border-radius: 10px;
-  background: rgba(18, 25, 34, 0.82);
+  border-radius: 0;
+  clip-path: var(--chamfer);
+  background: var(--glass);
   border: 1px solid var(--line);
   pointer-events: none;
 }
@@ -1057,9 +1096,10 @@ body.home #coop {
   flex-direction: column;
   gap: 0.3rem;
   padding: 0.45rem 0.6rem;
-  background: rgba(18, 25, 34, 0.9);
+  background: var(--glass);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
+  clip-path: var(--chamfer);
   font-size: 0.8rem;
 }
 

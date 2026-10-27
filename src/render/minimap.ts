@@ -45,7 +45,7 @@ export class Minimap {
     const cell = TILE * this.scale;
     const g = this.terrainLayer;
     g.clear();
-    g.rect(0, 0, terrain.cols * cell, terrain.rows * cell).fill({ color: 0x0e141b }).stroke({ width: 1, color: 0x243142 });
+    g.rect(0, 0, terrain.cols * cell, terrain.rows * cell).fill({ color: 0x05080d }).stroke({ width: 1, color: 0x2a7f9c });
     drawTerrainBase(g, terrain, cell);
     this.fog.setMinimapScale(this.scale);
   }
