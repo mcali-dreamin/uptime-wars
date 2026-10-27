@@ -606,12 +606,13 @@ const GROUND_COLOR = /* glsl */ `
     diffuseColor.rgb = col;
     gTerrainSteep = steep;
     gTerrainLevel = lvl;
-    // Surfaces: the undercity is wet glass (it mirrors the neon), the deck
+    // Surfaces: the undercity is damp glass (rough enough that the sun never
+    // makes a hot spot: that was glare, see #161), the deck
     // satin composite, the backbone brushed titanium, walls polished stone.
     float wet = smoothstep(0.35, 0.65, vnoise(xz * 0.006));
-    gRough = lvl < 0.5 ? mix(0.5, 0.26, wet) : lvl < 1.5 ? 0.62 : 0.72;
-    gMetal = lvl < 0.5 ? 0.4 : lvl < 1.5 ? 0.25 : 0.3;
-    gRough = mix(gRough, 0.3, steep);
+    gRough = lvl < 0.5 ? mix(0.66, 0.48, wet) : lvl < 1.5 ? 0.66 : 0.72;
+    gMetal = lvl < 0.5 ? 0.3 : lvl < 1.5 ? 0.2 : 0.3;
+    gRough = mix(gRough, 0.5, steep);
     gMetal = mix(gMetal, 0.45, steep);
     gRough = mix(gRough, 0.9, max(vKind.y, vKind.z));
     gMetal = mix(gMetal, 0.1, max(vKind.y, vKind.z));

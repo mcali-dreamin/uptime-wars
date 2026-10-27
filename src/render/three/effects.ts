@@ -9,6 +9,7 @@ const MAX_BOLTS = 600;
 const MAX_PARTICLES = 3000;
 const MAX_BARS = 700;
 const MAX_RINGS = 700;
+const MAX_GLOWS = 900;
 
 /** Bolts: short glowing streaks that travel from shooter to target. */
 export class Bolts {
@@ -238,6 +239,68 @@ export class Rings {
   /** Brightness stands in for opacity (additive-ish over dark ground). */
   add(x: number, y: number, z: number, radius: number, color: number, strength: number): void {
     if (this.count >= MAX_RINGS || radius <= 0) return;
+    this.p.set(x, y, z);
+    this.s.set(radius, radius, 1);
+    this.mesh.setMatrixAt(this.count, this.m.compose(this.p, this.q, this.s));
+    this.mesh.setColorAt(this.count, this.color.setHex(color).multiplyScalar(strength));
+    this.count += 1;
+  }
+
+  end(): void {
+    this.mesh.count = this.count;
+    this.mesh.instanceMatrix.needsUpdate = true;
+    if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
+  }
+}
+
+/**
+ * Underglow: a soft pool of light on the ground under each hovering unit, in
+ * its team colour. A disc with a radial falloff, additive, so an army reads as
+ * a patch of light from far out.
+ */
+export class Glows {
+  readonly mesh: THREE.InstancedMesh;
+  private readonly m = new THREE.Matrix4();
+  private readonly q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
+  private readonly s = new THREE.Vector3();
+  private readonly p = new THREE.Vector3();
+  private readonly color = new THREE.Color();
+  private count = 0;
+
+  constructor() {
+    const size = 64;
+    const data = new Uint8Array(size * size * 4);
+    for (let y = 0; y < size; y += 1) {
+      for (let x = 0; x < size; x += 1) {
+        const r = Math.hypot(x + 0.5 - size / 2, y + 0.5 - size / 2) / (size / 2);
+        const a = Math.max(0, 1 - r) ** 2;
+        data.set([255, 255, 255, Math.round(a * 255)], (y * size + x) * 4);
+      }
+    }
+    const texture = new THREE.DataTexture(data, size, size);
+    texture.magFilter = THREE.LinearFilter;
+    texture.minFilter = THREE.LinearFilter;
+    texture.needsUpdate = true;
+    const material = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      depthWrite: false,
+      toneMapped: false,
+      blending: THREE.AdditiveBlending,
+    });
+    this.mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(2, 2), material, MAX_GLOWS);
+    this.mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_GLOWS * 3), 3);
+    this.mesh.frustumCulled = false;
+    this.mesh.renderOrder = 4;
+    this.mesh.count = 0;
+  }
+
+  begin(): void {
+    this.count = 0;
+  }
+
+  add(x: number, y: number, z: number, radius: number, color: number, strength: number): void {
+    if (this.count >= MAX_GLOWS) return;
     this.p.set(x, y, z);
     this.s.set(radius, radius, 1);
     this.mesh.setMatrixAt(this.count, this.m.compose(this.p, this.q, this.s));
