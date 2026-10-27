@@ -1224,3 +1224,7 @@ body.home #coop {
 #coop-rules-note {
   color: var(--muted);
 }
+#core.danger {
+  color: var(--danger);
+  font-weight: bold;
+}

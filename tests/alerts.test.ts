@@ -220,3 +220,18 @@ describe("site alerts", () => {
     expect(alerts.update(world, [took], 0, 3, offScreen, () => true).map((a) => a.text)).toEqual(["An enemy took a site"]);
   });
 });
+
+describe("expansion alerts", () => {
+  it("names the main core and an expansion differently", () => {
+    const { world, core } = base();
+    const exp = { ...core, id: 9999, x: core.x + 5000 } as Building;
+    world.entities.push(exp);
+    const alerts = new Alerts(content);
+    expect(alerts.update(world, [shotAt(core)], 0, 0, offScreen)[0]!.text).toBe("Your core is under attack");
+    const hit = alerts.update(world, [shotAt(exp)], 0, 0, offScreen)[0]!;
+    expect(hit).toMatchObject({ text: "Your expansion is under attack", x: exp.x });
+    const death = (b: Building): SimEvent => ({ type: "death", id: b.id, x: b.x, y: b.y, team: 0, kind: "building", defId: b.defId });
+    expect(alerts.update(world, [death(exp)], 0, 1, offScreen)[0]!.text).toBe("Expansion lost");
+    expect(alerts.update(world, [death(core)], 0, 2, offScreen)[0]!.text).toBe("Core lost");
+  });
+});
