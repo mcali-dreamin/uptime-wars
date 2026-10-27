@@ -1,5 +1,6 @@
 // Top bar numbers, the status line, and the hint line over the map.
 
+import { EXPANSION_DANGER, weakestExpansion } from "../game/expansions";
 import { TICK_RATE, threatPermille, computeBalance, farmSpots, farmsStanding, hashWorld, hordeTeam, incomeRate, isCore, previewWave, sitesHeld, rulesLabel, spotState, userCapacity, type Content } from "../sim";
 
 const RULES_NAME = { coop: "Co-op", ffa: "Free-for-all", custom: "Custom rules" } as const;
@@ -64,11 +65,14 @@ export class Hud {
     this.updateIncome();
     this.updateCompute();
     const cores = world.entities.filter((e) => e.hp > 0 && isCore(this.session.content, team, e)).length;
+    const weakest = cores > 1 ? weakestExpansion(world, this.session.content, team) : null;
     this.core.textContent = core
-      ? `${Math.max(0, Math.ceil(core.hp))} / ${core.maxHp}${cores > 1 ? ` · ${cores} up` : ""}`
+      ? `${Math.max(0, Math.ceil(core.hp))} / ${core.maxHp}${cores > 1 ? ` · ${cores} up` : ""}${weakest === null ? "" : ` · exp ${Math.round(weakest * 100)}%`}`
       : this.session.builder()
         ? "not deployed"
         : "offline";
+    this.core.classList.toggle("danger", weakest !== null && weakest < EXPANSION_DANGER);
+    this.core.title = weakest === null ? "" : "Main core HP, cores standing, and the weakest expansion's HP as a share of its max. Red under half: it is in trouble.";
     this.uptime.textContent = clock((world.outcome?.tick ?? world.tick) / TICK_RATE);
     this.updateNest();
     this.nextWave.textContent = `in ${Math.max(0, Math.ceil((world.waves.nextWaveTick - world.tick) / TICK_RATE))}s`;

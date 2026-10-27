@@ -34,6 +34,9 @@ export class Alerts {
   /** Your soldiers as of the last update: a death counts toward "wiped" only if it was one (not a decoy, the hero or an agent). */
   private soldiers = new Set<number>();
 
+  /** Your main core id as of the last update, so a death is judged before any failover. */
+  private mainCore = -1;
+
   constructor(private readonly content: Content) {}
 
   reset(): void {
@@ -41,6 +44,7 @@ export class Alerts {
     this.recent.length = 0;
     this.deaths = [];
     this.soldiers.clear();
+    this.mainCore = -1;
   }
 
   /** The alerts this tick's events raise for `local`, at time `now` (seconds). */
@@ -67,7 +71,7 @@ export class Alerts {
         if (!target) continue;
         if (target.team === local && event.team !== local) {
           if (target.kind === "building" && isCore(this.content, team, target)) {
-            raise("core", "Your core is under attack", target.x, target.y, false);
+            raise("core", target.id === team.coreId ? "Your core is under attack" : "Your expansion is under attack", target.x, target.y, false);
             continue;
           }
           if (target.kind === "building") {
@@ -84,7 +88,11 @@ export class Alerts {
       } else if (event.type === "death" && event.team === local && event.kind === "unit") {
         if (this.soldiers.has(event.id)) this.deaths.push({ at: now, x: event.x, y: event.y });
       } else if (event.type === "death" && event.team === local && event.kind === "building") {
-        raise("lost", `${this.content.buildings[event.defId]?.name ?? "A building"} lost`, event.x, event.y, false);
+        // Decided by the main core id before this tick: it may fail over to another core.
+        const lostName = event.defId === this.content.races[team.raceId]!.core
+          ? event.id === (this.mainCore === -1 ? team.coreId : this.mainCore) ? "Core" : "Expansion"
+          : this.content.buildings[event.defId]?.name ?? "A building";
+        raise("lost", `${lostName} lost`, event.x, event.y, false);
       } else if (event.type === "hero-down" && event.team === local) {
         raise("hero", "Your hero has fallen", event.x, event.y, false);
       } else if (event.type === "agentLost" && event.team === local) {
@@ -110,6 +118,7 @@ export class Alerts {
     // Soldiers are units in guard mode, as in src/game/selection.ts isSoldier.
     this.soldiers.clear();
     for (const e of world.entities) if (e.kind === "unit" && e.team === local && e.hp > 0 && e.mode === "guard") this.soldiers.add(e.id);
+    this.mainCore = team.coreId;
     if (this.deaths.length >= WIPE_MIN_DEATHS) {
       if (this.deaths.length >= this.soldiers.size) {
         const n = this.deaths.length;
