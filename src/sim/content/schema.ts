@@ -93,6 +93,8 @@ export interface BuildingDef {
   invoke?: { unit: string; count: number; cost: number; ttlTicks: number; cooldownTicks: number; triggerRange: number };
   /** Compute this building supplies once finished: what keeps users and units running. */
   compute?: number;
+  /** A Package Registry: the hero buys items within items.shopRadius of it once it's finished. */
+  shop?: boolean;
   /** Blocks movement for everyone, like terrain (walls). Not line of sight: you can shoot over it. */
   blocks?: boolean;
   /** A blocking building its owner's units (and allies') pass through: a gate. */
@@ -695,7 +697,7 @@ export interface ItemDef {
   description: string;
   /** Shop price; drops sell for a share of it (see ItemsDef.sellPermille). */
   cost: number;
-  /** Sold at the core's shop (default false: drop-only). */
+  /** Sold at a Package Registry (default false: drop-only). */
   shop?: boolean;
   /** Consumable: this many charges, spent one at a time from the hero bar. */
   charges?: number;
@@ -711,6 +713,8 @@ export interface ItemDef {
  * and incident bosses fall, and lie on the ground until a hero takes them.
  */
 export interface ItemsDef {
+  /** How close (px, plus the building's radius) the hero must be to a finished shop building. */
+  shopRadius: number;
   /** Selling an item gives back this share of its price, permille. */
   sellPermille: number;
   /** How close a hero must get to take a ground item, in pixels. */

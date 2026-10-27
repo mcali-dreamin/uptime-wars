@@ -39,7 +39,7 @@ export function itemEffectLines(content: Content, itemId: string): string[] {
   const stats = itemStatsLine(def);
   if (stats) lines.push(stats);
   if (def.active) lines.push(itemActiveLine(def));
-  lines.push(def.shop ? `Sold at your core · $${def.cost} · sells for $${sellValue(content, itemId)}` : `Drop only, from fallen Botnet Farms, C2 Servers and bosses · worth $${sellValue(content, itemId)} back at the shop`);
+  lines.push(def.shop ? `Sold at a Package Registry · $${def.cost} · sells for $${sellValue(content, itemId)}` : `Drop only, from fallen Botnet Farms, C2 Servers and bosses · worth $${sellValue(content, itemId)} back at a Package Registry`);
   return lines;
 }
 
@@ -53,7 +53,7 @@ export function itemCard(content: Content, itemId: string, charges?: number): In
 
 /** What carrying items means, for the Guide. */
 export function inventorySummary(): string {
-  return `Carries at most ${MAX_ITEMS} items, kept through death. Click a slot (or Alt+1-6) to use a consumable; sell from the slots while at the shop.`;
+  return `Carries at most ${MAX_ITEMS} items, kept through death. Click a slot (or Alt+1-6) to use a consumable; sell from the slots while the hero is at a Package Registry.`;
 }
 
 

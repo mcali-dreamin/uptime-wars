@@ -13,6 +13,7 @@
       "solar-array",
       "ci-server",
       "web-app",
+      "package-registry",
       "mesh-node"
     ],
     "mechanics": {
@@ -93,6 +94,7 @@
       "power-plant",
       "rnd-lab",
       "web-app",
+      "package-registry",
       "edge-pop"
     ],
     "mechanics": {
@@ -169,6 +171,7 @@
       "compute-pool",
       "build-pipeline",
       "web-app",
+      "package-registry",
       "mesh-node"
     ],
     "modifiers": {
@@ -234,7 +237,8 @@
       "app-review",
       "private-cloud",
       "design-studio",
-      "web-app"
+      "web-app",
+      "package-registry"
     ],
     "mechanics": {
       "loyalty": {

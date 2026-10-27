@@ -4,10 +4,10 @@
 // level, XP, skill points, or the respawn timer. Click it, or press Q, to
 // select the hero; Q again centres on it. Under it sit the six inventory
 // slots: click a filled one to use a consumable or active (Alt+1..6 works
-// too), and while the hero stands at the shop each slot grows a sell badge.
-// With the hero selected the command card shows its four abilities: number
-// keys cast, Shift+number (or the +) spends a skill point — and the shop's
-// items, when the hero is in range.
+// too), and while the hero stands near one of your Package Registries each slot grows a
+// sell badge. With the hero selected the command card shows its four
+// abilities: number keys cast, Shift+number (or the +) spends a skill point.
+// The item shop itself lives on the registry's card (see build-bar.ts).
 
 import type { Session } from "../game/session";
 import { MAX_ITEMS, TICK_RATE, atShop, type Team } from "../sim";
@@ -82,7 +82,7 @@ export class HeroBar {
     this.updateSlots();
   }
 
-  /** The six slots under the card: filled ones use on click, and sell while at the shop. */
+  /** The six slots under the card: filled ones use on click, and sell while at a registry. */
   private updateSlots(): void {
     const { team, content } = this.session;
     const shop = atShop(this.session.world, content, team);
@@ -108,7 +108,7 @@ export class HeroBar {
             const sell = document.createElement("span");
             sell.className = "sell";
             sell.textContent = `$${Math.floor((def.cost * content.items.sellPermille) / 1000)}`;
-            sell.title = "Sell (while at the shop)";
+            sell.title = "Sell (while at a Package Registry)";
             sell.addEventListener("click", (event) => {
               event.stopPropagation();
               this.events.sell(slot);

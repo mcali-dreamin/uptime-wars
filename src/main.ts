@@ -34,7 +34,7 @@ import { Alerts, type AlertKind } from "./game/alerts";
 import { ControlGroups } from "./game/groups";
 import { Session } from "./game/session";
 import { setLocalColor, teamColor } from "./render/palette";
-import { BuildBar, FOUND_BUTTON, SPOT_BUTTON, aimingButton, type BarMode } from "./ui/build-bar";
+import { BuildBar, FOUND_BUTTON, SPOT_BUTTON, aimingButton, shopStock, type BarMode } from "./ui/build-bar";
 import { $ } from "./ui/dom";
 import { Guide } from "./ui/guide";
 import { Hud } from "./ui/hud";
@@ -319,8 +319,14 @@ function centerSelected(): boolean {
   return entity?.kind === "building" && entity.team === session.local && entity.defId === session.race.center;
 }
 
+/** One of your finished Package Registries is selected: the command card is the item shop. */
+function shopSelected(): boolean {
+  const entity = selection.kind === "entity" ? session.entity(selection.id) : undefined;
+  return entity?.kind === "building" && entity.team === session.local && entity.buildRemaining === 0 && content.buildings[entity.defId]?.shop === true;
+}
+
 function barMode(): BarMode {
-  return session.deploying ? "deploy" : heroSelected() ? "hero" : coreSelected() ? "research" : centerSelected() ? "armory" : "build";
+  return session.deploying ? "deploy" : heroSelected() ? "hero" : coreSelected() ? "research" : centerSelected() ? "armory" : shopSelected() ? "shop" : "build";
 }
 
 function research(upgrade: string): void {
@@ -638,7 +644,7 @@ const gameInput: GameInput = {
         if (groups.assign(n, selection)) renderer.showBanner(`Group ${n} set`);
         return true;
       }
-      if (!event.shiftKey && groups.has(n) && !heroSelected() && !coreSelected() && !centerSelected()) {
+      if (!event.shiftKey && groups.has(n) && !heroSelected() && !coreSelected() && !centerSelected() && !shopSelected()) {
         const recalled = groups.recall(n, (id) => session.entity(id) !== undefined, performance.now());
         if (recalled) {
           select(recalled.selection);
@@ -707,7 +713,13 @@ const gameInput: GameInput = {
       if (upgrade) return research(upgrade), true;
       return false;
     }
-    const building = session.race.buildings[Number(key) - 1];
+    if (shopSelected()) {
+      const item = shopStock(content)[Number(key) - 1];
+      if (item) return session.issue({ type: "buyItem", item }), true;
+      return false;
+    }
+    // 1..9 pick the first nine buildings, 0 the tenth.
+    const building = session.race.buildings[key === "0" ? 9 : Number(key) - 1];
     if (building) return select({ kind: "place", building }), true;
     return false;
   },

@@ -23,4 +23,16 @@ describe("content", () => {
     broken.races["open-source"]!.buildings.push(broken.races["open-source"]!.core);
     expect(() => validateContent(broken)).toThrow(/lists its core core/);
   });
+
+  it("every human race can build the Package Registry", () => {
+    for (const [id, race] of Object.entries(content.races)) {
+      if (race.controller === "human") expect(race.buildings, id).toContain("package-registry");
+    }
+  });
+
+  it("rejects a non-positive shop radius", () => {
+    const broken: Content = structuredClone(content);
+    broken.items.shopRadius = 0;
+    expect(() => validateContent(broken)).toThrow(/shopRadius/);
+  });
 });

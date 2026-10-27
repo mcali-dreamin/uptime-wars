@@ -21,7 +21,7 @@ import { heroSpeed, itemTotals, rollDrop } from "../src/sim/items";
 import { heroOf } from "../src/sim/heroes";
 import { makeContext } from "../src/sim/context";
 import { dealDamage } from "../src/sim/combat";
-import { spawnUnit } from "../src/sim/entities";
+import { placeBuilding, spawnUnit } from "../src/sim/entities";
 import { content, OPENING, SETUP } from "./fixtures";
 
 const setup = (race = "open-source"): MatchSetup => ({
@@ -84,24 +84,81 @@ function dropOne(world: World) {
   return world.groundItems[0]!;
 }
 
+/** Put a registry of `team` on the map and the hero `offset` px from its centre. */
+function registryFor(world: World, team: number, opts: { finished?: boolean; offset?: number } = {}): Building {
+  const core = world.entities.find((e) => e.id === team0(world).coreId) as Building;
+  const registry = placeBuilding(world, content, team, "package-registry", core.col + 6, core.row, opts.finished ?? true);
+  const hero = hero0(world);
+  hero.x = registry.x + (opts.offset ?? 40);
+  hero.y = registry.y;
+  hero.homeX = hero.x;
+  hero.homeY = hero.y;
+  hero.moveTo = null;
+  return registry;
+}
+
+/** A finished registry of team 0 right where the hero stands: for tests that just need to shop. */
+function shopAtHero(world: World): Building {
+  const core = world.entities.find((e) => e.id === team0(world).coreId) as Building;
+  return placeBuilding(world, content, 0, "package-registry", core.col + 3, core.row, true);
+}
+
+/** Keep the hero out of the way of any registry, and next to the core only. */
+const nearCoreOnly = (world: World) => {
+  const hero = hero0(world);
+  const core = world.entities.find((e) => e.id === team0(world).coreId) as Building;
+  hero.x = core.x + 50;
+  hero.y = core.y;
+};
+
 describe("the shop", () => {
-  it("buys while the hero is at the core, and refuses while it isn't", () => {
+  it("is not at the core any more", () => {
     const world = createWorld(content, setup());
-    // The hero spawns beside the core: in range.
+    nearCoreOnly(world);
+    order(world, { type: "buyItem", item: "overclock-chip" });
+    expect(rejected(world)).toMatchObject({ reason: "hero not at a registry" });
+    expect(state0(world).items).toEqual([]);
+  });
+
+  it("buys near a finished own registry, and refuses out of range", () => {
+    const world = createWorld(content, setup());
+    const registry = registryFor(world, 0);
     const money = team0(world).money;
     order(world, { type: "buyItem", item: "overclock-chip" });
     expect(rejected(world)).toBeUndefined();
     expect(state0(world).items).toEqual([{ item: "overclock-chip" }]);
     expect(team0(world).money).toBe(money - content.items.items["overclock-chip"]!.cost);
 
-    strandHero(world);
+    const hero = hero0(world);
+    hero.x = registry.x + content.items.shopRadius + registry.radius + 60;
+    hero.homeX = hero.x;
     order(world, { type: "buyItem", item: "hardened-shell" });
-    expect(rejected(world)).toMatchObject({ reason: "not at the shop" });
+    expect(rejected(world)).toMatchObject({ reason: "hero not at a registry" });
     expect(state0(world).items).toHaveLength(1);
+  });
+
+  it("does not open at an unfinished registry", () => {
+    const world = createWorld(content, setup());
+    registryFor(world, 0, { finished: false });
+    order(world, { type: "buyItem", item: "overclock-chip" });
+    expect(rejected(world)).toMatchObject({ reason: "hero not at a registry" });
+  });
+
+  it("does not open at an enemy's or an ally's registry", () => {
+    const enemy = createWorld(content, setup());
+    registryFor(enemy, 1);
+    order(enemy, { type: "buyItem", item: "overclock-chip" });
+    expect(rejected(enemy)).toMatchObject({ reason: "hero not at a registry" });
+
+    const ally = createWorld(content, { seed: 1234, races: ["open-source", "open-source", "botnet"], startWithCore: true, rules: { sides: [0, 0] } });
+    registryFor(ally, 1);
+    order(ally, { type: "buyItem", item: "overclock-chip" });
+    expect(rejected(ally)).toMatchObject({ reason: "hero not at a registry" });
   });
 
   it("needs the money and a free slot", () => {
     const world = createWorld(content, setup());
+    registryFor(world, 0);
     team0(world).money = 0;
     order(world, { type: "buyItem", item: "overclock-chip" });
     expect(rejected(world)).toMatchObject({ reason: "not enough $" });
@@ -116,8 +173,9 @@ describe("the shop", () => {
     expect(rejected(world)).toMatchObject({ reason: "not for sale" });
   });
 
-  it("sells for part of the price, in range only", () => {
+  it("sells for part of the price under the same rule", () => {
     const world = createWorld(content, setup());
+    const registry = registryFor(world, 0);
     team0(world).money += 100000;
     order(world, { type: "buyItem", item: "patch-kit" });
     const afterBuy = team0(world).money;
@@ -126,11 +184,19 @@ describe("the shop", () => {
     expect(state0(world).items).toEqual([]);
     expect(team0(world).money).toBe(afterBuy + sellValue(content, "patch-kit"));
 
-    // Out of range: nothing sells.
+    // Out of range, or an unfinished registry: nothing sells.
     order(world, { type: "buyItem", item: "patch-kit" });
-    strandHero(world);
+    const hero = hero0(world);
+    hero.x = registry.x + 1000;
+    hero.homeX = hero.x;
     order(world, { type: "sellItem", slot: 0 });
-    expect(rejected(world)).toMatchObject({ reason: "not at the shop" });
+    expect(rejected(world)).toMatchObject({ reason: "hero not at a registry" });
+    expect(state0(world).items).toHaveLength(1);
+
+    hero.x = registry.x + 40;
+    registry.buildRemaining = 5;
+    order(world, { type: "sellItem", slot: 0 });
+    expect(rejected(world)).toMatchObject({ reason: "hero not at a registry" });
     expect(state0(world).items).toHaveLength(1);
   });
 });
@@ -138,6 +204,7 @@ describe("the shop", () => {
 describe("item stats", () => {
   it("extra RAM raises max HP, and the current HP with it", () => {
     const world = createWorld(content, setup());
+    shopAtHero(world);
     team0(world).money += 100000;
     const hero = hero0(world)!;
     const before = hero.maxHp;
@@ -155,6 +222,7 @@ describe("item stats", () => {
     // One behavior tick, hero and creep toe to toe: the hit lands through the hero's own damage.
     const round = (chip: boolean, shell: boolean) => {
       const world = createWorld(content, setup());
+      shopAtHero(world);
       team0(world).money += 100000;
       if (chip) order(world, { type: "buyItem", item: "overclock-chip" });
       if (shell) order(world, { type: "buyItem", item: "hardened-shell" });
@@ -177,6 +245,7 @@ describe("item stats", () => {
     // (a rejected buy is still a tick) so they march side by side.
     const march = (buy: boolean, ticks: number) => {
       const world = createWorld(content, setup());
+      shopAtHero(world);
       team0(world).money += 100000;
       order(world, { type: "buyItem", item: buy ? "low-latency-link" : "tensor-core" });
       const hero = hero0(world)!;
@@ -202,6 +271,7 @@ describe("item stats", () => {
 
     // Regen: three seconds away from any core, +3 HP each.
     const world = createWorld(content, setup());
+    shopAtHero(world);
     world.waves.nextWaveTick = 1e9;
     world.waves.nextTrickleTick = 1e9;
     team0(world).money += 100000;
@@ -246,6 +316,7 @@ describe("item stats", () => {
 describe("consumables", () => {
   it("a Patch Kit heals nearby allies and spends its charges, then goes", () => {
     const world = createWorld(content, setup());
+    shopAtHero(world);
     team0(world).money += 100000;
     order(world, { type: "buyItem", item: "patch-kit" });
     const core = world.entities.find((e) => e.id === team0(world).coreId) as Building;
@@ -275,6 +346,7 @@ describe("consumables", () => {
 describe("death and drops", () => {
   it("the inventory survives death and respawn", () => {
     const world = createWorld(content, setup());
+    shopAtHero(world);
     team0(world).money += 100000;
     order(world, { type: "buyItem", item: "extra-ram" });
     const state = state0(world);
@@ -362,6 +434,7 @@ function plateauNear(world: World, spot: { x: number; y: number }, range: number
 describe("picking up", () => {
   it("needs a free slot, then walks there and takes it", () => {
     const world = createWorld(content, setup());
+    shopAtHero(world);
     team0(world).money += 100000;
     for (let i = 0; i < MAX_ITEMS; i += 1) order(world, { type: "buyItem", item: "patch-kit" });
     const drop = dropOne(world);
