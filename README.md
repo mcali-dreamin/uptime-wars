@@ -258,10 +258,10 @@ cleared sites near their core and break a rival's capture they can see.
 **Spot capacity.** Rent extra compute for a push or a boss. Select a core and
 press `N` (or the Spot capacity button): +60 / 120 / 200 compute (by core tier)
 for 90s, for $250 / 500 / 900. Each rental this match costs 25% of the base
-price more than the last, and only one runs at a time. When it ends nothing is
+price more than the last, and rentals stack: renting again while one runs (or fades) adds its compute and restarts the 90s timer. When it ends nothing is
 deleted and nothing overloads: your compute shrinks to what the army above your
 normal cap still needs, so those units aren't replaced and fade as they fall.
-You can rent again once the tail is gone. The HUD shows `spot 0:45` while it
+The HUD shows `spot 0:45` while it
 runs and `spot fading` after. The computer players don't use it.
 
 **$ and compute** are two different things. **$** is money: users pay it

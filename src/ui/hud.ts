@@ -143,7 +143,7 @@ export class Hud {
     const over = team.overload > 0;
     const capped = team.capped === true;
     const spot = spotState(world, team);
-    const rented = spot === "active" ? ` · spot ${clock(Math.max(0, team.spot!.untilTick - world.tick) / TICK_RATE)}` : spot === "fading" ? " · spot fading" : "";
+    const rented = spot === "active" ? ` · spot ${clock(Math.max(0, team.spot!.untilTick - world.tick) / TICK_RATE)} (+${team.spot!.compute})` : spot === "fading" ? " · spot fading" : "";
     this.compute.textContent =
       (over
         ? `${demand} / ${supply} · over: users leaving, ${Math.max(1, Math.round(team.overload / 10))}% slow`

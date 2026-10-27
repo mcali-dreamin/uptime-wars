@@ -14,7 +14,6 @@ import { affordable, tierLock } from "../game/selection";
 import type { Session } from "../game/session";
 import { TICK_RATE, buildCost, canResearch, levelOf, nextLevel, nextQueued, projectedTier, queuedCount, slotOf, spotCost, spotState, tierOf, upgradeName, upgradesAt, shopBlocker, type Content } from "../sim";
 import { $ } from "./dom";
-import { clock } from "./hud";
 import type { HeroBar } from "./hero-bar";
 
 export const FOUND_BUTTON = "found";
@@ -114,7 +113,7 @@ export class BuildBar {
         const text = this.spotText(state, cost);
         const detail = button.querySelector("small")!;
         if (detail.textContent !== text) detail.textContent = text;
-        button.disabled = state !== null || team.money < cost;
+        button.disabled = team.money < cost;
         button.classList.toggle("selected", false);
         continue;
       }
@@ -133,12 +132,11 @@ export class BuildBar {
 
   /** The Spot capacity button's detail line. */
   private spotText(state: ReturnType<typeof spotState>, cost: number): string {
-    const { content, world } = this.session;
+    const { content } = this.session;
     const team = this.session.team;
-    if (state === "active") return `N · running ${clock(Math.max(0, team.spot!.untilTick - world.tick) / TICK_RATE)}`;
-    if (state === "fading") return "N · fading";
     if (team.money < cost) return `N · need $${cost - team.money}`;
     const spot = content.economy.spot;
+    if (state !== null) return `N · +${spot.compute[Math.min(tierOf(content, team), spot.compute.length - 1)]} more · $${cost}`;
     return `N · +${spot.compute[Math.min(tierOf(content, team), spot.compute.length - 1)]} for ${spot.ticks / TICK_RATE}s · $${cost}`;
   }
 
