@@ -96,6 +96,7 @@ export class HeroBar {
           const button = document.createElement("button");
           button.className = "hero-slot";
           button.dataset.slot = String(slot);
+          button.dataset.key = String(slot + 1);
           if (stack) {
             const def = content.items.items[stack.item]!;
             button.classList.toggle("filled", true);
