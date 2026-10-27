@@ -119,7 +119,7 @@ export class World3D implements WorldView {
   private readonly scene = new THREE.Scene();
   private readonly camera = new THREE.PerspectiveCamera(FOV, 1, 10, 40000);
   private readonly raycaster = new THREE.Raycaster();
-  private readonly sun = new THREE.DirectionalLight(0xffe9cf, 2.3);
+  private readonly sun = new THREE.DirectionalLight(0xe8eeff, 2.2);
   private readonly composer: EffectComposer | null;
   private readonly bloom: UnrealBloomPass | null;
   private readonly fogTexture = new FogTexture();
@@ -194,7 +194,8 @@ export class World3D implements WorldView {
     this.sun.shadow.normalBias = 0.6;
     this.scene.add(this.sun, this.sun.target);
     // A cool rim light from the opposite side, so cliffs read from both faces.
-    const rim = new THREE.DirectionalLight(0x5b8cff, 0.55);
+    // Neon city glow: a violet rim from the opposite side.
+    const rim = new THREE.DirectionalLight(0x9b6bff, 0.6);
     rim.position.set(1, 0.6, 1);
     this.scene.add(rim);
 

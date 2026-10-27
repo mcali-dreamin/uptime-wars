@@ -101,10 +101,11 @@ npm run dev
 - Right-click / `Esc`: cancel. `P`: pause. `R`: new map after a match.
 
 **Graphics.** The web is drawn in 3D with Three.js, as WC3-style terrain under
-an angled camera. Each height level has its own look: the deep web is violet
-soil, the surface web teal moss with cyan circuit traces, and the backbone
-steel plating. Cliffs are dark rock with glowing fibre strata, and ramps are
-paved gateways with amber chevrons. Dead links are fields of black shards. Buildings
+an angled camera, set in 2075: the map is one arcology. Each height level has
+its own look: the deep web is the undercity, wet black glass under violet neon;
+the surface web is a graphite hex deck with cyan seams; the backbone is matte
+titanium plating. Cliffs are monolith walls with light bands, and ramps are lit
+gateways with amber chevrons. Dead links are derelict server towers. Buildings
 and units are procedural models in your team's colour; the botnet is spiky
 and red. Software rendering automatically drops shadows and bloom. `?low`
 forces that, `?hq` forces the full look, and `?2d` brings back the flat Pixi
