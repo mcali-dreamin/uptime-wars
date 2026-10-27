@@ -14,7 +14,7 @@ import { cyberEnvironment } from "./environment";
 import { TILE, isCore, rallyFor, tierOf, type Content, type Entity, type Point, type SimEvent, type World } from "../../sim";
 import { PING_MS, SHOT_TTL_MS, type Frame, type WorldView } from "../frame";
 import { HIGHLIGHT, INVALID, VALID, teamColor } from "../palette";
-import { Bars, Bolts, Debris, Particles, Rings } from "./effects";
+import { Bars, Bolts, Debris, Glows, Particles, Rings } from "./effects";
 import { FogTexture } from "./fog3d";
 import { roleOf, Models, animate, groundPickup } from "./models";
 import { Terrain3D } from "./terrain3d";
@@ -86,6 +86,9 @@ const SHAKE_S = 0.45;
 /** Turn rate for units changing heading, per second. */
 const TURN = 10;
 const SKY = 0x060a12;
+/** How high players' units hover (world units; a tile is 48), and how far they bob. */
+const HOVER = 4;
+const HOVER_BOB = 1.2;
 
 interface Shown {
   object: THREE.Group;
@@ -100,6 +103,8 @@ interface Shown {
   lastX: number;
   lastY: number;
   holo: boolean;
+  /** A player's unit: it hovers, over an underglow. */
+  hovers: boolean;
   /** Top of the model (buildings), measured once, for health bars. */
   top?: number;
   /** Its scale before any hit reaction (rank, hero). */
@@ -141,6 +146,7 @@ export class World3D implements WorldView {
   private readonly bars = new Bars();
   private readonly thinRings = new Rings(0.975);
   private readonly rings = new Rings(0.82);
+  private readonly glows = new Glows();
   private readonly entityLayer = new THREE.Group();
   /** Items lying on the ground, by drop id. Not clickable as entities: right-click the ground. */
   private readonly pickupLayer = new THREE.Group();
@@ -221,6 +227,7 @@ export class World3D implements WorldView {
       this.thinRings.mesh,
       this.rings.mesh,
       this.bars.group,
+      this.glows.mesh,
       this.debris.mesh,
       this.ghost,
       this.flag,
@@ -388,6 +395,7 @@ export class World3D implements WorldView {
     const running = new Set<number>();
     for (const e of world.entities) if (e.kind === "unit" && e.spawnerId >= 0 && e.hp > 0) running.add(e.spawnerId);
     this.bars.begin(this.camera);
+    this.glows.begin();
     for (const entity of world.entities) {
       alive.add(entity.id);
       const at = frame.position(entity);
@@ -408,7 +416,11 @@ export class World3D implements WorldView {
       if (!visible) continue;
 
       const floor = this.terrain3d.floorAt(at.x, at.y);
-      s.object.position.set(at.x, floor, at.y);
+      // 2075: players' units ride on lift fields, a hand's width off the deck,
+      // over a pool of their team's light. The botnet walks.
+      const lift = s.hovers ? HOVER + Math.sin(t * 2.2 + s.seed * 3) * HOVER_BOB : 0;
+      s.object.position.set(at.x, floor + lift, at.y);
+      if (s.hovers) this.glows.add(at.x, floor + 0.8, at.y, s.size * 2.6 * s.scale, s.color, 0.32);
       animate(s.object, t, s.seed);
       this.react(s, at, now);
 
@@ -465,6 +477,7 @@ export class World3D implements WorldView {
       }
     }
     this.bars.end();
+    this.glows.end();
     for (const [id, s] of this.shown) {
       if (alive.has(id)) continue;
       this.entityLayer.remove(s.object);
@@ -536,6 +549,7 @@ export class World3D implements WorldView {
       lastX: entity.x,
       lastY: entity.y,
       holo: false,
+      hovers: entity.kind === "unit" && !horde,
       top: entity.kind === "building" ? new THREE.Box3().setFromObject(object).max.y : undefined,
       scale: object.scale.x,
       hitAt: -Infinity,

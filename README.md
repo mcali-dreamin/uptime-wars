@@ -102,12 +102,13 @@ npm run dev
 
 **Graphics.** The web is drawn in 3D with Three.js, as WC3-style terrain under
 an angled camera, set in 2075: the map is one arcology. Each height level has
-its own look: the deep web is the undercity, wet black glass under violet neon;
+its own look: the deep web is the undercity, damp black glass under violet neon;
 the surface web is a graphite hex deck with cyan seams; the backbone is matte
 titanium plating. Cliffs are monolith walls with light bands, and ramps are lit
 gateways with amber chevrons. Dead links are derelict server towers. Buildings
-and units are procedural models in your team's colour; the botnet is spiky
-and red. Software rendering automatically drops shadows and bloom. `?low`
+and units are procedural models in your team's colour. Your units hover over
+a pool of your team's light; the botnet walks, as rogue machines of black
+carbon blades with red-hot seams. Software rendering automatically drops shadows and bloom. `?low`
 forces that, `?hq` forces the full look, and `?2d` brings back the flat Pixi
 view.
 

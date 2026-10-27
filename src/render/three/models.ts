@@ -16,8 +16,10 @@
 //   their units are running (see world3d).
 // - garden (Walled Garden): glossy white ceramic, rose-gold trim, and neat
 //   trimmed hedges on top. Pristine, rounded, a little smug.
-// The botnet is none of these: organic, spiky, red. Moving parts are tagged so the
-// view can animate them.
+// The botnet is none of these: spiky and red, rogue machines of 2075 (black
+// carbon blades with red-hot seams). Players' units hover over a pool of their
+// team's light (see world3d); the botnet walks. Moving parts are tagged so
+// the view can animate them.
 
 import * as THREE from "three";
 import { HORDE_COLOR } from "../palette";
@@ -189,7 +191,8 @@ export class Models {
         material = standard({ color: 0x1a2f6b, emissive: 0x0b1d4d, emissiveIntensity: 0.6, metalness: 0.85, roughness: 0.2 });
         break;
       case "flesh":
-        material = standard({ color: 0x2a0b12, emissive: 0x4c0816, emissiveIntensity: 0.5, roughness: 0.55, metalness: 0.1, flatShading: true });
+        // Black carbon, polished, lit red from inside: a rogue machine, not a beast.
+        material = standard({ color: 0x1a0a10, emissive: 0x6a0a1e, emissiveIntensity: 0.5, roughness: 0.28, metalness: 0.8, flatShading: true });
         break;
       case "hot": {
         const m = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xff1f3d, emissiveIntensity: 1.4, roughness: 0.3 });
