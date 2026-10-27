@@ -135,6 +135,7 @@ export function validateContent(content: Content): void {
   for (const [id, unit] of Object.entries(content.units)) {
     if (unit.heal && (unit.heal.perSecond <= 0 || unit.heal.radius <= 0)) errors.push(`unit ${id} heal needs perSecond and radius > 0`);
   }
+  if (!(content.items.shopRadius > 0)) errors.push("items shopRadius must be a positive number");
   for (const [id, item] of Object.entries(content.items.items)) {
     if (item.cost <= 0) errors.push(`item ${id} needs cost > 0`);
     if (item.charges !== undefined && item.charges < 1) errors.push(`item ${id} charges must be at least 1`);

@@ -219,6 +219,23 @@
       6
     ]
   },
+  "package-registry": {
+    "name": "Package Registry",
+    "description": "The hero buys items here, and must stand nearby to do it. Sells the basics and buys gear back.",
+    "cost": 125,
+    "buildTicks": 100,
+    "hp": 600,
+    "armor": 1,
+    "footprint": 1,
+    "buildable": true,
+    "sight": 280,
+    "shop": true,
+    "limitPerTier": [
+      1,
+      2,
+      3
+    ]
+  },
   "mesh-node": {
     "name": "Mesh Node",
     "description": "Extends your network a little. Cheap and fragile; build lots.",

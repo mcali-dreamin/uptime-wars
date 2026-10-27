@@ -145,11 +145,13 @@ death and respawn. Passive stats — damage, armor, max HP, HP regen, move
 speed, attack speed — stack over every copy carried and apply wherever the
 hero's stats are computed.
 
-- **Shop at your core.** While the hero stands within the core-heal radius of
-  one of your cores, the shop is open: select the hero and its command card
-  lists the basics with price and effect — click to buy. (Not the core's card:
-  that one is full with upgrades, the deploy agent and Spot capacity.) No full inventory, no credit. Selling, from the inventory
-  slots on the hero card, gives back half the price anywhere in range.
+- **The Package Registry is the shop.** A building every human race can
+  build (`shop: true` in `buildings.json`, limited per core tier). Once it is
+  finished, select it and its command card lists the basics with price and
+  effect — click or press the number key to buy, while the hero stands within
+  `shopRadius` (`items.json`) of one of your finished registries. Cores no
+  longer sell. No full inventory, no credit. Selling, from the inventory
+  slots on the hero card, gives back half the price in the same range.
 - **Drops reward pushing out.** A Botnet Farm, a C2 Server or an incident
   boss killed by a player leaves one item glowing where it fell, rolled from a
   table of drop-only rares (bigger stats, one with an active). Right-click a
@@ -578,7 +580,7 @@ Direction: survival on a procedurally generated open web.
 - [x] Capturable sites: derelict datacenters at far camps, `transferOwnership` (#160)
 - [x] Computer players creep camps and take/contest sites, only against rivals (#160)
 - [x] Heroes: one per race, levels, skill points, four abilities each
-- [x] Hero items: 6-slot inventory, a shop at your core, drops from farms, C2 Servers and bosses (#93)
+- [x] Hero items: 6-slot inventory, a Package Registry shop building, drops from farms, C2 Servers and bosses (#93)
 - [x] Compute is the army cap; generators are limited per core tier (soft at the top tier)
 - [x] Four races: Open Source Collective, Hyperscaler, Serverless, Walled Garden
 - [x] Spawner ranks: upgrade a spawner in place for fewer, stronger units

@@ -1,8 +1,8 @@
 // Items: the hero's gear. Six slots, kept through death and respawn.
 //
-// - Shop: while the hero stands within a core's shop radius (the core-heal
-//   radius), the player can buy the basics and sell anything back for part
-//   of its price. Passive stats stack per copy carried.
+// - Shop: while the hero stands near one of its team's finished Package
+//   Registries (a building with the shop flag), the player can buy the basics
+//   and sell anything back for part of its price. Passive stats stack per copy carried.
 // - Drops: when a Botnet Farm, a C2 Server or an incident boss falls to a
 //   player, one item from the drop table lands where it died and lies there
 //   until a hero of the killing alliance takes it (pickUp). There is no
@@ -14,7 +14,6 @@
 import type { TickContext } from "./context";
 import type { Content, ItemDef, ItemStats } from "./content";
 import { nextRandom } from "./rng";
-import { teamCores } from "./placement";
 import { allied } from "./teams";
 import { distance } from "./movement";
 import type { BuyItemCommand, HeroState, PickUpCommand, SellItemCommand, Team, Unit, UseItemCommand, World } from "./types";
@@ -55,17 +54,24 @@ export function sellValue(content: Content, itemId: string): number {
   return Math.floor((content.items.items[itemId]!.cost * content.items.sellPermille) / 1000);
 }
 
-/** The shop is where the hero already heals: within a core's core-heal radius. */
+/** How close the hero must be to a Package Registry (plus its radius) to shop. */
 export function shopRadius(content: Content): number {
-  return content.heroes.coreHeal?.radius ?? 0;
+  return content.items.shopRadius;
 }
 
-/** Is this team's hero (alive or down) within the shop range of one of its cores? */
+/** Is this team's living hero within shop range of one of its finished registries? */
 export function atShop(world: World, content: Content, team: Team): boolean {
-  if (team.coreId === -1) return false;
-  const cores = teamCores(world, content, team);
   const hero = heroSpot(world, team);
-  return cores.some((core) => hero && distance(core, hero) <= shopRadius(content) + core.radius);
+  if (!hero) return false;
+  return world.entities.some(
+    (e) =>
+      e.kind === "building" &&
+      e.team === team.id &&
+      e.hp > 0 &&
+      e.buildRemaining === 0 &&
+      content.buildings[e.defId]?.shop === true &&
+      distance(e, hero) <= shopRadius(content) + e.radius,
+  );
 }
 
 /** The team's living hero unit, if it's on the board. */
@@ -79,7 +85,7 @@ export function shopBlocker(world: World, content: Content, team: Team, itemId: 
   const def = content.items.items[itemId];
   if (!def) return "unknown item";
   if (!def.shop) return "not for sale";
-  if (!atShop(world, content, team)) return "not at the shop";
+  if (!atShop(world, content, team)) return "hero not at a registry";
   if ((team.hero?.items.length ?? 0) >= MAX_ITEMS) return "inventory full";
   if (team.money < def.cost) return "not enough $";
   return null;
@@ -89,7 +95,7 @@ export function shopBlocker(world: World, content: Content, team: Team, itemId: 
 export function sellBlocker(world: World, content: Content, team: Team, slot: number): string | null {
   const stack = team.hero?.items[slot];
   if (!stack) return "empty slot";
-  if (!atShop(world, content, team)) return "not at the shop";
+  if (!atShop(world, content, team)) return "hero not at a registry";
   return null;
 }
 

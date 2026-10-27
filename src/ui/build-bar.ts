@@ -4,14 +4,15 @@
 // - deploy:   "Deploy core"
 // - build:    the race's buildings
 // - research: the core is selected, so its upgrades (the race and its base)
-//             plus the item shop (buying still needs the hero in range)
 // - armory:   the upgrade center is selected, so its army upgrades and traits
-// - hero:     the hero is selected, so its abilities (see hero-bar.ts) — and
-//             the shop items too, while the hero stands in range
+// - hero:     the hero is selected, so its abilities (see hero-bar.ts)
+// - shop:     a finished Package Registry is selected: the item stock, with
+//             prices (number keys buy). Buying needs the hero standing near it;
+//             the buttons stay visible and show "locked" when it isn't.
 
 import { affordable, tierLock } from "../game/selection";
 import type { Session } from "../game/session";
-import { TICK_RATE, buildCost, canResearch, levelOf, nextLevel, nextQueued, projectedTier, queuedCount, slotOf, spotCost, spotState, tierOf, upgradeName, upgradesAt, atShop, shopBlocker, type Content } from "../sim";
+import { TICK_RATE, buildCost, canResearch, levelOf, nextLevel, nextQueued, projectedTier, queuedCount, slotOf, spotCost, spotState, tierOf, upgradeName, upgradesAt, shopBlocker, type Content } from "../sim";
 import { $ } from "./dom";
 import { clock } from "./hud";
 import type { HeroBar } from "./hero-bar";
@@ -24,7 +25,7 @@ export const SPOT_BUTTON = "spot";
 const UPGRADE_PREFIX = "upgrade:";
 const ITEM_PREFIX = "item:";
 
-export type BarMode = "deploy" | "build" | "research" | "armory" | "hero";
+export type BarMode = "deploy" | "build" | "research" | "armory" | "hero" | "shop";
 
 export interface BuildBarEvents {
   choose(button: string): void;
@@ -64,11 +65,7 @@ export class BuildBar {
   /** Rebuild when the mode changes; refresh state every frame. */
   update(mode: BarMode, selected: string | null): void {
     const { content, team } = this.session;
-    // The shop joins the hero's card while it's in range; re-render when that
-    // flips. Not the core's: that card is full, and only the hero buys.
-    const shop = mode === "hero" && atShop(this.session.world, content, team);
-    const key = `${mode}${shop ? "+shop" : ""}`;
-    if (key !== this.rendered) this.render(mode, key, shop);
+    if (mode !== this.rendered) this.render(mode);
     if (mode === "hero") return this.hero?.refresh(this.root, aimingOf(selected));
     for (const button of this.root.querySelectorAll<HTMLButtonElement>(".build-btn")) {
       const id = button.dataset.building!;
@@ -77,9 +74,12 @@ export class BuildBar {
         const def = content.items.items[item]!;
         const blocked = shopBlocker(this.session.world, content, team, item);
         button.disabled = blocked !== null;
-        button.classList.toggle("locked", blocked === "not at the shop");
+        button.classList.toggle("locked", blocked === "hero not at a registry");
         const detail = button.querySelector("small")!;
-        const text = blocked === "not enough $" || blocked === "inventory full" ? `${blocked} · $${def.cost}` : blocked ? `hero: ${blocked} · $${def.cost}` : `$${def.cost}`;
+        const n = shopStock(content).indexOf(item) + 1;
+        // Short: six of these share one row, and a wrapped bar resizes the stage.
+        const why = blocked === "hero not at a registry" ? "hero away" : blocked === "inventory full" ? "full" : blocked === "not enough $" ? "need $" : blocked;
+        const text = why ? `${n} · ${why} · $${def.cost}` : `${n} · $${def.cost}`;
         if (detail.textContent !== text) detail.textContent = text;
         continue;
       }
@@ -142,13 +142,19 @@ export class BuildBar {
     return `N · +${spot.compute[Math.min(tierOf(content, team), spot.compute.length - 1)]} for ${spot.ticks / TICK_RATE}s · $${cost}`;
   }
 
+  /** The shop card's label: the registry building's name. */
+  private shopName(): string {
+    const { content } = this.session;
+    return Object.values(content.buildings).find((b) => b.shop)?.name ?? "Shop";
+  }
+
   /** Forget what's rendered so the next update re-renders (new match). */
   reset(): void {
     this.rendered = "";
   }
 
-  private render(mode: BarMode, key: string, shop: boolean): void {
-    this.rendered = key;
+  private render(mode: BarMode): void {
+    this.rendered = mode;
     // The buttons are about to go: a hovered one never sees its pointerleave, so
     // its card would stick on the info panel over whatever is selected next.
     this.events.hover(null);
@@ -156,9 +162,16 @@ export class BuildBar {
     const { race, content } = this.session;
     const heroName = this.session.team.heroId ? content.units[this.session.team.heroId]!.name : "Hero";
     const center = race.center ? content.buildings[race.center]!.name : "Upgrade center";
-    this.root.replaceChildren(label(mode === "research" ? "Core · race & base" : mode === "armory" ? `${center} · army` : mode === "hero" ? heroName : race.name));
+    this.root.replaceChildren(label(mode === "research" ? "Core · race & base" : mode === "armory" ? `${center} · army` : mode === "hero" ? heroName : mode === "shop" ? this.shopName() : race.name));
     if (mode === "hero") {
       this.root.append(...(this.hero?.buttons() ?? []));
+    } else if (mode === "shop") {
+      shopStock(content).forEach((id, index) => {
+        const def = content.items.items[id]!;
+        const button = this.button(itemButton(id), def.name, `${index + 1} · $${def.cost}`);
+        button.classList.add("item-btn");
+        this.root.append(button);
+      });
     } else if (mode === "deploy") {
       this.root.append(this.button(FOUND_BUTTON, "Deploy core", "C"));
     } else if (mode === "build") {
@@ -176,15 +189,6 @@ export class BuildBar {
       if (mode === "research") {
         this.root.append(this.button(AGENT_BUTTON, "Deploy agent", `B · ${content.buildings[race.core]!.cost}`));
         this.root.append(this.button(SPOT_BUTTON, "Spot capacity", this.spotText(spotState(this.session.world, this.session.team), spotCost(content, this.session.team))));
-      }
-    }
-    if (shop) {
-      this.root.append(label("Shop"));
-      for (const id of shopStock(content)) {
-        const def = content.items.items[id]!;
-        const button = this.button(itemButton(id), def.name, `$${def.cost}`);
-        button.classList.add("item-btn");
-        this.root.append(button);
       }
     }
     const guide = document.createElement("button");

@@ -1,4 +1,5 @@
 {
+  "shopRadius": 220,
   "sellPermille": 500,
   "pickupRange": 36,
   "items": {
