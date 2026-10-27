@@ -35,12 +35,15 @@ export const HIGHLIGHT = 0xfacc15;
 export const VALID = 0x4ade80;
 export const INVALID = 0xf87171;
 
-export const FLOOR = [0x0a0f14, 0x17222d, 0x253545] as const;
-export const DEAD_LINK = 0x3b4a5c;
-export const DEAD_LINK_EDGE = 0x7d8fa3;
-export const CLIFF = 0x070a0e;
-export const CLIFF_LIP = 0x9fb3c8;
-export const RAMP_STRIPE = 0x2f4254;
+// 2075, matching the 3D world (minimap and the flat ?2d view): the violet
+// undercity, the graphite deck, titanium backbone; dead links are black
+// ruins, cliff lips lit cyan, ramps amber.
+export const FLOOR = [0x150d24, 0x1c2430, 0x394150] as const;
+export const DEAD_LINK = 0x06070b;
+export const DEAD_LINK_EDGE = 0x5a1a28;
+export const CLIFF = 0x05070a;
+export const CLIFF_LIP = 0x67c7e0;
+export const RAMP_STRIPE = 0x8a5f22;
 
 export function tileColor(tile: number, height: number): number {
   switch (tile) {
