@@ -633,6 +633,11 @@ body.home #coop {
   .build-btn small {
     font-size: 0.72rem;
   }
+  /* The hero's card with the shop open: four abilities and six items on one row. */
+  .item-btn {
+    padding: 0.35rem 0.35rem;
+    font-size: 0.74rem;
+  }
 }
 
 .guide-btn {

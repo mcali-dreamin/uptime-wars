@@ -144,9 +144,9 @@ speed, attack speed — stack over every copy carried and apply wherever the
 hero's stats are computed.
 
 - **Shop at your core.** While the hero stands within the core-heal radius of
-  one of your cores, the shop is open: select the core (or the hero, while
-  it's in range) and the command card lists the basics with price and effect —
-  click to buy. No full inventory, no credit. Selling, from the inventory
+  one of your cores, the shop is open: select the hero and its command card
+  lists the basics with price and effect — click to buy. (Not the core's card:
+  that one is full with upgrades, the deploy agent and Spot capacity.) No full inventory, no credit. Selling, from the inventory
   slots on the hero card, gives back half the price anywhere in range.
 - **Drops reward pushing out.** A Botnet Farm, a C2 Server or an incident
   boss killed by a player leaves one item glowing where it fell, rolled from a

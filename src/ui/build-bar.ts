@@ -64,8 +64,9 @@ export class BuildBar {
   /** Rebuild when the mode changes; refresh state every frame. */
   update(mode: BarMode, selected: string | null): void {
     const { content, team } = this.session;
-    // The shop joins the hero (in range) and the core; re-render when that flips.
-    const shop = mode === "hero" ? atShop(this.session.world, content, team) : mode === "research";
+    // The shop joins the hero's card while it's in range; re-render when that
+    // flips. Not the core's: that card is full, and only the hero buys.
+    const shop = mode === "hero" && atShop(this.session.world, content, team);
     const key = `${mode}${shop ? "+shop" : ""}`;
     if (key !== this.rendered) this.render(mode, key, shop);
     if (mode === "hero") return this.hero?.refresh(this.root, aimingOf(selected));
@@ -177,7 +178,7 @@ export class BuildBar {
         this.root.append(this.button(SPOT_BUTTON, "Spot capacity", this.spotText(spotState(this.session.world, this.session.team), spotCost(content, this.session.team))));
       }
     }
-    if (shop && mode !== "deploy" && mode !== "build") {
+    if (shop) {
       this.root.append(label("Shop"));
       for (const id of shopStock(content)) {
         const def = content.items.items[id]!;

@@ -39,7 +39,7 @@ function controls(content: Content): [string, string][] {
   return [
   ["Start", "Your deploy agent starts selected. Click the ground to walk it, then press C and click to deploy your core."],
   ["Build", "Number keys or click a button, then click inside your network (the green rings). Shift-click to place several."],
-  ["Items", `${inventorySummary()} With the hero within ${heal?.radius}px of a core, the shop opens: the core's card (or the hero's, while it's selected) lists the basics with price and effect — click to buy. Farms, C2 Servers and bosses leave rarer items glowing where they fall: right-click one with the hero selected and it walks there and takes it, if a slot is free. Everything is on the Items tab.`],
+  ["Items", `${inventorySummary()} With the hero within ${heal?.radius}px of a core, the shop opens: the hero's card lists the basics with price and effect — click to buy. Farms, C2 Servers and bosses leave rarer items glowing where they fall: right-click one with the hero selected and it walks there and takes it, if a slot is free. Everything is on the Items tab.`],
   ["Network", "Cores, Mesh Nodes (Open Source) and Edge PoPs (Hyperscaler) each extend where you can build. Build outward to hold ramps and push toward the nest."],
   ["Expansion", `Select a core and press B to train a deploy agent ($${content.buildings[content.races["open-source"]!.core]!.cost}). Walk it out, press C and click open ground anywhere on the map: it builds a new core there. One agent at a time, no site within ${EXPANSION_CLEARANCE} tiles of a hostile building, and if it dies on the way the $ is gone. Each finished core raises your Web App and generator caps; each core's rally sets its own bubble.`],
   ["Neutral camps", `Squads of legacy hardware guard the open ground: weak camps ${camps.near.fromStart} tiles or so from every start, strong ones toward the middle (${camps.far.fromStart} tiles out). They are hostile to everyone, including the botnet, but never attack first: hit one and the whole camp fights back, within reach of its post, then goes home. Walk away and they mend, so finish what you start. A cleared camp stays cleared. Each unit pays bounty (up to $${campBounty}) and hero XP. Near camps are a job for your hero alone; far ones need a real army. The minimap marks each camp by how hard it is: green, amber, red.`],
@@ -155,7 +155,7 @@ export function guideEntries(content: Content, tab: Tab, view: { raceId: string;
           title: "How items work",
           description: inventorySummary(),
           stats: [
-            "Shop: with the hero within a core's shop radius, the core's card and the hero's command card list the basics — click to buy",
+            "Shop: with the hero within a core's shop radius, the hero's command card lists the basics — click to buy",
             `Selling anywhere in range gives back ${permille(content.items.sellPermille)} of the price`,
             "Botnet Farms, C2 Servers and incident bosses drop one item where they die, from a table of rarer things",
             "Right-click a glowing drop with the hero selected: it walks there and takes it, if a slot is free",
