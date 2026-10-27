@@ -7,8 +7,8 @@ import { armyHero, armyUnits, buildingGroup, groundOrderLabel, isRallied, remova
 import type { Session } from "../game/session";
 import { heightAtTile, TILE, type Building, type Entity } from "../sim";
 import { EXPANSION_CLEARANCE, HIGH_GROUND_DAMAGE } from "../sim/tuning";
-import { upgradeOf } from "./build-bar";
-import { buildingCard, rankEffect, unitCard, upgradeCard, type InfoCard } from "./cards";
+import { upgradeOf, itemOf } from "./build-bar";
+import { buildingCard, rankEffect, unitCard, upgradeCard, type InfoCard, itemCard } from "./cards";
 import { permille, rankChange, secs as seconds } from "./text";
 import { $ } from "./dom";
 
@@ -32,6 +32,8 @@ export class InfoPanel {
   hoverButton: string | null = null;
   /** Ability under the pointer in the hero's command card. */
   hoverAbility: string | null = null;
+  /** Inventory slot under the pointer in the hero card's slot row. */
+  hoverItem: { id: string; slot: number } | null = null;
   /** Set once the hero bar exists, to describe abilities. */
   describeAbility: ((id: string) => InfoCard) | null = null;
   /** Research queue entries of the selected building, shown under the card's lines; clicking one cancels it. */
@@ -96,6 +98,15 @@ export class InfoPanel {
     const aiming = selection.kind === "cast" ? selection.ability : null;
     const ability = this.hoverAbility ?? aiming;
     if (ability && this.describeAbility) return this.show(this.describeAbility(ability));
+    // An item: from an inventory slot (with its charges) or a shop button.
+    const hovered = this.hoverItem ?? (this.hoverButton ? (() => {
+      const id = itemOf(this.hoverButton);
+      return id ? { id, slot: -1 } : null;
+    })() : null);
+    if (hovered) {
+      const stack = hovered.slot >= 0 ? this.session.team.hero?.items[hovered.slot] : undefined;
+      return this.show(itemCard(content, hovered.id, stack?.charges));
+    }
     const upgrade = upgradeOf(this.hoverButton);
     if (upgrade) return this.show(upgradeCard(content, this.session.team, upgrade));
     if (building) return this.show(buildingCard(content, raceId, building));

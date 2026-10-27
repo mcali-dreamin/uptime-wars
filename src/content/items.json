@@ -1,0 +1,99 @@
+{
+  "sellPermille": 500,
+  "pickupRange": 36,
+  "items": {
+    "patch-kit": {
+      "name": "Patch Kit",
+      "description": "Ships the fix out in the field: heals your units and buildings around the hero.",
+      "cost": 75,
+      "shop": true,
+      "charges": 3,
+      "active": { "effect": "heal", "amount": 140, "radius": 240 }
+    },
+    "overclock-chip": {
+      "name": "Overclock Chip",
+      "description": "The hero hits harder.",
+      "cost": 150,
+      "shop": true,
+      "stats": { "damage": 8 }
+    },
+    "hardened-shell": {
+      "name": "Hardened Shell",
+      "description": "Every hit on the hero lands softer.",
+      "cost": 140,
+      "shop": true,
+      "stats": { "armor": 2 }
+    },
+    "extra-ram": {
+      "name": "Extra RAM",
+      "description": "More memory, more uptime: the hero's max HP grows.",
+      "cost": 160,
+      "shop": true,
+      "stats": { "hp": 150 }
+    },
+    "low-latency-link": {
+      "name": "Low-Latency Link",
+      "description": "The hero moves faster.",
+      "cost": 120,
+      "shop": true,
+      "stats": { "speed": 1120 }
+    },
+    "watchdog": {
+      "name": "Watchdog",
+      "description": "A little process that mends the hero every second.",
+      "cost": 100,
+      "shop": true,
+      "stats": { "regen": 3 }
+    },
+    "tensor-core": {
+      "name": "Tensor Core",
+      "description": "Salvaged AI accelerators. The hero hits far harder.",
+      "cost": 320,
+      "stats": { "damage": 20 }
+    },
+    "cold-plate": {
+      "name": "Cold Plate",
+      "description": "Datacenter-grade cooling. Every hit on the hero lands far softer.",
+      "cost": 300,
+      "stats": { "armor": 5 }
+    },
+    "ecc-dimm": {
+      "name": "ECC DIMM",
+      "description": "Error-correcting memory: the hero's max HP grows a lot.",
+      "cost": 340,
+      "stats": { "hp": 320 }
+    },
+    "dark-fiber": {
+      "name": "Dark Fiber",
+      "description": "A private line across the web. The hero moves much faster.",
+      "cost": 260,
+      "stats": { "speed": 1250 }
+    },
+    "write-cache": {
+      "name": "Write Cache",
+      "description": "Absorbs the slow disk. The hero attacks much faster.",
+      "cost": 280,
+      "stats": { "attackSpeed": 1250 }
+    },
+    "self-healing-firmware": {
+      "name": "Self-Healing Firmware",
+      "description": "Rare botnet salvage: mends everything of yours around the hero, a few times over.",
+      "cost": 350,
+      "charges": 3,
+      "active": { "effect": "heal", "amount": 220, "radius": 260 }
+    }
+  },
+  "drops": {
+    "farm": 1000,
+    "c2": 1000,
+    "boss": 1000,
+    "table": [
+      { "item": "tensor-core", "weight": 8 },
+      { "item": "cold-plate", "weight": 10 },
+      { "item": "ecc-dimm", "weight": 10 },
+      { "item": "dark-fiber", "weight": 9 },
+      { "item": "write-cache", "weight": 9 },
+      { "item": "self-healing-firmware", "weight": 6 }
+    ]
+  }
+}

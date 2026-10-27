@@ -9,6 +9,7 @@ import { regionShield } from "./mechanics";
 import { invulnerable, nestShielded, retaliate } from "./fortress";
 import { loseUsers } from "./economy";
 import { clearedCamp } from "./neutrals";
+import { dropLoot, itemTotals } from "./items";
 import { TILE } from "./map";
 import { hasLineOfSight } from "./nav";
 import { heightAtTile } from "./terrain";
@@ -106,8 +107,10 @@ export function dealDamage(
   // One kind of damage: high ground hits harder, armor takes a flat amount off.
   const downhill = heightOf(ctx, attacker) > heightOf(ctx, target) ? HIGH_GROUND_DAMAGE : 1;
   const owner = world.teams[target.team];
+  const carried = target.kind === "unit" && target.mode === "hero" ? itemTotals(content, owner?.hero).armor : 0;
   const armor =
     target.armor +
+    carried +
     (target.kind === "building" ? bonus(content, owner, "buildingArmor") : bonus(content, owner, "unitArmor")) +
     traitArmor(content, world, target);
   let damage = Math.max(1, Math.round(baseDamage * downhill) - armor);
@@ -160,6 +163,8 @@ export function dealDamage(
   }
   if (wasAlive && target.hp <= 0) {
     if (target.kind === "building" && target.defId === content.waves.fortress.farms.building) retaliate(ctx, attacker);
+    // A push pays: farms, C2 Servers and bosses leave an item behind.
+    dropLoot(ctx, target, attacker.team);
     world.events.push({ type: "death", id: target.id, x: target.x, y: target.y, team: target.team, kind: target.kind, defId: target.defId });
     if (target.kind === "unit") {
       // Camp guards pay bounty to whoever cleared them, but never earn any.

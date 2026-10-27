@@ -16,7 +16,7 @@ import { PING_MS, SHOT_TTL_MS, type Frame, type WorldView } from "../frame";
 import { HIGHLIGHT, INVALID, VALID, teamColor } from "../palette";
 import { Bars, Bolts, Debris, Particles, Rings } from "./effects";
 import { FogTexture } from "./fog3d";
-import { roleOf, Models, animate } from "./models";
+import { roleOf, Models, animate, groundPickup } from "./models";
 import { Terrain3D } from "./terrain3d";
 import { NetworkOverlay } from "./network3d";
 
@@ -142,6 +142,9 @@ export class World3D implements WorldView {
   private readonly thinRings = new Rings(0.975);
   private readonly rings = new Rings(0.82);
   private readonly entityLayer = new THREE.Group();
+  /** Items lying on the ground, by drop id. Not clickable as entities: right-click the ground. */
+  private readonly pickupLayer = new THREE.Group();
+  private readonly pickups = new Map<number, THREE.Group>();
   private readonly shown = new Map<number, Shown>();
   private readonly ghost: THREE.Mesh;
   private readonly flag = new THREE.Group();
@@ -211,6 +214,7 @@ export class World3D implements WorldView {
     this.scene.add(
       this.terrain3d.group,
       this.entityLayer,
+      this.pickupLayer,
       this.bolts.mesh,
       this.particles.points,
       this.thinRings.mesh,
@@ -245,6 +249,8 @@ export class World3D implements WorldView {
     this.world = world;
     for (const s of this.shown.values()) this.entityLayer.remove(s.object);
     this.shown.clear();
+    for (const p of this.pickups.values()) this.pickupLayer.remove(p);
+    this.pickups.clear();
     this.deaths.length = 0;
     this.fired.length = 0;
     this.fogTexture.setTerrain(world.terrain);
@@ -271,6 +277,7 @@ export class World3D implements WorldView {
     for (const e of frame.world.entities) this.byId.set(e.id, e);
     this.drawImpacts(frame, now);
     this.syncEntities(frame, t, dt, now);
+    this.syncPickups(frame, t);
     this.drawDeaths(frame);
     this.drawCasts(frame, dt);
     this.drawShots(frame);
@@ -461,6 +468,28 @@ export class World3D implements WorldView {
       if (alive.has(id)) continue;
       this.entityLayer.remove(s.object);
       this.shown.delete(id);
+    }
+  }
+
+  /** Items on the ground: a glowing pickup, spinning and pulsing where they fell. */
+  private syncPickups(frame: Frame, t: number): void {
+    const alive = new Set<number>();
+    for (const drop of frame.world.groundItems) {
+      if (!frame.fog.isVisible(drop.x, drop.y)) continue;
+      alive.add(drop.id);
+      let object = this.pickups.get(drop.id);
+      if (!object) {
+        object = groundPickup();
+        object.position.set(drop.x, this.terrain3d.floorAt(drop.x, drop.y), drop.y);
+        this.pickupLayer.add(object);
+        this.pickups.set(drop.id, object);
+      }
+      animate(object, t, (drop.id * 1.618) % (Math.PI * 2));
+    }
+    for (const [id, object] of this.pickups) {
+      if (alive.has(id)) continue;
+      this.pickupLayer.remove(object);
+      this.pickups.delete(id);
     }
   }
 
