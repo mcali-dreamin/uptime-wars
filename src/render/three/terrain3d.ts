@@ -252,34 +252,41 @@ export class Terrain3D {
     );
     // Dead status lights: red, over the bloom threshold so a ruin glows faintly.
     const light = this.fog.apply(new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xff2a4a, emissiveIntensity: 1.6, roughness: 1 }));
-    const mesh = new THREE.InstancedMesh(towers, body, spots.length);
-    const lit = new THREE.InstancedMesh(leds, light, spots.length);
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const s = new THREE.Vector3();
     const p = new THREE.Vector3();
     const e = new THREE.Euler();
-    spots.forEach((i, n) => {
-      const col = i % terrain.cols;
-      const row = Math.floor(i / terrain.cols);
-      const r1 = hash01(i, 1);
-      const r2 = hash01(i, 2);
-      const r3 = hash01(i, 3);
-      const x = (col + 0.4 + r1 * 0.2) * TILE;
-      const z = (row + 0.4 + r2 * 0.2) * TILE;
-      p.set(x, this.heightAt(x, z) - 2, z);
-      // Quarter turns keep the skyline on the grid; a slight lean says ruin.
-      e.set((r3 - 0.5) * 0.08, Math.floor(r1 * 4) * (Math.PI / 2), (r2 - 0.5) * 0.08);
-      q.setFromEuler(e);
-      s.set(0.9 + r2 * 0.2, 0.6 + r3 * 0.8, 0.9 + r1 * 0.2);
-      m.compose(p, q, s);
-      mesh.setMatrixAt(n, m);
-      lit.setMatrixAt(n, m);
-    });
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    this.add(mesh, towers, body);
-    this.add(lit, leds, light);
+    // One instanced mesh per map chunk, not one for the whole map: an
+    // instanced mesh is culled as a whole, and ruins are the heaviest thing
+    // on the ground, so off-screen ones must not be drawn.
+    for (const group of byChunk(terrain, spots)) {
+      const mesh = new THREE.InstancedMesh(towers, body, group.length);
+      const lit = new THREE.InstancedMesh(leds, light, group.length);
+      group.forEach((i, n) => {
+        const col = i % terrain.cols;
+        const row = Math.floor(i / terrain.cols);
+        const r1 = hash01(i, 1);
+        const r2 = hash01(i, 2);
+        const r3 = hash01(i, 3);
+        const x = (col + 0.4 + r1 * 0.2) * TILE;
+        const z = (row + 0.4 + r2 * 0.2) * TILE;
+        p.set(x, this.heightAt(x, z) - 2, z);
+        // Quarter turns keep the skyline on the grid; a slight lean says ruin.
+        e.set((r3 - 0.5) * 0.08, Math.floor(r1 * 4) * (Math.PI / 2), (r2 - 0.5) * 0.08);
+        q.setFromEuler(e);
+        s.set(0.9 + r2 * 0.2, 0.6 + r3 * 0.8, 0.9 + r1 * 0.2);
+        m.compose(p, q, s);
+        mesh.setMatrixAt(n, m);
+        lit.setMatrixAt(n, m);
+      });
+      mesh.computeBoundingSphere();
+      lit.computeBoundingSphere();
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      this.group.add(mesh, lit);
+    }
+    this.disposables.push(towers, body, leds, light);
   }
 
   /** Street furniture: neon beacons in the undercity, floating data cubes on the deck, vents on the backbone. */
@@ -396,6 +403,18 @@ function kindAround(terrain: Terrain, vx: number, vy: number): [number, number, 
     }
   }
   return n === 0 ? [0, 0, 0] : [0, ramp / n, dead / n];
+}
+
+/** Tile indexes grouped by the CHUNK-square of the map they fall in. */
+function byChunk(terrain: Terrain, tiles: number[]): number[][] {
+  const groups = new Map<number, number[]>();
+  for (const i of tiles) {
+    const key = Math.floor(Math.floor(i / terrain.cols) / CHUNK) * 1000 + Math.floor((i % terrain.cols) / CHUNK);
+    const group = groups.get(key);
+    if (group) group.push(i);
+    else groups.set(key, [i]);
+  }
+  return [...groups.values()];
 }
 
 function tilesOf(terrain: Terrain, test: (tile: number, index: number) => boolean): number[] {
