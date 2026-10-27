@@ -178,17 +178,17 @@ function applyCommand(ctx: TickContext, command: Command): string | null {
   }
 }
 
-/** Rent Spot Capacity: +compute for a while, one rental at a time, dearer each time. */
+/** Rent Spot Capacity: +compute for a while, rentals stack (more compute, timer reset), each dearer than the last. */
 function rentCompute(ctx: TickContext, command: Extract<Command, { type: "rentCompute" }>): string | null {
   const { world, content } = ctx;
   const team = world.teams[command.team]!;
   if (team.coreId === -1) return "no core";
-  if (team.spot !== null) return "spot capacity already running";
   const cost = spotCost(content, team);
   if (team.money < cost) return "not enough $";
   const spot = content.economy.spot;
   team.money -= cost;
-  team.spot = { compute: spot.compute[Math.min(tierOf(content, team), spot.compute.length - 1)]!, untilTick: world.tick + spot.ticks };
+  const added = spot.compute[Math.min(tierOf(content, team), spot.compute.length - 1)]!;
+  team.spot = { compute: (team.spot?.compute ?? 0) + added, untilTick: world.tick + spot.ticks };
   team.spotRentals += 1;
   world.events.push({ type: "spotStarted", team: team.id });
   return null;

@@ -67,24 +67,52 @@ describe("spot capacity", () => {
     expect(spotCost(content, team)).toBe(Math.round((spot.cost[0]! * (1000 + 2 * spot.growthPermille)) / 1000));
   });
 
-  it("rejects while active, while fading, and when broke", () => {
+  it("stacks: adds compute and refreshes the timer", () => {
+    const world = fresh();
+    const base = computeBalance(world, content, team0(world)).supply;
+    rent(world);
+    const first = team0(world).spot!.untilTick;
+    world.tick += 100;
+    rent(world);
+    expect(rejections(world)).toEqual([]);
+    expect(team0(world).spot!.compute).toBe(spot.compute[0]! * 2);
+    expect(team0(world).spot!.untilTick).toBeGreaterThan(first);
+    expect(computeBalance(world, content, team0(world)).supply).toBe(base + spot.compute[0]! * 2);
+    expect(team0(world).spotRentals).toBe(2);
+  });
+
+  it("each stack costs more", () => {
+    const world = fresh();
+    const money = team0(world).money;
+    rent(world);
+    const second = spotCost(content, team0(world));
+    expect(second).toBeGreaterThan(spot.cost[0]!);
+    rent(world);
+    expect(team0(world).money).toBe(money - spot.cost[0]! - second);
+  });
+
+  it("rejects only when broke or without a core; stacks while fading", () => {
     const world = fresh();
     rent(world);
-    rent(world);
-    expect(rejections(world)).toEqual(["spot capacity already running"]);
-    // Fading: past the timer, with an army that keeps some of it.
     const core = coreOf(world);
     for (let i = 0; i < 60; i += 1) spawnUnit(ctxOf(world), 0, armyUnit(), core, core.x, core.y + 60, "guard");
     world.tick = team0(world).spot!.untilTick;
     step(world, content);
     expect(spotState(world, team0(world))).toBe("fading");
+    const residual = team0(world).spot!.compute;
     rent(world);
-    expect(rejections(world)).toEqual(["spot capacity already running"]);
+    expect(rejections(world)).toEqual([]);
+    expect(team0(world).spot!.compute).toBe(residual + spot.compute[0]!);
+    expect(spotState(world, team0(world))).toBe("active");
 
     const broke = fresh();
     team0(broke).money = spot.cost[0]! - 1;
     rent(broke);
     expect(rejections(broke)).toEqual(["not enough $"]);
+    const coreless = fresh();
+    team0(coreless).coreId = -1;
+    rent(coreless);
+    expect(rejections(coreless)).toEqual(["no core"]);
   });
 
   it("ends at once at expiry when no army is above the base supply", () => {
