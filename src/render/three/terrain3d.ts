@@ -3,11 +3,12 @@
 //
 // - Ground is one heightfield, two vertices per tile, split into chunks so
 //   the camera and the shadow pass skip what they can't see.
-// - Height levels read by colour and texture, not shade alone: the deep web
-//   is violet soil with faint violet traces, the surface web teal moss with
-//   cyan circuit traces, the backbone steel plating. Cliffs are dark rock
-//   with glowing fibre strata; ramps are paved gateways with amber chevrons.
-// - Dead links are fields of broken black shards.
+// - 2075: the map is one arcology. Height levels read by material, not
+//   shade alone: the deep web is the undercity, black wet glass with violet
+//   neon traces; the surface web a graphite hex deck with cyan seams; the
+//   backbone pale titanium plating with light strips. Cliffs are monolith
+//   walls with light bands; ramps are lit gateways with amber chevrons.
+// - Dead links are derelict server towers, their status lights dead red.
 //
 // Everything is drawn from the terrain alone, so it is a pure function of
 // the seed, like the map itself.
@@ -241,14 +242,18 @@ export class Terrain3D {
 
   // --- doodads --------------------------------------------------------------
 
-  /** Dead links: clusters of broken black shards, one per blocked tile. */
+  /** Dead links: a cluster of derelict server towers per blocked tile, a ruined skyline. */
   private buildShards(terrain: Terrain): void {
     const spots = tilesOf(terrain, (t) => t === TILE_BLOCKED);
-    const geometry = shardGeometry();
-    const material = this.fog.apply(
-      new THREE.MeshStandardMaterial({ color: 0x23202c, roughness: 0.16, metalness: 0.4, emissive: 0x3a0714, flatShading: true }),
+    const towers = towerGeometry();
+    const leds = ledGeometry();
+    const body = this.fog.apply(
+      new THREE.MeshStandardMaterial({ color: 0x1a1d26, roughness: 0.45, metalness: 0.75, emissive: 0x05060a }),
     );
-    const mesh = new THREE.InstancedMesh(geometry, material, spots.length);
+    // Dead status lights: red, over the bloom threshold so a ruin glows faintly.
+    const light = this.fog.apply(new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xff2a4a, emissiveIntensity: 1.6, roughness: 1 }));
+    const mesh = new THREE.InstancedMesh(towers, body, spots.length);
+    const lit = new THREE.InstancedMesh(leds, light, spots.length);
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const s = new THREE.Vector3();
@@ -260,34 +265,37 @@ export class Terrain3D {
       const r1 = hash01(i, 1);
       const r2 = hash01(i, 2);
       const r3 = hash01(i, 3);
-      const x = (col + 0.3 + r1 * 0.4) * TILE;
-      const z = (row + 0.3 + r2 * 0.4) * TILE;
+      const x = (col + 0.4 + r1 * 0.2) * TILE;
+      const z = (row + 0.4 + r2 * 0.2) * TILE;
       p.set(x, this.heightAt(x, z) - 2, z);
-      e.set((r3 - 0.5) * 0.35, r1 * Math.PI * 2, (r2 - 0.5) * 0.35);
+      // Quarter turns keep the skyline on the grid; a slight lean says ruin.
+      e.set((r3 - 0.5) * 0.08, Math.floor(r1 * 4) * (Math.PI / 2), (r2 - 0.5) * 0.08);
       q.setFromEuler(e);
-      const size = 0.85 + r2 * 0.5;
-      s.set(size, 0.7 + r3 * 0.9, size);
-      mesh.setMatrixAt(n, m.compose(p, q, s));
+      s.set(0.9 + r2 * 0.2, 0.6 + r3 * 0.8, 0.9 + r1 * 0.2);
+      m.compose(p, q, s);
+      mesh.setMatrixAt(n, m);
+      lit.setMatrixAt(n, m);
     });
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    this.add(mesh, geometry, material);
+    this.add(mesh, towers, body);
+    this.add(lit, leds, light);
   }
 
-  /** Small life on open ground: violet fungus below, cyan pixels on the surface, vents on the backbone. */
+  /** Street furniture: neon beacons in the undercity, floating data cubes on the deck, vents on the backbone. */
   private buildDoodads(terrain: Terrain): void {
     const kinds: { level: number; geometry: THREE.BufferGeometry; material: THREE.Material; chance: number }[] = [
       {
         level: 0,
-        geometry: fungusGeometry(),
-        material: this.fog.apply(new THREE.MeshStandardMaterial({ color: 0x6d28d9, emissive: 0x7c3aed, emissiveIntensity: 0.4, roughness: 0.6 })),
-        chance: 0.06,
+        geometry: beaconGeometry(),
+        material: this.fog.apply(new THREE.MeshStandardMaterial({ color: 0x2a1a40, emissive: 0xa855f7, emissiveIntensity: 1.1, roughness: 0.4 })),
+        chance: 0.035,
       },
       {
         level: 1,
         geometry: pixelGeometry(),
-        material: this.fog.apply(new THREE.MeshStandardMaterial({ color: 0x34d399, emissive: 0x10b981, emissiveIntensity: 0.3, roughness: 0.7 })),
-        chance: 0.08,
+        material: this.fog.apply(new THREE.MeshStandardMaterial({ color: 0x0e3a44, emissive: 0x22d3ee, emissiveIntensity: 0.9, roughness: 0.3, transparent: true, opacity: 0.85 })),
+        chance: 0.04,
       },
       {
         level: 2,
@@ -418,43 +426,58 @@ function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   return out;
 }
 
-function shardGeometry(): THREE.BufferGeometry {
+/** Towers of one ruin: [x, z, width, depth, height], local to the tile's center. */
+const TOWERS = [
+  [0, 0, 18, 16, 64],
+  [15, 9, 11, 12, 38],
+  [-14, 7, 12, 11, 46],
+  [5, -15, 12, 10, 28],
+  [-10, -12, 9, 9, 20],
+] as const;
+
+function towerGeometry(): THREE.BufferGeometry {
+  return merge(
+    TOWERS.flatMap(([x, z, w, d, h]) => {
+      const box = new THREE.BoxGeometry(w, h, d);
+      box.translate(x, h / 2, z);
+      // A cap a little narrower: a roof line, so towers aren't plain bricks.
+      const cap = new THREE.BoxGeometry(w * 0.7, 2.5, d * 0.7);
+      cap.translate(x, h + 1.25, z);
+      return [box, cap];
+    }),
+  );
+}
+
+/** Status lights on each tower's face: a few short strips, most of them dead. */
+function ledGeometry(): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
-  const specs = [
-    [0, 0, 15, 62, 0.1],
-    [13, 6, 10, 38, -0.35],
-    [-12, 8, 11, 44, 0.4],
-    [4, -14, 9, 30, -0.2],
-    [-8, -10, 7, 22, 0.25],
-  ] as const;
-  for (const [x, z, r, h, tilt] of specs) {
-    const g = new THREE.ConeGeometry(r, h, 4, 1);
-    g.translate(0, h / 2, 0);
-    g.rotateZ(tilt);
-    g.rotateY(x + z);
-    g.translate(x, 0, z);
-    parts.push(g);
-  }
+  TOWERS.forEach(([x, z, w, d, h], t) => {
+    for (let y = 8; y < h - 4; y += 9) {
+      if (hash01(t, y) < 0.45) continue;
+      const strip = new THREE.BoxGeometry(w * (0.25 + hash01(t, y + 1) * 0.4), 1.2, 0.6);
+      strip.translate(x - w * 0.15, y, z + d / 2 + 0.3);
+      parts.push(strip);
+    }
+  });
   return merge(parts);
 }
 
-function fungusGeometry(): THREE.BufferGeometry {
-  const parts: THREE.BufferGeometry[] = [];
-  for (const [x, z, h] of [[0, 0, 9], [5, 3, 6], [-4, 4, 5]] as const) {
-    const stem = new THREE.CylinderGeometry(0.8, 1.2, h, 5);
-    stem.translate(x, h / 2, z);
-    const cap = new THREE.SphereGeometry(h * 0.35, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2);
-    cap.translate(x, h, z);
-    parts.push(stem, cap);
-  }
-  return merge(parts);
+function beaconGeometry(): THREE.BufferGeometry {
+  const mast = new THREE.CylinderGeometry(0.5, 0.9, 16, 5);
+  mast.translate(0, 8, 0);
+  const lamp = new THREE.OctahedronGeometry(2.2);
+  lamp.translate(0, 17.5, 0);
+  return merge([mast, lamp]);
 }
 
 function pixelGeometry(): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
   for (const [x, z, s] of [[0, 0, 4], [6, 2, 2.5], [-3, 5, 3], [3, -5, 2]] as const) {
-    const g = new THREE.BoxGeometry(s, s * 1.4, s);
-    g.translate(x, s * 0.7, z);
+    // Hovering a little above the deck: holograms, not litter.
+    const g = new THREE.BoxGeometry(s, s, s);
+    g.rotateY(0.6);
+    g.rotateX(0.6);
+    g.translate(x, 7 + s, z);
     parts.push(g);
   }
   return merge(parts);
@@ -485,13 +508,26 @@ const groundFragmentHead = /* glsl */ `
   vec3 levelColor(float lvl, float macro) {
     // Each level drifts between two related tones over large patches, so
     // open ground has regions instead of one flat colour.
-    vec3 deep = mix(vec3(0.07, 0.04, 0.13), vec3(0.11, 0.035, 0.11), macro);
-    vec3 surface = mix(vec3(0.03, 0.15, 0.12), vec3(0.05, 0.13, 0.07), macro);
-    vec3 backbone = mix(vec3(0.1, 0.115, 0.14), vec3(0.085, 0.1, 0.13), macro);
+    vec3 deep = mix(vec3(0.035, 0.025, 0.06), vec3(0.05, 0.022, 0.06), macro);
+    vec3 surface = mix(vec3(0.07, 0.08, 0.1), vec3(0.08, 0.085, 0.105), macro);
+    vec3 backbone = mix(vec3(0.19, 0.205, 0.235), vec3(0.165, 0.18, 0.21), macro);
     return lvl < 1.0 ? mix(deep, surface, smoothstep(0.6, 1.0, lvl)) : mix(surface, backbone, smoothstep(1.6, 2.0, lvl));
   }
   vec3 traceColor(float lvl) {
-    return lvl < 0.5 ? vec3(0.55, 0.3, 1.0) : lvl < 1.5 ? vec3(0.1, 0.85, 0.95) : vec3(0.55, 0.75, 1.0);
+    return lvl < 0.5 ? vec3(0.75, 0.25, 1.0) : lvl < 1.5 ? vec3(0.1, 0.85, 0.95) : vec3(0.7, 0.85, 1.0);
+  }
+  /**
+   * The deck's hex panels: x is how near the panel's edge (0 center, 0.5
+   * edge), yz the panel's id, so a few panels can light up.
+   */
+  vec3 hexCell(vec2 p) {
+    vec2 r = vec2(1.0, 1.7320508);
+    vec2 h = r * 0.5;
+    vec2 a = mod(p, r) - h;
+    vec2 b = mod(p - h, r) - h;
+    vec2 g = dot(a, a) < dot(b, b) ? a : b;
+    vec2 q = abs(g);
+    return vec3(max(dot(q, vec2(0.5, 0.8660254)), q.x), p - g);
   }
   /**
    * Circuit traces: long straight runs along the tile grid, a few tiles each,
@@ -528,22 +564,38 @@ const GROUND_COLOR = /* glsl */ `
     vec3 col = levelColor(lvl, macro) * (0.7 + 0.6 * n);
     // Fine grit, so close-up ground isn't smooth plastic.
     col *= 0.92 + 0.16 * vnoise(xz * 0.9);
-    if (lvl > 1.5) col *= mix(0.72, 1.0, plates(xz));
+    if (lvl > 1.5) col *= mix(0.55, 1.0, plates(xz));
+    // The deck: hex panels, their seams dark.
+    float deck = smoothstep(0.6, 1.0, lvl) * (1.0 - smoothstep(1.4, 1.7, lvl));
+    vec3 hex = hexCell(xz / 40.0);
+    col *= mix(1.0, mix(0.45, 1.0, 1.0 - smoothstep(0.44, 0.48, hex.x)), deck);
+    gHex = hex;
+    gDeck = deck;
     // Ramps: paved gateway.
     vec3 paving = vec3(0.3, 0.26, 0.2) * (0.85 + 0.3 * vnoise(xz * 0.2));
     col = mix(col, paving, vKind.y);
     // Dead ground under the shards.
     col = mix(col, vec3(0.06, 0.055, 0.065), vKind.z * 0.8);
-    // Cliffs: dark rock, by slope.
+    // Cliffs: monolith walls, smooth panels with seams, by slope.
     float steep = 1.0 - smoothstep(0.5, 0.82, vWN.y);
-    vec3 rock = vec3(0.1, 0.09, 0.115) * (0.55 + 0.9 * vnoise(vec2(xz.x + xz.y, vFogWorld.y * 1.5) * 0.08));
-    col = mix(col, rock, steep);
+    float seam = 1.0 - smoothstep(0.0, 0.04, abs(fract((xz.x + xz.y) / 42.0) - 0.5) - 0.44);
+    vec3 wall = vec3(0.075, 0.08, 0.1) * (0.85 + 0.3 * vnoise(vec2(xz.x + xz.y, vFogWorld.y) * 0.02)) * (1.0 - 0.45 * seam);
+    col = mix(col, wall, steep);
     // Baked shade: the foot of a cliff sits in shadow; a plateau's rim is lit.
     col *= mix(1.0, 0.4, vShade.x);
     col = mix(col, col * 1.35 + vec3(0.012), smoothstep(0.5, 1.0, vShade.y) * (1.0 - steep));
     diffuseColor.rgb = col;
     gTerrainSteep = steep;
     gTerrainLevel = lvl;
+    // Surfaces: the undercity is wet glass (it mirrors the neon), the deck
+    // satin composite, the backbone brushed titanium, walls polished stone.
+    float wet = smoothstep(0.35, 0.65, vnoise(xz * 0.006));
+    gRough = lvl < 0.5 ? mix(0.5, 0.26, wet) : lvl < 1.5 ? 0.62 : 0.72;
+    gMetal = lvl < 0.5 ? 0.4 : lvl < 1.5 ? 0.25 : 0.3;
+    gRough = mix(gRough, 0.3, steep);
+    gMetal = mix(gMetal, 0.45, steep);
+    gRough = mix(gRough, 0.9, max(vKind.y, vKind.z));
+    gMetal = mix(gMetal, 0.1, max(vKind.y, vKind.z));
   }
 `;
 
@@ -556,9 +608,13 @@ const GROUND_EMISSIVE = /* glsl */ `
     totalEmissiveRadiance += traceColor(gTerrainLevel) * tr * strength * (1.0 - vShade.x);
     // A thin lit edge along each plateau's rim, in its level's colour.
     totalEmissiveRadiance += traceColor(gTerrainLevel) * smoothstep(0.7, 1.0, vShade.y) * flat_ * 0.05;
-    // Fibre strata in cliff faces: sparse amber seams.
-    float strata = 1.0 - smoothstep(0.0, 0.06, abs(fract(vFogWorld.y / 14.0 + vnoise(xz * 0.02)) - 0.5));
-    totalEmissiveRadiance += vec3(1.0, 0.55, 0.15) * strata * gTerrainSteep * 0.22 * step(0.55, vnoise(xz * 0.03));
+    // Light bands along the walls: one level line per step, broken into runs.
+    float band = 1.0 - smoothstep(0.0, 0.05, abs(fract(vFogWorld.y / ${(STEP / 2).toFixed(1)}) - 0.5));
+    totalEmissiveRadiance += vec3(0.35, 0.8, 1.0) * band * gTerrainSteep * 0.35 * step(0.45, vnoise(xz * 0.025));
+    // The deck: a faint cyan line in every seam, and now and then a lit panel.
+    float lit = step(0.985, h21(gHex.yz * 0.37 + 1.3));
+    totalEmissiveRadiance += vec3(0.1, 0.85, 0.95) * gDeck * flat_ * (1.0 - vShade.x) * (1.0 - vKind.y) * (1.0 - vKind.z)
+      * ((1.0 - smoothstep(0.455, 0.49, gHex.x)) * smoothstep(0.42, 0.455, gHex.x) * 0.06 + lit * (1.0 - smoothstep(0.38, 0.44, gHex.x)) * 0.06);
     // Ramp chevrons.
     float chev = step(0.6, fract((xz.x + xz.y) / 32.0));
     totalEmissiveRadiance += vec3(1.0, 0.65, 0.2) * chev * vKind.y * 0.18;
@@ -570,7 +626,9 @@ function patchGround(shader: THREE.WebGLProgramParametersWithUniforms): void {
     .replace("#include <common>", "#include <common>\nattribute vec3 aKind; attribute vec2 aShade; varying vec3 vKind; varying vec3 vWN; varying vec2 vShade;")
     .replace("#include <begin_vertex>", "#include <begin_vertex>\nvKind = aKind; vShade = aShade; vWN = normalize(objectNormal);");
   shader.fragmentShader = shader.fragmentShader
-    .replace("#include <common>", `#include <common>\n${groundFragmentHead}\n${NETWORK_GLSL_HEAD}\nfloat gTerrainSteep = 0.0; float gTerrainLevel = 0.0;`)
+    .replace("#include <common>", `#include <common>\n${groundFragmentHead}\n${NETWORK_GLSL_HEAD}\nfloat gTerrainSteep = 0.0; float gTerrainLevel = 0.0; float gRough = 0.9; float gMetal = 0.05; vec3 gHex = vec3(0.0); float gDeck = 0.0;`)
     .replace("#include <color_fragment>", `#include <color_fragment>\n${GROUND_COLOR}`)
+    .replace("#include <metalnessmap_fragment>", "#include <metalnessmap_fragment>\nmetalnessFactor = gMetal;")
+    .replace("#include <roughnessmap_fragment>", "#include <roughnessmap_fragment>\nroughnessFactor = gRough;")
     .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>\n${GROUND_EMISSIVE}\n${NETWORK_GLSL_EMISSIVE}`);
 }
