@@ -169,9 +169,10 @@ export class InfoPanel {
     const gives = [def.income ? `+$${def.income.amount} / ${seconds(def.income.intervalTicks)}` : "", def.compute ? `+${def.compute} compute` : ""].filter(Boolean).join(" · ");
     const lines = [`Owner: ${owner} · ${Math.ceil(site.hp)} / ${site.maxHp} HP`, `Gives its owner ${gives}`];
     if (team.controller === "neutral") {
-      const guarded = site.campId !== undefined && world.entities.some((e) => e.kind === "unit" && e.campId === site.campId && e.hp > 0);
+      const guards = site.campId === undefined ? 0 : world.entities.filter((e) => e.kind === "unit" && e.campId === site.campId && e.hp > 0).length;
+      const guarded = guards > 0;
       const need = content.neutrals.sites.captureTicks;
-      if (guarded) lines.push("Clear the camp to capture");
+      if (guarded) lines.push(`Clear the camp to capture · ${guards} ${guards === 1 ? "guard" : "guards"} left`);
       else if (site.captureProgress) lines.push(`Capturing · ${Math.floor((site.captureProgress * 100) / need)}%`);
       else lines.push("Stand near it with your units to capture");
     } else lines.push(site.team === local || allied(world, local, site.team) ? "Enemies must knock it down to take it" : "Knock it down to make it neutral again");

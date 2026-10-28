@@ -249,3 +249,18 @@ describe("expansion alerts", () => {
     expect(alerts.update(world, [hit], 0, 5, onScreen)).toEqual([]);
   });
 });
+
+describe("capture start alert", () => {
+  it("raises 'Capturing site…' once when your capture begins", () => {
+    const { world, rack: site } = base();
+    site.campId = 0;
+    const alerts = new Alerts(content);
+    expect(alerts.update(world, [], 0, 0, offScreen)).toEqual([]);
+    site.captureTeam = 0;
+    site.captureProgress = 1;
+    const out = alerts.update(world, [], 0, 1, offScreen);
+    expect(out.map((a) => [a.kind, a.text, a.x, a.y])).toEqual([["site", "Capturing site…", site.x, site.y]]);
+    site.captureProgress = 2;
+    expect(alerts.update(world, [], 0, 2, offScreen)).toEqual([]);
+  });
+});

@@ -37,6 +37,9 @@ export class Alerts {
   /** Your main core id as of the last update, so a death is judged before any failover. */
   private mainCore = -1;
 
+  /** Sites with capture progress as of the last update, so a capture alerts once when it starts. */
+  private capturing = new Set<number>();
+
   constructor(private readonly content: Content) {}
 
   reset(): void {
@@ -45,6 +48,7 @@ export class Alerts {
     this.deaths = [];
     this.soldiers.clear();
     this.mainCore = -1;
+    this.capturing.clear();
   }
 
   /** The alerts this tick's events raise for `local`, at time `now` (seconds). */
@@ -120,6 +124,14 @@ export class Alerts {
         raise("spread", "The botnet is building an Infected Node", event.x, event.y, false);
       }
     }
+    // Your capture starting: a site's progress going from nothing to something under your flag.
+    const active = new Set<number>();
+    for (const e of world.entities) {
+      if (e.kind !== "building" || e.campId === undefined || !e.captureProgress) continue;
+      active.add(e.id);
+      if (!this.capturing.has(e.id) && e.captureTeam !== undefined && allied(world, local, e.captureTeam)) raise("site", "Capturing site…", e.x, e.y, false);
+    }
+    this.capturing = active;
     this.deaths = this.deaths.filter((d) => now - d.at <= WIPE_WINDOW);
     // Soldiers are units in guard mode, as in src/game/selection.ts isSoldier.
     this.soldiers.clear();

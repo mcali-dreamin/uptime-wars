@@ -44,6 +44,9 @@ const aimingOf = (button: string | null) => (button?.startsWith(AIM_PREFIX) ? bu
 export const upgradeOf = (button: string | null) =>
   button?.startsWith(UPGRADE_PREFIX) ? button.slice(UPGRADE_PREFIX.length) : null;
 
+/** The number key for the button at `index`: 1..9, then 0 for the tenth. */
+export const hotkeyLabel = (index: number): string => String((index + 1) % 10);
+
 /** The shop's stock, in content order. */
 export const shopStock = (content: Content): string[] =>
   Object.keys(content.items.items).filter((id) => content.items.items[id]?.shop);
@@ -123,7 +126,7 @@ export class BuildBar {
       const index = this.session.race.buildings.indexOf(id);
       if (index >= 0) {
         const detail = button.querySelector("small")!;
-        const text = locked ? `${index + 1} · ${locked}` : `${index + 1} · ${buildCost(this.session.world, content, this.session.local, id)}`;
+        const text = locked ? `${hotkeyLabel(index)} · ${locked}` : `${hotkeyLabel(index)} · ${buildCost(this.session.world, content, this.session.local, id)}`;
         if (detail.textContent !== text) detail.textContent = text;
       }
       button.classList.toggle("selected", id === selected);
@@ -175,7 +178,7 @@ export class BuildBar {
     } else if (mode === "build") {
       race.buildings.forEach((id, index) => {
         const cost = buildCost(this.session.world, content, this.session.local, id);
-        this.root.append(this.button(id, content.buildings[id]!.name, `${index + 1} · ${cost}`));
+        this.root.append(this.button(id, content.buildings[id]!.name, `${hotkeyLabel(index)} · ${cost}`));
       });
     } else {
       for (const id of this.upgrades(mode)) {

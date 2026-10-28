@@ -355,6 +355,25 @@ export interface Placement {
   /** Attack range to preview, in pixels. */
   range: number;
   order: Order;
+  /** Why it can't be placed here, in the sim's words (null when valid). */
+  reason: string | null;
+}
+
+/** The sim's placement reasons in player words; anything else reads fine as is. */
+const REASON_TEXT: Record<string, string> = {
+  "outside your network": "Build inside the ring",
+  "terrain is not buildable": "Can't build on this ground",
+  "tile occupied": "Something is already there",
+  "no core": "You need a core first",
+  "not in this race's roster": "Your race can't build that",
+  "too close to hostiles": "Too close to enemies",
+  "no deploy agent": "You need a deploy agent",
+  unexplored: "Explore this ground first",
+};
+
+export function placeReasonText(reason: string): string {
+  const text = REASON_TEXT[reason] ?? reason;
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 /** Where a placement selection would put its building for a pointer at `point`. */
@@ -370,8 +389,8 @@ export function placementAt(
     // Center the footprint on the pointer.
     const col = Math.round(point.x / TILE) - def.footprint / 2;
     const row = Math.round(point.y / TILE) - def.footprint / 2;
-    const valid = canFound(session.world, content, session.local, col, row) === null && explored(point);
-    return { col, row, footprint: def.footprint, valid, range: def.attack?.range ?? 0, order: { type: "found", col, row } };
+    const reason = canFound(session.world, content, session.local, col, row) ?? (explored(point) ? null : "unexplored");
+    return { col, row, footprint: def.footprint, valid: reason === null, range: def.attack?.range ?? 0, order: { type: "found", col, row }, reason };
   }
   if (selection.kind === "place") {
     const def = content.buildings[selection.building]!;
@@ -379,17 +398,18 @@ export function placementAt(
     const row = Math.floor(point.y / TILE);
     if (selection.fork !== undefined) {
       const source = session.entity(selection.fork);
-      const valid = forkBlocker(session.world, content, session.local, source?.kind === "building" ? source : undefined, col, row) === null;
-      return { col, row, footprint: def.footprint, valid, range: def.attack?.range ?? 0, order: { type: "fork", sourceId: selection.fork, col, row } };
+      const reason = forkBlocker(session.world, content, session.local, source?.kind === "building" ? source : undefined, col, row);
+      return { col, row, footprint: def.footprint, valid: reason === null, range: def.attack?.range ?? 0, order: { type: "fork", sourceId: selection.fork, col, row }, reason };
     }
-    const valid = canPlace(session.world, content, session.local, selection.building, col, row) === null;
+    const reason = canPlace(session.world, content, session.local, selection.building, col, row);
     return {
       col,
       row,
       footprint: def.footprint,
-      valid,
+      valid: reason === null,
       range: def.attack?.range ?? 0,
       order: { type: "build", building: selection.building, col, row },
+      reason,
     };
   }
   return null;
