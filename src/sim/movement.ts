@@ -5,8 +5,9 @@
 
 import { TILE } from "./map";
 import { ORDER_SPREAD_MAX } from "./tuning";
-import { flowField, hasClearPath, moveToward, nextStep } from "./nav";
+import { bodyFits, flowField, hasClearPath, isWalkablePoint, moveToward, nextStep } from "./nav";
 import type { Point, Unit, World } from "./types";
+import type { Terrain } from "./terrain";
 import { terrainFor } from "./walls";
 
 /**
@@ -56,8 +57,39 @@ export function walkTo(world: World, unit: Unit, goal: Point, speed: number): vo
     if (distance(unit, goal) > ANCHOR_NEAR) tile = unit.homeAnchor;
     else unit.homeAnchor = undefined;
   }
-  const waypoint = nextStep(terrain, goalField(world, tile, unit.team), unit.x, unit.y);
-  moveToward(terrain, unit, (waypoint ?? goal).x, (waypoint ?? goal).y, speed);
+  const field = goalField(world, tile, unit.team);
+  const waypoint = nextStep(terrain, field, unit.x, unit.y);
+  const aim = waypoint && tile === unit.homeAnchor ? spreadWaypoint(terrain, field, unit, waypoint, tile) : waypoint;
+  moveToward(terrain, unit, (aim ?? goal).x, (aim ?? goal).y, speed);
+}
+
+/** Most a marching unit strays sideways from the shared route, per axis. */
+const MARCH_OFFSET_MAX = 2.5 * TILE;
+
+/**
+ * Keep a marching unit's offset from the shared route so an order travels as
+ * a column, not a line. The unit follows the field as if standing at its
+ * position minus its offset (its place on the route), then aims at that
+ * step plus the offset: a translated copy of the route. Wherever the copy
+ * doesn't fit or can't be walked straight to, it uses the plain waypoint, so
+ * chokepoints still squeeze single file.
+ */
+function spreadWaypoint(terrain: Terrain, field: Int32Array, unit: Unit, waypoint: Point, anchor: number): Point {
+  const cx = ((anchor % terrain.cols) + 0.5) * TILE;
+  const cy = (Math.floor(anchor / terrain.cols) + 0.5) * TILE;
+  const dx = Math.max(-MARCH_OFFSET_MAX, Math.min(MARCH_OFFSET_MAX, unit.homeX - cx));
+  const dy = Math.max(-MARCH_OFFSET_MAX, Math.min(MARCH_OFFSET_MAX, unit.homeY - cy));
+  if (!isWalkablePoint(terrain, unit.x - dx, unit.y - dy)) return waypoint;
+  const route = nextStep(terrain, field, unit.x - dx, unit.y - dy);
+  if (!route) return waypoint;
+  const x = route.x + dx;
+  const y = route.y + dy;
+  if (!bodyFits(terrain, x, y, unit.radius) || !hasClearPath(terrain, unit.x, unit.y, x, y, unit.radius)) return waypoint;
+  // Only ever aim downhill of where the unit stands, so mixing this with the
+  // plain waypoint can't make it dither between two routes.
+  const at = (px: number, py: number) => field[Math.floor(py / TILE) * terrain.cols + Math.floor(px / TILE)]!;
+  if (at(x, y) >= at(unit.x, unit.y)) return waypoint;
+  return { x, y };
 }
 
 export function distance(a: Point, b: Point): number {
