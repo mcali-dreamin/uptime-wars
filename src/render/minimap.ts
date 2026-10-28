@@ -73,7 +73,8 @@ export class Minimap {
       if (entity.kind === "building" && entity.campId !== undefined) {
         if (!this.fog.isExplored(entity.x, entity.y)) continue;
         const half = 4;
-        g.rect(entity.x * s - half, entity.y * s - half, half * 2, half * 2).fill({ color: teamColor(world, entity.team) }).stroke({ width: 1, color: 0x0b0f17 });
+        // A hollow ring with a dark centre, so a filled square always means a building.
+        g.rect(entity.x * s - half, entity.y * s - half, half * 2, half * 2).fill({ color: 0x0b0f17 }).stroke({ width: 1.5, color: teamColor(world, entity.team) });
         continue;
       }
       if (!shows(entity)) continue;

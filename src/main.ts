@@ -24,6 +24,7 @@ import {
   leftClickOrders,
   ownEntityAt,
   placementAt,
+  placeReasonText,
   selectedEntity,
   siteAt,
   selectedIds,
@@ -155,6 +156,8 @@ coop.onLeave = (team) => {
 
 let selection: Selection = NOTHING;
 let placement: Placement | null = null;
+/** When the last placement-failure banner showed (ms), to rate-limit it. */
+let lastPlaceBanner = -Infinity;
 let pointer: Point | null = null;
 let lastUnitClick = { id: -1, at: 0 };
 let paused = false;
@@ -515,7 +518,15 @@ const gameInput: GameInput = {
 
   click(point, shift, entityId) {
     if (placement) {
-      if (!placement.valid) return;
+      if (!placement.valid) {
+        // Say why, not more than once every couple of seconds.
+        const now = performance.now();
+        if (placement.reason && now - lastPlaceBanner > 2000) {
+          lastPlaceBanner = now;
+          renderer.showBanner(placeReasonText(placement.reason));
+        }
+        return;
+      }
       session.issue(placement.order);
       sound.ui("place");
       renderer.ping(point.x, point.y);
