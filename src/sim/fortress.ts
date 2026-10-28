@@ -213,6 +213,17 @@ export function collapseHorde(world: World, team: TeamId): void {
   world.events.push({ type: "collapsed", team });
 }
 
+/** How many creeps a farm's fall sends at the attacker: pure (no rng consumed). */
+export function retaliationSize(world: World, content: Content): number {
+  const wave = Math.max(1, world.waves.nextIndex);
+  // planWave draws from the world's rng; peek without consuming, so asking
+  // never changes the match and `retaliate` draws the very same plan.
+  const rngState = world.rngState;
+  const plan = planWave(world, content, wave);
+  world.rngState = rngState;
+  return Math.max(1, Math.floor((plan.units.length * content.waves.fortress.farms.retaliationPermille) / 1000));
+}
+
 /**
  * A farm fell: the hornet's nest. A retaliation wave, a share of the current
  * wave's size, comes out of the nest as one pack and marches on the spot the
@@ -224,14 +235,15 @@ export function retaliate(ctx: TickContext, attacker: Entity): void {
   const horde = world.teams.find((t) => t.controller === "wave-director");
   if (!horde || !hostile(world, attacker.team, horde.id)) return;
   const wave = Math.max(1, world.waves.nextIndex);
+  const count = retaliationSize(world, content);
   const plan = planWave(world, content, wave);
-  const count = Math.max(1, Math.floor((plan.units.length * content.waves.fortress.farms.retaliationPermille) / 1000));
   const units: string[] = [];
   for (let i = 0; i < count; i += 1) units.push(plan.units[i % plan.units.length]!);
   const packId = world.waves.nextPackId++;
   for (const unit of units) world.waves.pending.push({ tick: world.tick, unit, packId, wave });
   world.waves.pending.sort((a, b) => a.tick - b.tick);
   world.waves.packs[packId] = { x: attacker.x, y: attacker.y };
+  (world.waves.retaliation ??= {})[packId] = true;
   const farmsLeft = farmsStanding(world, content, horde.id);
   world.events.push({ type: "retaliation", team: attacker.team, x: attacker.x, y: attacker.y, units: units.length, farmsLeft });
 }

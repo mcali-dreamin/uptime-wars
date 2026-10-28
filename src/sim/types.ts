@@ -518,6 +518,8 @@ export interface WaveState {
   packs: Record<number, number | Point>;
   /** Pack id -> a flanking waypoint it takes before closing on its target. */
   approach?: Record<number, Point>;
+  /** Retaliation packs (a farm fell): after hitting their target they return to the nest instead of picking a core. */
+  retaliation?: Record<number, true>;
 
 }
 

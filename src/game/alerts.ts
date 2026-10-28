@@ -4,9 +4,9 @@
 // not one per shot. The UI shows the banner, flashes the minimap, plays the
 // cue, and Space jumps the camera to the latest one.
 
-import { allied, isCore, type Content, type Unit, type Point, type SimEvent, type TeamId, type World } from "../sim";
+import { allied, isCore, retaliationSize, type Content, type Unit, type Point, type SimEvent, type TeamId, type World } from "../sim";
 
-export type AlertKind = "attack" | "core" | "lost" | "hero" | "spread" | "agent" | "fighting" | "wiped" | "camp" | "site";
+export type AlertKind = "attack" | "core" | "lost" | "hero" | "spread" | "agent" | "fighting" | "wiped" | "camp" | "site" | "farm";
 
 export interface Alert {
   kind: AlertKind;
@@ -18,7 +18,7 @@ export interface Alert {
 }
 
 /** Quiet time per kind (seconds) before the same kind, near the same place, alerts again. */
-const QUIET: Record<AlertKind, number> = { attack: 12, core: 8, lost: 0, hero: 0, spread: 0, agent: 0, fighting: 20, wiped: 20, camp: 0, site: 0 };
+const QUIET: Record<AlertKind, number> = { attack: 12, core: 8, lost: 0, hero: 0, spread: 0, agent: 0, fighting: 20, wiped: 20, camp: 0, site: 0, farm: 30 };
 /** Soldier deaths inside this window (seconds) count toward "wiped". */
 const WIPE_WINDOW = 10;
 /** Deaths in the window needed before an army counts as wiped. */
@@ -65,6 +65,9 @@ export class Alerts {
     };
     const team = world.teams[local];
     if (!team) return out;
+    // planWave is not cheap: size the retaliation once per update, and only if a farm alert needs it.
+    let retaliation: number | undefined;
+    const sendsAtYou = () => (retaliation ??= retaliationSize(world, this.content));
     for (const event of events) {
       if (event.type === "shot") {
         const target = world.entities.find((e) => e.id === event.to);
@@ -79,6 +82,9 @@ export class Alerts {
             continue;
           }
           if (target.kind === "unit" && target.mode === "guard") raise("fighting", "Your army is fighting", target.x, target.y, true);
+        } else if (target.kind === "building" && target.defId === this.content.waves.fortress.farms.building && event.team === local && target.hp > 0 && target.hp * 2 < target.maxHp) {
+          const pct = Math.max(1, Math.round((target.hp / target.maxHp) * 100));
+          raise("farm", `Farm at ${pct}% · breaking it sends ${sendsAtYou()} creeps at your army`, target.x, target.y, false);
         } else if (target.kind !== "building" && target.team !== local && !allied(world, local, target.team)) {
           const shooter = world.entities.find((e) => e.id === event.from);
           if (shooter && shooter.kind === "unit" && shooter.team === local && (shooter as Unit).mode === "guard") {
