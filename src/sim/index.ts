@@ -32,7 +32,7 @@ export function simulate(
   while (world.tick < maxTicks && !world.outcome) step(world, content);
   return world;
 }
-export { FARM_COUNT, farmSpots, farmsDown, farmsStanding, fortressGates, fortressSpots, nestShielded } from "./fortress";
+export { FARM_COUNT, farmSpots, farmsDown, farmsStanding, fortressGates, fortressSpots, nestShielded, retaliationSize } from "./fortress";
 export { campSpots, type CampSpot } from "./neutrals";
 export { invokeBlocker, invokeCost } from "./functions";
 export { forkBlocker, forkCost, regionShield } from "./mechanics";

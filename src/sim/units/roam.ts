@@ -67,6 +67,19 @@ function wander(ctx: TickContext, unit: Unit, leader: Unit | undefined, speed: n
   let waypoint = destination === undefined || rethink ? null : stepToward(world, unit, destination);
   if (!waypoint) {
     // Arrived, or new pack: decide where to go next.
+    const retaliating = world.waves.retaliation?.[unit.packId];
+    const nest = { x: (world.terrain.nest.col + 0.5) * TILE, y: (world.terrain.nest.row + 0.5) * TILE };
+    const goingHome = typeof destination === "object" && destination.x === nest.x && destination.y === nest.y;
+    if (retaliating && !goingHome) {
+      // Hit the attackers at the farm, then head back to the nest.
+      destination = nest;
+      world.waves.packs[unit.packId] = nest;
+      if (world.waves.approach) delete world.waves.approach[unit.packId];
+      const home = stepToward(world, unit, nest);
+      if (home) moveToward(terrain, unit, home.x, home.y, speed);
+      return;
+    }
+    if (retaliating) delete world.waves.retaliation![unit.packId];
     destination = pickDestination(ctx, unit);
     world.waves.packs[unit.packId] = destination;
     if (world.waves.approach) delete world.waves.approach[unit.packId];

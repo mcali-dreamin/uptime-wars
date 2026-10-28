@@ -68,7 +68,7 @@ const director = new Director(content);
 const alerts = new Alerts(content);
 const groups = new ControlGroups();
 /** Alert colours on the minimap. */
-const ALERT_COLOR = { attack: 0xfacc15, core: 0xf87171, lost: 0xf87171, hero: 0xfacc15, spread: 0xf87171, agent: 0xf87171, fighting: 0xfacc15, wiped: 0xf87171, camp: 0xfacc15, site: 0xfacc15 } as const satisfies Record<AlertKind, number>;
+const ALERT_COLOR = { attack: 0xfacc15, core: 0xf87171, lost: 0xf87171, hero: 0xfacc15, spread: 0xf87171, agent: 0xf87171, fighting: 0xfacc15, wiped: 0xf87171, camp: 0xfacc15, site: 0xfacc15, farm: 0xfacc15 } as const satisfies Record<AlertKind, number>;
 /** Is a world point on screen right now (and in sight)? */
 const onScreen = (p: Point) => renderer.onScreen(p.x, p.y);
 const soundButton = $("sound");

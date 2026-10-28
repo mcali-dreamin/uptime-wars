@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { createWorld, farmSpots, farmsDown, generateTerrain, planWave, queueCommand, step, type Building, type World } from "../src/sim";
+import { createWorld, farmSpots, farmsDown, generateTerrain, planWave, queueCommand, step, type Building, type Unit, type World } from "../src/sim";
 import { makeContext } from "../src/sim/context";
 import { dealDamage } from "../src/sim/combat";
 import { spawnUnit } from "../src/sim/entities";
+import { TILE } from "../src/sim/map";
+import { hashWorld } from "../src/sim/hash";
+import { retaliationSize } from "../src/sim/fortress";
 import { INVULNERABLE } from "../src/sim/fortress";
 import { heroOf } from "../src/sim/heroes";
 import { content, SETUP } from "./fixtures";
@@ -179,5 +182,56 @@ describe("the nest's shield", () => {
     expect(world.entities.filter((e) => e.team === 1)).toHaveLength(0);
     expect(world.waves.pending).toHaveLength(0);
     expect(world.events.some((e) => e.type === "collapsed")).toBe(true);
+  });
+
+  it("retaliationSize matches the units retaliate queues", () => {
+    const world = createWorld(content, SETUP);
+    world.waves.nextWaveTick = 1e9;
+    world.waves.nextIndex = 5;
+    const farm = farms(world)[0]!;
+    const ctx = makeContext(world, content);
+    const attacker = spawnUnit(ctx, 0, "process", farm, farm.x + 80, farm.y, "guard");
+    const n = retaliationSize(world, content);
+    expect(retaliationSize(world, content)).toBe(n);
+    const before = world.waves.pending.length;
+    farm.hp = 1;
+    dealDamage(ctx, attacker, farm, 50);
+    expect(world.waves.pending.length - before).toBe(n);
+    expect(world.events.find((e) => e.type === "retaliation")).toMatchObject({ units: n });
+  });
+
+  it("a retaliation pack heads back to the nest after the attacker's spot, not to a core", () => {
+    const run = () => {
+      const world = createWorld(content, SETUP);
+      world.waves.nextWaveTick = 1e9;
+      world.waves.nextTrickleTick = 1e9;
+      world.waves.nextIndex = 5;
+      const farm = farms(world)[0]!;
+      const ctx = makeContext(world, content);
+      const core = world.entities.find((e) => e.id === world.teams[0]!.coreId)!;
+      // The attacker's spot is right by the player's core, well inside traffic range.
+      const attacker = spawnUnit(ctx, 0, "process", farm, core.x + 200, core.y, "guard");
+      farm.hp = 1;
+      dealDamage(ctx, attacker, farm, 50);
+      attacker.hp = 0;
+      const pack = world.waves.pending.at(-1)!.packId;
+      expect(world.waves.retaliation?.[pack]).toBe(true);
+      const nest = { x: (world.terrain.nest.col + 0.5) * TILE, y: (world.terrain.nest.row + 0.5) * TILE };
+      for (let i = 0; i < 60; i++) step(world, content);
+      // Skip the march: put the pack on the attacker's spot.
+      const spot = world.waves.packs[pack] as { x: number; y: number };
+      const pack_units = world.entities.filter((e): e is Unit => e.kind === "unit" && e.packId === pack);
+      expect(pack_units.length).toBeGreaterThan(0);
+      for (const u of pack_units) { u.x = spot.x; u.y = spot.y; }
+      let seen = false;
+      for (let i = 0; i < 200 && !seen; i++) {
+        step(world, content);
+        const dest = world.waves.packs[pack];
+        if (dest && typeof dest === "object" && dest.x === nest.x && dest.y === nest.y) seen = true;
+      }
+      expect(seen).toBe(true);
+      return hashWorld(world);
+    };
+    expect(run()).toBe(run());
   });
 });

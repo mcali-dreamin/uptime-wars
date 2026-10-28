@@ -234,4 +234,18 @@ describe("expansion alerts", () => {
     expect(alerts.update(world, [death(exp)], 0, 1, offScreen)[0]!.text).toBe("Expansion lost");
     expect(alerts.update(world, [death(core)], 0, 2, offScreen)[0]!.text).toBe("Core lost");
   });
+
+  it("shooting a Botnet Farm below half HP warns of the retaliation, above half it doesn't", () => {
+    const { world } = base();
+    const farm = world.entities.find((e): e is Building => e.kind === "building" && e.defId === content.waves.fortress.farms.building)!;
+    const alerts = new Alerts(content);
+    const hit: SimEvent = { type: "shot", from: 999, to: farm.id, x1: 0, y1: 0, x2: farm.x, y2: farm.y, team: 0 };
+    farm.hp = farm.maxHp * 0.8;
+    expect(alerts.update(world, [hit], 0, 0, onScreen)).toEqual([]);
+    farm.hp = farm.maxHp * 0.4;
+    const raised = alerts.update(world, [hit], 0, 1, onScreen);
+    expect(raised.map((a) => a.kind)).toEqual(["farm"]);
+    expect(raised[0]!.text).toContain("40%");
+    expect(alerts.update(world, [hit], 0, 5, onScreen)).toEqual([]);
+  });
 });
