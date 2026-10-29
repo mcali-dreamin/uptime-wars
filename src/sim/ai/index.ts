@@ -12,6 +12,7 @@
 
 import type { Content, DifficultyDef } from "../content";
 import { queueCommand } from "../commands";
+import { expand, rentSpot } from "./aggressive";
 import { moveHero, playArmy } from "./army";
 import {
   computeBalance,
@@ -72,6 +73,10 @@ export function tickAi(world: World, content: Content): void {
       team.ai!.casts += playHero(world, content, team, issue);
     if (world.tick % level.buildEveryTicks === 0) {
       playBase(world, content, team, level, issue);
+      if (level.aggressive) {
+        rentSpot(world, content, team, level, issue);
+        expand(world, content, team, level, issue);
+      }
       if (level.attack) {
         playArmy(world, content, team, level.attack, issue);
         if (level.playsHero && team.ai!.phase !== "gather")

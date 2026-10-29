@@ -1,8 +1,12 @@
 // A computer player's army: gather, attack, retreat (issue #123).
 //
 // It only goes on the offence when the match has other players it's hostile
-// to; alone against the horde (or in co-op) it defends, so balance runs are
-// untouched. Fighting itself is the game's attack-move: units fight whatever
+// to; alone against the horde (or in co-op) it defends. The exception is the
+// aggressive balance mode (difficulty.aggressive, set only by balance/bot.ts):
+// alone against the horde it attack-moves its army at the nearest standing
+// Botnet Farm once the army is ready, and recalls it the same way (core under
+// attack, army below its retreat threshold), so `npm run balance` can measure
+// the late game. Real matches never set it. Fighting itself is the game's attack-move: units fight whatever
 // they meet on the way. This decides when to go, where, and when to come home.
 //
 // Like a person who knows the map but not who's where, it knows the start
@@ -18,7 +22,7 @@ import { campSpots, type CampSpot } from "../neutrals";
 import { isSite } from "../ownership";
 import { hasSite } from "../sites";
 import { rankedUpkeep, unitRank } from "../ranks";
-import { hostile, neutralTeam } from "../teams";
+import { hordeTeam, hostile, neutralTeam } from "../teams";
 import type { Building, Command, Team, Unit, World } from "../types";
 import { BUILDING_SIGHT } from "../tuning";
 
@@ -467,6 +471,8 @@ export function playArmy(
   // Creeping, like attacking, is only for matches with rivals.
   const creep = content.difficulties[ai.difficulty]?.creep ?? null;
   if (enemies.length === 0) {
+    if (content.difficulties[ai.difficulty]?.aggressive)
+      return playFarms(world, content, team, plan, core, home, issue);
     if (ai.phase === "attack" || ai.phase === "creep")
       retreat(world, team, home, plan, issue);
     return;
@@ -546,6 +552,80 @@ export function playArmy(
     return;
   }
   steer(world, content, team, group, enemies, reach, issue);
+}
+
+/** Aggressive mode, alone against the horde: gather, attack the nearest standing Botnet Farm, retreat. */
+function playFarms(
+  world: World,
+  content: Content,
+  team: Team,
+  plan: AiAttackDef,
+  core: Building,
+  home: Point,
+  issue: (c: Order) => unknown,
+): void {
+  const ai = team.ai!;
+  const army = armyOf(world, team);
+  const inGroup = new Set(ai.group);
+  const group = army.filter((u) => inGroup.has(u.id));
+  ai.group = group.map((u) => u.id);
+  const homeHit =
+    core.hp < ai.coreHp &&
+    core.hp * 1000 < core.maxHp * plan.recallBelowPermille;
+  ai.coreHp = core.hp;
+
+  if (ai.phase === "retreat") {
+    if (
+      group.length === 0 ||
+      distSq(centroid(group), home) <= HOME_REACHED * HOME_REACHED ||
+      world.tick >= ai.until
+    ) {
+      ai.phase = "gather";
+      ai.group = [];
+    }
+    return;
+  }
+  const horde = hordeTeam(world);
+  const farmDef = content.waves.fortress.farms.building;
+  const farms = horde
+    ? world.entities.filter(
+        (e): e is Building =>
+          e.kind === "building" &&
+          e.team === horde.id &&
+          e.defId === farmDef &&
+          e.hp > 0,
+      )
+    : [];
+
+  if (ai.phase === "gather") {
+    if (farms.length === 0 || !attackReady(world, content, team, plan, army))
+      return;
+    ai.phase = "attack";
+    ai.group = army.map((u) => u.id);
+    ai.launched = strength(content, world, army);
+    ai.goal = null;
+    ai.goalId = -1;
+    ai.coreHp = core.hp;
+    const farm = nearest(farms, centroid(army));
+    ai.goalId = farm.id;
+    order(army, farm, true, issue);
+    return;
+  }
+
+  // Attacking: home under attack, the army spent, or no farm left: come back.
+  if (
+    group.length === 0 ||
+    farms.length === 0 ||
+    strength(content, world, group) * 1000 < ai.launched * plan.retreatPermille ||
+    homeHit
+  ) {
+    retreat(world, team, home, plan, issue);
+    return;
+  }
+  const farm = nearest(farms, centroid(group));
+  if (farm.id === ai.goalId) return;
+  ai.goalId = farm.id;
+  order(group, farm, true, issue);
 }
 
 /**

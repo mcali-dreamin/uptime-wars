@@ -565,6 +565,11 @@ export interface DifficultyDef {
   savingKeepPermille: number;
   /** Learns and casts hero abilities; off = the hero only auto-fights. */
   playsHero: boolean;
+  /**
+   * Balance-run mode (off when absent; no real difficulty sets it): also
+   * attacks Botnet Farms, expands with a deploy agent, and rents Spot.
+   */
+  aggressive?: boolean;
   revenuePermille: number;
   /** How it attacks other players; null = it never does (it still defends). */
   attack: AiAttackDef | null;
