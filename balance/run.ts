@@ -1,3 +1,7 @@
+// Env: BALANCE_SEEDS, BALANCE_MINUTES, BALANCE_DIFFICULTY (bot skill), BALANCE_NO_HERO,
+// BALANCE_AGGRESSIVE=0, BALANCE_PRESSURE (permille horde strength, default 1000: scales
+// waves.budget.start and waves.hpGrowthPerWave). Results carry minCorePermille,
+// secondsBelowHalf and buildingsLost (see bot.ts) so races differ even when all survive.
 // Shared by the per-race balance runs: play every hero of a race on a few
 // maps and write the results to balance-results/<race>.json.
 
@@ -9,6 +13,7 @@ import { loadDefaultContent } from "../src/sim";
 import { playMatch, type BotResult } from "./bot";
 
 export const SEEDS = (process.env.BALANCE_SEEDS ?? "1,42,99,2026").split(",").map(Number);
+export const PRESSURE = Number(process.env.BALANCE_PRESSURE ?? 1000);
 export const MINUTES = Number(process.env.BALANCE_MINUTES ?? 45);
 
 export function runRace(race: string): BotResult[] {
@@ -18,7 +23,7 @@ export function runRace(race: string): BotResult[] {
   const hero = process.env.BALANCE_NO_HERO ? false : true;
   for (const heroId of heroes) {
     for (const seed of SEEDS) {
-      results.push(playMatch(content, race, seed, heroId, { minutes: MINUTES, hero, aggressive: process.env.BALANCE_AGGRESSIVE !== "0", difficulty: process.env.BALANCE_DIFFICULTY }));
+      results.push(playMatch(content, race, seed, heroId, { minutes: MINUTES, hero, aggressive: process.env.BALANCE_AGGRESSIVE !== "0", difficulty: process.env.BALANCE_DIFFICULTY, pressure: PRESSURE }));
       mkdirSync("balance-results", { recursive: true });
       writeFileSync(`balance-results/${race}.json`, JSON.stringify(results, null, 1));
     }
