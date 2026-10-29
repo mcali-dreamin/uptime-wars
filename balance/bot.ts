@@ -4,9 +4,18 @@
 //
 //   npm run balance      (writes balance-results/*.json, then prints a table)
 //
-// BALANCE_DIFFICULTY picks its skill (default normal).
+// BALANCE_DIFFICULTY picks its skill (default normal). It is the bot's skill,
+// not the horde's strength.
+// BALANCE_PRESSURE (permille, default 1000) scales the horde: waves.budget.start
+// and waves.hpGrowthPerWave are multiplied by pressure/1000 (content is copied,
+// never mutated). Use it to tell races apart when every run survives the cap.
+//
+// Stress metrics in every BotResult, tracked each tick on the team's main core
+// (following team.coreId after a failover): minCorePermille (lowest hp*1000/maxHp),
+// secondsBelowHalf (time under 50% HP) and buildingsLost (own buildings destroyed).
+// pressure and minutes are stored too, for the report.
 
-import { TICK_RATE, createWorld, step, tierOf, type Content } from "../src/sim";
+import { TICK_RATE, createWorld, step, tierOf, type Content, type World } from "../src/sim";
 
 export interface BotOptions {
   minutes: number;
@@ -15,6 +24,10 @@ export interface BotOptions {
   /** Aggressive AI: attacks Botnet Farms, expands, rents Spot (measures the late game). */
   aggressive: boolean;
   difficulty?: string;
+  /** Horde pressure in permille (default 1000 = unchanged). */
+  pressure?: number;
+  /** Test hook: called before every step. */
+  beforeStep?: (world: World) => void;
 }
 
 export interface BotResult {
@@ -35,6 +48,30 @@ export interface BotResult {
   peakMoney: number;
   /** Spot Capacity rentals made. */
   spotRentals: number;
+  /** Lowest core hp*1000/maxHp seen. */
+  minCorePermille: number;
+  /** Seconds the core spent under 50% HP. */
+  secondsBelowHalf: number;
+  /** The team's own buildings destroyed. */
+  buildingsLost: number;
+  pressure: number;
+  minutes: number;
+}
+
+/** The content a balance run plays on: pressure scales the horde. Never mutates `content`. */
+export function balanceContent(content: Content, options: Pick<BotOptions, "pressure">): Content {
+  const pressure = options.pressure ?? 1000;
+  if (pressure === 1000) return content;
+  const k = pressure / 1000;
+  const waves = content.waves;
+  return {
+    ...content,
+    waves: {
+      ...waves,
+      budget: { ...waves.budget, start: Math.round(waves.budget.start * k) },
+      hpGrowthPerWave: waves.hpGrowthPerWave * k,
+    },
+  };
 }
 
 export function playMatch(
@@ -45,6 +82,7 @@ export function playMatch(
   options: BotOptions,
 ): BotResult {
   const difficulty = options.difficulty ?? "normal";
+  content = balanceContent(content, options);
   const level = content.difficulties[difficulty]!;
   // Overrides on the same difficulty: no hero play (the hero only auto-fights), aggressive play.
   const played =
@@ -74,10 +112,21 @@ export function playMatch(
   let farmsBroken = 0;
   let expansions = 0;
   let peakMoney = team.money;
+  let minCorePermille = 1000;
+  let belowHalfTicks = 0;
+  let buildingsLost = 0;
   while (world.tick < limit && !world.outcome) {
+    options.beforeStep?.(world);
     step(world, played);
     peakMoney = Math.max(peakMoney, team.money);
+    const core = world.entities.find((c) => c.id === team.coreId);
+    if (core && core.maxHp > 0) {
+      const permille = Math.floor((core.hp * 1000) / core.maxHp);
+      minCorePermille = Math.min(minCorePermille, permille);
+      if (permille < 500) belowHalfTicks += 1;
+    }
     for (const e of world.events) {
+      if (e.type === "death" && e.kind === "building" && e.team === team.id) buildingsLost += 1;
       if (e.type === "expanded" && e.team === team.id) expansions += 1;
       else if (e.type === "death" && e.kind === "building" && e.defId === farm && e.team !== team.id) farmsBroken += 1;
     }
@@ -95,5 +144,10 @@ export function playMatch(
     expansions,
     peakMoney,
     spotRentals: team.spotRentals,
+    minCorePermille,
+    secondsBelowHalf: belowHalfTicks / TICK_RATE,
+    buildingsLost,
+    pressure: options.pressure ?? 1000,
+    minutes: options.minutes,
   };
 }

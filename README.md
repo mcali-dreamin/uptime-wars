@@ -498,6 +498,10 @@ nobody waits on them. The address bar works too, for quick tests:
 
 The balance runs (`npm run balance`, `BALANCE_DIFFICULTY=hard`) are a computer
 player alone against the horde, so a better AI is also a better balance test.
+`BALANCE_DIFFICULTY` is the bot's skill, not the horde's strength; when every run
+survives the cap, use `BALANCE_PRESSURE` (permille, default 1000) to scale the
+horde's starting budget and hp growth. The report adds the lowest core hp %, time
+under 50% core hp and own buildings lost, so races differ even at 45:00.
 `npm run balance:ffa` plays computers against each other
 (`FFA="hard:serverless,normal:hyperscaler;..."`, `FFA_SEEDS`, `FFA_MINUTES`,
 `FFA_HORDE=1`) and writes `balance-results/ffa/results.json`.
