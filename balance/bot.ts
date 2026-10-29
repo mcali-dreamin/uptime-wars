@@ -12,6 +12,8 @@ export interface BotOptions {
   minutes: number;
   /** Play the hero (learn and cast). Off = the hero only auto-fights. */
   hero: boolean;
+  /** Aggressive AI: attacks Botnet Farms, expands, rents Spot (measures the late game). */
+  aggressive: boolean;
   difficulty?: string;
 }
 
@@ -25,6 +27,14 @@ export interface BotResult {
   tier: number;
   casts: number;
   heroLevel: number;
+  /** Botnet Farms destroyed (rebuilt ones count again). */
+  farmsBroken: number;
+  /** Expansion cores founded. */
+  expansions: number;
+  /** Most $ held at once. */
+  peakMoney: number;
+  /** Spot Capacity rentals made. */
+  spotRentals: number;
 }
 
 export function playMatch(
@@ -36,16 +46,21 @@ export function playMatch(
 ): BotResult {
   const difficulty = options.difficulty ?? "normal";
   const level = content.difficulties[difficulty]!;
-  // No hero play: the same player with its hero left to auto-fight.
-  const played = options.hero
-    ? content
-    : {
-        ...content,
-        difficulties: {
-          ...content.difficulties,
-          [difficulty]: { ...level, playsHero: false },
-        },
-      };
+  // Overrides on the same difficulty: no hero play (the hero only auto-fights), aggressive play.
+  const played =
+    options.hero && !options.aggressive
+      ? content
+      : {
+          ...content,
+          difficulties: {
+            ...content.difficulties,
+            [difficulty]: {
+              ...level,
+              ...(options.hero ? {} : { playsHero: false }),
+              ...(options.aggressive ? { aggressive: true } : {}),
+            },
+          },
+        };
   const world = createWorld(played, {
     seed,
     races: [race, "botnet"],
@@ -55,7 +70,18 @@ export function playMatch(
   });
   const team = world.teams[0]!;
   const limit = TICK_RATE * 60 * options.minutes;
-  while (world.tick < limit && !world.outcome) step(world, played);
+  const farm = content.waves.fortress.farms.building;
+  let farmsBroken = 0;
+  let expansions = 0;
+  let peakMoney = team.money;
+  while (world.tick < limit && !world.outcome) {
+    step(world, played);
+    peakMoney = Math.max(peakMoney, team.money);
+    for (const e of world.events) {
+      if (e.type === "expanded" && e.team === team.id) expansions += 1;
+      else if (e.type === "death" && e.kind === "building" && e.defId === farm && e.team !== team.id) farmsBroken += 1;
+    }
+  }
   return {
     race,
     hero: heroId,
@@ -65,5 +91,9 @@ export function playMatch(
     tier: tierOf(content, team),
     casts: team.ai!.casts,
     heroLevel: team.hero?.level ?? 0,
+    farmsBroken,
+    expansions,
+    peakMoney,
+    spotRentals: team.spotRentals,
   };
 }
