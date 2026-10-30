@@ -3,6 +3,12 @@
 // player id kept in this browser, nothing else about you. The report carries
 // the seed, setup and command log, which replay the match exactly.
 //
+// Visits: one more anonymous ping when the page opens (how you arrived: direct
+// or an invite link; the referring site's hostname; the version), and the same
+// visit again, marked started, when your first match begins. That's the whole
+// funnel: opened, then played. A random visit id lives in memory only, so
+// nothing links one visit to the next except the player id above.
+//
 // Off with the toggle on the race picker. Never sent from a dev machine, and
 // silently dropped wherever there's no server (a plain static host).
 
@@ -13,6 +19,7 @@ const PLAYER_KEY = "uptime:player";
 /** Matches shorter than this aren't worth a report (game seconds). */
 const MIN_SECONDS = 20;
 const ENDPOINT = "api/matches";
+const VISIT_ENDPOINT = "api/visits";
 /** A long match checks in this often (game seconds), so a closed tab loses at most this much. */
 export const CHECKPOINT_SECONDS = 120;
 /**
@@ -160,6 +167,9 @@ export class Telemetry {
   /** The match last checked in, and when. */
   private checked: World | null = null;
   private checkedTick = 0;
+  private visitId = "";
+  private entry: "direct" | "join" | "quick" = "direct";
+  private started = false;
 
   constructor(
     private readonly content: Content,
@@ -172,6 +182,25 @@ export class Telemetry {
 
   set enabled(on: boolean) {
     localStorage.setItem(OPT_OUT_KEY, on ? "on" : "off");
+  }
+
+  /** The page was opened. Call once on load. */
+  visit(entry: "direct" | "join" | "quick" = location.hash.startsWith("#join=") ? "join" : "direct"): void {
+    if (!this.enabled || !reportable()) return;
+    this.visitId = crypto.randomUUID();
+    this.entry = entry;
+    this.pingVisit(0);
+  }
+
+  /** A match started (any kind). Only the first one per page counts. */
+  matchStarted(): void {
+    if (this.started || !this.visitId || !this.enabled || !reportable()) return;
+    this.started = true;
+    this.pingVisit(1);
+  }
+
+  private pingVisit(started: 0 | 1): void {
+    this.send(JSON.stringify({ player: playerId(), visit: this.visitId, version: this.version, entry: this.entry, referrer: referrerHost(), started }), false, VISIT_ENDPOINT);
   }
 
   /** The player touched the mouse or keyboard during this match. Cheap: called on every input event. */
@@ -220,14 +249,14 @@ export class Telemetry {
     return { ...buildReport(this.content, world, team, playerId(), this.version, ended, this.watched === world ? this.inputSeconds : []), match };
   }
 
-  private send(body: string, leaving: boolean): void {
+  private send(body: string, leaving: boolean, endpoint = ENDPOINT): void {
     try {
       if (leaving && navigator.sendBeacon) {
-        navigator.sendBeacon(ENDPOINT, new Blob([body], { type: "application/json" }));
+        navigator.sendBeacon(endpoint, new Blob([body], { type: "application/json" }));
         return;
       }
       // keepalive only fits small bodies; the page isn't going anywhere otherwise.
-      void fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body, keepalive: body.length <= LEAVING_LIMIT }).catch(() => {});
+      void fetch(endpoint, { method: "POST", headers: { "content-type": "application/json" }, body, keepalive: body.length <= LEAVING_LIMIT }).catch(() => {});
     } catch {
       // No server here; that's fine.
     }
@@ -249,6 +278,17 @@ export function reportBody(report: MatchReport, leaving: boolean): string {
 function reportable(): boolean {
   const host = location.hostname;
   return host !== "localhost" && host !== "127.0.0.1" && host !== "" && !new URLSearchParams(location.search).has("debug");
+}
+
+/** The referring site's hostname, when it isn't this one. */
+function referrerHost(): string {
+  try {
+    if (!document.referrer) return "";
+    const host = new URL(document.referrer).hostname;
+    return host !== location.hostname && host.length <= 100 && /^[a-z0-9.-]*$/i.test(host) ? host : "";
+  } catch {
+    return "";
+  }
 }
 
 function playerId(): string {
