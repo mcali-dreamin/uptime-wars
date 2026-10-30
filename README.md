@@ -521,6 +521,14 @@ each invite's WebRTC offer and the friend's answer for 30 minutes, and the
 answer is only readable with the host's key. Nothing about a match goes
 through it while you play.
 
+**Visits.** When the page opens, the game posts one anonymous ping to
+`POST /api/visits`: your random player id, the version, how you arrived
+(`direct` or an invite `join` link), the referring site's hostname (never a
+full URL) and a random visit id kept only in memory. When your first match
+starts it sends the same visit again marked `started`, so the server can
+count opened-then-played. Same opt-out, and never sent from localhost or
+with `?debug`.
+
 **Match stats.** When a match ends (or you leave it after the first 20
 seconds), the game posts one anonymous report to `POST /api/matches`: a random
 player id kept in your browser, the version, seed, mode, races and hero, the

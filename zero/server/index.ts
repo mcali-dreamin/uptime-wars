@@ -15,6 +15,7 @@
 
 import { capsule, endpoint, json, number, string, table } from "@spacefast/zero/server";
 import { mergeMatch, parseMatch, type MatchRow } from "./matches";
+import { mergeVisit, parseVisit, type VisitRow } from "./visits";
 import { KEY_LENGTH, codeFromPath, expired, fresh, makeCode, pickHost, validBlob, validCode, validVersion, type Listing } from "./rules";
 
 const notFound = () => json({ error: "not_found" }, { status: 404 });
@@ -61,6 +62,15 @@ export default capsule({
       .index("by_match", ["match"])
       .index("by_race", ["race"])
       .index("by_version", ["version"]),
+    // One row per page load: how they arrived, and whether a match started.
+    visits: table({
+      player: string(),
+      visit: string(),
+      version: string(),
+      entry: string(),
+      referrer: string(),
+      started: number(),
+    }).index("by_visit", ["visit"]),
   },
   endpoints: {
     // Host: publish an offer, get a code and the key to read the answer with.
@@ -90,6 +100,21 @@ export default capsule({
       else {
         const patch = mergeMatch(stored, row);
         if (patch) await ctx.db.matches!.update(stored.id, patch);
+      }
+      return json({ ok: true });
+    }),
+
+    // The game: a page was opened, or a match started in that visit.
+    // Anonymous; `started` only goes up, and another player's id is ignored.
+    reportVisit: endpoint({ method: "POST", path: "/api/visits" }, async (ctx, req) => {
+      const body = await req.json<unknown>().catch(() => null);
+      const row = parseVisit(body);
+      if (typeof row === "string") return bad(row);
+      const stored = (await ctx.db.visits!.withIndex("by_visit", (r: Ctx) => r.eq("visit", row.visit)).first()) as (VisitRow & { id: string }) | null;
+      if (!stored) await ctx.db.visits!.insert(row);
+      else {
+        const patch = mergeVisit(stored, row);
+        if (patch) await ctx.db.visits!.update(stored.id, patch);
       }
       return json({ ok: true });
     }),

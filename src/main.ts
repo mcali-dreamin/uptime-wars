@@ -143,10 +143,12 @@ bar.hero = heroBar;
 info.describeAbility = (id) => heroBar.describe(id);
 const guide = new Guide(session);
 const telemetry = new Telemetry(content, version);
+telemetry.visit();
 const picker = new RacePicker(session, startMatch, (how) => void (how === "quick" ? coop.quickMatch() : coop.hostGame()), applyColor, telemetry, () => guide.show());
 const coop = new CoopLobby(session, startNetMatch, () => picker.show(), version, (setup) => {
   leaveMatch();
   session.startLocal(setup);
+  telemetry.matchStarted();
   resetMatch();
 });
 coop.onLeave = (team) => {
@@ -753,12 +755,14 @@ function startMatch(raceId: string, heroId?: string): void {
   leaveMatch();
   applyColor();
   session.start(raceId, heroId);
+  telemetry.matchStarted();
   resetMatch();
 }
 
 function startNetMatch(match: NetMatch): void {
   leaveMatch();
   session.startNet(match);
+  telemetry.matchStarted();
   resetMatch();
 }
 
