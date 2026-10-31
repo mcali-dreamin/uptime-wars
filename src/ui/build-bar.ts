@@ -220,7 +220,12 @@ export class BuildBar {
     }
     const guide = document.createElement("button");
     guide.className = "guide-btn";
-    guide.textContent = "Guide (G)";
+    // Stacked like the build buttons (name over key): a wide one-liner pushed
+    // the bar onto two rows at 1280px once every race got Wall and Gate.
+    guide.append("Guide");
+    const key = document.createElement("small");
+    key.textContent = "G";
+    guide.append(key);
     guide.addEventListener("click", () => this.events.guide());
     this.root.append(guide);
   }
