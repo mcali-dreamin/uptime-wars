@@ -7,7 +7,7 @@ import { allied } from "./teams";
 import { TILE_OPEN, tileAt, walls } from "./terrain";
 import type { Building, Entity, Point, Team, TeamId, World } from "./types";
 import { unitInTheWay } from "./walls";
-import { pastLimit, raceModifiers, tierBlocker, tierDef } from "./tiers";
+import { pastLimit, raceModifiers, tierBlocker, tierDef, tierOf } from "./tiers";
 import { bonus } from "./upgrades";
 import { EXPANSION_CLEARANCE, NOTCH_TILES } from "./tuning";
 
@@ -275,7 +275,9 @@ export function expansionCount(world: World, content: Content, team: Team): numb
 export function expansionBlocker(world: World, content: Content, team: Team, founding = false): string | null {
   const count = expansionCount(world, content, team);
   const limit = tierDef(content, team).expansions;
-  return (founding ? count > limit : count >= limit) ? "expansion limit reached" : null;
+  if (founding ? count <= limit : count < limit) return null;
+  // Below the top tier an upgrade adds slots; at the top there are no more.
+  return tierOf(content, team) < content.economy.tiers.length - 1 ? "upgrade core to expand" : "expansion limit reached";
 }
 
 /** Is this one of the team's cores (the building its race depends on)? */

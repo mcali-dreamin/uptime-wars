@@ -368,7 +368,8 @@ const REASON_TEXT: Record<string, string> = {
   "not in this race's roster": "Your race can't build that",
   "too close to hostiles": "Too close to enemies",
   "no deploy agent": "You need a deploy agent",
-  "expansion limit reached": "Upgrade your core to expand further",
+  "upgrade core to expand": "Upgrade your core to expand further",
+  "expansion limit reached": "Expansion limit reached",
   unexplored: "Explore this ground first",
 };
 

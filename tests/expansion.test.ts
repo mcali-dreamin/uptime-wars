@@ -86,7 +86,7 @@ describe("expansion tier limits", () => {
     const world = createWorld(content, SETUP);
     team0(world).money = 10_000;
     train(world);
-    expect(rejections(world)).toContain("expansion limit reached");
+    expect(rejections(world)).toContain("upgrade core to expand");
     expect(team0(world).money).toBe(10_000);
     expect(agentOf(world)).toBeUndefined();
   });
@@ -110,7 +110,7 @@ describe("expansion tier limits", () => {
     }
     expect(expansionCount(world, content, team)).toBe(tiers[tier]!.expansions);
     train(world);
-    expect(rejections(world)).toContain("expansion limit reached");
+    expect(rejections(world)).toContain(tier < tiers.length - 1 ? "upgrade core to expand" : "expansion limit reached");
     expansions[0]!.hp = 0;
     train(world);
     expect(rejections(world)).toEqual([]);
@@ -125,7 +125,7 @@ describe("expansion tier limits", () => {
     team.upgrades[TIER] = 0;
     queueCommand(world, { type: "found", tick: world.tick, team: 0, col: site.col, row: site.row });
     step(world, content);
-    expect(rejections(world)).toContain("expansion limit reached");
+    expect(rejections(world)).toContain("upgrade core to expand");
     // The match-start builder is exempt, even at tier 0.
     team.coreId = -1;
     expect(expansionCount(world, content, team)).toBe(1); // the old core is no longer designated main
