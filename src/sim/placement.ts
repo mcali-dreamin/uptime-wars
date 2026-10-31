@@ -7,7 +7,7 @@ import { allied } from "./teams";
 import { TILE_OPEN, tileAt, walls } from "./terrain";
 import type { Building, Entity, Point, Team, TeamId, World } from "./types";
 import { unitInTheWay } from "./walls";
-import { pastLimit, raceModifiers, tierBlocker, tierDef } from "./tiers";
+import { pastLimit, raceModifiers, tierBlocker, tierDef, tierOf } from "./tiers";
 import { bonus } from "./upgrades";
 import { EXPANSION_CLEARANCE, NOTCH_TILES } from "./tuning";
 
@@ -250,6 +250,8 @@ export function canFound(world: World, content: Content, teamId: TeamId, col: nu
   if (team.coreId === -1) return null;
   const agent = world.entities.find((e) => e.id === team.builderId);
   if (!agent || agent.kind !== "unit" || agent.hp <= 0) return "no deploy agent";
+  const blocker = expansionBlocker(world, content, team, true);
+  if (blocker) return blocker;
   const center = footprintCenter(col, row, def.footprint);
   const clear = EXPANSION_CLEARANCE * TILE;
   const tooClose = world.entities.some((e) => {
@@ -260,6 +262,22 @@ export function canFound(world: World, content: Content, teamId: TeamId, col: nu
   });
   if (tooClose) return "too close to hostiles";
   return null;
+}
+
+/** Living expansions, including construction and a mid-match agent reserving a slot. */
+export function expansionCount(world: World, content: Content, team: Team): number {
+  const cores = teamCores(world, content, team).filter((core) => core.id !== team.coreId).length;
+  const agentOut = team.coreId !== -1 && world.entities.some((e) => e.id === team.builderId && e.kind === "unit" && e.hp > 0);
+  return cores + (agentOut ? 1 : 0);
+}
+
+/** Founding consumes the agent's reserved slot, rather than needing another. */
+export function expansionBlocker(world: World, content: Content, team: Team, founding = false): string | null {
+  const count = expansionCount(world, content, team);
+  const limit = tierDef(content, team).expansions;
+  if (founding ? count <= limit : count < limit) return null;
+  // Below the top tier an upgrade adds slots; at the top there are no more.
+  return tierOf(content, team) < content.economy.tiers.length - 1 ? "upgrade core to expand" : "expansion limit reached";
 }
 
 /** Is this one of the team's cores (the building its race depends on)? */

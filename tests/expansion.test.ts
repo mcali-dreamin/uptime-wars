@@ -7,6 +7,7 @@ import {
   TILE,
   TILE_OPEN,
   canFound,
+  expansionCount,
   canPlace,
   createWorld,
   finishedCores,
@@ -41,6 +42,7 @@ function withAgent() {
   world.waves.nextWaveTick = world.waves.nextTrickleTick = 1e9;
   const team = team0(world);
   team.money = 10_000;
+  team.upgrades[TIER] = 1;
   queueCommand(world, { type: "trainAgent", tick: world.tick, team: 0, coreId: team.coreId });
   step(world, content);
   return { world, team, core: coreOf(world), agent: agentOf(world)! };
@@ -73,6 +75,64 @@ function openNear(world: World, from: { col: number; row: number }, min: number,
   return null;
 }
 
+describe("expansion tier limits", () => {
+  function train(world: World) {
+    const team = team0(world);
+    queueCommand(world, { type: "trainAgent", tick: world.tick, team: 0, coreId: team.coreId });
+    step(world, content);
+  }
+
+  it("tier 0 rejects without charging", () => {
+    const world = createWorld(content, SETUP);
+    team0(world).money = 10_000;
+    train(world);
+    expect(rejections(world)).toContain("upgrade core to expand");
+    expect(team0(world).money).toBe(10_000);
+    expect(agentOf(world)).toBeUndefined();
+  });
+
+  it.each([1, 2])("tier %i allows its slots, including unfinished cores, and losses free slots", (tier) => {
+    const world = createWorld(content, SETUP);
+    world.waves.nextWaveTick = world.waves.nextTrickleTick = 1e9;
+    const team = team0(world);
+    team.money = 10_000;
+    team.upgrades[TIER] = tier;
+    const core = coreOf(world);
+    const expansions: Building[] = [];
+    for (let i = 0; i < tiers[tier]!.expansions; i += 1) {
+      train(world);
+      expect(rejections(world)).toEqual([]);
+      expect(agentOf(world)?.hp).toBeGreaterThan(0);
+      // Replace the reserved agent slot with a core, as founding does.
+      agentOf(world)!.hp = 0;
+      team.builderId = -1;
+      expansions.push(placeBuilding(world, content, 0, core.defId, core.col + 4 + i * 3, core.row, i % 2 === 0));
+    }
+    expect(expansionCount(world, content, team)).toBe(tiers[tier]!.expansions);
+    train(world);
+    expect(rejections(world)).toContain(tier < tiers.length - 1 ? "upgrade core to expand" : "expansion limit reached");
+    expansions[0]!.hp = 0;
+    train(world);
+    expect(rejections(world)).toEqual([]);
+    expect(agentOf(world)?.hp).toBeGreaterThan(0);
+  });
+
+  it("an agent out reserves a slot, can use it, and founding rechecks the limit", () => {
+    const { world, team } = withAgent();
+    expect(expansionCount(world, content, team)).toBe(1);
+    const site = foundableSites(world)[0]!;
+    expect(canFound(world, content, 0, site.col, site.row)).toBeNull();
+    team.upgrades[TIER] = 0;
+    queueCommand(world, { type: "found", tick: world.tick, team: 0, col: site.col, row: site.row });
+    step(world, content);
+    expect(rejections(world)).toContain("upgrade core to expand");
+    // The match-start builder is exempt, even at tier 0.
+    team.coreId = -1;
+    expect(expansionCount(world, content, team)).toBe(1); // the old core is no longer designated main
+    expect(canFound(world, content, 0, site.col, site.row)).toBeNull();
+  });
+});
+
 describe("trainAgent", () => {
   it("spawns the race's deploy agent beside the core and charges the core's price", () => {
     const { team, core, agent } = withAgent();
@@ -102,6 +162,7 @@ describe("trainAgent", () => {
     const open = openNear(world, core, 4, 8)!;
     const unfinished = placeBuilding(world, content, 0, "core", open.col, open.row, false);
     team.money = 0;
+    team.upgrades[TIER] = 2;
     for (const target of [999, rack.id]) {
       queueCommand(world, { type: "trainAgent", tick: world.tick, team: 0, coreId: target });
       step(world, content);

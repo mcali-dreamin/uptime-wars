@@ -113,6 +113,9 @@ export function validateContent(content: Content): void {
   if (tierUpgrades.length > 1) errors.push("only one upgrade can be the core tier");
   const tiers = content.economy.tiers ?? [];
   if (tierUpgrades[0] && tiers.length !== tierUpgrades[0][1].maxLevel + 1) errors.push("economy.tiers needs one entry per core tier (maxLevel + 1)");
+  for (const [i, tier] of tiers.entries()) {
+    if (!Number.isInteger(tier.expansions) || tier.expansions < 0) errors.push(`economy.tiers[${i}].expansions must be a non-negative integer`);
+  }
   const spot = content.economy.spot;
   if (!spot) errors.push("economy.spot is missing");
   else {

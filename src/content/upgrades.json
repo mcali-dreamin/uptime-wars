@@ -1,7 +1,7 @@
 {
   "core-tier": {
     "name": "Upgrade core",
-    "description": "Grow your core: Data Center, then Region. Each tier hosts more Web Apps, unlocks buildings, supplies more compute, reaches further, and stands tougher, but a bigger base draws crawlers from further away.",
+    "description": "Grow your core: Data Center, then Region, unlocking more expansion slots. Living expansions, including construction, and a deploy agent out use slots; losses free slots. Each tier hosts more Web Apps, unlocks buildings, supplies more compute, reaches further, and stands tougher, but a bigger base draws crawlers from further away.",
     "stat": "tier",
     "perLevel": 0,
     "maxLevel": 2,

@@ -10,9 +10,9 @@
 //             prices (number keys buy). Buying needs the hero standing near it;
 //             the buttons stay visible and show "locked" when it isn't.
 
-import { affordable, tierLock } from "../game/selection";
+import { affordable, placeReasonText, tierLock } from "../game/selection";
 import type { Session } from "../game/session";
-import { TICK_RATE, buildCost, canResearch, levelOf, nextLevel, nextQueued, projectedTier, queuedCount, slotOf, spotCost, spotState, tierOf, upgradeName, upgradesAt, shopBlocker, type Content } from "../sim";
+import { expansionBlocker, TICK_RATE, buildCost, canResearch, levelOf, nextLevel, nextQueued, projectedTier, queuedCount, slotOf, spotCost, spotState, tierOf, upgradeName, upgradesAt, shopBlocker, type Content } from "../sim";
 import { $ } from "./dom";
 import type { HeroBar } from "./hero-bar";
 
@@ -103,10 +103,11 @@ export class BuildBar {
         // One agent at a time, and the core's price up front.
         const cost = content.buildings[this.session.race.core]!.cost;
         const out = this.session.builder() !== undefined;
-        const text = out ? "B · already out" : team.money < cost ? `B · need $${cost - team.money}` : `B · $${cost}`;
+        const blocker = expansionBlocker(this.session.world, content, team);
+        const text = blocker ? placeReasonText(blocker) : out ? "B · already out" : team.money < cost ? `B · need $${cost - team.money}` : `B · $${cost}`;
         const detail = button.querySelector("small")!;
         if (detail.textContent !== text) detail.textContent = text;
-        button.disabled = out || team.money < cost;
+        button.disabled = blocker !== null || out || team.money < cost;
         button.classList.toggle("selected", false);
         continue;
       }

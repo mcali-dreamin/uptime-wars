@@ -5,16 +5,13 @@
 
 import type { Content, DifficultyDef } from "../content";
 import { computeBalance, spotCost, spotState, squadReserve } from "../economy";
-import { canFound } from "../placement";
+import { canFound, expansionBlocker } from "../placement";
 import type { Command, Team, World } from "../types";
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
   ? Omit<T, K>
   : never;
 type Order = DistributiveOmit<Command, "tick" | "team">;
-
-/** Most cores (main plus expansions) it grows to. */
-const MAX_CORES = 4;
 
 /** Rent Spot when compute-capped and still holding a reserve afterwards. */
 export function rentSpot(
@@ -60,10 +57,7 @@ export function expand(
     if (best) issue({ type: "found", col: best.col, row: best.row });
     return;
   }
-  const cores = world.entities.filter(
-    (e) => e.kind === "building" && e.team === team.id && e.defId === core.defId && e.hp > 0,
-  ).length;
-  if (cores >= MAX_CORES || core.buildRemaining > 0) return;
+  if (expansionBlocker(world, content, team) || core.buildRemaining > 0) return;
   const cost = content.buildings[core.defId]!.cost;
   if (team.money < cost + level.tierReserve) return;
   issue({ type: "trainAgent", coreId: core.id });

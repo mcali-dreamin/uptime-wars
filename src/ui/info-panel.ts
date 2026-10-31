@@ -2,8 +2,8 @@
 // the build button you're hovering, what you're placing, or what you have
 // selected. Nothing else pops up. The full story lives in the Guide.
 
-import { allied, invokeCost, upgradeName, earnedPerks, tierDef, TICK_RATE, forkCost, isCore, levelOf, queueOf, regionShield, buildingRank, nextRank, rankBlocker, rankCost, rankGroup, tierOf, unitRank } from "../sim";
-import { armyHero, armyUnits, buildingGroup, groundOrderLabel, isRallied, removal, selectedEntity, type Selection } from "../game/selection";
+import { expansionBlocker, allied, invokeCost, upgradeName, earnedPerks, tierDef, TICK_RATE, forkCost, isCore, levelOf, queueOf, regionShield, buildingRank, nextRank, rankBlocker, rankCost, rankGroup, tierOf, unitRank } from "../sim";
+import { placeReasonText, armyHero, armyUnits, buildingGroup, groundOrderLabel, isRallied, removal, selectedEntity, type Selection } from "../game/selection";
 import type { Session } from "../game/session";
 import { heightAtTile, TILE, type Building, type Entity } from "../sim";
 import { EXPANSION_CLEARANCE, HIGH_GROUND_DAMAGE } from "../sim/tuning";
@@ -74,9 +74,11 @@ export class InfoPanel {
     }
     if (building === "agent") {
       const cost = this.session.content.buildings[this.session.race.core]!.cost;
+      const blocker = expansionBlocker(this.session.world, content, this.session.team);
       return this.show({
         title: "Deploy agent",
         lines: [
+          ...(blocker ? [placeReasonText(blocker)] : []),
           `Trains a deploy agent at this core · $${cost}`,
           `Select it, press C, and click open ground to found an expansion there (no hostiles within ${EXPANSION_CLEARANCE} tiles)`,
           "Each finished core raises your per-tier caps and rallies its own spawners",
