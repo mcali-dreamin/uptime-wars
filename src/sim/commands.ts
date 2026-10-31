@@ -7,7 +7,7 @@ import { rankBlocker, startRank } from "./ranks";
 import type { TickContext } from "./context";
 import { placeBuilding, sendHome, spawnUnit } from "./entities";
 import { TILE, footprintCenter } from "./map";
-import { buildCost, canFound, canPlace, homeCore, isCore } from "./placement";
+import { buildCost, canFound, canPlace, expansionBlocker, homeCore, isCore } from "./placement";
 import { canResearch, nextQueued, slotOf, waitingOf, cancelQueued } from "./upgrades";
 import { invoke, invokeBlocker } from "./functions";
 import { applyFork } from "./mechanics";
@@ -207,6 +207,8 @@ function trainAgent(ctx: TickContext, command: Extract<Command, { type: "trainAg
   if (core.buildRemaining > 0) return "still building";
   const agent = ctx.byId.get(team.builderId);
   if (agent && agent.hp > 0) return "an agent is already out";
+  const blocker = expansionBlocker(world, content, team);
+  if (blocker) return blocker;
   const race = content.races[team.raceId]!;
   const cost = content.buildings[race.core]!.cost;
   if (team.money < cost) return "not enough $";

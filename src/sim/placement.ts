@@ -250,6 +250,8 @@ export function canFound(world: World, content: Content, teamId: TeamId, col: nu
   if (team.coreId === -1) return null;
   const agent = world.entities.find((e) => e.id === team.builderId);
   if (!agent || agent.kind !== "unit" || agent.hp <= 0) return "no deploy agent";
+  const blocker = expansionBlocker(world, content, team, true);
+  if (blocker) return blocker;
   const center = footprintCenter(col, row, def.footprint);
   const clear = EXPANSION_CLEARANCE * TILE;
   const tooClose = world.entities.some((e) => {
@@ -260,6 +262,20 @@ export function canFound(world: World, content: Content, teamId: TeamId, col: nu
   });
   if (tooClose) return "too close to hostiles";
   return null;
+}
+
+/** Living expansions, including construction and a mid-match agent reserving a slot. */
+export function expansionCount(world: World, content: Content, team: Team): number {
+  const cores = teamCores(world, content, team).filter((core) => core.id !== team.coreId).length;
+  const agentOut = team.coreId !== -1 && world.entities.some((e) => e.id === team.builderId && e.kind === "unit" && e.hp > 0);
+  return cores + (agentOut ? 1 : 0);
+}
+
+/** Founding consumes the agent's reserved slot, rather than needing another. */
+export function expansionBlocker(world: World, content: Content, team: Team, founding = false): string | null {
+  const count = expansionCount(world, content, team);
+  const limit = tierDef(content, team).expansions;
+  return (founding ? count > limit : count >= limit) ? "expansion limit reached" : null;
 }
 
 /** Is this one of the team's cores (the building its race depends on)? */

@@ -27,6 +27,7 @@
   "tiers": [
     {
       "name": "Core",
+      "expansions": 0,
       "compute": 0,
       "buildRadius": 0,
       "coreHp": 1,
@@ -34,6 +35,7 @@
     },
     {
       "name": "Data Center",
+      "expansions": 1,
       "compute": 60,
       "buildRadius": 2,
       "coreHp": 1.35,
@@ -41,6 +43,7 @@
     },
     {
       "name": "Region",
+      "expansions": 3,
       "compute": 140,
       "buildRadius": 4,
       "coreHp": 1.7,

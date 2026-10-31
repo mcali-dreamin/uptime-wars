@@ -384,7 +384,7 @@ export interface EconomyDef {
    * to how far crawlers sense you. Buildings gate on it with `tier` and
    * `limitPerTier`.
    */
-  tiers: { name: string; compute: number; buildRadius: number; coreHp: number; traffic: number }[];
+  tiers: { name: string; compute: number; buildRadius: number; coreHp: number; traffic: number; expansions: number }[];
 }
 
 /**

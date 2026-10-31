@@ -8,7 +8,7 @@ export { createWorld, step } from "./world";
 export { allied, allyBlocker, hasOffered, hostile, hordeTeam, humanTeams, neutralTeam, rulesFor, rulesLabel, unallyBlocker, type Diplomacy, type MatchMode, type MatchRules } from "./teams";
 export type { MatchSetup } from "./world";
 export { queueCommand } from "./commands";
-export { canPlace, canFound, baseCost, buildCost, owned, isOccupied, isCore, inNetwork, networkProviders, teamCores, finishedCores, homeCore, rallyFor } from "./placement";
+export { expansionCount, expansionBlocker, canPlace, canFound, baseCost, buildCost, owned, isOccupied, isCore, inNetwork, networkProviders, teamCores, finishedCores, homeCore, rallyFor } from "./placement";
 export { threatPermille, planWave, playerScale, previewWave, trickleBudget, waveInterval, type WavePreview } from "./waves";
 export { STARTING_MONEY, BASE_INCOME, EXPANSION_CLEARANCE, MAX_ORDER_UNITS, RESEARCH_QUEUE } from "./tuning";
 export { computeBalance, spotCost, spotState, incomeRate, unitUpkeep, trafficRadius, userCapacity } from "./economy";

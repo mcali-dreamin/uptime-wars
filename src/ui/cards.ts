@@ -207,6 +207,7 @@ function tierLine(content: Content, tier: number, raceId?: string): string {
   return [
     apps !== undefined ? `${apps} Web Apps` : "",
     unlocks.length ? `unlocks ${unlocks.join(", ")}` : "",
+    `${t.expansions} expansion slots`,
     `+${t.compute} compute`,
     `+${t.buildRadius} core reach`,
     `core ${Math.round(t.coreHp * 100)}% HP`,

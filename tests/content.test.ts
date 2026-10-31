@@ -6,6 +6,12 @@ import {
 import { content } from "./fixtures";
 
 describe("content", () => {
+  it.each([-1, 0.5, NaN, undefined])("rejects invalid expansion allowances (%s)", (expansions) => {
+    const broken: Content = structuredClone(content);
+    broken.economy.tiers[0]!.expansions = expansions as number;
+    expect(() => validateContent(broken)).toThrow(/expansions must be a non-negative integer/);
+  });
+
   it("rejects broken references", () => {
     const broken: Content = structuredClone(content);
     broken.waves.roster[0]!.unit = "missing";

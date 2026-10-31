@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import { TICK_RATE, createWorld, hashWorld, step, computeBalance, type Content, type World } from "../src/sim";
+import { expand } from "../src/sim/ai/aggressive";
 import { squadReserve } from "../src/sim/economy";
 import { content as base } from "./fixtures";
 
@@ -20,6 +21,15 @@ const withLevel = (patch: Record<string, unknown>): Content => ({
 });
 
 describe("aggressive AI", () => {
+  it("does not issue trainAgent at the tier-zero expansion limit", () => {
+    const world = createWorld(base, SETUP);
+    const team = world.teams[0]!;
+    team.money = 10_000;
+    const issued: unknown[] = [];
+    expand(world, base, team, base.difficulties.normal!, (command) => issued.push(command));
+    expect(issued).toEqual([]);
+  });
+
   it("no real difficulty sets it", () => {
     for (const d of Object.values(base.difficulties)) expect(d.aggressive).toBeUndefined();
   });
