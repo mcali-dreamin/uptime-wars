@@ -313,9 +313,25 @@
     },
     "tier": 1
   },
-  "garden-wall": {
+  "edge-sentinel": {
+    "name": "Edge Sentinel",
+    "description": "Lightweight edge defense. Zaps enemies in range without waiting for a cold start.",
+    "cost": 75,
+    "buildTicks": 70,
+    "hp": 640,
+    "armor": 3,
+    "footprint": 1,
+    "buildable": true,
+    "attack": {
+      "damage": 12,
+      "range": 160,
+      "cooldownTicks": 14
+    },
+    "sight": 340
+  },
+  "wall": {
     "name": "Wall",
-    "description": "Blocks every path, for creeps and for your own units (put a Gate in it to let them through). Towers shoot over it. Cheap, tough, and the only way to shape where the war goes.",
+    "description": "Cheap, tough defense for any race. Blocks everyone's path; add a Gate for friendly passage. Towers and ranged units shoot over it.",
     "cost": 20,
     "buildTicks": 30,
     "hp": 900,
@@ -326,9 +342,9 @@
     "blocks": true,
     "costGrowthPermille": 0
   },
-  "garden-gate": {
+  "gate": {
     "name": "Gate",
-    "description": "A wall your own units (and allies') walk straight through. Creeps and enemies can't: they have to break it.",
+    "description": "A fortified passage for any race. Your units and allies walk through; creeps and enemies must go around or break it.",
     "cost": 40,
     "buildTicks": 40,
     "hp": 900,

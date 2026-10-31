@@ -46,8 +46,8 @@ describe("Open Source: forks", () => {
     expect(forkCost(hs.world, content, 0, hs.built[0])).toBeNull();
   });
 
-  it("buildings repair themselves once nothing has hit them for a while, and not while under fire", () => {
-    const { world, built } = base("open-source", ["firewall"]);
+  it.each(["firewall", "wall", "gate"])("%s repairs itself after quiet time, but not while under fire", (defId) => {
+    const { world, built } = base("open-source", [defId]);
     const wall = built[0]!;
     const repair = content.races["open-source"]!.mechanics!.repair!;
     wall.hp = wall.maxHp / 2;
@@ -60,6 +60,21 @@ describe("Open Source: forks", () => {
 });
 
 describe("Hyperscaler: regions", () => {
+  it("walls count as neighbors and receive region shielding", () => {
+    const { world, built } = base("hyperscaler", ["cdn-edge", "wall"]);
+    const tower = built.find((b) => b.defId === "cdn-edge")!;
+    const wall = built.find((b) => b.defId === "wall")!;
+    // Place within range, away from the core, to isolate the wall's contribution.
+    tower.x = 10000;
+    tower.y = 10000;
+    wall.x = tower.x + 48;
+    wall.y = tower.y;
+    const perNeighbor = content.races.hyperscaler!.mechanics!.region!.perNeighborPermille;
+    expect(regionShield(world, content, tower)).toEqual({ neighbors: 1, permille: perNeighbor });
+    expect(regionShield(world, content, wall)).toEqual({ neighbors: 1, permille: perNeighbor });
+    wall.hp = 0;
+    expect(regionShield(world, content, tower)).toEqual({ neighbors: 0, permille: 0 });
+  });
   it("a building takes less damage the more of your buildings stand near it, up to a cap", () => {
     const lone = base("hyperscaler", ["cdn-edge"]);
     expect(regionShield(lone.world, content, lone.built[0]!).permille).toBe(0);

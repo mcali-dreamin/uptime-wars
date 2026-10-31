@@ -14,7 +14,9 @@
       "ci-server",
       "web-app",
       "package-registry",
-      "mesh-node"
+      "mesh-node",
+      "wall",
+      "gate"
     ],
     "mechanics": {
       "fork": {
@@ -95,7 +97,9 @@
       "rnd-lab",
       "web-app",
       "package-registry",
-      "edge-pop"
+      "edge-pop",
+      "wall",
+      "gate"
     ],
     "mechanics": {
       "region": {
@@ -166,13 +170,16 @@
     ],
     "buildings": [
       "function",
+      "edge-sentinel",
       "inference-endpoint",
       "state-machine",
       "compute-pool",
       "build-pipeline",
       "web-app",
       "package-registry",
-      "mesh-node"
+      "mesh-node",
+      "wall",
+      "gate"
     ],
     "modifiers": {
       "spawnIntervalMultiplier": 1,
@@ -223,14 +230,14 @@
   },
   "walled-garden": {
     "name": "Walled Garden",
-    "specialty": "Builds real walls; towers and Moderators fire over them. Loyal users, and a base that grows around its cores.",
+    "specialty": "Hardens its walls; towers and Moderators fire over them. Loyal users, and a base that grows around its cores.",
     "controller": "human",
     "look": "garden",
     "core": "core",
     "builder": "deploy-agent",
     "buildings": [
-      "garden-wall",
-      "garden-gate",
+      "wall",
+      "gate",
       "flagship-store",
       "trust-safety",
       "legal-dept",
@@ -263,7 +270,7 @@
           "thorns": {
             "damage": 12,
             "buildings": [
-              "garden-wall"
+              "wall"
             ]
           }
         }
