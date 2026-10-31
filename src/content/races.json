@@ -236,8 +236,6 @@
     "core": "core",
     "builder": "deploy-agent",
     "buildings": [
-      "wall",
-      "gate",
       "flagship-store",
       "trust-safety",
       "legal-dept",
@@ -245,7 +243,9 @@
       "private-cloud",
       "design-studio",
       "web-app",
-      "package-registry"
+      "package-registry",
+      "wall",
+      "gate"
     ],
     "mechanics": {
       "loyalty": {

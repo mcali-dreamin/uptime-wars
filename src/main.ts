@@ -35,7 +35,7 @@ import { Alerts, type AlertKind } from "./game/alerts";
 import { ControlGroups } from "./game/groups";
 import { Session } from "./game/session";
 import { setLocalColor, teamColor } from "./render/palette";
-import { BuildBar, FOUND_BUTTON, SPOT_BUTTON, aimingButton, shopStock, type BarMode } from "./ui/build-bar";
+import { BuildBar, FOUND_BUTTON, SPOT_BUTTON, aimingButton, buildingForKey, shopStock, type BarMode } from "./ui/build-bar";
 import { $ } from "./ui/dom";
 import { Guide } from "./ui/guide";
 import { Hud } from "./ui/hud";
@@ -731,8 +731,8 @@ const gameInput: GameInput = {
       if (item) return session.issue({ type: "buyItem", item }), true;
       return false;
     }
-    // 1..9 pick the first nine buildings, 0 the tenth.
-    const building = session.race.buildings[key === "0" ? 9 : Number(key) - 1];
+    // 1..9 pick the first nine buildings, 0 the tenth; L and K are Wall and Gate.
+    const building = buildingForKey(session.race.buildings, key);
     if (building) return select({ kind: "place", building }), true;
     return false;
   },

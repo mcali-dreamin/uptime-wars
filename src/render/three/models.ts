@@ -956,6 +956,9 @@ export class Models {
         if (this.look === "garden") this.box(g, team, "hedge", 44, 9, 44, 0, 32);
         if (this.look === "scrappy") this.box(g, team, "rust", 24, 12, 2, -6, 8, 24);
         if (this.look === "monolith") this.box(g, team, "white", 40, 1, 1, 0, 25, 24);
+        // Serverless glass reads as walk-through from above: a solid lit cap says "wall".
+        if (this.look === "ephemeral") this.box(g, team, "dark", 46, 4, 46, 0, 26);
+        if (this.look === "ephemeral") this.box(g, team, "glow", 44, 1, 44, 0, 30);
         break;
       }
       case "gate": {
@@ -965,6 +968,7 @@ export class Models {
           this.box(g, team, "body", 12, 30, 48, x * 18, 0, 0);
           if (this.look === "garden") this.box(g, team, "hedge", 10, 9, 44, x * 18, 32, 0);
           else this.box(g, team, "frame", 12, this.look === "ephemeral" ? 30 : 2, 48, x * 18, this.look === "ephemeral" ? 0 : 30);
+          if (this.look === "ephemeral") this.box(g, team, "glow", 10, 1, 44, x * 18, 30, 0);
         }
         this.box(g, team, "frame", 48, 4, 10, 0, 30, 0);
         this.box(g, team, this.look === "scrappy" ? "rust" : "glow", 22, 1, 40, 0, 0.5, 0);
