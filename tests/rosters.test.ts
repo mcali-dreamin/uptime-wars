@@ -154,7 +154,7 @@ describe("tier perks", () => {
     const w = world("walled-garden");
     const ctx = makeContext(w, content);
     const c = core(w);
-    const wall = placeBuilding(w, content, 0, "garden-wall", c.col + 3, c.row, true);
+    const wall = placeBuilding(w, content, 0, "wall", c.col + 3, c.row, true);
     const bot = spawnUnit(ctx, 1, "bot", wall, wall.x + 30, wall.y, "roam") as Unit;
     let hp = bot.hp;
     dealDamage(ctx, bot, wall, 5);

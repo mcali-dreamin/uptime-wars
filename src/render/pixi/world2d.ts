@@ -93,7 +93,7 @@ export class World2D implements WorldView {
         const top = y - size / 2;
         const building = entity.buildRemaining > 0;
         g.rect(left, top, size, size).fill({ color: 0x121922 }).stroke({ width: 2, color, alpha: building ? 0.4 : 1 });
-        drawGlyph(g, entity.defId, x, y, size, color, building ? 0.35 : 0.9);
+        drawGlyph(g, entity.defId, x, y, size, color, building ? 0.35 : 0.9, content.races[world.teams[entity.team]?.raceId ?? ""]?.look);
         // A core's tier: one more outline per tier.
         const owner = world.teams[entity.team];
         const tier = owner && isCore(content, owner, entity) ? tierOf(content, owner) : 0;

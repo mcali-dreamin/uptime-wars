@@ -26,7 +26,7 @@ export function drawHealth(g: Graphics, x: number, y: number, width: number, rat
   g.rect(x, y, width * Math.max(0, ratio), 3).fill({ color: ratio > 0.5 ? 0x4ade80 : ratio > 0.25 ? 0xfacc15 : 0xf87171 });
 }
 
-export function drawGlyph(g: Graphics, defId: string, x: number, y: number, size: number, color: number, alpha: number): void {
+export function drawGlyph(g: Graphics, defId: string, x: number, y: number, size: number, color: number, alpha: number, look = "default"): void {
   const s = size * 0.3;
   switch (defId) {
     case "core":
@@ -54,15 +54,21 @@ export function drawGlyph(g: Graphics, defId: string, x: number, y: number, size
     case "gpu-cluster":
       for (const dx of [-1, 1]) for (const dy of [-1, 1]) g.rect(x + dx * s * 0.5 - 3, y + dy * s * 0.5 - 3, 6, 6).fill({ color, alpha });
       break;
+    case "edge-sentinel":
+      g.moveTo(x, y - s).lineTo(x + s * 0.6, y).lineTo(x, y + s).lineTo(x - s * 0.6, y).closePath().stroke({ width: 2, color, alpha });
+      g.circle(x, y, s * 0.25).fill({ color, alpha });
+      break;
     case "firewall":
       g.moveTo(x - s, y + s).lineTo(x, y - s).lineTo(x + s, y + s).closePath().stroke({ width: 2, color, alpha });
       break;
-    case "garden-wall":
-      g.rect(x - s * 1.5, y - s * 1.5, s * 3, s * 3).fill({ color, alpha: alpha * 0.6 });
+    case "wall":
+      g.rect(x - s * 1.5, y - s * 1.5, s * 3, s * 3).fill({ color, alpha: alpha * (look === "ephemeral" ? 0.15 : 0.6) });
+      drawWallStyle(g, x, y, s, color, alpha, look);
       break;
-    case "garden-gate":
+    case "gate":
       for (const side of [-1, 1]) g.rect(x + side * s * 1.1 - s * 0.4, y - s * 1.5, s * 0.8, s * 3).fill({ color, alpha: alpha * 0.6 });
       g.moveTo(x, y - s * 1.2).lineTo(x, y + s * 1.2).stroke({ width: 1.5, color, alpha });
+      drawWallStyle(g, x, y, s, color, alpha, look);
       break;
     case "mesh-node":
       g.circle(x, y, s * 0.35).fill({ color, alpha });
@@ -100,3 +106,17 @@ export function drawGlyph(g: Graphics, defId: string, x: number, y: number, size
   }
 }
 
+
+/** Small static accents distinguish shared fortifications without extra render layers. */
+function drawWallStyle(g: Graphics, x: number, y: number, s: number, color: number, alpha: number, look: string): void {
+  if (look === "garden") {
+    for (const side of [-1, 1]) g.circle(x + side * s, y - s, s * 0.35).fill({ color: 0x2f6b3a, alpha });
+  } else if (look === "scrappy") {
+    g.moveTo(x - s, y - s).lineTo(x + s, y + s).moveTo(x + s, y - s).lineTo(x - s, y + s).stroke({ width: 2, color: 0xb87333, alpha });
+  } else if (look === "ephemeral") {
+    g.rect(x - s * 1.5, y - s * 1.5, s * 3, s * 3).stroke({ width: 1, color, alpha });
+    g.moveTo(x - s, y).lineTo(x, y - s).lineTo(x + s, y).stroke({ width: 1, color, alpha });
+  } else {
+    g.moveTo(x - s * 1.3, y - s).lineTo(x + s * 1.3, y - s).stroke({ width: 2, color: 0xe5eaf0, alpha });
+  }
+}

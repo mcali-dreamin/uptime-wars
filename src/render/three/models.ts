@@ -424,6 +424,8 @@ export class Models {
 
   /** Add the look's details around a finished model, sized to its bounds. */
   private dress(g: THREE.Group, defId: string, team: number, isUnit: boolean): void {
+    // Fortifications supply their own cheap, static dressing for batching.
+    if (defId === "wall" || defId === "gate") return;
     if (this.look === "default") return;
     const box = new THREE.Box3().setFromObject(g);
     if (box.isEmpty()) return;
@@ -461,7 +463,7 @@ export class Models {
     }
     if (this.look === "garden") {
       // Walls carry their own hedge; everything else gets a trimmed hedge on top.
-      if (isUnit || defId === "garden-wall" || defId === "garden-gate") return;
+      if (isUnit || defId === "wall" || defId === "gate") return;
       // Topiaries at the corners, never on the roof: from above the roof is what tells buildings apart.
       {
         for (const [cx, cz] of [[1, 1], [-1, 1]] as const) {
@@ -706,6 +708,14 @@ export class Models {
         anim(gem, { type: "bob", amount: 4, speed: 1.4, base: 92 });
         return g;
       }
+      case "edge-sentinel": {
+        // A smoked-glass mast in a holographic cage, with a fixed emitter.
+        this.cyl(g, team, "dark", 14, 18, 4, 6);
+        this.box(g, team, "body", 14, 58, 14, 0, 4);
+        this.box(g, team, "frame", 18, 62, 18, 0, 4);
+        this.shape(g, team, "glow", "sentinel-emitter", () => new THREE.OctahedronGeometry(9), 0, 74, 0);
+        return g;
+      }
       case "web-app": {
         // Three floating panes at different heights: an app that's only there when called.
         this.cyl(g, team, "dark", 12, 14, 3, 6);
@@ -939,24 +949,29 @@ export class Models {
         anim(halo, { type: "pulse", amount: 0.2, speed: 3 });
         break;
       }
-      case "garden-wall": {
-        // A full-tile white wall with a rose-gold cap and a hedge on top, so
-        // walls side by side read as one long wall.
+      case "wall": {
+        // Shared silhouette, race materials and static caps; no per-wall animation.
         this.box(g, team, "body", 48, 30, 48);
-        this.box(g, team, "frame", 49, 2, 49, 0, 30);
-        this.box(g, team, "hedge", 44, 9, 44, 0, 32);
+        this.box(g, team, "frame", 48, this.look === "ephemeral" ? 30 : 2, 48, 0, this.look === "ephemeral" ? 0 : 30);
+        if (this.look === "garden") this.box(g, team, "hedge", 44, 9, 44, 0, 32);
+        if (this.look === "scrappy") this.box(g, team, "rust", 24, 12, 2, -6, 8, 24);
+        if (this.look === "monolith") this.box(g, team, "white", 40, 1, 1, 0, 25, 24);
+        // Serverless glass reads as walk-through from above: a solid lit cap says "wall".
+        if (this.look === "ephemeral") this.box(g, team, "dark", 46, 4, 46, 0, 26);
+        if (this.look === "ephemeral") this.box(g, team, "glow", 44, 1, 44, 0, 30);
         break;
       }
-      case "garden-gate": {
+      case "gate": {
         // Two wall posts with an arch and a glowing threshold: wall-height, so
         // it lines up with the walls beside it, but plainly a way through.
         for (const x of [-1, 1]) {
           this.box(g, team, "body", 12, 30, 48, x * 18, 0, 0);
-          this.box(g, team, "hedge", 10, 9, 44, x * 18, 32, 0);
+          if (this.look === "garden") this.box(g, team, "hedge", 10, 9, 44, x * 18, 32, 0);
+          else this.box(g, team, "frame", 12, this.look === "ephemeral" ? 30 : 2, 48, x * 18, this.look === "ephemeral" ? 0 : 30);
+          if (this.look === "ephemeral") this.box(g, team, "glow", 10, 1, 44, x * 18, 30, 0);
         }
         this.box(g, team, "frame", 48, 4, 10, 0, 30, 0);
-        const sill = this.box(g, team, "glow", 22, 1, 40, 0, 0.5, 0);
-        anim(sill, { type: "pulse", amount: 0.15, speed: 2 });
+        this.box(g, team, this.look === "scrappy" ? "rust" : "glow", 22, 1, 40, 0, 0.5, 0);
         break;
       }
       case "app-review": {

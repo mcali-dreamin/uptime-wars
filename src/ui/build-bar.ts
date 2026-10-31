@@ -47,6 +47,30 @@ export const upgradeOf = (button: string | null) =>
 /** The number key for the button at `index`: 1..9, then 0 for the tenth. */
 export const hotkeyLabel = (index: number): string => String((index + 1) % 10);
 
+/**
+ * Every race shares Wall and Gate, so they get the same letter keys in every
+ * race instead of eating number keys (a race past ten buildings has none left).
+ */
+export const LETTER_HOTKEYS: Readonly<Record<string, string>> = { wall: "l", gate: "k" };
+
+/** A race's buildings on number keys, in order: everything without a letter key. */
+export const numberedBuildings = (buildings: readonly string[]): string[] => buildings.filter((id) => !LETTER_HOTKEYS[id]);
+
+/** The building a key places for this race, if any: 1..9, 0 for the tenth, or a letter key. */
+export function buildingForKey(buildings: readonly string[], key: string): string | undefined {
+  const letter = Object.keys(LETTER_HOTKEYS).find((id) => LETTER_HOTKEYS[id] === key);
+  if (letter) return buildings.includes(letter) ? letter : undefined;
+  if (!/^[0-9]$/.test(key)) return undefined;
+  return numberedBuildings(buildings)[key === "0" ? 9 : Number(key) - 1];
+}
+
+/** The key label shown on a building's button, or "" when it has none. */
+export function buildingHotkeyLabel(buildings: readonly string[], id: string): string {
+  if (LETTER_HOTKEYS[id]) return LETTER_HOTKEYS[id]!.toUpperCase();
+  const index = numberedBuildings(buildings).indexOf(id);
+  return index >= 0 && index < 10 ? hotkeyLabel(index) : "";
+}
+
 /** The shop's stock, in content order. */
 export const shopStock = (content: Content): string[] =>
   Object.keys(content.items.items).filter((id) => content.items.items[id]?.shop);
@@ -124,10 +148,10 @@ export class BuildBar {
       const locked = id === FOUND_BUTTON ? null : tierLock(this.session, id);
       button.disabled = id !== FOUND_BUTTON && (locked !== null || !affordable(this.session, id));
       button.classList.toggle("locked", locked !== null);
-      const index = this.session.race.buildings.indexOf(id);
-      if (index >= 0) {
+      if (this.session.race.buildings.includes(id)) {
         const detail = button.querySelector("small")!;
-        const text = locked ? `${hotkeyLabel(index)} · ${locked}` : `${hotkeyLabel(index)} · ${buildCost(this.session.world, content, this.session.local, id)}`;
+        const label = buildingHotkeyLabel(this.session.race.buildings, id);
+        const text = locked ? `${label} · ${locked}` : `${label} · ${buildCost(this.session.world, content, this.session.local, id)}`;
         if (detail.textContent !== text) detail.textContent = text;
       }
       button.classList.toggle("selected", id === selected);
@@ -177,10 +201,12 @@ export class BuildBar {
     } else if (mode === "deploy") {
       this.root.append(this.button(FOUND_BUTTON, "Deploy core", "C"));
     } else if (mode === "build") {
-      race.buildings.forEach((id, index) => {
+      // Number-key buildings first, then the shared letter-key ones (Wall, Gate).
+      const ordered = [...numberedBuildings(race.buildings), ...race.buildings.filter((id) => LETTER_HOTKEYS[id])];
+      for (const id of ordered) {
         const cost = buildCost(this.session.world, content, this.session.local, id);
-        this.root.append(this.button(id, content.buildings[id]!.name, `${hotkeyLabel(index)} · ${cost}`));
-      });
+        this.root.append(this.button(id, content.buildings[id]!.name, `${buildingHotkeyLabel(race.buildings, id)} · ${cost}`));
+      }
     } else {
       for (const id of this.upgrades(mode)) {
         const button = this.button(upgradeButton(id), upgradeName(content, this.session.team.raceId, id), this.upgradeDetail(id));
@@ -195,7 +221,12 @@ export class BuildBar {
     }
     const guide = document.createElement("button");
     guide.className = "guide-btn";
-    guide.textContent = "Guide (G)";
+    // Stacked like the build buttons (name over key): a wide one-liner pushed
+    // the bar onto two rows at 1280px once every race got Wall and Gate.
+    guide.append("Guide");
+    const key = document.createElement("small");
+    key.textContent = "G";
+    guide.append(key);
     guide.addEventListener("click", () => this.events.guide());
     this.root.append(guide);
   }

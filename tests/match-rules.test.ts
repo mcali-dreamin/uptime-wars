@@ -169,7 +169,7 @@ describe("match rules", () => {
     for (let dc = 3; dc < 8 && !at; dc += 1) {
       if ([-1, 0, 1].every((o) => isWalkableTile(world.terrain, core.col + dc + o, core.row))) at = { col: core.col + dc, row: core.row };
     }
-    const gate = placeBuilding(world, content, 0, "garden-gate", at!.col, at!.row, true);
+    const gate = placeBuilding(world, content, 0, "gate", at!.col, at!.row, true);
     run(world, 1);
     const open = () => isWalkableTile(terrainFor(world, 1).terrain, gate.col, gate.row);
     expect(open()).toBe(false);

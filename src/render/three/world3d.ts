@@ -18,6 +18,7 @@ import { Bars, Bolts, Debris, Glows, Particles, Rings } from "./effects";
 import { FogTexture } from "./fog3d";
 import { roleOf, Models, animate, groundPickup } from "./models";
 import { Terrain3D } from "./terrain3d";
+import { Fortifications } from "./fortifications";
 import { NetworkOverlay } from "./network3d";
 
 /** Camera distance at zoom 1, pitch above the horizon, and field of view. */
@@ -131,6 +132,7 @@ export class World3D implements WorldView {
   private readonly network = new NetworkOverlay();
   private readonly terrain3d = new Terrain3D(this.fogTexture, this.network);
   private readonly models = new Models(this.fogTexture);
+  private readonly fortifications = new Fortifications();
   private readonly bolts = new Bolts();
   private readonly particles = new Particles();
   private readonly debris = new Debris();
@@ -221,6 +223,7 @@ export class World3D implements WorldView {
     this.scene.add(
       this.terrain3d.group,
       this.entityLayer,
+      this.fortifications.object,
       this.pickupLayer,
       this.bolts.mesh,
       this.particles.points,
@@ -257,6 +260,7 @@ export class World3D implements WorldView {
     this.world = world;
     for (const s of this.shown.values()) this.entityLayer.remove(s.object);
     this.shown.clear();
+    this.fortifications.clear();
     for (const p of this.pickups.values()) this.pickupLayer.remove(p);
     this.pickups.clear();
     this.deaths.length = 0;
@@ -309,7 +313,7 @@ export class World3D implements WorldView {
     for (const hit of hits) {
       let node: THREE.Object3D | null = hit.object;
       while (node && node.userData.entityId === undefined) node = node.parent;
-      if (node && node.visible) return node.userData.entityId as number;
+      if (node && (node.visible || node.userData.batchedVisible)) return node.userData.entityId as number;
     }
     return null;
   }
@@ -394,6 +398,7 @@ export class World3D implements WorldView {
     // Functions with units running are warm; the rest are drawn cold.
     const running = new Set<number>();
     for (const e of world.entities) if (e.kind === "unit" && e.spawnerId >= 0 && e.hp > 0) running.add(e.spawnerId);
+    this.fortifications.begin();
     this.bars.begin(this.camera);
     this.glows.begin();
     for (const entity of world.entities) {
@@ -413,6 +418,7 @@ export class World3D implements WorldView {
       }
       const visible = frame.shows(entity, at.x, at.y) && entity.hp > 0;
       s.object.visible = visible;
+      s.object.userData.batchedVisible = false;
       if (!visible) continue;
 
       const floor = this.terrain3d.floorAt(at.x, at.y);
@@ -462,6 +468,12 @@ export class World3D implements WorldView {
       const owner = frame.world.teams[entity.team];
       const grow = owner && isCore(frame.content, owner, entity) ? 1 + 0.18 * tierOf(frame.content, owner) : 1 + 0.14 * (entity.rank ?? 0);
       s.object.scale.set(grow, building ? Math.max(0.08, entity.hp / entity.maxHp) * grow : grow, grow);
+      if (entity.defId === "wall" || entity.defId === "gate") {
+        this.fortifications.add(s.object);
+        // Keep the original for picking, health bars and hit bookkeeping only.
+        s.object.visible = false;
+        s.object.userData.batchedVisible = true;
+      }
       const top = s.top ?? BUILDING_TOP[entity.defId] ?? 50;
       const selected = frame.selectedId === entity.id || frame.selectedIds.has(entity.id);
       // A building's bar: while selected, just after a hit, or once it's badly hurt.
@@ -476,6 +488,7 @@ export class World3D implements WorldView {
         this.bars.add(at.x, floor + top * s.object.scale.y + 24, at.y, entity.footprint * TILE * 0.8, entity.captureProgress / need, teamColor(world, entity.captureTeam));
       }
     }
+    this.fortifications.end();
     this.bars.end();
     this.glows.end();
     for (const [id, s] of this.shown) {

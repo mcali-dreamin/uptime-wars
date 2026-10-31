@@ -34,7 +34,7 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
 type Order = DistributiveOmit<Command, "tick" | "team">;
 
 /** Buildings it never builds on its own: walls and network need a plan it doesn't have; the registry only serves a hero, and the AI buys no items. */
-const SKIP = new Set(["core", "mesh-node", "edge-pop", "garden-wall", "package-registry"]);
+const SKIP = new Set(["core", "mesh-node", "edge-pop", "wall", "gate", "package-registry"]);
 
 /** The difficulty a team plays at, or undefined for a person. */
 export function difficultyOf(

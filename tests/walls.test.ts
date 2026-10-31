@@ -14,14 +14,20 @@ function walled(spots = 1): { world: World; walls: Building[] } {
   const world = createWorld(content, s);
   world.waves.nextWaveTick = 1e9;
   world.teams[0]!.money = 10000;
-  for (const c of planBuildOrder(content, s, Array.from({ length: spots }, () => [0, "garden-wall"] as [number, string]))) queueCommand(world, c);
+  for (const c of planBuildOrder(content, s, Array.from({ length: spots }, () => [0, "wall"] as [number, string]))) queueCommand(world, c);
   step(world, content);
-  const walls = world.entities.filter((e): e is Building => e.kind === "building" && e.defId === "garden-wall");
+  const walls = world.entities.filter((e): e is Building => e.kind === "building" && e.defId === "wall");
   while (walls.some((w) => w.buildRemaining > 0)) step(world, content);
   return { world, walls };
 }
 
 describe("walls", () => {
+  it.each(["open-source", "hyperscaler", "serverless", "walled-garden"])("%s can build shared walls and gates", (race) => {
+    expect(content.races[race]!.buildings).toEqual(expect.arrayContaining(["wall", "gate"]));
+    if (race !== "walled-garden") {
+      expect(content.races[race]!.tierPerks?.some((perk) => perk?.mechanics?.thorns)).toBe(false);
+    }
+  });
   it("a wall blocks its tile the tick it goes down, and frees it when it falls", () => {
     const { world, walls } = walled();
     const wall = walls[0]!;
@@ -35,7 +41,7 @@ describe("walls", () => {
     const s = setup();
     const world = createWorld(content, s);
     world.teams[0]!.money = 10000;
-    const [spot] = planBuildOrder(content, s, [[0, "garden-wall"]]);
+    const [spot] = planBuildOrder(content, s, [[0, "wall"]]);
     spawnUnit(makeContext(world, content), 0, "moderator", { x: 0, y: 0 }, (spot!.col + 0.5) * TILE, (spot!.row + 0.5) * TILE, "guard");
     queueCommand(world, { ...spot!, tick: world.tick });
     step(world, content);
@@ -125,14 +131,14 @@ describe("gates", () => {
       const row = core.row;
       if ([-1, 0, 1].every((o) => isWalkableTile(world.terrain, col + o, row))) at = { col, row };
     }
-    const gate = placeBuilding(world, content, 0, "garden-gate", at!.col, at!.row, true);
+    const gate = placeBuilding(world, content, 0, "gate", at!.col, at!.row, true);
     step(world, content);
     return { world, gate };
   };
   const open = (world: World, team: number, gate: Building) => isWalkableTile(terrainFor(world, team).terrain, gate.col, gate.row);
 
-  it("blocks creeps but opens for its owner", () => {
-    const { world, gate } = gated(["walled-garden", "botnet"]);
+  it("a non-WG gate blocks enemies but opens for its owner", () => {
+    const { world, gate } = gated(["open-source", "botnet"]);
     expect(isWalkableTile(world.terrain, gate.col, gate.row)).toBe(false);
     expect(open(world, 1, gate)).toBe(false);
     expect(open(world, 0, gate)).toBe(true);
@@ -145,10 +151,10 @@ describe("gates", () => {
     expect(open(ffa.world, 1, ffa.gate)).toBe(false);
   });
 
-  it("your units walk straight through it", () => {
-    const { world, gate } = gated(["walled-garden", "botnet"]);
+  it("a non-WG race's units walk straight through its gate", () => {
+    const { world, gate } = gated(["open-source", "botnet"]);
     const ctx = makeContext(world, content);
-    const unit = spawnUnit(ctx, 0, "moderator", gate, (gate.col - 1 + 0.5) * TILE, (gate.row + 0.5) * TILE, "guard");
+    const unit = spawnUnit(ctx, 0, "process", gate, (gate.col - 1 + 0.5) * TILE, (gate.row + 0.5) * TILE, "guard");
     unit.homeX = (gate.col + 1 + 0.5) * TILE;
     unit.homeY = (gate.row + 0.5) * TILE;
     unit.order = "move";
