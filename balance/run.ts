@@ -2,6 +2,7 @@
 // BALANCE_AGGRESSIVE=0, BALANCE_PRESSURE (permille horde strength, default 1000: scales
 // waves.budget.start and waves.hpGrowthPerWave). Results carry minCorePermille,
 // secondsBelowHalf and buildingsLost (see bot.ts) so races differ even when all survive.
+// Each run also records finalMoney and wallSpent (wallBuildSpent + wallRankSpent).
 // Shared by the per-race balance runs: play every hero of a race on a few
 // maps and write the results to balance-results/<race>.json.
 

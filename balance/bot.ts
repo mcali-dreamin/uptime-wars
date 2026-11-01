@@ -15,7 +15,8 @@
 // secondsBelowHalf (time under 50% HP) and buildingsLost (own buildings destroyed).
 // pressure and minutes are stored too, for the report.
 
-import { TICK_RATE, createWorld, step, tierOf, type Content, type World } from "../src/sim";
+import { TICK_RATE, createWorld, step, tierOf, type Building, type Content, type World } from "../src/sim";
+import { isWall, rankCost } from "../src/sim/ranks";
 
 export interface BotOptions {
   minutes: number;
@@ -37,6 +38,8 @@ export interface BotResult {
   /** Seconds the core stayed up (capped at the run length). */
   survived: number;
   survivedAll: boolean;
+  /** The match ended with this team among the winners (the nest went offline). */
+  won: boolean;
   tier: number;
   casts: number;
   heroLevel: number;
@@ -46,6 +49,11 @@ export interface BotResult {
   expansions: number;
   /** Most $ held at once. */
   peakMoney: number;
+  /** Final bank and actual $ paid for wall/gate construction and refits. */
+  finalMoney: number;
+  wallBuildSpent: number;
+  wallRankSpent: number;
+  wallSpent: number;
   /** Spot Capacity rentals made. */
   spotRentals: number;
   /** Lowest core hp*1000/maxHp seen. */
@@ -115,9 +123,22 @@ export function playMatch(
   let minCorePermille = 1000;
   let belowHalfTicks = 0;
   let buildingsLost = 0;
+  let wallBuildSpent = 0;
+  let wallRankSpent = 0;
   while (world.tick < limit && !world.outcome) {
     options.beforeStep?.(world);
+    // A refit is paid when started, not when the ranked event fires.
+    const beforeWalls = new Map(world.entities.filter((e): e is Building => e.kind === "building" && e.team === team.id && isWall(e)).map(e => [e.id, {
+      refitting: (e.refitRemaining ?? 0) > 0,
+      cost: rankCost(played, world, e) ?? 0,
+    }]));
     step(world, played);
+    for (const e of world.entities) {
+      if (e.kind !== "building" || e.team !== team.id || !isWall(e)) continue;
+      const before = beforeWalls.get(e.id);
+      if (!before) wallBuildSpent += e.paid ?? 0;
+      else if (!before.refitting && (e.refitRemaining ?? 0) > 0) wallRankSpent += before.cost;
+    }
     peakMoney = Math.max(peakMoney, team.money);
     const core = world.entities.find((c) => c.id === team.coreId);
     if (core && core.maxHp > 0) {
@@ -137,12 +158,17 @@ export function playMatch(
     seed,
     survived: (world.outcome?.tick ?? world.tick) / TICK_RATE,
     survivedAll: !world.outcome,
+    won: world.outcome?.winners.includes(team.id) ?? false,
     tier: tierOf(content, team),
     casts: team.ai!.casts,
     heroLevel: team.hero?.level ?? 0,
     farmsBroken,
     expansions,
     peakMoney,
+    finalMoney: team.money,
+    wallBuildSpent,
+    wallRankSpent,
+    wallSpent: wallBuildSpent + wallRankSpent,
     spotRentals: team.spotRentals,
     minCorePermille,
     secondsBelowHalf: belowHalfTicks / TICK_RATE,

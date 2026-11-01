@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { createWorld, hashWorld } from "../src/sim";
+import { createWorld, hashWorld, tierUpgrade } from "../src/sim";
+import { queueCommand } from "../src/sim/commands";
+import { canPlace } from "../src/sim/placement";
 import { balanceContent, playMatch } from "../balance/bot";
 import { content } from "./fixtures";
 
@@ -32,6 +34,39 @@ describe("balance metrics", () => {
     expect(r.buildingsLost).toBeGreaterThanOrEqual(0);
     expect(r.pressure).toBe(1500);
     expect(r.minutes).toBe(2);
+  });
+
+  it("records final bank and actual wall construction and rank spending", () => {
+    const heroId = content.races["open-source"]!.heroes![0]!;
+    const r = playMatch(content, "open-source", 42, heroId, {
+      minutes: 0.1, hero: false, aggressive: false,
+      beforeStep: w => {
+        const t = w.teams[0]!;
+        // Isolate successful payments, not attempted commands or free walls.
+        t.ai!.difficulty = "disabled-for-test";
+        t.money = 1000;
+        t.upgrades[tierUpgrade(content)!] = 2;
+        if (w.tick === 1) {
+          const core = w.entities.find(e => e.id === t.coreId)!;
+          if (core.kind !== "building") return;
+          for (let dr = -4; dr <= 4; dr++) for (let dc = -4; dc <= 4; dc++) {
+            const col = core.col + dc, row = core.row + dr;
+            if (canPlace(w, content, 0, "wall", col, row) !== null) continue;
+            queueCommand(w, { type: "build", team: 0, tick: w.tick, building: "wall", col, row });
+            return;
+          }
+        }
+        const wall = w.entities.find(e => e.kind === "building" && e.defId === "wall");
+        if (wall?.kind === "building" && wall.buildRemaining === 0 && !wall.refitRemaining && !wall.rank) {
+          queueCommand(w, { type: "rank", team: 0, tick: w.tick, buildingId: wall.id });
+        }
+      },
+    });
+    expect(r.wallBuildSpent).toBe(20);
+    expect(r.wallRankSpent).toBe(80);
+    expect(r.wallSpent).toBe(100);
+    expect(r.finalMoney).toBeGreaterThanOrEqual(0);
+    expect(r.finalMoney).toBeLessThanOrEqual(r.peakMoney);
   });
 
   it("reflects forced core damage", () => {
