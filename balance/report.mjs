@@ -1,5 +1,6 @@
 // Print balance-results/*.json as a table: per race the median survival, min core % and seconds below 50% HP.
-// Per run: tier, hero level, casts, farms broken (f), expansions (x), peak $, Spot rentals (s),
+// Per run: tier, hero level, casts, farms broken (f), expansions (x), peak $, final bank ($end),
+// wall/gate construction + refit spending (w$, with breakdown), Spot rentals (s),
 // lowest core % (min), time under half HP (low) and own buildings lost (lost). Missing fields print "-".
 import { readFileSync, readdirSync } from "node:fs";
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
@@ -15,7 +16,7 @@ for (const [file, rows] of data) {
   console.log(`${file.replace(".json", "").padEnd(14)} median ${fmt(median(rows.map((r) => r.survived)))} minCore ${medOr(rows.map((r) => r.minCorePermille), pct)} below50 ${medOr(rows.map((r) => r.secondsBelowHalf), fmt)}`);
   for (const hero of [...new Set(rows.map((r) => r.hero))]) {
     const mine = rows.filter((r) => r.hero === hero);
-    const runs = mine.map((r) => `${fmt(r.survived)}${r.survivedAll ? "+" : ""} t${r.tier} L${r.heroLevel} c${r.casts} f${r.farmsBroken ?? 0} x${r.expansions ?? 0} $${r.peakMoney ?? 0} s${r.spotRentals ?? 0} min${has(r.minCorePermille) ? Math.round(r.minCorePermille / 10) + "%" : "-"} low${has(r.secondsBelowHalf) ? fmt(r.secondsBelowHalf) : "-"} lost${r.buildingsLost ?? "-"}`).join(" | ");
+    const runs = mine.map((r) => `${fmt(r.survived)}${r.survivedAll ? "+" : ""} t${r.tier} L${r.heroLevel} c${r.casts} f${r.farmsBroken ?? 0} x${r.expansions ?? 0} $${r.peakMoney ?? 0} $end${r.finalMoney ?? "-"} w$${r.wallSpent ?? "-"} (build${r.wallBuildSpent ?? "-"}/rank${r.wallRankSpent ?? "-"}) s${r.spotRentals ?? 0} min${has(r.minCorePermille) ? Math.round(r.minCorePermille / 10) + "%" : "-"} low${has(r.secondsBelowHalf) ? fmt(r.secondsBelowHalf) : "-"} lost${r.buildingsLost ?? "-"}`).join(" | ");
     console.log(`  ${hero.padEnd(20)} ${fmt(median(mine.map((r) => r.survived)))}  ${runs}`);
   }
 }

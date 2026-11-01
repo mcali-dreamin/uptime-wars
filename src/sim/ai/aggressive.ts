@@ -6,7 +6,7 @@
 import type { Content, DifficultyDef } from "../content";
 import { computeBalance, spotCost, spotState, squadReserve } from "../economy";
 import { TICK_RATE } from "../map";
-import { buildCost, canFound, expansionBlocker } from "../placement";
+import { buildCost, canFound, canPlace, expansionBlocker } from "../placement";
 import { nextLevel } from "../upgrades";
 import { isWall, rankBlocker, rankCost } from "../ranks";
 import type { Command, Team, World } from "../types";
@@ -33,9 +33,7 @@ export function rentSpot(
 }
 
 /** Spend only surplus, budgeting for earlier orders in this decision tick too. */
-export function rankWalls(world: World, content: Content, team: Team, level: DifficultyDef, issue: (c: Order) => unknown): void {
-  const { supply, demand } = computeBalance(world, content, team);
-  if (supply - demand >= squadReserve(world, content, team)) return;
+function surplus(world: World, content: Content, team: Team, level: DifficultyDef): number {
   let budget = team.money - level.tierReserve;
   for (const c of world.commands) {
     if (c.team !== team.id || c.tick !== world.tick) continue;
@@ -51,6 +49,53 @@ export function rankWalls(world: World, content: Content, team: Team, level: Dif
       if (b?.kind === "building") budget -= rankCost(content, world, b) ?? 0;
     }
   }
+  return budget;
+}
+
+/** A stable square, two empty tiles beyond the main base's existing footprint.
+ * Ignore remote expansions and fortifications when choosing it; remember it so
+ * subsequent base growth (or losses) cannot turn it into concentric rings.
+ */
+export function buildRing(world: World, content: Content, team: Team, level: DifficultyDef, issue: (c: Order) => unknown): void {
+  const { supply, demand } = computeBalance(world, content, team);
+  if (supply - demand >= squadReserve(world, content, team)) return;
+  const core = world.entities.find(e => e.id === team.coreId);
+  if (!core || core.kind !== "building" || core.hp <= 0 || core.buildRemaining > 0 || !team.ai) return;
+  let budget = surplus(world, content, team, level);
+  if (budget < Math.min(buildCost(world, content, team.id, "wall"), buildCost(world, content, team.id, "gate"))) return;
+  if (team.ai.wallRing?.coreId !== core.id) {
+    let extent = core.footprint - 1;
+    for (const e of world.entities) {
+      if (e.kind !== "building" || e.team !== team.id || e.hp <= 0 || isWall(e)) continue;
+      // The normal base rotation searches at most ten tiles from the core.
+      if (Math.max(Math.abs(e.col - core.col), Math.abs(e.row - core.row)) > 10) continue;
+      extent = Math.max(extent, Math.abs(e.col - core.col), Math.abs(e.row - core.row),
+        Math.abs(e.col + e.footprint - 1 - core.col), Math.abs(e.row + e.footprint - 1 - core.row));
+    }
+    team.ai.wallRing = { coreId: core.id, radius: extent + 3 };
+  }
+  const radius = team.ai.wallRing.radius;
+  let placed = 0;
+  for (let dr = -radius; dr <= radius; dr++) {
+    for (let dc = -radius; dc <= radius; dc++) {
+      if (Math.max(Math.abs(dc), Math.abs(dr)) !== radius) continue;
+      const col = core.col + dc;
+      const row = core.row + dr;
+      const building = dc === 0 || dr === 0 ? "gate" : "wall";
+      const cost = buildCost(world, content, team.id, building);
+      if (cost > budget || world.commands.some(c => c.tick === world.tick && c.type === "build" && c.col === col && c.row === row)) continue;
+      if (canPlace(world, content, team.id, building, col, row, cost) !== null) continue;
+      budget -= cost;
+      issue({ type: "build", building, col, row });
+      if (++placed === 4) return;
+    }
+  }
+}
+
+export function rankWalls(world: World, content: Content, team: Team, level: DifficultyDef, issue: (c: Order) => unknown): void {
+  const { supply, demand } = computeBalance(world, content, team);
+  if (supply - demand >= squadReserve(world, content, team)) return;
+  let budget = surplus(world, content, team, level);
   for (const e of world.entities) {
     if (e.kind !== "building" || !isWall(e) || rankBlocker(content, world, team.id, e) !== null) continue;
     const price = rankCost(content, world, e)!;

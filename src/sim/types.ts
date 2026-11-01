@@ -75,6 +75,8 @@ export interface AiState {
   difficulty: string;
   /** Next building in its build rotation. */
   next: number;
+  /** Stable fortification plan for the current main core (aggressive only). */
+  wallRing?: { coreId: number; radius: number };
   /** Hero abilities cast so far. */
   casts: number;
   /** Its army: building up at home, out attacking, or on its way back. */
