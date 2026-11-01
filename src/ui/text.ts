@@ -88,6 +88,7 @@ export function unitRuleLines(unit: UnitDef): string[] {
 
 /** A race mechanic as a sentence. */
 const MECHANIC_TEXT: { [K in keyof Mechanics]-?: (content: Content, m: NonNullable<Mechanics[K]>) => string } = {
+  enclosure: (_, m) => `Inside a closed ring of walls and gates: +${m.armor} building armor and Web Apps pay ${permille(m.revenuePermille)} income; a breach removes both bonuses`,
   fork: (_, m) => `Fork (X): copy a finished building for ${permille(m.costPermille)} of its price, built in ${permille(m.buildPermille)} of the time`,
   repair: (_, m) => `Buildings repair ${permille(m.permillePerSecond)} of their HP a second once nothing has hit them for ${secs(m.quietTicks)}`,
   region: (_, m) => `Regions: each of your buildings within ${m.radiusTiles} tiles cuts the damage a building takes by ${permille(m.perNeighborPermille)}, up to ${permille(m.maxPermille)}`,
@@ -99,6 +100,7 @@ const MECHANIC_TEXT: { [K in keyof Mechanics]-?: (content: Content, m: NonNullab
 type Field = [label: string, format: (value: never) => string, suffix?: string];
 
 const MECHANIC_FIELDS: { [K in keyof Mechanics]-?: { [F in keyof NonNullable<Mechanics[K]>]-?: Field } } = {
+  enclosure: { armor: ["enclosed armor", (v: number) => `+${v}`], revenuePermille: ["enclosed Web App income", permille] },
   fork: { costPermille: ["forks cost", permille], buildPermille: ["forks build in", permille] },
   repair: { permillePerSecond: ["repair", (v: number) => `${permille(v)}/s`], quietTicks: ["repair starts after", secs] },
   region: { radiusTiles: ["region radius", (v: number) => `${v} tiles`], perNeighborPermille: ["region shield per neighbor", permille], maxPermille: ["region shield", (v: number) => `up to ${permille(v)}`] },

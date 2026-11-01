@@ -8,6 +8,7 @@ import type { Session } from "../game/session";
 import { heightAtTile, TILE, type Building, type Entity } from "../sim";
 import { EXPANSION_CLEARANCE, HIGH_GROUND_DAMAGE } from "../sim/tuning";
 import { upgradeOf, itemOf } from "./build-bar";
+import { enclosureBonus } from "../sim/enclosure";
 import { buildingCard, rankEffect, unitCard, upgradeCard, type InfoCard, itemCard } from "./cards";
 import { permille, rankChange, secs as seconds } from "./text";
 import { $ } from "./dom";
@@ -121,8 +122,10 @@ export class InfoPanel {
     if (entity.kind === "building" && content.buildings[entity.defId]!.site) return this.show(this.siteCard(entity));
     if (entity.kind === "building") {
       const card = buildingCard(content, raceId, entity.defId);
+      const garden = enclosureBonus(this.session.world, content, entity);
       const hp = `${Math.ceil(entity.hp)} / ${entity.maxHp} HP`;
       const lines = [card.lines[0]!, entity.buildRemaining > 0 ? `building · ${hp}` : hp];
+      if (garden) lines.push(`Inside the garden: +${garden.armor} armor${entity.defId === "web-app" ? ` · +${(garden.revenuePermille - 1000) / 10}% Web App income` : ""}`);
       if (isCore(content, this.session.team, entity)) {
         const perks = earnedPerks(content, this.session.team).map((p) => p.name);
         lines.push(`Tier: ${tierDef(content, this.session.team).name}${perks.length ? ` · ${perks.join(", ")}` : ""}`);

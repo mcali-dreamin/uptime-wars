@@ -202,6 +202,7 @@ export interface RaceDef {
    *   other finished building of yours within `radiusTiles`, up to `maxPermille`.
    */
   mechanics?: {
+    enclosure?: { armor: number; revenuePermille: number };
     fork?: { costPermille: number; buildPermille: number };
     repair?: { permillePerSecond: number; quietTicks: number };
     region?: { radiusTiles: number; perNeighborPermille: number; maxPermille: number };

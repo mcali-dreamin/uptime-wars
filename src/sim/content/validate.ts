@@ -137,6 +137,11 @@ export function validateContent(content: Content): void {
     if (b.limitPerTier && b.limitPerTier.length !== tiers.length) errors.push(`building ${id} limitPerTier needs one entry per tier`);
   }
   for (const [id, race] of Object.entries(content.races)) {
+    const enclosure = race.mechanics?.enclosure;
+    if (enclosure) {
+      if (!Number.isInteger(enclosure.armor) || enclosure.armor < 0) errors.push(`race ${id} enclosure armor must be a non-negative integer`);
+      if (!Number.isInteger(enclosure.revenuePermille) || enclosure.revenuePermille < 1000) errors.push(`race ${id} enclosure revenuePermille must be an integer >= 1000`);
+    }
     const perks = race.tierPerks;
     if (perks && perks.length !== tiers.length) errors.push(`race ${id} tierPerks needs one entry per tier`);
     for (const perk of perks ?? []) {

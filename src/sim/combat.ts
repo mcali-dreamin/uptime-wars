@@ -1,5 +1,6 @@
 // Targeting and damage.
 
+import { enclosureBonus } from "./enclosure";
 import { rankWorth } from "./ranks";
 import { creditKill } from "./heroes";
 import { hostile, neutralTeam } from "./teams";
@@ -112,6 +113,7 @@ export function dealDamage(
   const carried = target.kind === "unit" && target.mode === "hero" ? itemTotals(content, owner?.hero).armor : 0;
   const armor =
     target.armor +
+    (target.kind === "building" ? enclosureBonus(world, content, target)?.armor ?? 0 : 0) +
     carried +
     (target.kind === "building" ? bonus(content, owner, "buildingArmor") : bonus(content, owner, "unitArmor")) +
     traitArmor(content, world, target);

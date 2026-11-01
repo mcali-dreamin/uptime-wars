@@ -5,6 +5,7 @@
 // unit uses it. It can go negative, and the further over you are the worse
 // it gets (see overload).
 
+import { enclosureRevenueFactor } from "./enclosure";
 import type { TickContext } from "./context";
 import { TICK_RATE } from "./map";
 import type { Team, World } from "./types";
@@ -179,7 +180,7 @@ export function tickUsers(ctx: TickContext): void {
     }
     team.peakUsers = Math.max(team.peakUsers, team.users);
 
-    team.revenueCarry += team.users * economy.revenuePerUserPerSecond * multiplier(content, team, "revenue") * revenueFactor(content, team);
+    team.revenueCarry += team.users * enclosureRevenueFactor(world, content, team.id) * economy.revenuePerUserPerSecond * multiplier(content, team, "revenue") * revenueFactor(content, team);
     const revenue = Math.floor(team.revenueCarry);
     team.money += revenue;
     team.revenueCarry -= revenue;
@@ -199,7 +200,7 @@ export function incomeRate(world: World, content: TickContext["content"], team: 
     if (income) buildings += (income.amount * TICK_RATE) / income.intervalTicks;
   }
   const online = team.controller === "human" && team.coreId !== -1 && team.downTick === null;
-  const users = online ? team.users * content.economy.revenuePerUserPerSecond * multiplier(content, team, "revenue") * revenueFactor(content, team) : 0;
+  const users = online ? team.users * enclosureRevenueFactor(world, content, team.id) * content.economy.revenuePerUserPerSecond * multiplier(content, team, "revenue") * revenueFactor(content, team) : 0;
   return { base, buildings, users };
 }
 

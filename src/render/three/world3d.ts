@@ -5,6 +5,7 @@
 //
 // Units: x and z are world pixels (z = the sim's y), y is height.
 
+import { enclosureGround } from "../../sim/enclosure";
 import * as THREE from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
@@ -129,6 +130,8 @@ export class World3D implements WorldView {
   private readonly composer: EffectComposer | null;
   private readonly bloom: UnrealBloomPass | null;
   private readonly fogTexture = new FogTexture();
+  private gardenGround?: Uint8Array;
+  private readonly garden = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color: 0x77bba0, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide }));
   private readonly network = new NetworkOverlay();
   private readonly terrain3d = new Terrain3D(this.fogTexture, this.network);
   private readonly models = new Models(this.fogTexture);
@@ -222,6 +225,7 @@ export class World3D implements WorldView {
 
     this.scene.add(
       this.terrain3d.group,
+      this.garden,
       this.entityLayer,
       this.fortifications.object,
       this.pickupLayer,
@@ -278,6 +282,22 @@ export class World3D implements WorldView {
 
   draw(frame: Frame): void {
     if (!this.world) return;
+    const ground = enclosureGround(frame.world, frame.content, frame.localTeam);
+    if (ground !== this.gardenGround) {
+      this.gardenGround = ground;
+      const vertices: number[] = [];
+      ground?.forEach((tile, i) => {
+        if (!tile) return;
+        const x = i % frame.world.terrain.cols * TILE;
+        const z = Math.floor(i / frame.world.terrain.cols) * TILE;
+        const y = this.terrain3d.floorAt(x + TILE / 2, z + TILE / 2) + 1;
+        vertices.push(x,y,z, x+TILE,y,z, x,y,z+TILE, x+TILE,y,z, x+TILE,y,z+TILE, x,y,z+TILE);
+      });
+      this.garden.geometry.dispose();
+      this.garden.geometry = new THREE.BufferGeometry();
+      this.garden.geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+      this.garden.geometry.computeBoundingSphere();
+    }
     const now = performance.now();
     const dt = Math.min(0.1, (now - this.lastTime) / 1000);
     this.lastTime = now;
