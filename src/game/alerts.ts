@@ -6,7 +6,7 @@
 
 import { allied, isCore, retaliationSize, type Content, type Unit, type Point, type SimEvent, type TeamId, type World } from "../sim";
 
-export type AlertKind = "attack" | "core" | "lost" | "hero" | "spread" | "agent" | "fighting" | "wiped" | "camp" | "site" | "farm";
+export type AlertKind = "agentAttack" | "attack" | "core" | "lost" | "hero" | "spread" | "agent" | "fighting" | "wiped" | "camp" | "site" | "farm";
 
 export interface Alert {
   kind: AlertKind;
@@ -18,7 +18,7 @@ export interface Alert {
 }
 
 /** Quiet time per kind (seconds) before the same kind, near the same place, alerts again. */
-const QUIET: Record<AlertKind, number> = { attack: 12, core: 8, lost: 0, hero: 0, spread: 0, agent: 0, fighting: 20, wiped: 20, camp: 0, site: 0, farm: 30 };
+const QUIET: Record<AlertKind, number> = { agentAttack: 10, attack: 12, core: 8, lost: 0, hero: 0, spread: 0, agent: 0, fighting: 20, wiped: 20, camp: 0, site: 0, farm: 30 };
 /** Soldier deaths inside this window (seconds) count toward "wiped". */
 const WIPE_WINDOW = 10;
 /** Deaths in the window needed before an army counts as wiped. */
@@ -76,7 +76,11 @@ export class Alerts {
       if (event.type === "shot") {
         const target = world.entities.find((e) => e.id === event.to);
         if (!target) continue;
-        if (target.team === local && event.team !== local) {
+        if (target.team === local && event.team !== local && !allied(world, local, event.team)) {
+          if (target.kind === "unit" && target.mode === "builder" && team.coreId !== -1) {
+            raise("agentAttack", `Your deploy agent is under attack · ${target.agentRetreating ? "it's heading back" : "Space to look"}`, target.x, target.y, false);
+            continue;
+          }
           if (target.kind === "building" && isCore(this.content, team, target)) {
             raise("core", target.id === team.coreId ? "Your core is under attack" : "Your expansion is under attack", target.x, target.y, false);
             continue;

@@ -19,6 +19,7 @@ export const builder: Behavior = (ctx, unit, def) => {
     return;
   }
   unit.moveTo = null;
+  unit.agentRetreating = false;
   const site = unit.foundAt;
   unit.foundAt = null;
   if (!site) return;

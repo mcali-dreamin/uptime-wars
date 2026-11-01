@@ -175,6 +175,10 @@ export interface Unit extends EntityBase {
   /** Builder orders: where it is walking, and the core footprint to found on arrival. */
   moveTo: { x: number; y: number } | null;
   foundAt: { col: number; row: number } | null;
+  /** Last hostile hit on a deploy agent; a quiet spell allows another automatic retreat. */
+  agentHitTick?: number;
+  /** Returning to a core after a fresh attack; player orders clear this. */
+  agentRetreating?: boolean;
   /** Where a guarding unit returns to when it has nothing to fight. */
   homeX: number;
   homeY: number;

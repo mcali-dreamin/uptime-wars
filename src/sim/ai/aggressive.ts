@@ -5,6 +5,7 @@
 
 import type { Content, DifficultyDef } from "../content";
 import { computeBalance, spotCost, spotState, squadReserve } from "../economy";
+import { TICK_RATE } from "../map";
 import { canFound, expansionBlocker } from "../placement";
 import type { Command, Team, World } from "../types";
 
@@ -43,6 +44,8 @@ export function expand(
   if (agent && agent.kind === "unit" && agent.hp > 0) {
     // Already walking to a site (or about to): leave it be.
     if (agent.moveTo || agent.foundAt) return;
+    // Let a threatened agent recover at home before trying another expansion.
+    if (agent.agentHitTick !== undefined && world.tick - agent.agentHitTick < 10 * TICK_RATE) return;
     let best: { col: number; row: number } | null = null;
     let bestD = Infinity;
     for (const s of world.terrain.starts) {
