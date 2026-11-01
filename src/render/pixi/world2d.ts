@@ -2,6 +2,7 @@
 // flags, placement preview, and order pings, drawn with PixiJS over a camera
 // that pans and zooms. Anything outside the camera is skipped.
 
+import { enclosureGround } from "../../sim/enclosure";
 import { Container, Graphics } from "pixi.js";
 import { reachOf, TILE, isCore, rallyFor, tierOf, networkProviders, type Content, type World } from "../../sim";
 import type { Camera } from "../camera";
@@ -17,6 +18,8 @@ const CULL_MARGIN = 64;
 export class World2D implements WorldView {
   readonly layer = new Container();
   private readonly terrainLayer = new Graphics();
+  private readonly garden = new Graphics();
+  private gardenGround?: Uint8Array;
   private readonly dynamic = new Graphics();
   private readonly overlay = new Graphics();
 
@@ -24,7 +27,7 @@ export class World2D implements WorldView {
     private readonly camera: Camera,
     fog: Fog,
   ) {
-    this.layer.addChild(this.terrainLayer, this.dynamic, fog.worldSprite, this.overlay);
+    this.layer.addChild(this.terrainLayer, this.garden, this.dynamic, fog.worldSprite, this.overlay);
   }
 
   setWorld(world: World): void {
@@ -51,6 +54,15 @@ export class World2D implements WorldView {
   }
 
   draw(frame: Frame): void {
+    const ground = enclosureGround(frame.world, frame.content, frame.localTeam);
+    if (ground !== this.gardenGround) {
+      this.gardenGround = ground;
+      this.garden.clear();
+      ground?.forEach((tile, i) => {
+        if (tile) this.garden.rect(i % frame.world.terrain.cols * TILE, Math.floor(i / frame.world.terrain.cols) * TILE, TILE, TILE);
+      });
+      this.garden.fill({ color: 0x77bba0, alpha: 0.12 });
+    }
     const { camera } = this;
     this.layer.scale.set(camera.zoom);
     this.layer.position.set(frame.width / 2 - camera.x * camera.zoom, frame.height / 2 - camera.y * camera.zoom);

@@ -3,7 +3,7 @@
 
 import type { Content } from "./content";
 import { TILE, footprintCenter } from "./map";
-import { allied } from "./teams";
+import { allied, hostile } from "./teams";
 import { TILE_OPEN, tileAt, walls } from "./terrain";
 import type { Building, Entity, Point, Team, TeamId, World } from "./types";
 import { unitInTheWay } from "./walls";
@@ -96,22 +96,25 @@ const openCache = new WeakMap<World, { key: string; open: Uint8Array }>();
  * a gap). Rebuilt only when the buildings standing change: placement checks
  * run for every spot a player hovers or a computer considers.
  */
-function openGround(world: World, content: Content): Uint8Array {
+function openGround(world: World, content: Content, enclosureTeam?: TeamId): Uint8Array {
   let key = "";
   for (const e of world.entities) {
     if (e.kind === "building" && e.hp > 0 && !content.buildings[e.defId]?.blocks) key += `${e.id},`;
   }
   const cached = openCache.get(world);
-  if (cached && cached.key === key) return cached.open;
+  if (enclosureTeam === undefined && cached && cached.key === key) return cached.open;
   const { terrain } = world;
   const { cols } = terrain;
   const open = new Uint8Array(terrain.tiles.length);
   for (let i = 0; i < open.length; i += 1) if (!walls(terrain.tiles[i])) open[i] = 1;
   for (const e of world.entities) {
-    if (e.kind !== "building" || e.hp <= 0 || content.buildings[e.defId]?.blocks) continue;
+    if (e.kind !== "building" || e.hp <= 0) continue;
+    // Enclosure measures the ground beneath ordinary buildings too. Only the
+    // team's fortifications close a garden; enemy walls cannot earn its bonus.
+    if (enclosureTeam === undefined ? content.buildings[e.defId]?.blocks : e.team !== enclosureTeam || !content.buildings[e.defId]?.blocks) continue;
     for (let r = e.row; r < e.row + e.footprint; r += 1) for (let c = e.col; c < e.col + e.footprint; c += 1) open[r * cols + c] = 0;
   }
-  openCache.set(world, { key, open });
+  if (enclosureTeam === undefined) openCache.set(world, { key, open });
   return open;
 }
 
@@ -137,28 +140,7 @@ export function sealsOff(world: World, content: Content, col: number, row: numbe
   // is fine to close off (nobody's in it); anything bigger on two sides of
   // the building means it would cut real ground in two.
   const seen = new Uint8Array(cols * rows);
-  const flood = (start: number, limit: number): number[] => {
-    const tiles = [start];
-    seen[start] = 1;
-    for (let q = 0; q < tiles.length && tiles.length <= limit; q += 1) {
-      const i = tiles[q]!;
-      const c = i % cols;
-      const r = (i - c) / cols;
-      for (let dr = -1; dr <= 1; dr += 1) {
-        for (let dc = -1; dc <= 1; dc += 1) {
-          const nc = c + dc;
-          const nr = r + dr;
-          if ((dc === 0 && dr === 0) || nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
-          const n = nr * cols + nc;
-          // Diagonals can't cut a corner, the same as walking.
-          if (seen[n] || !open[n] || (dc !== 0 && dr !== 0 && (!open[r * cols + nc] || !open[nr * cols + c]))) continue;
-          seen[n] = 1;
-          tiles.push(n);
-        }
-      }
-    }
-    return tiles;
-  };
+  const flood = (start: number, limit: number): number[] => floodGround(open, cols, rows, seen, [start], limit);
   const big: number[] = [];
   for (const start of edge) {
     if (seen[start]) continue;
@@ -349,4 +331,41 @@ export function inNetwork(world: World, content: Content, teamId: TeamId, x: num
 /** The team's living cores, in id order. */
 export function teamCores(world: World, content: Content, team: Team): Building[] {
   return world.entities.filter((e): e is Building => e.kind === "building" && e.hp > 0 && isCore(content, team, e));
+}
+
+/** Shared corner-safe flood used by placement and enclosure. */
+function floodGround(open: Uint8Array, cols: number, rows: number, seen: Uint8Array, starts: number[], limit = Infinity): number[] {
+  const tiles: number[] = [];
+  for (const start of starts) if (open[start] && !seen[start]) { seen[start] = 1; tiles.push(start); }
+  for (let q = 0; q < tiles.length && tiles.length <= limit; q += 1) {
+    const i = tiles[q]!;
+    const c = i % cols;
+    const r = Math.floor(i / cols);
+    for (let dr = -1; dr <= 1; dr += 1) for (let dc = -1; dc <= 1; dc += 1) {
+      const nc = c + dc, nr = r + dr;
+      if ((!dc && !dr) || nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+      const n = nr * cols + nc;
+      if (seen[n] || !open[n] || (dc !== 0 && dr !== 0 && (!open[r * cols + nc] || !open[nr * cols + c]))) continue;
+      seen[n] = 1;
+      tiles.push(n);
+    }
+  }
+  return tiles;
+}
+
+/** Open terrain disconnected from the border and hostile starting ground. */
+export function enclosedGround(world: World, content: Content, team: TeamId): Uint8Array {
+  const { cols, rows } = world.terrain;
+  const open = openGround(world, content, team);
+  const starts: number[] = [];
+  for (let c = 0; c < cols; c += 1) starts.push(c, (rows - 1) * cols + c);
+  for (let r = 0; r < rows; r += 1) starts.push(r * cols, r * cols + cols - 1);
+  for (const other of world.teams) {
+    if (!hostile(world, team, other.id) || other.controller === "neutral") continue;
+    const start = other.controller === "human" ? world.terrain.starts[other.id] : world.terrain.nest;
+    if (start) starts.push(start.row * cols + start.col);
+  }
+  const seen = new Uint8Array(open.length);
+  floodGround(open, cols, rows, seen, starts);
+  return open.map((tile, i) => tile && !seen[i] ? 1 : 0);
 }
