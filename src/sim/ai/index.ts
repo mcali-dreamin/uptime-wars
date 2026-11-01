@@ -12,7 +12,7 @@
 
 import type { Content, DifficultyDef } from "../content";
 import { queueCommand } from "../commands";
-import { buildRing, expand, rentSpot, rankWalls } from "./aggressive";
+import { buildRing, expand, onWallRing, rentSpot, rankWalls } from "./aggressive";
 import { moveHero, playArmy } from "./army";
 import {
   computeBalance,
@@ -300,6 +300,8 @@ function findSpot(
     for (const [dc, dr] of ring) {
       const col = core.col + dc;
       const row = core.row + dr;
+      if (building !== "wall" && building !== "gate" &&
+        onWallRing(team, core, col, row, content.buildings[building]!.footprint)) continue;
       if (canPlace(world, content, team.id, building, col, row, cost) === null)
         return { col, row };
     }
