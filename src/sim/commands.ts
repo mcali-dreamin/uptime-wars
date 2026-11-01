@@ -267,6 +267,7 @@ function applyOrder(ctx: TickContext, command: OrderCommand): string | null {
     if (unit.mode === "builder") {
       unit.moveTo = landing(world, point.x, point.y, unit.radius);
       unit.foundAt = null;
+      unit.agentRetreating = false;
       continue;
     }
     unit.commanded = true;
@@ -312,6 +313,7 @@ function moveBuilder(ctx: TickContext, command: Extract<Command, { type: "move" 
     builder.moveTo = landing(world, command.x, command.y, builder.radius);
     builder.foundAt = null;
   }
+  builder.agentRetreating = false;
   return null;
 }
 

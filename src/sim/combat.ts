@@ -10,7 +10,9 @@ import { invulnerable, nestShielded, retaliate } from "./fortress";
 import { loseUsers } from "./economy";
 import { clearedCamp } from "./neutrals";
 import { dropLoot, itemTotals } from "./items";
-import { TILE } from "./map";
+import { TILE, TICK_RATE } from "./map";
+import { isCore } from "./placement";
+import { nearestFit } from "./nav";
 import { hasLineOfSight } from "./nav";
 import { heightAtTile } from "./terrain";
 import { HIGH_GROUND_DAMAGE, LOW_GROUND_SIGHT } from "./tuning";
@@ -130,6 +132,24 @@ export function dealDamage(
   }
   const wasAlive = target.hp > 0;
   target.hp -= damage;
+  if (target.kind === "unit" && target.mode === "builder" && owner && owner.coreId !== -1 && hostile(world, attacker.team, target.team) && damage > 0) {
+    const fresh = target.agentHitTick === undefined || world.tick - target.agentHitTick >= 5 * TICK_RATE;
+    target.agentHitTick = world.tick;
+    if (fresh && target.hp > 0) {
+      target.foundAt = null;
+      // Nearest living, finished core; id breaks equal-distance ties deterministically.
+      const cores = world.entities.filter((e) => e.kind === "building" && e.team === target.team && e.hp > 0 && e.buildRemaining === 0 && isCore(content, owner, e));
+      const distanceSq = (e: Entity) => {
+        const dx = e.x - target.x;
+        const dy = e.y - target.y;
+        return dx * dx + dy * dy;
+      };
+      cores.sort((a, b) => distanceSq(a) - distanceSq(b) || a.id - b.id);
+      const core = cores[0];
+      target.moveTo = core ? nearestFit(world.terrain, core.x, core.y, target.radius) ?? { x: core.x, y: core.y } : null;
+      target.agentRetreating = core !== undefined;
+    }
+  }
   // An owned site never dies: at 0 it goes dark (neutral) at a share of its hp, and can be taken again.
   if (wasAlive && target.hp <= 0 && target.kind === "building" && isSite(content, target)) {
     target.hp = Math.max(1, Math.round((target.maxHp * content.neutrals.sites.rearmPermille) / 1000));

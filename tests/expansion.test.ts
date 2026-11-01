@@ -23,6 +23,10 @@ import {
   type Unit,
   type World,
 } from "../src/sim";
+import { expand } from "../src/sim/ai/aggressive";
+import { dealDamage } from "../src/sim/combat";
+import { makeContext } from "../src/sim/context";
+import { TICK_RATE } from "../src/sim/map";
 import { pastLimit } from "../src/sim/tiers";
 import { placeBuilding } from "../src/sim/entities";
 import { content, SETUP } from "./fixtures";
@@ -74,6 +78,59 @@ function openNear(world: World, from: { col: number; row: number }, min: number,
   }
   return null;
 }
+
+describe("deploy agent retreat", () => {
+  it("abandons its site on a fresh hit, obeys a later order, and retreats again after a quiet spell", () => {
+    const { world, agent, core } = withAgent();
+    const attacker = world.entities.find((e) => e.team === 1)!;
+    const hit = () => dealDamage(makeContext(world, content), attacker, agent, 1);
+    agent.foundAt = { col: 20, row: 20 };
+    agent.moveTo = { x: 1000, y: 1000 };
+    hit();
+    expect(agent.foundAt).toBeNull();
+    expect(agent.agentRetreating).toBe(true);
+    const retreat = { ...agent.moveTo! };
+    expect(Math.hypot(retreat.x - core.x, retreat.y - core.y)).toBeLessThan(200);
+    // A normal player move supersedes retreat, even under sustained fire.
+    queueCommand(world, { type: "order", unitIds: [agent.id], attack: false, tick: world.tick, team: 0, x: agent.x, y: agent.y });
+    step(world, content);
+    expect(agent.agentRetreating).toBe(false);
+    const ordered = agent.moveTo && { ...agent.moveTo };
+    hit();
+    expect(agent.moveTo).toEqual(ordered);
+    expect(agent.agentRetreating).toBe(false);
+    world.tick += 5 * TICK_RATE;
+    hit();
+    expect(agent.agentRetreating).toBe(true);
+    expect(agent.moveTo).toEqual(retreat);
+  });
+
+  it("the AI leaves a retreating or recently hit idle agent alone", () => {
+    const { world, team, agent } = withAgent();
+    const issued: unknown[] = [];
+    agent.agentHitTick = world.tick;
+    agent.agentRetreating = true;
+    agent.moveTo = { x: 1000, y: 1000 };
+    expand(world, content, team, content.difficulties.normal!, (c) => issued.push(c));
+    agent.moveTo = null;
+    agent.agentRetreating = false;
+    world.tick += 9 * TICK_RATE;
+    expand(world, content, team, content.difficulties.normal!, (c) => issued.push(c));
+    expect(issued).toEqual([]);
+  });
+
+  it("never retreats the match-start builder", () => {
+    const { world, team, agent } = withAgent();
+    team.coreId = -1;
+    const site = { col: 20, row: 20 };
+    agent.foundAt = site;
+    agent.moveTo = { x: 1000, y: 1000 };
+    dealDamage(makeContext(world, content), world.entities.find((e) => e.team === 1)!, agent, 1);
+    expect(agent.foundAt).toEqual(site);
+    expect(agent.moveTo).toEqual({ x: 1000, y: 1000 });
+    expect(agent.agentRetreating).toBeUndefined();
+  });
+});
 
 describe("expansion tier limits", () => {
   function train(world: World) {

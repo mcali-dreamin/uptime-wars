@@ -17,9 +17,24 @@ function base(): { world: World; rack: Building; core: Building } {
   return { world, rack, core };
 }
 
-const shotAt = (target: Building, team = 1): SimEvent => ({ type: "shot", from: 999, to: target.id, x1: 0, y1: 0, x2: target.x, y2: target.y, team });
+const shotAt = (target: Building | Unit, team = 1): SimEvent => ({ type: "shot", from: 999, to: target.id, x1: 0, y1: 0, x2: target.x, y2: target.y, team });
 
 describe("alerts", () => {
+  it("warns about the local expansion agent even on screen, throttled separately from its loss", () => {
+    const { world } = base();
+    const proto = world.entities.find((e): e is Unit => e.kind === "unit")!;
+    const agent: Unit = { ...proto, id: 99999, team: 0, mode: "builder", agentRetreating: true };
+    world.entities.push(agent);
+    const alerts = new Alerts(content);
+    expect(alerts.update(world, [shotAt(agent)], 0, 0, onScreen)).toMatchObject([{ kind: "agentAttack", text: "Your deploy agent is under attack · it's heading back" }]);
+    expect(alerts.update(world, [shotAt(agent)], 0, 5, onScreen)).toEqual([]);
+    agent.agentRetreating = false;
+    expect(alerts.update(world, [shotAt(agent)], 0, 10, onScreen)[0]?.text).toBe("Your deploy agent is under attack · Space to look");
+    expect(new Alerts(content).update(world, [shotAt(agent)], 1, 0, offScreen)).toEqual([]);
+    expect(new Alerts(content).update(world, [shotAt(agent, 0)], 0, 0, offScreen)).toEqual([]);
+    world.teams[0]!.coreId = -1;
+    expect(new Alerts(content).update(world, [shotAt(agent)], 0, 0, onScreen)).toEqual([]);
+  });
   it("an off-screen hit on your base alerts once, then stays quiet while the siege goes on", () => {
     const { world, rack } = base();
     const alerts = new Alerts(content);
@@ -146,7 +161,7 @@ describe("alerts", () => {
       const agent = addUnit(world, 0, 500, 600, "builder");
       const foe = addUnit(world, 1, 600, 600, "roam");
       const alerts = new Alerts(content);
-      expect(alerts.update(world, [shot(foe.id, agent.id, 1)], 0, 0, offScreen)).toEqual([]);
+      expect(alerts.update(world, [shot(foe.id, agent.id, 1)], 0, 0, offScreen).map((a) => a.kind)).toEqual(["agentAttack"]);
       expect(alerts.update(world, [shot(agent.id, foe.id, 0)], 0, 1, offScreen)).toEqual([]);
     });
 
