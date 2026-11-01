@@ -138,6 +138,16 @@ export interface UnitRank {
   worth?: number;
 }
 
+/** Cumulative durability relative to an unranked segment, with a flat refit price. */
+export interface WallRank {
+  name: string;
+  tier: number;
+  cost: number;
+  ticks: number;
+  hpPermille: number;
+  armor: number;
+}
+
 export interface SpawnerRank extends UnitRank {
   /** Core tier it needs. */
   tier: number;
@@ -336,6 +346,7 @@ export interface WavesDef {
  * take damage.
  */
 export interface EconomyDef {
+  wallRanks: WallRank[];
   startingUsers: number;
   /** Each second, this fraction of the gap to capacity arrives... */
   growthPerSecond: number;

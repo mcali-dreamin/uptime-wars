@@ -462,12 +462,15 @@ export class World3D implements WorldView {
       const cold = frame.content.buildings[entity.defId]?.invoke !== undefined && !running.has(entity.id);
       const building = entity.buildRemaining > 0;
       // Mid rank-up it's a hologram too: being rebuilt, not working.
-      const holo = building || cold || (entity.refitRemaining ?? 0) > 0;
+      const wall = entity.defId === "wall" || entity.defId === "gate";
+      const holo = building || cold || (!wall && (entity.refitRemaining ?? 0) > 0);
       if (holo !== s.holo) this.setHologram(s, holo);
       // A core grows with its team's tier: Data Center, then Region. A spawner with its rank.
       const owner = frame.world.teams[entity.team];
       const grow = owner && isCore(frame.content, owner, entity) ? 1 + 0.18 * tierOf(frame.content, owner) : 1 + 0.14 * (entity.rank ?? 0);
-      s.object.scale.set(grow, building ? Math.max(0.08, entity.hp / entity.maxHp) * grow : grow, grow);
+      // Segment footprint stays aligned; thicker and taller caps make each rank read as heavier.
+      const width = wall ? 1 + 0.06 * (entity.rank ?? 0) : grow;
+      s.object.scale.set(width, building ? Math.max(0.08, entity.hp / entity.maxHp) * grow : grow, width);
       if (entity.defId === "wall" || entity.defId === "gate") {
         this.fortifications.add(s.object);
         // Keep the original for picking, health bars and hit bookkeeping only.

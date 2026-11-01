@@ -4,7 +4,7 @@
 // Two sizes: a compact card for the on-screen panel (a name and a line or
 // two of numbers) and full detail for the Guide.
 
-import { MAX_ITEMS, upgradeName, TICK_RATE, levelOf, nextQueued, queuedCount, sellValue, type Content, type ItemDef, type SpawnerRank, type Team } from "../sim";
+import { MAX_ITEMS, upgradeName, TICK_RATE, levelOf, nextQueued, queuedCount, sellValue, type Content, type ItemDef, type SpawnerRank, type WallRank, type Team } from "../sim";
 import { HIGH_GROUND_DAMAGE } from "../sim/tuning";
 import { burstLine, perkChanges, rankChange, secs as seconds, traitLine, unitRuleLines } from "./text";
 
@@ -274,7 +274,8 @@ export function upgradeDetail(content: Content, upgrade: string, raceId?: string
 }
 
 /** What one spawner rank does, in a line: "+40% HP, +50% damage, +2 armor · 1.6× compute". */
-export function rankEffect(rank: SpawnerRank): string {
+export function rankEffect(rank: SpawnerRank | WallRank): string {
+  if ("cost" in rank) return `${rank.hpPermille / 10}% base HP, +${rank.armor} armor`;
   const pct = (permille: number) => `${permille >= 1000 ? "+" : ""}${Math.round((permille - 1000) / 10)}%`;
   const parts = [`${pct(rank.hpPermille)} HP`, `${pct(rank.damagePermille)} damage`];
   if (rank.armor) parts.push(`+${rank.armor} armor`);

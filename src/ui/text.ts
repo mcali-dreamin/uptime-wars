@@ -14,6 +14,7 @@ import {
   type CreepRole,
   type RaceDef,
   type SpawnerRank,
+  type WallRank,
   type TraitDef,
   type UnitDef,
 } from "../sim";
@@ -192,7 +193,9 @@ export function perkChanges(content: Content, raceId: string, tier: number): str
  * What ranking a spawner up does to its units, in their numbers:
  * "Lambda 40 → 56 HP, 6 → 8 damage, squad 3 → 3, burst 4 → 5, 1 → 1 compute each".
  */
-export function rankChange(content: Content, raceId: string, buildingId: string, from: SpawnerRank | null, to: SpawnerRank): string {
+export function rankChange(content: Content, raceId: string, buildingId: string, from: SpawnerRank | WallRank | null, to: SpawnerRank | WallRank): string {
+  if ("cost" in to) return `${(from?.hpPermille ?? 1000) / 10}% → ${to.hpPermille / 10}% base HP, +${from?.armor ?? 0} → +${to.armor} armor`;
+  const previous = from && "damagePermille" in from ? from : null;
   const def = content.buildings[buildingId]!;
   const unitId = def.spawn?.unit ?? def.invoke?.unit;
   if (!unitId) return "";
@@ -200,20 +203,20 @@ export function rankChange(content: Content, raceId: string, buildingId: string,
   const hpMult = modifiersAtTier(content, raceId, to.tier).unitHpMultiplier;
   const hp = (r: SpawnerRank | null) => Math.round((Math.round(unit.hp * hpMult) * (r?.hpPermille ?? 1000)) / 1000);
   const damage = (r: SpawnerRank | null) => +((unit.damage * (r?.damagePermille ?? 1000)) / 1000).toFixed(1);
-  const parts = [`${hp(from)} → ${hp(to)} HP`];
-  if (unit.damage > 0) parts.push(`${damage(from)} → ${damage(to)} damage`);
+  const parts = [`${hp(previous)} → ${hp(to)} HP`];
+  if (unit.damage > 0) parts.push(`${damage(previous)} → ${damage(to)} damage`);
   const armor = (r: SpawnerRank | null) => unit.armor + (r?.armor ?? 0);
-  if (armor(from) !== armor(to)) parts.push(`armor ${armor(from)} → ${armor(to)}`);
+  if (armor(previous) !== armor(to)) parts.push(`armor ${armor(previous)} → ${armor(to)}`);
   if (def.spawn) {
     const squad = (r: SpawnerRank | null) => Math.max(1, def.spawn!.maxAlive + (r?.maxAlive ?? 0));
-    if (squad(from) !== squad(to)) parts.push(`squad ${squad(from)} → ${squad(to)}`);
+    if (squad(previous) !== squad(to)) parts.push(`squad ${squad(previous)} → ${squad(to)}`);
   }
   if (def.invoke) {
     const burst = (r: SpawnerRank | null) => Math.max(1, def.invoke!.count + (r?.burst ?? 0));
-    if (burst(from) !== burst(to)) parts.push(`burst ${burst(from)} → ${burst(to)}`);
+    if (burst(previous) !== burst(to)) parts.push(`burst ${burst(previous)} → ${burst(to)}`);
   }
   const upkeep = unitUpkeep(content, unitId);
-  parts.push(`${rankedUpkeep(upkeep, from)} → ${rankedUpkeep(upkeep, to)} compute each`);
+  parts.push(`${rankedUpkeep(upkeep, previous)} → ${rankedUpkeep(upkeep, to)} compute each`);
   return `${unit.name} ${parts.join(", ")}`;
 }
 

@@ -195,14 +195,16 @@ export class InfoPanel {
     if (entity.team !== this.session.local || entity.buildRemaining > 0) return;
     const { content, world } = this.session;
     const rank = buildingRank(content, world, entity);
+    if (!rank && (entity.defId === "wall" || entity.defId === "gate")) lines.push("Rank 0 · Standard");
     if (rank) lines.push(`Rank ${entity.rank} · ${rank.name}: ${rankEffect(rank)}`);
     if ((entity.refitRemaining ?? 0) > 0) {
-      lines.push(`Upgrading · ${Math.ceil(entity.refitRemaining! / TICK_RATE)}s · not spawning`);
+      lines.push(`Upgrading · ${Math.ceil(entity.refitRemaining! / TICK_RATE)}s · ${entity.defId === "wall" || entity.defId === "gate" ? "still blocking" : "not spawning"}`);
       return;
     }
     const next = nextRank(content, world, entity);
     const price = rankCost(content, world, entity);
     if (!next || price === null) return;
+    lines.push(`Requires ${content.economy.tiers[next.tier]!.name} · $${price} per building`);
     const blocker = rankBlocker(content, world, this.session.local, entity);
     lines.push(`Next · ${next.name}: ${rankChange(content, this.session.team.raceId, entity.defId, rank, next)}`);
     this.rankButton.hidden = false;
