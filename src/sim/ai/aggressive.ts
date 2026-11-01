@@ -9,7 +9,8 @@ import { TICK_RATE } from "../map";
 import { buildCost, canFound, canPlace, expansionBlocker } from "../placement";
 import { nextLevel } from "../upgrades";
 import { isWall, rankBlocker, rankCost } from "../ranks";
-import type { Command, Team, World } from "../types";
+import { raceMechanics, tierOf } from "../tiers";
+import type { Building, Command, Team, World } from "../types";
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
   ? Omit<T, K>
@@ -52,13 +53,31 @@ function surplus(world: World, content: Content, team: Team, level: DifficultyDe
   return budget;
 }
 
+/** Enclosure races wall up strategically; everyone else waits for the compute cap. */
+function wantsWalls(world: World, content: Content, team: Team): boolean {
+  if (tierOf(content, team) >= 1 && raceMechanics(content, team).enclosure) return true;
+  const { supply, demand } = computeBalance(world, content, team);
+  return supply - demand < squadReserve(world, content, team);
+}
+
+/** Does any tile of this footprint touch the team's planned ring? */
+export function onWallRing(team: Team, core: Building, col: number, row: number, footprint: number): boolean {
+  const ring = team.ai?.wallRing;
+  if (!ring || ring.coreId !== core.id) return false;
+  for (let r = row; r < row + footprint; r++) {
+    for (let c = col; c < col + footprint; c++) {
+      if (Math.max(Math.abs(c - core.col), Math.abs(r - core.row)) === ring.radius) return true;
+    }
+  }
+  return false;
+}
+
 /** A stable square, two empty tiles beyond the main base's existing footprint.
  * Ignore remote expansions and fortifications when choosing it; remember it so
  * subsequent base growth (or losses) cannot turn it into concentric rings.
  */
 export function buildRing(world: World, content: Content, team: Team, level: DifficultyDef, issue: (c: Order) => unknown): void {
-  const { supply, demand } = computeBalance(world, content, team);
-  if (supply - demand >= squadReserve(world, content, team)) return;
+  if (!wantsWalls(world, content, team)) return;
   const core = world.entities.find(e => e.id === team.coreId);
   if (!core || core.kind !== "building" || core.hp <= 0 || core.buildRemaining > 0 || !team.ai) return;
   let budget = surplus(world, content, team, level);
@@ -93,8 +112,7 @@ export function buildRing(world: World, content: Content, team: Team, level: Dif
 }
 
 export function rankWalls(world: World, content: Content, team: Team, level: DifficultyDef, issue: (c: Order) => unknown): void {
-  const { supply, demand } = computeBalance(world, content, team);
-  if (supply - demand >= squadReserve(world, content, team)) return;
+  if (!wantsWalls(world, content, team)) return;
   let budget = surplus(world, content, team, level);
   for (const e of world.entities) {
     if (e.kind !== "building" || !isWall(e) || rankBlocker(content, world, team.id, e) !== null) continue;
