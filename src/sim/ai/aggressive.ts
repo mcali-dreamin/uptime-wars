@@ -6,7 +6,9 @@
 import type { Content, DifficultyDef } from "../content";
 import { computeBalance, spotCost, spotState, squadReserve } from "../economy";
 import { TICK_RATE } from "../map";
-import { canFound, expansionBlocker } from "../placement";
+import { buildCost, canFound, expansionBlocker } from "../placement";
+import { nextLevel } from "../upgrades";
+import { isWall, rankBlocker, rankCost } from "../ranks";
 import type { Command, Team, World } from "../types";
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
@@ -28,6 +30,34 @@ export function rentSpot(
   if (supply - demand >= squadReserve(world, content, team)) return;
   if (team.money < spotCost(content, team) + level.tierReserve) return;
   issue({ type: "rentCompute" });
+}
+
+/** Spend only surplus, budgeting for earlier orders in this decision tick too. */
+export function rankWalls(world: World, content: Content, team: Team, level: DifficultyDef, issue: (c: Order) => unknown): void {
+  const { supply, demand } = computeBalance(world, content, team);
+  if (supply - demand >= squadReserve(world, content, team)) return;
+  let budget = team.money - level.tierReserve;
+  for (const c of world.commands) {
+    if (c.team !== team.id || c.tick !== world.tick) continue;
+    if (c.type === "rentCompute") budget -= spotCost(content, team);
+    if (c.type === "research") budget -= nextLevel(content, team, c.upgrade).cost;
+    if (c.type === "trainAgent") {
+      const core = world.entities.find(e => e.id === c.coreId);
+      if (core) budget -= content.buildings[core.defId]!.cost;
+    }
+    if (c.type === "build") budget -= buildCost(world, content, team.id, c.building);
+    if (c.type === "rank") {
+      const b = world.entities.find(e => e.id === c.buildingId);
+      if (b?.kind === "building") budget -= rankCost(content, world, b) ?? 0;
+    }
+  }
+  for (const e of world.entities) {
+    if (e.kind !== "building" || !isWall(e) || rankBlocker(content, world, team.id, e) !== null) continue;
+    const price = rankCost(content, world, e)!;
+    if (price > budget || world.commands.some(c => c.team === team.id && c.type === "rank" && c.buildingId === e.id)) continue;
+    budget -= price;
+    issue({ type: "rank", buildingId: e.id });
+  }
 }
 
 /** Train a deploy agent when affordable and none is out; send an idle one to the nearest free site and found there. */

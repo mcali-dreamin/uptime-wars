@@ -12,7 +12,7 @@
 
 import type { Content, DifficultyDef } from "../content";
 import { queueCommand } from "../commands";
-import { expand, rentSpot } from "./aggressive";
+import { expand, rentSpot, rankWalls } from "./aggressive";
 import { moveHero, playArmy } from "./army";
 import {
   computeBalance,
@@ -76,6 +76,7 @@ export function tickAi(world: World, content: Content): void {
       if (level.aggressive) {
         rentSpot(world, content, team, level, issue);
         expand(world, content, team, level, issue);
+        rankWalls(world, content, team, level, issue);
       }
       if (level.attack) {
         playArmy(world, content, team, level.attack, issue);
@@ -161,6 +162,7 @@ function playBase(
     const rankable = world.entities.find(
       (e): e is Building =>
         e.kind === "building" &&
+        e.defId !== "wall" && e.defId !== "gate" &&
         rankBlocker(content, world, team.id, e as Building) === null,
     );
     if (rankable) {

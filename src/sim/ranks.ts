@@ -7,7 +7,7 @@
 // way. A building's rank applies to the units it spawns from then on; the
 // ones already out keep theirs. While it's refitting, it doesn't spawn or run.
 
-import type { Content, SpawnerRank, UnitRank } from "./content/schema";
+import type { Content, SpawnerRank, UnitRank, WallRank } from "./content/schema";
 import type { TickContext } from "./context";
 import { lagging } from "./economy";
 import { baseCost } from "./placement";
@@ -32,23 +32,32 @@ export function rankWorth(content: Content, world: World, unit: Unit): number {
   return unitRank(content, world, unit)?.worth ?? 1;
 }
 
+export function isWall(building: Building): boolean {
+  return building.defId === "wall" || building.defId === "gate";
+}
+
+function buildingRanks(content: Content, world: World, building: Building): (SpawnerRank | WallRank)[] {
+  return isWall(building) ? content.economy.wallRanks : ranksOf(content, world.teams[building.team]);
+}
+
 /** The rank a building is at, or null at rank 0. */
-export function buildingRank(content: Content, world: World, building: Building): SpawnerRank | null {
+export function buildingRank(content: Content, world: World, building: Building): SpawnerRank | WallRank | null {
   if (!building.rank) return null;
-  return ranksOf(content, world.teams[building.team])[building.rank - 1] ?? null;
+  return buildingRanks(content, world, building)[building.rank - 1] ?? null;
 }
 
 /** The next rank this building can go to, or null if it's at the top (or can't rank). */
-export function nextRank(content: Content, world: World, building: Building): SpawnerRank | null {
+export function nextRank(content: Content, world: World, building: Building): SpawnerRank | WallRank | null {
   const def = content.buildings[building.defId]!;
-  if (!def.spawn && !def.invoke) return null;
-  return ranksOf(content, world.teams[building.team])[building.rank ?? 0] ?? null;
+  if (!isWall(building) && !def.spawn && !def.invoke) return null;
+  return buildingRanks(content, world, building)[building.rank ?? 0] ?? null;
 }
 
 /** What the next rank costs, or null if there isn't one. */
 export function rankCost(content: Content, world: World, building: Building): number | null {
   const next = nextRank(content, world, building);
   if (!next) return null;
+  if ("cost" in next) return next.cost;
   const team = world.teams[building.team]!;
   return Math.round((baseCost(content, team.raceId, building.defId) * next.costPermille) / 1000);
 }
@@ -110,6 +119,15 @@ export function tickRefits(ctx: TickContext): void {
     entity.refitRemaining! -= 1;
     if (entity.refitRemaining! > 0) continue;
     delete entity.refitRemaining;
+    if (isWall(entity)) {
+      const before = buildingRank(ctx.content, world, entity);
+      const after = nextRank(ctx.content, world, entity)!;
+      const ratio = after.hpPermille / (before?.hpPermille ?? 1000);
+      const oldMax = entity.maxHp;
+      entity.maxHp = Math.round(oldMax * ratio);
+      entity.hp = Math.max(1, Math.round(entity.hp * entity.maxHp / oldMax));
+      entity.armor += after.armor - (before?.armor ?? 0);
+    }
     entity.rank = (entity.rank ?? 0) + 1;
     world.events.push({ type: "ranked", id: entity.id, team: entity.team, rank: entity.rank, x: entity.x, y: entity.y });
   }
@@ -118,7 +136,7 @@ export function tickRefits(ctx: TickContext): void {
 /** Stamp a freshly spawned unit with its spawner's rank: tougher, harder-hitting, armored. */
 export function applyRank(content: Content, world: World, unit: Unit, building: Building): void {
   const rank = buildingRank(content, world, building);
-  if (rank) stampRank(unit, building.rank!, rank);
+  if (rank && "damagePermille" in rank) stampRank(unit, building.rank!, rank);
 }
 
 /** Give a fresh unit rank `level` (1-based): its hp and armor now, its damage through rankDamage. */
@@ -136,16 +154,16 @@ export function rankDamage(content: Content, world: World, unit: Unit): number {
 }
 
 /** Compute a unit at this rank uses, from its plain upkeep. Integer. */
-export function rankedUpkeep(base: number, rank: UnitRank | null): number {
+export function rankedUpkeep(base: number, rank: UnitRank | WallRank | null): number {
   return rank && "upkeepPermille" in rank ? Math.round((base * (rank as SpawnerRank).upkeepPermille) / 1000) : base;
 }
 
 /** A spawner's standing squad at its rank (never below 1). */
 export function rankedMaxAlive(content: Content, world: World, building: Building, base: number): number {
-  return Math.max(1, base + (buildingRank(content, world, building)?.maxAlive ?? 0));
+  return Math.max(1, base + ((buildingRank(content, world, building) as SpawnerRank | null)?.maxAlive ?? 0));
 }
 
 /** A function's burst size at its rank (never below 1). */
 export function rankedBurst(content: Content, world: World, building: Building, base: number): number {
-  return Math.max(1, base + (buildingRank(content, world, building)?.burst ?? 0));
+  return Math.max(1, base + ((buildingRank(content, world, building) as SpawnerRank | null)?.burst ?? 0));
 }

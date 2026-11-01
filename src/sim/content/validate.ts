@@ -4,6 +4,14 @@ import { RACE_LOOKS, type Content } from "./schema";
 export function validateContent(content: Content): void {
   const errors: string[] = [];
 
+  if (!Array.isArray(content.economy.wallRanks) || content.economy.wallRanks.length !== 3) errors.push("wall ranks need three levels");
+  for (const [i, rank] of (content.economy.wallRanks ?? []).entries()) {
+    const previous = content.economy.wallRanks[i - 1];
+    if (!rank.name?.trim() || !Number.isInteger(rank.tier) || rank.tier < 0 || rank.tier >= content.economy.tiers.length) errors.push(`wall rank ${i + 1} needs a name and known core tier`);
+    if (![rank.cost, rank.ticks, rank.hpPermille, rank.armor].every(Number.isInteger) || !(rank.cost > 0) || !(rank.ticks > 0) || !(rank.hpPermille > (previous?.hpPermille ?? 1000)) || !(rank.armor > (previous?.armor ?? 0))) errors.push(`wall rank ${i + 1} needs positive integer cost/ticks and increasing hp/armor`);
+    if (previous && rank.tier < previous.tier) errors.push(`wall rank ${i + 1} tier must not decrease`);
+  }
+
   const ROLES = ["scanner", "phisher", "miner", "jammer", "siege"];
   for (const [id, unit] of Object.entries(content.units)) {
     if (unit.role && !ROLES.includes(unit.role.kind)) errors.push(`unit ${id} has unknown role ${(unit.role as { kind: string }).kind}`);

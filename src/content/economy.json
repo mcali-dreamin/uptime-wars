@@ -1,4 +1,9 @@
 {
+  "wallRanks": [
+    { "name": "Reinforced", "tier": 1, "cost": 80, "ticks": 60, "hpPermille": 1500, "armor": 2 },
+    { "name": "Hardened", "tier": 2, "cost": 200, "ticks": 80, "hpPermille": 2100, "armor": 4 },
+    { "name": "Fortified", "tier": 2, "cost": 450, "ticks": 100, "hpPermille": 2800, "armor": 6 }
+  ],
   "startingUsers": 5,
   "growthPerSecond": 0.04,
   "minArrivalsPerSecond": 1,
