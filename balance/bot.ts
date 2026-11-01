@@ -38,6 +38,8 @@ export interface BotResult {
   /** Seconds the core stayed up (capped at the run length). */
   survived: number;
   survivedAll: boolean;
+  /** The match ended with this team among the winners (the nest went offline). */
+  won: boolean;
   tier: number;
   casts: number;
   heroLevel: number;
@@ -156,6 +158,7 @@ export function playMatch(
     seed,
     survived: (world.outcome?.tick ?? world.tick) / TICK_RATE,
     survivedAll: !world.outcome,
+    won: world.outcome?.winners.includes(team.id) ?? false,
     tier: tierOf(content, team),
     casts: team.ai!.casts,
     heroLevel: team.hero?.level ?? 0,
