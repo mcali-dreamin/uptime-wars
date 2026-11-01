@@ -4,20 +4,25 @@ import { enclosedGround } from "./placement";
 import { raceMechanics } from "./tiers";
 import type { Building, TeamId, World } from "./types";
 
-const cache = new WeakMap<World, Map<TeamId, { key: string; ground: Uint8Array }>>();
+const cache = new WeakMap<World, Map<TeamId, { tick: number; key: string; ground: Uint8Array }>>();
 
 export function enclosureGround(world: World, content: Content, team: TeamId): Uint8Array | undefined {
   if (!raceMechanics(content, world.teams[team]!).enclosure) return undefined;
-  // Like nav.builtKey, but read live entities: a breach during combat must
-  // take effect even before the navigation overlay next synchronizes.
-  let key = world.teams.map((t) => `${t.id}:${t.raceId}`).join(",") + world.allies.join(",");
-  for (const e of world.entities) if (e.kind === "building" && e.hp > 0) key += `${e.id}:${e.team},`;
   let teams = cache.get(world);
   if (!teams) cache.set(world, teams = new Map());
   const old = teams.get(team);
-  if (old?.key === key) return old.ground;
+  // Combat and income ask per hit and per Web App: check for changes once a tick.
+  if (old?.tick === world.tick) return old.ground;
+  // Like nav.builtKey, but read live entities: a breach takes effect the next
+  // tick, before the navigation overlay next synchronizes.
+  let key = world.teams.map((t) => `${t.id}:${t.raceId}`).join(",") + world.allies.join(",");
+  for (const e of world.entities) if (e.kind === "building" && e.hp > 0) key += `${e.id}:${e.team},`;
+  if (old?.key === key) {
+    old.tick = world.tick;
+    return old.ground;
+  }
   const ground = enclosedGround(world, content, team);
-  teams.set(team, { key, ground });
+  teams.set(team, { tick: world.tick, key, ground });
   return ground;
 }
 

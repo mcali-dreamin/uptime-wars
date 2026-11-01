@@ -26,6 +26,7 @@ describe("Walled Garden enclosure", () => {
     expect(enclosureBonus(world, content, app)?.armor).toBe(3);
     expect(enclosureRevenueFactor(world, content, 0)).toBe(1.25);
     ring[3]!.hp = 0;
+    world.tick += 1; // the enclosure is refreshed once a tick
     expect(enclosureBonus(world, content, app)).toBeUndefined();
     expect(enclosureRevenueFactor(world, content, 0)).toBe(1);
   });
@@ -40,6 +41,7 @@ describe("Walled Garden enclosure", () => {
     team.users = 20;
     const protectedIncome = incomeRate(world, content, team).users;
     ring[3]!.hp = 0;
+    world.tick += 1; // the enclosure is refreshed once a tick
     const breachedHp = app.hp;
     dealDamage(makeContext(world, content), attacker, app, 20, true);
     expect(breachedHp - app.hp).toBe(protectedDamage + 3);
@@ -50,6 +52,7 @@ describe("Walled Garden enclosure", () => {
     const { world, app, ring } = garden("walled-garden", true);
     expect(enclosureBonus(world, content, app)?.armor).toBe(3);
     ring.find((e) => e.defId === "gate")!.hp = 0;
+    world.tick += 1; // the enclosure is refreshed once a tick
     expect(enclosureBonus(world, content, app)).toBeUndefined();
   });
   it("caches by standing buildings, refreshing on death and rebuilding", () => {
@@ -60,9 +63,11 @@ describe("Walled Garden enclosure", () => {
     expect(enclosureGround(world, content, 0)).toBe(initial);
     const wall = ring[3]!;
     wall.hp = 0;
+    world.tick += 1; // the enclosure is refreshed once a tick
     const breached = enclosureGround(world, content, 0);
     expect(breached).not.toBe(initial);
     placeBuilding(world, content, 0, "wall", wall.col, wall.row, true);
+    world.tick += 1; // the enclosure is refreshed once a tick
     expect(enclosureGround(world, content, 0)).not.toBe(breached);
     expect(enclosureBonus(world, content, app)?.armor).toBe(3);
   });
@@ -75,11 +80,15 @@ describe("Walled Garden enclosure", () => {
   it("requires the entire footprint and excludes hostile starting ground", () => {
     const { world, app } = garden();
     app.col = 9;
+    world.tick += 1; // the enclosure is refreshed once a tick
     expect(enclosureBonus(world, content, app)).toBeUndefined();
     app.col = 12;
+    world.tick += 1; // the enclosure is refreshed once a tick
     world.terrain.nest = { col: 13, row: 13 };
+    world.tick += 1; // the enclosure is refreshed once a tick
     // A fresh world cache is unnecessary in real play (terrain is immutable).
     placeBuilding(world, content, 0, "wall", 30, 30, true);
+    world.tick += 1; // the enclosure is refreshed once a tick
     expect(enclosureBonus(world, content, app)).toBeUndefined();
   });
 });
