@@ -18,10 +18,12 @@ type LobbyMessage =
       heroes: (string | null | undefined)[];
       you: TeamId;
       mode?: MatchMode;
+      hordeDifficulty?: string;
       rules?: MatchRules;
       /** A difficulty per computer seat (null for people). */
       ai?: (string | null | undefined)[];
     }
+  | { t: "horde-difficulty"; id: string }
   | LockstepMessage;
 
 /** A seat the host gave to a computer player. */
@@ -38,6 +40,7 @@ export interface ComputerSeat {
 export interface LobbyRules extends Partial<MatchRules> {
   mode?: MatchMode;
   horde: boolean;
+  hordeDifficulty?: string;
 }
 
 export const COOP: LobbyRules = { mode: "coop", horde: true };
@@ -69,6 +72,7 @@ export function lobbySetup(
   const { rules, horde } = composeRules(setup, people.length + computers.length);
   return {
     seed,
+    hordeDifficulty: setup.hordeDifficulty ?? "normal",
     rules,
     races: [...people.map((p) => p.race), ...computers.map((c) => c.race), ...(horde ? [HORDE_RACE] : [])],
     heroes: people.map((p) => p.hero),
@@ -98,6 +102,7 @@ export class HostLobby {
 
   /** Seats the host gave to computers: they count against the seats left for friends. */
   computers = 0;
+  hordeDifficulty = "normal";
 
   constructor(private readonly content: Content) {}
 
@@ -112,6 +117,7 @@ export class HostLobby {
     link.onMessage = (raw) => {
       const message = raw as LobbyMessage;
       if (message.t === "hello" && !this.lockstep) {
+        link.send({ t: "horde-difficulty", id: this.hordeDifficulty } satisfies LobbyMessage);
         guest.race = this.content.races[message.race]?.controller === "human" ? message.race : null;
         // An unknown hero falls back to the race's default rather than breaking the match.
         guest.hero = guest.race && this.content.races[guest.race]!.heroes?.includes(message.hero ?? "") ? message.hero : undefined;
@@ -130,6 +136,7 @@ export class HostLobby {
       this.guests.splice(this.guests.indexOf(guest), 1);
       this.onChange();
     };
+    link.send({ t: "horde-difficulty", id: this.hordeDifficulty } satisfies LobbyMessage);
     this.onChange();
   }
 
@@ -145,7 +152,7 @@ export class HostLobby {
     this.guests.splice(0, this.guests.length, ...this.ready);
     const match = lobbySetup(seed, [{ race: hostRace, hero: hostHero }, ...this.guests.map((g) => ({ race: g.race!, hero: g.hero }))], computers, setup);
     for (const [i, guest] of this.guests.entries()) {
-      guest.link.send({ t: "start", seed, races: match.races, heroes: match.heroes ?? [], you: i + 1, rules: match.rules as MatchRules, ai: match.ai } satisfies LobbyMessage);
+      guest.link.send({ t: "start", seed, races: match.races, heroes: match.heroes ?? [], you: i + 1, rules: match.rules as MatchRules, ai: match.ai, hordeDifficulty: match.hordeDifficulty } satisfies LobbyMessage);
     }
     const world = createWorld(this.content, match);
     this.lockstep = new Lockstep(world, this.content, {
@@ -169,11 +176,12 @@ export class HostLobby {
 }
 
 /** A guest's side: say hello, wait for the host to start. */
-export function joinHost(content: Content, link: PeerLink, race: string, hero: string | undefined, onStart: (match: NetMatch) => void): void {
+export function joinHost(content: Content, link: PeerLink, race: string, hero: string | undefined, onStart: (match: NetMatch) => void, onDifficulty: (id: string) => void = () => {}): void {
   link.onMessage = (raw) => {
     const message = raw as LobbyMessage;
+    if (message.t === "horde-difficulty") return onDifficulty(message.id);
     if (message.t !== "start") return;
-    const world = createWorld(content, { seed: message.seed, races: message.races, heroes: message.heroes ?? [], mode: message.mode ?? "coop", rules: message.rules, ai: message.ai });
+    const world = createWorld(content, { seed: message.seed, races: message.races, heroes: message.heroes ?? [], mode: message.mode ?? "coop", rules: message.rules, ai: message.ai, hordeDifficulty: message.hordeDifficulty });
     const lockstep = new Lockstep(world, content, { local: message.you, host: false, send: (m) => link.send(m) });
     link.onMessage = (next) => {
       const m = next as LobbyMessage;

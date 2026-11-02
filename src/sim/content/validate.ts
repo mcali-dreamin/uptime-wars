@@ -23,6 +23,13 @@ export function validateContent(content: Content): void {
       errors.push(`building ${id} spawns unknown unit ${building.spawn.unit}`);
     }
   }
+  if (!content.hordeDifficulties.normal) errors.push("horde difficulties need normal");
+  for (const [id, d] of Object.entries(content.hordeDifficulties)) {
+    if (!d.name?.trim() || !d.description?.trim()) errors.push(`horde difficulty ${id} needs a name and description`);
+    if (!d.waves || Object.keys(d.waves).some((key) => key !== "maxAlive")) errors.push(`horde difficulty ${id} has unsupported waves overrides`);
+    const cap = d.waves?.maxAlive;
+    if (cap !== undefined && (!Number.isSafeInteger(cap) || cap <= 0)) errors.push(`horde difficulty ${id} maxAlive must be a positive integer`);
+  }
   for (const [id, d] of Object.entries(content.difficulties)) {
     if (d.heroEveryTicks <= 0 || d.buildEveryTicks <= 0) errors.push(`difficulty ${id} needs heroEveryTicks and buildEveryTicks > 0`);
     if (d.maxTier < 0 || d.maxTier >= content.economy.tiers.length) errors.push(`difficulty ${id} maxTier needs a known core tier`);

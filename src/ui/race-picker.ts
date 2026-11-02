@@ -30,6 +30,20 @@ export class RacePicker {
     telemetry?: Telemetry,
     private readonly onGuide: () => void = () => {},
   ) {
+    const label = document.createElement("label");
+    label.textContent = "Horde difficulty ";
+    const select = document.createElement("select");
+    select.id = "horde-difficulty";
+    for (const [id, difficulty] of Object.entries(session.content.hordeDifficulties)) {
+      const option = document.createElement("option");
+      option.value = id;
+      option.textContent = `${difficulty.name} — ${difficulty.description}`;
+      select.append(option);
+    }
+    select.value = session.hordeDifficulty;
+    select.addEventListener("change", () => { session.hordeDifficulty = select.value; });
+    label.append(select);
+    $("picker-actions").prepend(label);
     $("play-solo").addEventListener("click", () => this.solo());
     $("quick-match").addEventListener("click", () => this.lobby("quick"));
     $("custom-match").addEventListener("click", () => this.lobby("custom"));
@@ -112,6 +126,7 @@ export class RacePicker {
   /** Keys while the home screen is open. Returns true when handled. */
   key(key: string, event?: KeyboardEvent): boolean {
     if (!this.open) return false;
+    if (document.activeElement?.id === "horde-difficulty") return true;
     if (this.race) {
       if (key === "escape") return this.show(), true;
       const hero = this.session.content.races[this.race]!.heroes![Number(key) - 1];

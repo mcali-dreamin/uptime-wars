@@ -1,0 +1,22 @@
+{
+  "easy": {
+    "name": "Easy",
+    "description": "A lighter horde with more breathing room to build.",
+    "waves": { "maxAlive": 300 }
+  },
+  "normal": {
+    "name": "Normal",
+    "description": "The original horde pressure, unchanged.",
+    "waves": {}
+  },
+  "hard": {
+    "name": "Hard",
+    "description": "A relentless horde that crowds the battlefield.",
+    "waves": { "maxAlive": 1000 }
+  },
+  "nightmare": {
+    "name": "Nightmare",
+    "description": "An overwhelming horde for the toughest defenses.",
+    "waves": { "maxAlive": 1500 }
+  }
+}

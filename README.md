@@ -344,6 +344,14 @@ Add `?debug` to the URL to expose live state as `window.uptime`.
 `await uptime.sim()` is the simulation module and `uptime.load(world)` watches
 any world you build with it, such as a reported match replayed to some minute.
 
+## Horde difficulty
+
+Choose **Easy**, **Normal**, **Hard**, or **Nightmare** on the race picker before playing. In co-op, the host chooses and guests see the selection. Normal is the original, unchanged experience.
+
+These levels change the horde's on-field cap, measured in creep worth: Easy **300**, Normal **500**, Hard **1000**, Nightmare **1500**. Ranked creeps count by their worth, not just their headcount. This is separate from computer-player skill. The selection travels with the deterministic match setup and appears on the outage screen and in match reports.
+
+For balance scripts, `BALANCE_HORDE=<id>` selects `easy`, `normal` (default), `hard`, or `nightmare`; results and the report header record it.
+
 ## How it's built
 
 ```

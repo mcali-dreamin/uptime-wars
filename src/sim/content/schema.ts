@@ -751,6 +751,13 @@ export interface ItemsDef {
   };
 }
 
+/** Horde pressure, separate from computer-player skill. Overrides only the on-field worth cap. */
+export interface HordeDifficultyDef {
+  name: string;
+  description: string;
+  waves: Partial<Pick<WavesDef, "maxAlive">>;
+}
+
 export interface Content {
   units: Record<string, UnitDef>;
   buildings: Record<string, BuildingDef>;
@@ -760,6 +767,7 @@ export interface Content {
   upgrades: Record<string, UpgradeDef>;
   heroes: HeroesDef;
   difficulties: Record<string, DifficultyDef>;
+  hordeDifficulties: Record<string, HordeDifficultyDef>;
   neutrals: NeutralsDef;
   items: ItemsDef;
 }

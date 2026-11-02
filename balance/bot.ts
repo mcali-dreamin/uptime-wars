@@ -25,6 +25,7 @@ export interface BotOptions {
   /** Aggressive AI: attacks Botnet Farms, expands, rents Spot (measures the late game). */
   aggressive: boolean;
   difficulty?: string;
+  hordeDifficulty?: string;
   /** Horde pressure in permille (default 1000 = unchanged). */
   pressure?: number;
   /** Test hook: called before every step. */
@@ -63,6 +64,7 @@ export interface BotResult {
   /** The team's own buildings destroyed. */
   buildingsLost: number;
   pressure: number;
+  hordeDifficulty: string;
   minutes: number;
 }
 
@@ -112,6 +114,7 @@ export function playMatch(
     races: [race, "botnet"],
     heroes: [heroId],
     startWithCore: true,
+    hordeDifficulty: options.hordeDifficulty,
     ai: [difficulty],
   });
   const team = world.teams[0]!;
@@ -174,6 +177,7 @@ export function playMatch(
     secondsBelowHalf: belowHalfTicks / TICK_RATE,
     buildingsLost,
     pressure: options.pressure ?? 1000,
+    hordeDifficulty: world.hordeDifficulty,
     minutes: options.minutes,
   };
 }

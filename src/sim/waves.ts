@@ -97,7 +97,7 @@ export function tickWaveDirector(ctx: TickContext): void {
   // The cap counts worth, not heads: a rank-3 creep fills eight slots.
   let alive = 0;
   for (const entity of world.entities) if (entity.kind === "unit" && entity.team === team.id) alive += rankWorth(content, world, entity);
-  while (state.pending.length > 0 && state.pending[0]!.tick <= world.tick && alive < waves.maxAlive) {
+  while (state.pending.length > 0 && state.pending[0]!.tick <= world.tick && alive < world.hordeWaves.maxAlive) {
     const spawn = state.pending.shift()!;
     // At its door (the opening), out of its node if that still stands, else the nest.
     const node = spawn.from === undefined ? undefined : ctx.byId.get(spawn.from);
