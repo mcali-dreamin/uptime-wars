@@ -27,6 +27,19 @@ export function traitsFor(content: Content, team: Team | undefined, unitId: stri
   return merged ?? NONE;
 }
 
+/** Researched building traits, restricted to the upgrade's races and targets. */
+export function buildingTraits(content: Content, team: Team | undefined, defId: string): TraitDef {
+  if (!team) return NONE;
+  let merged: TraitDef = NONE;
+  for (const [id, level] of Object.entries(team.upgrades)) {
+    const def = content.upgrades[id];
+    if (level <= 0 || def?.stat !== "trait" || !def.buildings?.includes(defId) || !def.trait) continue;
+    if (def.races && !def.races.includes(team.raceId)) continue;
+    merged = { ...merged, ...def.trait };
+  }
+  return merged;
+}
+
 /** A unit's def with its speed and range traits, and the team's Unit Speed upgrade, applied. */
 export function effectiveDef(content: Content, team: Team | undefined, unit: Unit, def: UnitDef): UnitDef {
   const t = traitsFor(content, team, unit.defId);

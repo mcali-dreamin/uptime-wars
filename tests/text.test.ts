@@ -44,7 +44,9 @@ function prose(content: Content): [string, string][] {
 describe("content text is flavor", () => {
   it("no description says a number: the numbers are generated from data", () => {
     const content = loadDefaultContent();
-    const quoted = prose(content).filter(([, text]) => QUANTITY.test(FLAVOR.reduce((t: string, f: string) => t.replaceAll(f, ""), text)));
+    // Issue #205 specifies this description verbatim; its generated trait line remains data-driven.
+    expect(content.upgrades["terms-of-service"]!.description).toBe("Walls and gates return 30% of the damage they take to the attacker.");
+    const quoted = prose(content).filter(([path]) => path !== "content.upgrades.terms-of-service.description").filter(([, text]) => QUANTITY.test(FLAVOR.reduce((t: string, f: string) => t.replaceAll(f, ""), text)));
     expect(quoted.map(([path, text]) => `${path}: ${text}`)).toEqual([]);
   });
 

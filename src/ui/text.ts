@@ -55,13 +55,14 @@ const TRAIT_TEXT: { [K in keyof TraitDef]-?: (value: NonNullable<TraitDef[K]>) =
   burstMult: (v) => `bursts ${times(v)} as big`,
   disarmTicks: (v) => `hits stop the enemy attacking for ${secs(v)}`,
   stunTicks: (v) => `hits stun the enemy for ${secs(v)}`,
+  reflectPermille: (v) => `returns ${v / 10}% of damage taken to the attacker`,
   holdArmor: (v) => `takes ${v} less from every hit while it holds its post`,
 };
 
 /** "Lambda: +2 in every squad and every burst". */
-export function traitLine(content: Content, unitId: string, trait: TraitDef): string {
+export function traitLine(content: Content, unitId: string | undefined, trait: TraitDef): string {
   const parts = (Object.keys(trait) as (keyof TraitDef)[]).map((key) => (TRAIT_TEXT[key] as (v: unknown) => string)(trait[key]));
-  return `${content.units[unitId]!.name}: ${parts.join("; ")}`;
+  return `${unitId ? content.units[unitId]!.name : "Walls and gates"}: ${parts.join("; ")}`;
 }
 
 // --- what a unit does beyond hitting things ---------------------------------------
@@ -112,6 +113,8 @@ const MODIFIER_FIELDS: { [K in keyof Modifiers]-?: Field } = {
   spawnIntervalMultiplier: ["spawn timers", change],
   costMultiplier: ["building prices", change],
   unitHpMultiplier: ["unit HP", change],
+  towerHpMultiplier: ["tower and core HP", change],
+  towerArmorBonus: ["tower and core armor", (v: number) => `+${v}`],
   startingMoneyBonus: ["", (v: number) => `+$${v} to start`],
   buildRadiusBonus: ["core reach", (v: number) => `+${v} tiles`],
   invokeCooldownMultiplier: ["burst cooldown", change],
@@ -123,6 +126,8 @@ const NEUTRAL: Partial<Record<keyof Modifiers, number>> = {
   spawnIntervalMultiplier: 1,
   costMultiplier: 1,
   unitHpMultiplier: 1,
+  towerHpMultiplier: 1,
+  towerArmorBonus: 0,
   startingMoneyBonus: 0,
   buildRadiusBonus: 0,
   invokeCooldownMultiplier: 1,

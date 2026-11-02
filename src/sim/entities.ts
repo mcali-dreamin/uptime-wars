@@ -14,10 +14,12 @@ import { raceModifiers, tierDef } from "./tiers";
 /** A building's max hp: Building HP research toughens all of them, and a core grows with its team's tier. */
 export function buildingMaxHp(world: World, content: Content, teamId: TeamId, defId: string): number {
   const team = world.teams[teamId];
-  const base = content.buildings[defId]!.hp;
+  const def = content.buildings[defId]!;
+  const base = def.hp;
   if (!team) return base;
   const core = content.races[team.raceId]?.core === defId ? tierDef(content, team).coreHp : 1;
-  return Math.round(base * core * multiplier(content, team, "buildingHp"));
+  const tower = def.attack ? raceModifiers(content, team).towerHpMultiplier : 1;
+  return Math.round(base * core * tower * multiplier(content, team, "buildingHp"));
 }
 
 export function placeBuilding(
@@ -44,7 +46,7 @@ export function placeBuilding(
     footprint: def.footprint,
     maxHp: buildingMaxHp(world, content, team, defId),
     hp: (instant ? 1 : CONSTRUCTION_START_HP) * buildingMaxHp(world, content, team, defId),
-    armor: def.armor,
+    armor: def.armor + (def.attack && world.teams[team] ? raceModifiers(content, world.teams[team]!).towerArmorBonus : 0),
     radius: (def.footprint * TILE) / 2,
     attackCooldown: 0,
     targetId: null,

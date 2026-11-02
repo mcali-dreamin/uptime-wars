@@ -22,7 +22,7 @@ import type { Entity } from "./types";
 import { heroShield } from "./heroes";
 import { raceMechanics } from "./tiers";
 import { bonus } from "./upgrades";
-import { afterHit, critMultiplier, onUnitDeath, traitArmor } from "./traits";
+import { afterHit, buildingTraits, critMultiplier, onUnitDeath, traitArmor } from "./traits";
 
 /** Attacks this close (edge to edge) are melee, for thorns. */
 const MELEE_RANGE = 40;
@@ -99,6 +99,7 @@ export function dealDamage(
   target: Entity,
   baseDamage: number,
   secondary = false,
+  reflected = false,
 ): void {
   const { world, content } = ctx;
   // A neutral site takes no damage from anyone.
@@ -117,7 +118,8 @@ export function dealDamage(
     carried +
     (target.kind === "building" ? bonus(content, owner, "buildingArmor") : bonus(content, owner, "unitArmor")) +
     traitArmor(content, world, target);
-  let damage = Math.max(1, Math.round(baseDamage * downhill) - armor);
+  // Reflected damage is already mitigated: return exactly the computed share.
+  let damage = reflected ? baseDamage : Math.max(1, Math.round(baseDamage * downhill) - armor);
   if (target.kind === "unit" && target.mode === "hero") {
     const state = world.teams[target.team]?.hero;
     if (state) state.lastHitTick = world.tick;
@@ -125,7 +127,7 @@ export function dealDamage(
   if (target.kind === "building") {
     target.lastHitTick = world.tick;
     const shield = Math.min(900, regionShield(world, content, target).permille + heroShield(world, target));
-    if (shield > 0) damage = Math.max(1, Math.round((damage * (1000 - shield)) / 1000));
+    if (!reflected && shield > 0) damage = Math.max(1, Math.round((damage * (1000 - shield)) / 1000));
   }
   // The nest can't be touched while a Botnet Farm stands.
   if (target.kind === "building" && nestShielded(world, content, target)) {
@@ -178,8 +180,13 @@ export function dealDamage(
   if (!secondary) afterHit(ctx, attacker, target, baseDamage, (to, amount) => dealDamage(ctx, attacker, to, amount, true));
   // A trait may keep it alive (revive) or split it on the way out.
   if (wasAlive && target.hp <= 0 && target.kind === "unit" && onUnitDeath(ctx, target)) return;
+  if (!reflected && wasAlive && target.kind === "building" && attacker.hp > 0 && attacker.id !== target.id) {
+    const permille = buildingTraits(content, owner, target.defId).reflectPermille ?? 0;
+    const returned = Math.floor((damage * permille) / 1000);
+    if (returned > 0) dealDamage(ctx, target, attacker, returned, true, true);
+  }
   // Thorns: a melee blow on a spiked building hits back (never twice: the attacker is a unit).
-  if (target.kind === "building" && attacker.kind === "unit" && attacker.hp > 0 && (attackerUnit?.range ?? Infinity) <= MELEE_RANGE) {
+  if (!reflected && target.kind === "building" && attacker.kind === "unit" && attacker.hp > 0 && (attackerUnit?.range ?? Infinity) <= MELEE_RANGE) {
     const thorns = raceMechanics(content, world.teams[target.team]!).thorns;
     if (thorns && thorns.buildings.includes(target.defId)) dealDamage(ctx, target, attacker, thorns.damage);
   }

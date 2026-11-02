@@ -371,6 +371,20 @@
       "burstMult": 2
     }
   },
+  "terms-of-service": {
+    "name": "Terms of Service",
+    "description": "Walls and gates return 30% of the damage they take to the attacker.",
+    "stat": "trait",
+    "perLevel": 0,
+    "maxLevel": 1,
+    "cost": 250,
+    "researchTicks": 600,
+    "at": "center",
+    "races": ["walled-garden"],
+    "tiers": [1],
+    "buildings": ["wall", "gate"],
+    "trait": { "reflectPermille": 300 }
+  },
   "shadowban": {
     "name": "Shadowban",
     "description": "Moderator hits stop an enemy attacking for a moment.",

@@ -228,6 +228,9 @@ export interface RaceDef {
     spawnIntervalMultiplier: number;
     costMultiplier: number;
     unitHpMultiplier: number;
+    /** HP multiplier and flat armor bonus for every building with an attack. */
+    towerHpMultiplier: number;
+    towerArmorBonus: number;
     /** Extra $ at the start of the match. */
     startingMoneyBonus: number;
     /** Extra tiles of reach on every core (default 0). Tier perks can change it. */
@@ -402,7 +405,7 @@ export interface EconomyDef {
 /**
  * "tier" is the core's tech tier (see EconomyDef.tiers): no multiplier, its level is the tier.
  * "buildingArmor" / "unitArmor" add perLevel flat armor per level.
- * "trait" unlocks a unit trait (see TraitDef) for `unit`.
+ * "trait" unlocks a trait (see TraitDef) for `unit` or `buildings`.
  */
 export type UpgradeStat =
   | "unitHp"
@@ -451,6 +454,8 @@ export interface TraitDef {
   disarmTicks?: number;
   stunTicks?: number;
   holdArmor?: number;
+  /** Share of damage taken returned to the attacker, without further reflection. */
+  reflectPermille?: number;
 }
 
 /**
@@ -475,8 +480,10 @@ export interface UpgradeDef {
   tiers?: number[];
   /** What each race calls it (same effect). */
   names?: Record<string, string>;
-  /** "trait" upgrades: the unit it changes, and how. */
+  /** "trait" upgrades: the unit or buildings it changes, and how. */
   unit?: string;
+  /** Building targets instead of a unit for a building trait. */
+  buildings?: string[];
   trait?: TraitDef;
 }
 

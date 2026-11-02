@@ -30,7 +30,10 @@ npm run dev
   - **Serverless**: an army that autoscales. Functions keep a small squad warm
     and burst it bigger when creeps show up; every burst costs $.
   - **Walled Garden**: real walls that block every path, with towers and
-    Moderators firing over them. Loyal users, and no network nodes: you build
+    Moderators firing over them. Towers and cores have +25% HP and +2 armor.
+    Tier-1 Design Studio research **Terms of Service** ($250) makes walls and
+    gates return 30% of damage taken after armor (never reflected again).
+    Loyal users, and no network nodes: you build
     around your cores.
 - You start with a **deploy agent**, already selected. Click (or right-click)
   the ground to walk it and scout through the fog. Press `C` (or the button) and
