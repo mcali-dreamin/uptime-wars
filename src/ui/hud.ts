@@ -266,7 +266,7 @@ export class Hud {
     const outcome = world.outcome!;
     const won = outcome.winners.includes(this.session.local);
     // Your uptime ends when you go offline, even if others played on.
-    const uptime = clock((this.session.team.downTick ?? outcome.tick) / TICK_RATE);
+    const uptime = `${clock((this.session.team.downTick ?? outcome.tick) / TICK_RATE)} · ${this.session.content.hordeDifficulties[world.hordeDifficulty]!.name} horde`;
     const names = (teams: number[]) => playerNames(world, teams);
     const others = outcome.winners.filter((t) => t !== this.session.local);
     const hordeWon = outcome.winners.some((t) => world.teams[t]?.controller !== "human");

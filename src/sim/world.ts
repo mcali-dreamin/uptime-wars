@@ -42,6 +42,8 @@ import { tickAi } from "./ai";
 
 export interface MatchSetup {
   seed: number;
+  /** Horde pressure id (not computer-player skill); defaults to normal. */
+  hordeDifficulty?: string;
   /**
    * One race per team, in team order: the human players (1 to MAX_PLAYERS)
    * and then the horde, e.g. ["open-source", "hyperscaler", "botnet"].
@@ -66,6 +68,9 @@ export interface MatchSetup {
 }
 
 export function createWorld(content: Content, setup: MatchSetup): World {
+  const hordeDifficulty = setup.hordeDifficulty ?? "normal";
+  if (!Object.hasOwn(content.hordeDifficulties, hordeDifficulty)) throw new Error(`Unknown horde difficulty ${hordeDifficulty}`);
+  const hordeWaves = { ...content.waves, ...content.hordeDifficulties[hordeDifficulty]!.waves };
   const terrain = generateTerrain(setup.seed);
   const teams = setup.races.map((race, id) => makeTeam(content, id, race, setup.heroes?.[id] ?? undefined, setup.ai?.[id] ?? undefined));
   // The camp guards' team goes after every setup team, so no team id shifts.
@@ -74,6 +79,8 @@ export function createWorld(content: Content, setup: MatchSetup): World {
   const rules: MatchRules = { ...rulesFor(setup.mode ?? "coop", players), ...setup.rules };
   const world: World = {
     rules,
+    hordeDifficulty,
+    hordeWaves,
     allies: startingAllies(teams, rules),
     offers: teams.map(() => 0),
     tick: 0,

@@ -87,6 +87,7 @@ export interface MatchReport {
   match?: string;
   version: string;
   seed: number;
+  hordeDifficulty: string;
   /** The preset the rules match, or "custom" (then summary.rules has them). */
   mode: "coop" | "ffa" | "custom";
   race: string;
@@ -99,6 +100,7 @@ export interface MatchReport {
   tier: number;
   peakUsers: number;
   summary: {
+    hordeDifficulty: string;
     built: Record<string, number>;
     ranked: number;
     researched: Record<string, number>;
@@ -131,6 +133,7 @@ export function buildReport(content: Content, world: World, team: number, player
     player,
     version,
     seed: world.seed,
+    hordeDifficulty: world.hordeDifficulty,
     mode: rulesLabel(world),
     race: t.raceId,
     hero: t.heroId ?? "",
@@ -142,6 +145,7 @@ export function buildReport(content: Content, world: World, team: number, player
     tier: tierOf(content, t),
     peakUsers: t.peakUsers,
     summary: {
+      hordeDifficulty: world.hordeDifficulty,
       built,
       ranked,
       researched: { ...t.upgrades },

@@ -34,6 +34,7 @@ export type Order = DistributiveOmit<Command, "tick" | "team">;
 export class Session {
   readonly playable: string[];
   raceId: string;
+  hordeDifficulty = "normal";
   /** The team this browser plays. Player n in a co-op match is team n. */
   local: TeamId = 0;
   /** The player's colour. Render-only: the simulation never sees it. */
@@ -152,6 +153,6 @@ export class Session {
     const fixed = Number(new URLSearchParams(location.search).get("seed"));
     const seed = Number.isInteger(fixed) && fixed !== 0 ? fixed : (Math.random() * 2 ** 31) | 0;
     // `?ai=hard,...` adds computer players (see skirmish.ts); otherwise you and the horde.
-    return createWorld(this.content, skirmishSetup(this.content, location.search, seed, this.raceId, this.heroFor(this.raceId)));
+    return createWorld(this.content, { ...skirmishSetup(this.content, location.search, seed, this.raceId, this.heroFor(this.raceId)), hordeDifficulty: this.hordeDifficulty });
   }
 }

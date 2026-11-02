@@ -11,7 +11,7 @@ const pct = (p) => `${Math.round(p / 10)}%`;
 const files = readdirSync("balance-results").filter((f) => f.endsWith(".json")).sort();
 const data = files.map((file) => [file, JSON.parse(readFileSync(`balance-results/${file}`, "utf8"))]);
 const first = data.flatMap(([, rows]) => rows).find((r) => r.pressure !== undefined || r.minutes !== undefined);
-console.log(`pressure ${first?.pressure ?? "-"} permille, minutes ${first?.minutes ?? "-"}`);
+console.log(`horde ${first?.hordeDifficulty ?? "normal"}, pressure ${first?.pressure ?? "-"} permille, minutes ${first?.minutes ?? "-"}`);
 for (const [file, rows] of data) {
   console.log(`${file.replace(".json", "").padEnd(14)} won ${rows.filter((r) => r.won).length}/${rows.length} lost ${rows.filter((r) => !r.survivedAll && !r.won).length} median ${fmt(median(rows.map((r) => r.survived)))} minCore ${medOr(rows.map((r) => r.minCorePermille), pct)} below50 ${medOr(rows.map((r) => r.secondsBelowHalf), fmt)}`);
   for (const hero of [...new Set(rows.map((r) => r.hero))]) {

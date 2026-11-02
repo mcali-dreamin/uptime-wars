@@ -77,6 +77,7 @@ export class CoopLobby {
     this.computers = [];
     this.sides = [0, 0, 0, 0];
     const lobby = (this.host = new HostLobby(this.session.content));
+    lobby.hordeDifficulty = this.session.hordeDifficulty;
     lobby.onChange = () => this.render();
     this.renderHost();
     if (computer) {
@@ -278,7 +279,7 @@ export class CoopLobby {
   private startHost(): void {
     const lobby = this.host;
     if (!lobby || lobby.ready.length + this.computers.length === 0) return;
-    const rules = this.quick ? COOP : this.rules();
+    const rules = { ...(this.quick ? COOP : this.rules()), hordeDifficulty: this.session.hordeDifficulty };
     this.stopQuick();
     this.hosted?.cancel();
     this.hosted = null;
@@ -361,6 +362,7 @@ export class CoopLobby {
   private hostQuick(run: number): void {
     this.computers = [];
     const lobby = (this.host = new HostLobby(this.session.content));
+    lobby.hordeDifficulty = this.session.hordeDifficulty;
     lobby.onChange = () => this.render();
     this.quick = { run, since: Date.now(), startAt: null, timer: window.setInterval(() => this.renderQuick(), 1000) };
     this.renderQuick();
@@ -489,6 +491,9 @@ export class CoopLobby {
       link.onClose = () => this.onLeave(0);
       this.hide();
       this.onStart(match);
+    }, (id) => {
+      const difficulty = this.session.content.hordeDifficulties[id];
+      this.status(`Connected. Waiting for the host to start… Horde: ${difficulty?.name ?? id}`);
     });
     return true;
   }

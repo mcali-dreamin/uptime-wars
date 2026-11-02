@@ -5,6 +5,7 @@ import unitsJson from "../../content/units.json";
 import buildingsJson from "../../content/buildings.json";
 import racesJson from "../../content/races.json";
 import wavesJson from "../../content/waves.json";
+import hordeDifficultiesJson from "../../content/horde-difficulties.json";
 import economyJson from "../../content/economy.json";
 import upgradesJson from "../../content/upgrades.json";
 import heroesJson from "../../content/heroes.json";
@@ -21,6 +22,7 @@ export function loadDefaultContent(): Content {
     buildings: buildingsJson as Record<string, BuildingDef>,
     races: racesJson as Record<string, RaceDef>,
     waves: wavesJson as WavesDef,
+    hordeDifficulties: hordeDifficultiesJson,
     economy: economyJson as EconomyDef,
     upgrades: upgradesJson as Record<string, UpgradeDef>,
     heroes: heroesJson as HeroesDef,
