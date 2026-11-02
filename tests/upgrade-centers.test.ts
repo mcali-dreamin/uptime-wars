@@ -36,14 +36,14 @@ const run = (w: World, ticks: number) => {
 const center = (w: World) => placeBuilding(w, content, 0, content.races[w.teams[0]!.raceId]!.center!, core(w).col + 4, core(w).row, true);
 
 describe("upgrade centers", () => {
-  it("every race has one, and it researches the army: weapons, armor, HP, spawn speed, and three traits of its own", () => {
+  it("every race has one, and it researches the army: weapons, armor, HP, spawn speed, and traits of its own", () => {
     for (const [raceId, race] of PLAYABLE) {
       expect(race.buildings, raceId).toContain(race.center);
       const w = world(raceId);
       const at = upgradesAt(content, w.teams[0]!, "center");
       expect(at, raceId).toEqual(expect.arrayContaining(["exploit-kits", "unit-armor", "hardened-containers", "autoscaling", "low-latency"]));
       const traits = at.filter((id) => content.upgrades[id]!.stat === "trait");
-      expect(traits, raceId).toHaveLength(3);
+      expect(traits, raceId).toHaveLength(raceId === "walled-garden" ? 4 : 3);
       // Each race's traits are its own, on its own units.
       for (const t of traits) expect(content.upgrades[t]!.races).toEqual([raceId]);
       expect(upgradesAt(content, w.teams[0]!, "core")).not.toContain("exploit-kits");

@@ -77,7 +77,10 @@ export function buildingCard(content: Content, raceId: string, buildingId: strin
     const soft = def.pastLimitGrowthPermille ? `, then +${def.pastLimitGrowthPermille / 10}% each past that` : "";
     does.push(`max ${def.limitPerTier.join(" / ")} by core tier${soft}`);
   }
-  const lines = [does.join(" · ") || `${def.hp} HP`];
+  const hp = Math.round(def.hp * (def.attack ? race.modifiers.towerHpMultiplier : 1));
+  const armor = def.armor + (def.attack ? race.modifiers.towerArmorBonus : 0);
+  const lines = [does.join(" · ") || `${hp} HP`];
+  if (def.attack) lines.push(`${hp} HP · ${armor} armor`);
   if (def.buildable) lines.push(`$${Math.round(def.cost * race.modifiers.costMultiplier)}${def.tier ? ` · needs ${content.economy.tiers[def.tier]!.name}` : ""}`);
   return { title: def.name, lines };
 }
@@ -132,7 +135,9 @@ export function buildingDetail(content: Content, raceId: string, buildingId: str
     stats.push(`Up to ${def.limitPerTier.join(" / ")} by core tier (${content.economy.tiers.map((t) => t.name).join(" / ")})${soft}`);
   }
   if (def.tier) stats.push(`Needs ${content.economy.tiers[def.tier]!.name}`);
-  stats.push(`${def.hp} HP, ${def.armor} armor`);
+  const hp = Math.round(def.hp * (def.attack ? race.modifiers.towerHpMultiplier : 1));
+  const armor = def.armor + (def.attack ? race.modifiers.towerArmorBonus : 0);
+  stats.push(`${hp} HP, ${armor} armor`);
   if (def.buildable) {
     const growth = def.costGrowthPermille ?? content.economy.costGrowthPermille ?? 0;
     stats.push(

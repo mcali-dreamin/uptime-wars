@@ -44,6 +44,8 @@ export function validateContent(content: Content): void {
     }
   }
   for (const [id, race] of Object.entries(content.races)) {
+    if (!Number.isFinite(race.modifiers.towerHpMultiplier) || race.modifiers.towerHpMultiplier <= 0) errors.push(`race ${id} towerHpMultiplier must be positive`);
+    if (!Number.isInteger(race.modifiers.towerArmorBonus) || race.modifiers.towerArmorBonus < 0) errors.push(`race ${id} towerArmorBonus must be a non-negative integer`);
     const core = content.buildings[race.core];
     if (!core) errors.push(`race ${id} has unknown core ${race.core}`);
     else if (core.footprint !== 2) errors.push(`race ${id} core ${race.core} must have a 2x2 footprint`);
@@ -182,7 +184,13 @@ export function validateContent(content: Content): void {
     if (race.center && !race.buildings.includes(race.center)) errors.push(`race ${id} can't build its upgrade center ${race.center}`);
   }
   for (const [id, up] of Object.entries(content.upgrades)) {
-    if (up.stat === "trait" && (!up.unit || !content.units[up.unit] || !up.trait)) errors.push(`trait ${id} needs a known unit and a trait`);
+    if (up.stat === "trait") {
+      const unit = up.unit && content.units[up.unit];
+      const buildings = up.buildings?.length && up.buildings.every((b) => content.buildings[b]);
+      if (!up.trait || (!unit && !buildings) || (up.unit && up.buildings)) errors.push(`trait ${id} needs a known unit or buildings and a trait`);
+      const reflect = up.trait?.reflectPermille;
+      if (reflect !== undefined && (!Number.isInteger(reflect) || reflect < 0 || reflect > 1000 || !buildings)) errors.push(`trait ${id} reflectPermille needs buildings and an integer in 0..1000`);
+    }
     if (up.tiers && up.tiers.length !== up.maxLevel) errors.push(`upgrade ${id} tiers needs one entry per level`);
     for (const r of up.races ?? []) if (!content.races[r]) errors.push(`upgrade ${id} names unknown race ${r}`);
   }

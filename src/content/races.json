@@ -32,6 +32,8 @@
       "spawnIntervalMultiplier": 0.85,
       "costMultiplier": 1,
       "unitHpMultiplier": 1,
+      "towerHpMultiplier": 1,
+      "towerArmorBonus": 0,
       "startingMoneyBonus": 0
     },
     "builder": "deploy-agent",
@@ -112,6 +114,8 @@
       "spawnIntervalMultiplier": 1.15,
       "costMultiplier": 1,
       "unitHpMultiplier": 1.15,
+      "towerHpMultiplier": 1,
+      "towerArmorBonus": 0,
       "startingMoneyBonus": 75
     },
     "heroes": [
@@ -185,6 +189,8 @@
       "spawnIntervalMultiplier": 1,
       "costMultiplier": 1,
       "unitHpMultiplier": 1,
+      "towerHpMultiplier": 1,
+      "towerArmorBonus": 0,
       "startingMoneyBonus": 50
     },
     "tierPerks": [
@@ -257,6 +263,8 @@
       "spawnIntervalMultiplier": 1,
       "costMultiplier": 1,
       "unitHpMultiplier": 1.1,
+      "towerHpMultiplier": 1.25,
+      "towerArmorBonus": 2,
       "startingMoneyBonus": 0,
       "buildRadiusBonus": 3
     },
@@ -321,6 +329,8 @@
       "spawnIntervalMultiplier": 1,
       "costMultiplier": 1,
       "unitHpMultiplier": 1,
+      "towerHpMultiplier": 1,
+      "towerArmorBonus": 0,
       "startingMoneyBonus": 0
     }
   },
@@ -334,6 +344,8 @@
       "spawnIntervalMultiplier": 1,
       "costMultiplier": 1,
       "unitHpMultiplier": 1,
+      "towerHpMultiplier": 1,
+      "towerArmorBonus": 0,
       "startingMoneyBonus": 0
     }
   }
