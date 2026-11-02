@@ -34,11 +34,11 @@
   "ranks": {
     "maxUnits": 200,
     "levels": [
-      { "name": "Hardened", "hpPermille": 1414, "damagePermille": 1414, "armor": 0, "worth": 2 },
-      { "name": "Polymorphic", "hpPermille": 2000, "damagePermille": 2000, "armor": 0, "worth": 4 },
-      { "name": "Persistent", "hpPermille": 2828, "damagePermille": 2828, "armor": 0, "worth": 8 },
-      { "name": "Advanced", "hpPermille": 4000, "damagePermille": 4000, "armor": 0, "worth": 16 },
-      { "name": "APT", "hpPermille": 5657, "damagePermille": 5657, "armor": 0, "worth": 32 }
+      { "name": "Hardened", "hpPermille": 2000, "damagePermille": 2000, "armor": 0, "worth": 2 },
+      { "name": "Polymorphic", "hpPermille": 4000, "damagePermille": 4000, "armor": 0, "worth": 4 },
+      { "name": "Persistent", "hpPermille": 8000, "damagePermille": 8000, "armor": 0, "worth": 8 },
+      { "name": "Advanced", "hpPermille": 16000, "damagePermille": 16000, "armor": 0, "worth": 16 },
+      { "name": "APT", "hpPermille": 32000, "damagePermille": 32000, "armor": 0, "worth": 32 }
     ]
   },
   "roster": [

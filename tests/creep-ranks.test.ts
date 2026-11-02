@@ -16,13 +16,15 @@ const cost = (unit: string) => content.waves.roster.find((r) => r.unit === unit)
 const worthOf = (units: string[], rank: number) => units.reduce((sum, u) => sum + cost(u), 0) * (rank ? ranks.levels[rank - 1]!.worth! : 1);
 
 describe("creep ranks", () => {
-  it("each level is worth twice the one before, and hp x damage keeps pace", () => {
+  it("each level is worth twice the one before, and HP and damage keep pace", () => {
     let worth = 1;
     for (const level of ranks.levels) {
       expect(level.worth, level.name).toBe(worth * 2);
       worth = level.worth!;
-      // Strength ~ hp x damage: a rank worth w hits and takes like w plain creeps.
-      expect((level.hpPermille * level.damagePermille) / 1e6, level.name).toBeCloseTo(worth, 0);
+      // A condensed wave keeps its total HP and damage: one creep worth w
+      // replaces w plain ones, so it carries w times the HP and the damage.
+      expect(level.hpPermille, level.name).toBe(worth * 1000);
+      expect(level.damagePermille, level.name).toBe(worth * 1000);
     }
   });
 
