@@ -151,6 +151,8 @@ export class World3D implements WorldView {
   private readonly bars = new Bars();
   private readonly thinRings = new Rings(0.975);
   private readonly rings = new Rings(0.82);
+  /** Selection: a thin, dim band. A thick one around a big building read as a glowing orange disc. */
+  private readonly selectRings = new Rings(0.94);
   private readonly glows = new Glows();
   private readonly entityLayer = new THREE.Group();
   /** Items lying on the ground, by drop id. Not clickable as entities: right-click the ground. */
@@ -233,6 +235,7 @@ export class World3D implements WorldView {
       this.particles.points,
       this.thinRings.mesh,
       this.rings.mesh,
+      this.selectRings.mesh,
       this.bars.group,
       this.glows.mesh,
       this.debris.mesh,
@@ -778,6 +781,7 @@ export class World3D implements WorldView {
   private drawOverlay(frame: Frame, t: number): void {
     const { world, content } = frame;
     this.rings.begin();
+    this.selectRings.begin();
     this.thinRings.begin();
     this.flag.visible = false;
     this.rallyLine.visible = false;
@@ -788,7 +792,7 @@ export class World3D implements WorldView {
     for (const entity of world.entities) {
       if (entity.kind !== "unit" || entity.hp <= 0 || !frame.selectedIds.has(entity.id) || entity.id === frame.selectedId) continue;
       const at = frame.position(entity);
-      this.rings.add(at.x, ground(at.x, at.y), at.y, entity.radius + 7, HIGHLIGHT, 0.9);
+      this.selectRings.add(at.x, ground(at.x, at.y), at.y, entity.radius + 7, HIGHLIGHT, 0.5);
       if (entity.order) {
         const key = `${Math.round(entity.homeX / 24)}:${Math.round(entity.homeY / 24)}`;
         if (destinations.has(key)) continue;
@@ -810,7 +814,7 @@ export class World3D implements WorldView {
     for (const entity of world.entities) {
       if (entity.kind !== "building" || entity.hp <= 0 || !frame.selectedIds.has(entity.id) || entity.id === frame.selectedId) continue;
       const at = frame.position(entity);
-      this.rings.add(at.x, ground(at.x, at.y), at.y, (entity.footprint * TILE) / 2 + 10, HIGHLIGHT, 0.9);
+      this.selectRings.add(at.x, ground(at.x, at.y), at.y, (entity.footprint * TILE) / 2 + 10, HIGHLIGHT, 0.5);
       const rally = rallyFor(world, content, entity);
       if (!rally) continue;
       const key = `${Math.round(rally.x / 24)}:${Math.round(rally.y / 24)}`;
@@ -824,7 +828,7 @@ export class World3D implements WorldView {
       if (selected && selected.hp > 0) {
         const at = frame.position(selected);
         const radius = selected.kind === "building" ? (selected.footprint * TILE) / 2 + 10 : selected.radius + 9;
-        this.rings.add(at.x, ground(at.x, at.y), at.y, radius + Math.sin(t * 4) * 1.5, HIGHLIGHT, 0.6);
+        this.selectRings.add(at.x, ground(at.x, at.y), at.y, radius + Math.sin(t * 4) * 1.5, HIGHLIGHT, 0.6);
         if (selected.kind === "building") {
           const def = content.buildings[selected.defId]!;
           if (def.attack) this.thinRings.add(at.x, ground(at.x, at.y), at.y, def.attack.range + selected.radius, HIGHLIGHT, 0.2);
@@ -880,6 +884,7 @@ export class World3D implements WorldView {
       this.rings.add(ping.x, ground(ping.x, ping.y), ping.y, 30 * (1 - k) + 6, HIGHLIGHT, 1 - k);
     }
     this.rings.end();
+    this.selectRings.end();
     this.thinRings.end();
   }
 
