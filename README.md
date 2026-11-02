@@ -313,8 +313,8 @@ since each lands on one base.
 **Late incidents get tougher, not bigger.** Past 200 creeps an incident comes
 as fewer **ranked** creeps worth the same: Hardened (worth 2), Polymorphic
 (4), Persistent (8), Advanced (16), APT (32). A rank multiplies HP and damage
-by the square root of its worth each, so a rank worth 8 fights like 8 plain
-creeps, looks bigger, and pays 8× the bounty and XP. The botnet's alive cap
+by its worth, so a condensed incident keeps all its HP and damage in fewer,
+bigger creeps, and a rank worth 8 pays 8× the bounty and XP. The botnet's alive cap
 (500) counts worth, not heads, so ranks change the horde's shape without
 multiplying it. Waves grow ×1.36 an incident up to incident 8 and ×1.05
 after, so each incident arrives soon after it's announced instead of queuing
