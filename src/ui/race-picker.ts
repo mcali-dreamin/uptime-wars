@@ -30,20 +30,7 @@ export class RacePicker {
     telemetry?: Telemetry,
     private readonly onGuide: () => void = () => {},
   ) {
-    const label = document.createElement("label");
-    label.textContent = "Horde difficulty ";
-    const select = document.createElement("select");
-    select.id = "horde-difficulty";
-    for (const [id, difficulty] of Object.entries(session.content.hordeDifficulties)) {
-      const option = document.createElement("option");
-      option.value = id;
-      option.textContent = `${difficulty.name} — ${difficulty.description}`;
-      select.append(option);
-    }
-    select.value = session.hordeDifficulty;
-    select.addEventListener("change", () => { session.hordeDifficulty = select.value; });
-    label.append(select);
-    $("picker-actions").prepend(label);
+    this.renderHorde();
     $("play-solo").addEventListener("click", () => this.solo());
     $("quick-match").addEventListener("click", () => this.lobby("quick"));
     $("custom-match").addEventListener("click", () => this.lobby("custom"));
@@ -59,6 +46,7 @@ export class RacePicker {
     this.race = null;
     this.title.textContent = "Choose who you're keeping online, then how to play.";
     $("picker-actions").hidden = false;
+    $("horde-row").hidden = false;
     const { content, playable, raceId } = this.session;
     this.cards.replaceChildren(
       ...playable.map((id, index) => {
@@ -105,6 +93,7 @@ export class RacePicker {
     this.race = raceId;
     this.title.textContent = `${race.name}: choose your hero. Esc to go back.`;
     $("picker-actions").hidden = true;
+    $("horde-row").hidden = true;
     const last = this.session.heroFor(raceId);
     this.cards.replaceChildren(
       ...race.heroes!.map((heroId, index) => {
@@ -123,10 +112,29 @@ export class RacePicker {
     );
   }
 
+  /** Horde difficulty: one button per level, the chosen one's description under them. */
+  private renderHorde(): void {
+    const options = $("horde-options");
+    options.replaceChildren();
+    for (const [id, difficulty] of Object.entries(this.session.content.hordeDifficulties)) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "horde-option";
+      button.textContent = difficulty.name;
+      button.setAttribute("role", "radio");
+      button.setAttribute("aria-checked", String(id === this.session.hordeDifficulty));
+      button.addEventListener("click", () => {
+        this.session.setHordeDifficulty(id);
+        this.renderHorde();
+      });
+      options.append(button);
+    }
+    $("horde-note").textContent = this.session.content.hordeDifficulties[this.session.hordeDifficulty]?.description ?? "";
+  }
+
   /** Keys while the home screen is open. Returns true when handled. */
   key(key: string, event?: KeyboardEvent): boolean {
     if (!this.open) return false;
-    if (document.activeElement?.id === "horde-difficulty") return true;
     if (this.race) {
       if (key === "escape") return this.show(), true;
       const hero = this.session.content.races[this.race]!.heroes![Number(key) - 1];

@@ -623,9 +623,8 @@ export interface Navigation {
 export interface World {
   /** Who starts on whose side, whether that can change, and what winning takes (teams.ts). */
   rules: MatchRules;
+  /** Horde difficulty id (content.hordeDifficulties): see hordeMaxAlive in waves.ts. */
   hordeDifficulty: string;
-  /** Resolved wave content for this match; never mutates the shared content. */
-  hordeWaves: import("./content").WavesDef;
   /** Per team: a bitmask of the teams it's allied with, itself included. Always mutual. */
   allies: number[];
   /** Per team: a bitmask of the players it has offered an alliance that's not answered yet. */

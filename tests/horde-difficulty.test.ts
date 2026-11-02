@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createWorld, step } from "../src/sim";
 import { validateContent } from "../src/sim/content";
+import { hordeMaxAlive } from "../src/sim/waves";
 import { lobbySetup } from "../src/game/net/lobby";
 import { buildReport } from "../src/game/telemetry";
 import { parseMatch } from "../zero/server/matches";
@@ -10,14 +11,14 @@ import { content, SETUP } from "./fixtures";
 describe("horde difficulty", () => {
   it.each([["easy", 300], ["normal", 500], ["hard", 1000], ["nightmare", 1500]] as const)("resolves %s without changing shared content", (id, cap) => {
     const world = createWorld(content, { ...SETUP, hordeDifficulty: id });
-    expect(world.hordeWaves).toEqual({ ...content.waves, maxAlive: cap });
+    expect(hordeMaxAlive(content, world)).toBe(cap);
     expect(content.waves.maxAlive).toBe(500);
   });
 
   it("defaults to unchanged normal content", () => {
     const world = createWorld(content, SETUP);
     expect(world.hordeDifficulty).toBe("normal");
-    expect(world.hordeWaves).toEqual(content.waves);
+    expect(hordeMaxAlive(content, world)).toBe(content.waves.maxAlive);
     expect(world).toEqual(createWorld(content, { ...SETUP, hordeDifficulty: "normal" }));
   });
 
