@@ -411,6 +411,40 @@ body {
 }
 
 
+#horde-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+#horde-options {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.horde-option {
+  padding: 0.3rem 0.8rem;
+  background: var(--panel);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 0;
+  clip-path: var(--chamfer);
+  font: inherit;
+  cursor: pointer;
+}
+
+.horde-option[aria-checked="true"] {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+#horde-note {
+  color: var(--muted);
+  min-width: 22rem;
+}
+
 #picker-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1248,4 +1282,8 @@ body.home #coop {
   .build-btn small {
     font-size: 0.68rem;
   }
+}
+
+#horde-row[hidden] {
+  display: none;
 }

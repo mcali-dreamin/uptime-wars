@@ -1,22 +1,28 @@
 {
   "easy": {
     "name": "Easy",
-    "description": "A lighter horde with more breathing room to build.",
-    "waves": { "maxAlive": 300 }
+    "description": "A smaller botnet: room to learn and build.",
+    "waves": {
+      "maxAlive": 300
+    }
   },
   "normal": {
     "name": "Normal",
-    "description": "The original horde pressure, unchanged.",
+    "description": "The standard botnet.",
     "waves": {}
   },
   "hard": {
     "name": "Hard",
-    "description": "A relentless horde that crowds the battlefield.",
-    "waves": { "maxAlive": 1000 }
+    "description": "A far bigger botnet crowds the field at once.",
+    "waves": {
+      "maxAlive": 1000
+    }
   },
   "nightmare": {
     "name": "Nightmare",
-    "description": "An overwhelming horde for the toughest defenses.",
-    "waves": { "maxAlive": 1500 }
+    "description": "The whole botnet at once. Most defenses fall.",
+    "waves": {
+      "maxAlive": 1500
+    }
   }
 }

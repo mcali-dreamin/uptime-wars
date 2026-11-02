@@ -24,6 +24,7 @@ import { skirmishSetup } from "./skirmish";
 const INPUT_DELAY_TICKS = 2;
 const RACE_KEY = "uptime:race";
 const COLOR_KEY = "uptime:color";
+const HORDE_KEY = "uptime:horde";
 const HERO_KEY = "uptime:hero:";
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
@@ -34,7 +35,7 @@ export type Order = DistributiveOmit<Command, "tick" | "team">;
 export class Session {
   readonly playable: string[];
   raceId: string;
-  hordeDifficulty = "normal";
+  hordeDifficulty: string;
   /** The team this browser plays. Player n in a co-op match is team n. */
   local: TeamId = 0;
   /** The player's colour. Render-only: the simulation never sees it. */
@@ -50,6 +51,8 @@ export class Session {
     const saved = localStorage.getItem(RACE_KEY) ?? "";
     this.raceId = this.playable.includes(saved) ? saved : this.playable[0]!;
     this.color = playerColor(localStorage.getItem(COLOR_KEY) ?? "");
+    const horde = localStorage.getItem(HORDE_KEY) ?? "";
+    this.hordeDifficulty = Object.hasOwn(content.hordeDifficulties, horde) ? horde : "normal";
     this.world = this.newWorld();
   }
 
@@ -59,6 +62,12 @@ export class Session {
     this.net = null;
     this.local = 0;
     this.world = this.newWorld();
+  }
+
+  setHordeDifficulty(id: string): void {
+    if (!Object.hasOwn(this.content.hordeDifficulties, id)) return;
+    this.hordeDifficulty = id;
+    localStorage.setItem(HORDE_KEY, id);
   }
 
   setColor(id: string): void {

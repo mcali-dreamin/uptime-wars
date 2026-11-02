@@ -97,7 +97,7 @@ export function tickWaveDirector(ctx: TickContext): void {
   // The cap counts worth, not heads: a rank-3 creep fills eight slots.
   let alive = 0;
   for (const entity of world.entities) if (entity.kind === "unit" && entity.team === team.id) alive += rankWorth(content, world, entity);
-  while (state.pending.length > 0 && state.pending[0]!.tick <= world.tick && alive < world.hordeWaves.maxAlive) {
+  while (state.pending.length > 0 && state.pending[0]!.tick <= world.tick && alive < hordeMaxAlive(content, world)) {
     const spawn = state.pending.shift()!;
     // At its door (the opening), out of its node if that still stands, else the nest.
     const node = spawn.from === undefined ? undefined : ctx.byId.get(spawn.from);
@@ -232,6 +232,11 @@ export function threatPermille(world: World, content: Content): number {
   const ratio = total / players / threat.referenceWorth;
   const scale = Math.min(threat.maxScale, Math.max(1, Math.sqrt(ratio)));
   return Math.round(scale * 1000);
+}
+
+/** The horde's on-field cap in worth: the match's horde difficulty overrides waves.maxAlive. */
+export function hordeMaxAlive(content: Content, world: World): number {
+  return content.hordeDifficulties[world.hordeDifficulty]?.waves.maxAlive ?? content.waves.maxAlive;
 }
 
 /** Ticks between wave n and wave n + 1. */
