@@ -14,7 +14,7 @@
 // - ephemeral (Serverless): wireframe and smoked glass, as if only half
 //   there. Functions are drawn as holograms while cold and turn solid while
 //   their units are running (see world3d).
-// - garden (Walled Garden): glossy white ceramic, rose-gold trim, and neat
+// - garden (Walled Garden): pearl-grey ceramic, rose-gold trim, and neat
 //   trimmed hedges on top. Pristine, rounded, a little smug.
 // The botnet is none of these: spiky and red, rogue machines of 2075 (black
 // carbon blades with red-hot seams). Players' units hover over a pool of their
@@ -267,7 +267,8 @@ export class Models {
     if (look === "garden") {
       switch (kind) {
         case "body":
-          return standard({ color: 0xdfe5ec, metalness: 0.1, roughness: 0.35 });
+          // Pearl, not paper white: a white body under the sun blows out and blooms.
+          return standard({ color: 0x8e97a3, metalness: 0.15, roughness: 0.5 });
         case "frame":
           return standard({ color: 0xd8a7a0, metalness: 0.9, roughness: 0.3 });
         case "dark":

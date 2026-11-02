@@ -529,7 +529,7 @@ const groundFragmentHead = /* glsl */ `
     // open ground has regions instead of one flat colour.
     vec3 deep = mix(vec3(0.035, 0.025, 0.06), vec3(0.05, 0.022, 0.06), macro);
     vec3 surface = mix(vec3(0.07, 0.08, 0.1), vec3(0.08, 0.085, 0.105), macro);
-    vec3 backbone = mix(vec3(0.19, 0.205, 0.235), vec3(0.165, 0.18, 0.21), macro);
+    vec3 backbone = mix(vec3(0.12, 0.13, 0.15), vec3(0.105, 0.115, 0.135), macro);
     return lvl < 1.0 ? mix(deep, surface, smoothstep(0.6, 1.0, lvl)) : mix(surface, backbone, smoothstep(1.6, 2.0, lvl));
   }
   vec3 traceColor(float lvl) {

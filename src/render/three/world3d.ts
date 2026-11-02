@@ -824,10 +824,10 @@ export class World3D implements WorldView {
       if (selected && selected.hp > 0) {
         const at = frame.position(selected);
         const radius = selected.kind === "building" ? (selected.footprint * TILE) / 2 + 10 : selected.radius + 9;
-        this.rings.add(at.x, ground(at.x, at.y), at.y, radius + Math.sin(t * 4) * 1.5, HIGHLIGHT, 1);
+        this.rings.add(at.x, ground(at.x, at.y), at.y, radius + Math.sin(t * 4) * 1.5, HIGHLIGHT, 0.6);
         if (selected.kind === "building") {
           const def = content.buildings[selected.defId]!;
-          if (def.attack) this.thinRings.add(at.x, ground(at.x, at.y), at.y, def.attack.range + selected.radius, HIGHLIGHT, 0.35);
+          if (def.attack) this.thinRings.add(at.x, ground(at.x, at.y), at.y, def.attack.range + selected.radius, HIGHLIGHT, 0.2);
           const team = world.teams[selected.team]!;
           const core = isCore(content, team, selected);
           if (core || def.spawn || def.invoke) {
